@@ -1,8 +1,8 @@
 name: codemod_recipe
 description: Reusable recipe primitives for deterministic Dart codemods and file scaffolds.
 version: 0.1.0
-repository: https://github.com/yourusername/codemod_recipe
-issue_tracker: https://github.com/yourusername/codemod_recipe/issues
+repository: https://github.com/c4rl2s0n/CodemodRecipe
+issue_tracker: https://github.com/c4rl2s0n/CodemodRecipe/issues
 topics:
   - codemod
   - code-generation
