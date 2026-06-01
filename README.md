@@ -1,7 +1,7 @@
 # codemod_recipe
 
 [![Pub Version](https://img.shields.io/pub/v/codemod_recipe)](https://pub.dev/packages/codemod_recipe)
-[![Dart CI](https://github.com/yourusername/codemod_recipe/actions/workflows/dart.yml/badge.svg)](https://github.com/yourusername/codemod_recipe/actions)
+[![Dart CI](https://github.com/c4rl2s0n/CodemodRecipe/actions/workflows/dart.yml/badge.svg)](https://github.com/c4rl2s0n/CodemodRecipe/actions)
 [![License: BSD-3-Clause](https://img.shields.io/badge/License-BSD%203--Clause-blue.svg)](LICENSE)
 
 Reusable primitives for deterministic, recipe-based Dart codemods and file
