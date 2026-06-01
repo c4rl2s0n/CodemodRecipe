@@ -1,0 +1,16 @@
+name: scaffold_feature_example
+description: Example showing how to scaffold new feature files from templates
+publish_to: 'none'
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  codemod_recipe:
+    path: ../..
+
+dev_dependencies:
+  lints: ^6.1.0
+
+executables:
+  scaffold_feature: scaffold_feature

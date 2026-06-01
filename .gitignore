@@ -1,0 +1,29 @@
+# FVM Version Cache
+.fvm/
+
+# Dart
+.dart_tool/
+.packages
+build/
+doc/api/
+coverage/
+pubspec.lock
+
+# JavaScript output from dart2js
+*.dart.js
+*.info.json
+*.js_
+*.js.deps
+*.js.map
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
