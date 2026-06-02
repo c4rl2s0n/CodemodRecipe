@@ -98,29 +98,38 @@
           "default": false,
           "description": "Enable performance timing logs for list/preview/apply host calls."
         },
-        "codemodRecipe.autoPreview": {
-          "type": "boolean",
-          "default": true,
-          "description": "Automatically run Preview Changes after form edits in the recipe runner."
-        },
         "codemodRecipe.autoPreviewDebounceMs": {
           "type": "number",
           "default": 400,
           "minimum": 100,
           "maximum": 2000,
           "description": "Debounce delay (milliseconds) for automatic preview updates."
+        },
+        "codemodRecipe.previewSnippetLines": {
+          "type": "number",
+          "default": 5,
+          "minimum": 1,
+          "maximum": 20,
+          "description": "Maximum number of lines shown per file in compact live preview cards."
         }
       }
     }
   },
   "scripts": {
-    "compile": "tsc -p ./",
+    "build:webview": "vite build --config webview-ui/vite.config.ts",
+    "compile": "npm run build:webview && tsc -p ./",
     "watch": "tsc -watch -p ./",
+    "watch:webview": "vite build --config webview-ui/vite.config.ts --watch",
+    "test:webview": "vitest run --config webview-ui/vitest.config.ts",
     "vscode:prepublish": "npm run compile"
   },
   "devDependencies": {
     "@types/node": "^20.11.0",
     "@types/vscode": "^1.85.0",
-    "typescript": "^5.4.0"
+    "@vitejs/plugin-vue": "^5.2.1",
+    "typescript": "^5.4.0",
+    "vite": "^5.4.14",
+    "vitest": "^2.1.8",
+    "vue": "^3.5.13"
   }
 }

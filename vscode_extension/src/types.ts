@@ -39,6 +39,7 @@ export interface FilePreview {
   kind: 'edit' | 'create' | 'other';
   isNew: boolean;
   skipped: boolean;
+  snippet?: string;
   original?: string;
   modified?: string;
   preview?: string;
@@ -91,7 +92,12 @@ export type HostCommand =
   | { command: 'list' }
   | { command: 'describe'; recipe: string }
   | { command: 'diff'; recipe: string; args: Record<string, string>; path: string }
-  | { command: 'preview'; recipe: string; args: Record<string, string> }
+  | {
+      command: 'preview';
+      recipe: string;
+      args: Record<string, string>;
+      snippetLines?: number;
+    }
   | {
       command: 'apply';
       recipe: string;

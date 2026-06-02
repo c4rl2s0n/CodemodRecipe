@@ -31,7 +31,6 @@ export class RecipeRunnerState {
       recipe: this.currentRecipe,
       initialArgs: this.initialArgs,
       activeTab: this.activeTab,
-      autoPreview: true,
       autoPreviewDebounceMs: 400,
     };
   }

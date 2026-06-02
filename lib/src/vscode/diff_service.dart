@@ -35,13 +35,16 @@ class DiffService {
     FileChange change, {
     bool includeContents = true,
     bool includePatchReplacements = true,
+    int snippetLines = 5,
   }) async {
     if (change is PatchFileChange) {
+      final snippet = _snippetFromPatchChange(change, snippetLines);
       return {
         'path': change.path,
         'kind': 'edit',
         'isNew': false,
         'skipped': false,
+        if (snippet.isNotEmpty) 'snippet': snippet,
         if (includeContents) 'original': change.source,
         if (includeContents) 'modified': change.generate(),
         'patches': [
@@ -66,6 +69,7 @@ class DiffService {
         'kind': 'create',
         'isNew': !change.exists,
         'skipped': !change.hasChanges,
+        'snippet': _snippetFromText(change.content, snippetLines),
         if (includeContents) 'original': original,
         if (includeContents) 'modified': change.content,
         'patches': const <Map<String, Object?>>[],
@@ -90,6 +94,7 @@ class DiffService {
     List<FileChange> changes, {
     bool includeContents = true,
     bool includePatchReplacements = true,
+    int snippetLines = 5,
   }) async {
     return [
       for (final change in changes)
@@ -97,6 +102,7 @@ class DiffService {
           change,
           includeContents: includeContents,
           includePatchReplacements: includePatchReplacements,
+          snippetLines: snippetLines,
         ),
     ];
   }
@@ -118,5 +124,19 @@ class DiffService {
             : replacement,
       'description': patch.description,
     };
+  }
+
+  static String _snippetFromPatchChange(PatchFileChange change, int maxLines) {
+    if (change.patches.isEmpty) return '';
+    final replacement = change.patches.first.replacement;
+    return _snippetFromText(replacement, maxLines);
+  }
+
+  static String _snippetFromText(String source, int maxLines) {
+    if (source.isEmpty) return '';
+    final normalized = source.replaceAll('\r\n', '\n');
+    final lines = normalized.split('\n');
+    final take = lines.take(maxLines).join('\n').trimRight();
+    return take;
   }
 }

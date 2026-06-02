@@ -57,8 +57,17 @@ export class DartBridge {
     return response.recipe;
   }
 
-  preview(recipe: string, args: Record<string, string>): Promise<PreviewResponse> {
-    return this.send<PreviewResponse>({ command: 'preview', recipe, args });
+  preview(
+    recipe: string,
+    args: Record<string, string>,
+    snippetLines?: number
+  ): Promise<PreviewResponse> {
+    return this.send<PreviewResponse>({
+      command: 'preview',
+      recipe,
+      args,
+      snippetLines,
+    });
   }
 
   async diff(

@@ -59,8 +59,8 @@ or `bin/codemod_host.dart`. To use a different path, set:
   "codemodRecipe.hostEntrypoint": "tool/codemod_host.dart",
   "codemodRecipe.dartPath": "dart", // or an absolute path / fvm wrapper
   "codemodRecipe.performanceLogging": false, // log list/preview/apply timings
-  "codemodRecipe.autoPreview": true, // auto-run preview while editing args
-  "codemodRecipe.autoPreviewDebounceMs": 400 // debounce for live preview
+  "codemodRecipe.autoPreviewDebounceMs": 400, // debounce for live preview
+  "codemodRecipe.previewSnippetLines": 5 // max lines shown in review snippets
 }
 ```
 
@@ -73,13 +73,10 @@ You can also run **Codemod Recipe: Set Host Entry Point** from the command palet
 2. Click a recipe in the **Recipes** tab to switch to the runner tab and open the
    argument form. Required fields are marked with `*`; file and directory args
    get picker buttons; enum-like args can use editable suggestions.
-3. The **Recipe Runner** tab shows parameter metadata and any operation-derived
-   template previews.
-   Rendered placeholder values are highlighted so it remains clear which parts
-   came from placeholders.
-4. Click **Preview Changes** for a dry run (or leave **Live preview** enabled to
-   auto-refresh previews after form edits). The review panel shows a changed-files
-   summary tree with per-file and per-patch checkboxes.
+3. The **Recipe Runner** tab shows parameter metadata and runs live preview
+   automatically as form values change.
+4. The review panel shows changed files with short snippets and per-file/per-patch
+   selection controls.
 5. Use **Previous Change**, **Next Change**, or click a patch row to step through
    changes and open the native side-by-side diff for that file.
 6. Uncheck any files or patches you do not want, then click **Apply Selected**.
@@ -124,20 +121,6 @@ final addMethodRecipe = CodemodRecipe(
 );
 ```
 
-For file scaffolds, prefer `CreateFileOperation.templatePath`. The extension
-derives template previews from the same operation that applies the file, so the
-preview cannot drift from the actual transform:
-
-```dart
-CreateFileOperation.templatePath(
-  pathTemplate: 'lib/features/{{feature:snake}}/{{feature:snake}}_view.dart',
-  previewLabel: 'View file',
-  template: const CodemodTemplate.inline('''
-class {{feature:pascal}}View {}
-'''),
-)
-```
-
 For many independent recipes, keep each recipe in its own Dart file, export a
 single `allRecipes` list from a small registry file, and launch the extension
 host with `CodemodHost.fromList(allRecipes)`.
@@ -150,7 +133,8 @@ Commands accepted by the host (one JSON object per process on stdin):
 { "command": "list" }
 
 { "command": "preview", "recipe": "add_method",
-  "args": { "file": "lib/foo.dart", "class": "Foo", "method": "bar" } }
+  "args": { "file": "lib/foo.dart", "class": "Foo", "method": "bar" },
+  "snippetLines": 5 }
 
 { "command": "diff", "recipe": "add_method", "path": "lib/foo.dart",
   "args": { "file": "lib/foo.dart", "class": "Foo", "method": "bar" } }
@@ -168,12 +152,36 @@ Omitting a file from `selection.files` keeps all of its patches. Setting
 ```bash
 cd vscode_extension
 npm install
-npm run compile          # type-check + build to dist/
-npm run watch            # rebuild on change
+npm run compile          # build Vue webview + type-check extension to dist/
+npm run watch            # rebuild extension host on change
+npm run watch:webview    # rebuild webview UI (media/recipeView.js) on change
+npm run test:webview     # unit tests for webview arg/selection helpers
+```
 
+The sidebar UI lives in [`webview-ui/`](webview-ui/) (Vue 3 + Vite) and compiles
+into [`media/recipeView.js`](media/recipeView.js) and [`media/recipeView.css`](media/recipeView.css).
+Run `npm run build:webview` (or full `npm run compile`) before `F5` if you change
+webview sources. Pressing **F5** with the `vscode_extension` folder open runs the
+`npm: compile` pre-launch task automatically (see [`.vscode/launch.json`](.vscode/launch.json)).
+
+The files in `media/` (`recipeView.html`, `recipeView.js`, `recipeView.css`) are
+**built artifacts**: edit sources under `webview-ui/`, then compile. They are loaded
+as static extension resources at runtime (not generated when you open the view).
+
+```bash
 # Integration smoke test against the example host:
 node scripts/smoke.mjs "$(cd ../example/vscode_host_example/bin && pwd)/codemod_host.dart"
 ```
 
 Press `F5` in VS Code (with this folder open) to launch an Extension
 Development Host for manual testing.
+
+### Manual smoke checklist (webview)
+
+1. Open **Codemod Recipe** — **Recipes** tab lists recipes from the host.
+2. Select a recipe — **Recipe Runner** tab opens with the argument form.
+3. Edit args — preview status updates; review panel appears when the host returns files.
+4. **Previous Change** / **Next Change** — active patch highlights; native diff opens.
+5. Toggle file/patch checkboxes — **Apply Selected** enables when preview is current.
+6. **Browse…** on file/directory args — path fills in and preview re-runs.
+7. Switch tabs — form values and review state persist (no full page reload).

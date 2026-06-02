@@ -4,6 +4,7 @@ import {
   COMMANDS,
   DIFF,
   EXTENSION,
+  EXTENSION_TO_WEBVIEW,
   RUNNER_TABS,
   VIEWS,
   WEBVIEW_TO_EXTENSION,
@@ -19,6 +20,7 @@ import { RecipeRunnerState } from './recipeRunnerState';
 export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
   private view: vscode.WebviewView | undefined;
   private renderPending = false;
+  private webviewHtmlLoaded = false;
   private previewInFlight = false;
   private readonly state = new RecipeRunnerState();
 
@@ -37,9 +39,10 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
       localResourceRoots: [vscode.Uri.joinPath(this.extensionUri, 'media')],
     };
     const hadPendingRender = this.renderPending;
-    this.render();
+    this.ensureWebviewHtml();
+    this.postState();
     if (hadPendingRender) {
-      this.render();
+      this.postState();
     }
     webviewView.webview.onDidReceiveMessage((message: unknown) => {
       void this.handleMessage(message);
@@ -48,7 +51,7 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
 
   setRecipes(recipes: readonly RecipeSchema[], error?: string): void {
     this.state.setRecipes(recipes, error);
-    this.render();
+    this.postState();
   }
 
   run(recipe: RecipeSchema, initialArgs: Record<string, string> = {}): void {
@@ -61,11 +64,11 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
     switch (message.type) {
       case WEBVIEW_TO_EXTENSION.showRecipes:
         this.state.activeTab = RUNNER_TABS.recipes;
-        this.render();
+        this.postState();
         break;
       case WEBVIEW_TO_EXTENSION.showRunner:
         this.state.activeTab = RUNNER_TABS.runner;
-        this.render();
+        this.postState();
         break;
       case WEBVIEW_TO_EXTENSION.selectRecipe:
         await this.selectRecipe(message.id);
@@ -107,7 +110,7 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
   ): Promise<void> {
     const hydrated = await this.ensureRecipeDetails(recipe);
     this.state.selectRecipe(hydrated, initialArgs);
-    await this.revealAndRender();
+    await this.revealAndPostState();
   }
 
   private async ensureRecipeDetails(recipe: RecipeSchema): Promise<RecipeSchema> {
@@ -132,7 +135,7 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
 
     const rel = path.relative(this.workspaceRoot, picked[0].fsPath);
     this.postMessage({
-      type: 'filePicked',
+      type: EXTENSION_TO_WEBVIEW.filePicked,
       arg,
       value: rel.startsWith('..') ? picked[0].fsPath : rel,
     });
@@ -150,17 +153,21 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
 
     this.previewInFlight = true;
     this.postMessage({
-      type: 'previewState',
+      type: EXTENSION_TO_WEBVIEW.previewState,
       inFlight: true,
       requestId,
     });
     this.state.lastArgs = args;
     const argsKey = this.argsKey(args);
     try {
-      const response = await this.bridge.preview(recipe.id, args);
+      const response = await this.bridge.preview(
+        recipe.id,
+        args,
+        this.config.previewSnippetLines
+      );
       if (!response.ok) {
         this.postMessage({
-          type: 'error',
+          type: EXTENSION_TO_WEBVIEW.error,
           message: response.error ?? 'Preview failed',
           requestId,
         });
@@ -169,7 +176,7 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
 
       this.state.lastFiles = response.files ?? [];
       this.postMessage({
-        type: 'previewResult',
+        type: EXTENSION_TO_WEBVIEW.previewResult,
         files: this.state.lastFiles,
         requestId,
         argsKey,
@@ -177,7 +184,7 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
     } finally {
       this.previewInFlight = false;
       this.postMessage({
-        type: 'previewState',
+        type: EXTENSION_TO_WEBVIEW.previewState,
         inFlight: false,
         requestId,
       });
@@ -195,7 +202,7 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
     );
     if (!response.ok) {
       this.postMessage({
-        type: 'error',
+        type: EXTENSION_TO_WEBVIEW.error,
         message: response.error ?? 'Apply failed',
       });
       return;
@@ -204,7 +211,7 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
     const count = response.applied?.length ?? 0;
     vscode.window.showInformationMessage(`Applied ${recipe.name} to ${count} file(s).`);
     this.postMessage({
-      type: 'applyResult',
+      type: EXTENSION_TO_WEBVIEW.applyResult,
       applied: response.applied ?? [],
     });
   }
@@ -253,7 +260,7 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
     );
     if (!response.ok || !response.file) {
       this.postMessage({
-        type: 'error',
+        type: EXTENSION_TO_WEBVIEW.error,
         message: response.error ?? `Failed to open diff for ${file.path}`,
       });
       return file;
@@ -267,31 +274,44 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
     return response.file;
   }
 
-  private async revealAndRender(): Promise<void> {
+  private async revealAndPostState(): Promise<void> {
     await vscode.commands.executeCommand(EXTENSION.activityViewId);
     try {
       await vscode.commands.executeCommand(`${VIEWS.runner}.focus`);
     } catch {
       // Some VS Code versions do not expose generated focus commands reliably.
     }
-    this.render();
+    this.ensureWebviewHtml();
+    this.postState();
   }
 
-  private render(): void {
+  private ensureWebviewHtml(): void {
+    if (!this.view || this.webviewHtmlLoaded) {
+      return;
+    }
+    this.webviewHtmlLoaded = true;
+    this.renderPending = false;
+    this.view.webview.html = renderRecipeViewHtml(
+      this.view.webview,
+      this.extensionUri,
+      { autoPreviewDebounceMs: this.config.autoPreviewDebounceMs }
+    );
+  }
+
+  private postState(): void {
     if (!this.view) {
       this.renderPending = true;
       return;
     }
     this.renderPending = false;
-    this.view.webview.html = renderRecipeViewHtml(
-      this.view.webview,
-      this.extensionUri,
-      {
+    this.ensureWebviewHtml();
+    this.postMessage({
+      type: EXTENSION_TO_WEBVIEW.state,
+      state: {
         ...this.state.toWebviewState(),
-        autoPreview: this.config.autoPreview,
         autoPreviewDebounceMs: this.config.autoPreviewDebounceMs,
-      }
-    );
+      },
+    });
   }
 
   private postMessage(message: unknown): void {

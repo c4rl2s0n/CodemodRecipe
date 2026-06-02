@@ -7,6 +7,5 @@ export interface RecipeViewState {
   readonly recipe?: RecipeSchema;
   readonly initialArgs: Record<string, string>;
   readonly activeTab: RunnerTab;
-  readonly autoPreview: boolean;
   readonly autoPreviewDebounceMs: number;
 }

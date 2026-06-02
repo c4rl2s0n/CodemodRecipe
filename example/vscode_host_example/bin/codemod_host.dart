@@ -8,6 +8,8 @@ Future<void> main(List<String> args) {
   return CodemodHost.fromList([
     addMethodRecipe,
     scaffoldFeatureRecipe,
+    addPropertyAccessorsRecipe,
+    scaffoldAndWireServiceRecipe,
   ]).run(args);
 }
 
@@ -47,14 +49,12 @@ final addMethodRecipe = CodemodRecipe(
   }
 '''),
         ),
-        AddPropertyTransform(
+        AddFieldTransform(
           className: (context) => context.require('class'),
-          propertyName: (context) => context.camel('method'),
-          body: const CodemodTemplate.inline('''
-  void {{method:snake}}() {
-    // TODO: Implement {{method:snake}}
-  }
-'''),
+          fieldName: (context) => context.camel('method'),
+          fieldType: (_) => 'int',
+          defaultValue: (_) => '0',
+          addToConstructor: false,
         ),
       ],
     ),
@@ -106,6 +106,118 @@ class {{feature:pascal}}View extends StatelessWidget {
   }
 }
 '''),
+    ),
+  ],
+  postExecution: const [DartFormatPostExecution()],
+);
+
+final addPropertyAccessorsRecipe = CodemodRecipe(
+  name: 'add_property_accessors',
+  description: 'Adds a private field with getter and setter methods',
+  args: [
+    CodemodArg.required(
+      'file',
+      help: 'Path to the Dart file to modify',
+      inputKind: CodemodArgInputKind.file,
+      contextKey: CodemodContextKey.file,
+    ),
+    CodemodArg.required(
+      'class',
+      help: 'Name of the class to update',
+      inputKind: CodemodArgInputKind.symbol,
+      contextKey: CodemodContextKey.dartClass,
+    ),
+    CodemodArg.required(
+      'property',
+      help: 'Property name (for example: score)',
+      inputKind: CodemodArgInputKind.symbol,
+      contextKey: CodemodContextKey.word,
+    ),
+    CodemodArg.optional(
+      'type',
+      help: 'Property type',
+      defaultsTo: 'int',
+      inputKind: CodemodArgInputKind.dartType,
+    ),
+  ],
+  operations: [
+    EditDartFileOperation(
+      path: (context) => context.require('file'),
+      transforms: (context) => [
+        AddFieldTransform(
+          className: (c) => c.require('class'),
+          fieldName: (c) => '_${c.camel('property')}',
+          fieldType: (c) => c.require('type'),
+          addToConstructor: false,
+        ),
+        AddMethodTransform(
+          className: (c) => c.require('class'),
+          methodName: (c) => 'get${c.pascal('property')}',
+          body: const CodemodTemplate.inline(
+            '  {{type}} get{{property:pascal}}() => _{{property:camel}};\n',
+          ),
+        ),
+        AddMethodTransform(
+          className: (c) => c.require('class'),
+          methodName: (c) => 'set${c.pascal('property')}',
+          body: const CodemodTemplate.inline(
+            '  void set{{property:pascal}}({{type}} value) => _{{property:camel}} = value;\n',
+          ),
+        ),
+      ],
+    ),
+  ],
+  postExecution: const [DartFormatPostExecution()],
+);
+
+final scaffoldAndWireServiceRecipe = CodemodRecipe(
+  name: 'scaffold_and_wire_service',
+  description: 'Creates a service file and wires it into an existing class',
+  args: [
+    CodemodArg.required(
+      'service',
+      help: 'Service name (for example: counter_sync)',
+      inputKind: CodemodArgInputKind.symbol,
+      contextKey: CodemodContextKey.word,
+    ),
+    CodemodArg.optional(
+      'file',
+      help: 'Target Dart file to wire service into',
+      defaultsTo: 'lib/counter.dart',
+      inputKind: CodemodArgInputKind.file,
+      contextKey: CodemodContextKey.file,
+    ),
+    CodemodArg.optional(
+      'class',
+      help: 'Target class in the file',
+      defaultsTo: 'Counter',
+      inputKind: CodemodArgInputKind.symbol,
+      contextKey: CodemodContextKey.dartClass,
+    ),
+  ],
+  operations: [
+    CreateFileOperation.templatePath(
+      pathTemplate: 'lib/services/{{service:snake}}_service.dart',
+      previewLabel: 'Service file',
+      template: const CodemodTemplate.inline('''
+class {{service:pascal}}Service {
+  const {{service:pascal}}Service();
+}
+'''),
+    ),
+    EditDartFileOperation(
+      path: (context) => context.require('file'),
+      transforms: (context) => [
+        AddImportTransform.uri(
+          (c) => 'services/${c.snake('service')}_service.dart',
+        ),
+        AddFieldTransform(
+          className: (c) => c.require('class'),
+          fieldName: (c) => '${c.camel('service')}Service',
+          fieldType: (c) => '${c.pascal('service')}Service',
+          addToConstructor: true,
+        ),
+      ],
     ),
   ],
   postExecution: const [DartFormatPostExecution()],

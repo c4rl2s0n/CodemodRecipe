@@ -42,6 +42,81 @@ CodemodRecipe _addMethodRecipe() {
   );
 }
 
+CodemodRecipe _addPropertyAccessorsRecipe() {
+  return CodemodRecipe(
+    name: 'add_property_accessors',
+    args: [
+      CodemodArg.required('file'),
+      CodemodArg.required('class'),
+      CodemodArg.required('property'),
+      CodemodArg.optional('type', defaultsTo: 'int'),
+    ],
+    operations: [
+      EditDartFileOperation(
+        path: (context) => context.require('file'),
+        transforms: (context) => [
+          AddFieldTransform(
+            className: (c) => c.require('class'),
+            fieldName: (c) => '_${c.camel('property')}',
+            fieldType: (c) => c.require('type'),
+            addToConstructor: false,
+          ),
+          AddMethodTransform(
+            className: (c) => c.require('class'),
+            methodName: (c) => 'get${c.pascal('property')}',
+            body: const CodemodTemplate.inline(
+              '  {{type}} get{{property:pascal}}() => _{{property:camel}};\n',
+            ),
+          ),
+          AddMethodTransform(
+            className: (c) => c.require('class'),
+            methodName: (c) => 'set${c.pascal('property')}',
+            body: const CodemodTemplate.inline(
+              '  void set{{property:pascal}}({{type}} value) => _{{property:camel}} = value;\n',
+            ),
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
+CodemodRecipe _scaffoldAndWireServiceRecipe() {
+  return CodemodRecipe(
+    name: 'scaffold_and_wire_service',
+    args: [
+      CodemodArg.required('root'),
+      CodemodArg.required('file'),
+      CodemodArg.required('class'),
+      CodemodArg.required('service'),
+    ],
+    operations: [
+      CreateFileOperation.templatePath(
+        pathTemplate: '{{root}}/services/{{service:snake}}_service.dart',
+        template: const CodemodTemplate.inline('''
+class {{service:pascal}}Service {
+  const {{service:pascal}}Service();
+}
+'''),
+      ),
+      EditDartFileOperation(
+        path: (context) => context.require('file'),
+        transforms: (context) => [
+          AddImportTransform.uri(
+            (c) => 'services/${c.snake('service')}_service.dart',
+          ),
+          AddFieldTransform(
+            className: (c) => c.require('class'),
+            fieldName: (c) => '${c.camel('service')}Service',
+            fieldType: (c) => '${c.pascal('service')}Service',
+            addToConstructor: true,
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
 void main() {
   group('RecipeSchema', () {
     test('serializes args and registry', () {
@@ -177,8 +252,58 @@ void main() {
       expect(entry['patches'], hasLength(1));
       final patch = (entry['patches'] as List).first as Map;
       expect(patch['replacementPreview'], isA<String>());
+      expect(entry['snippet'], isA<String>());
       expect(response['_timingsMs'], isA<Map>());
       expect(response['_hostMetrics'], isA<Map>());
+    });
+
+    test('preview respects snippetLines setting', () async {
+      final dir = await Directory.systemTemp.createTemp('codemod_host_snippet');
+      addTearDown(() => dir.delete(recursive: true));
+      final file = File('${dir.path}/counter.dart')
+        ..writeAsStringSync('class Counter {\n  int value = 0;\n}\n');
+
+      final host = CodemodHost({'add': _addMethodRecipe()});
+      final response = await host.dispatch({
+        'command': 'preview',
+        'recipe': 'add',
+        'snippetLines': 1,
+        'args': {'file': file.path, 'class': 'Counter', 'method': 'reset'},
+      });
+
+      expect(response['ok'], isTrue);
+      final files = response['files'] as List;
+      final entry = files.first as Map;
+      final snippet = (entry['snippet'] as String?) ?? '';
+      expect('\n'.allMatches(snippet).length <= 0, isTrue);
+    });
+
+    test('preview includes create-file snippet with configured line limit', () async {
+      final dir = await Directory.systemTemp.createTemp('codemod_host_snippet_create');
+      addTearDown(() => dir.delete(recursive: true));
+      final file = File('${dir.path}/counter.dart')..writeAsStringSync('class Counter {}\n');
+
+      final host = CodemodHost({'wire': _scaffoldAndWireServiceRecipe()});
+      final response = await host.dispatch({
+        'command': 'preview',
+        'recipe': 'wire',
+        'snippetLines': 2,
+        'args': {
+          'root': dir.path,
+          'file': file.path,
+          'class': 'Counter',
+          'service': 'counter_sync',
+        },
+      });
+
+      expect(response['ok'], isTrue);
+      final files = response['files'] as List;
+      final created = files
+          .cast<Map>()
+          .firstWhere((entry) => entry['kind'] == 'create');
+      final snippet = (created['snippet'] as String?) ?? '';
+      expect(snippet, contains('class CounterSyncService'));
+      expect('\n'.allMatches(snippet).length <= 1, isTrue);
     });
 
     test('diff returns full file data for a preview path', () async {
@@ -253,6 +378,64 @@ void main() {
       final host = CodemodHost(const {});
       final response = await host.dispatch({'command': 'nope'});
       expect(response['ok'], isFalse);
+    });
+
+    test('apply supports multi transforms on the same file', () async {
+      final dir = await Directory.systemTemp.createTemp('codemod_host_multi_same');
+      addTearDown(() => dir.delete(recursive: true));
+      final file = File('${dir.path}/counter.dart')
+        ..writeAsStringSync('class Counter {}\n');
+
+      final host = CodemodHost({'props': _addPropertyAccessorsRecipe()});
+      final response = await host.dispatch({
+        'command': 'apply',
+        'recipe': 'props',
+        'args': {
+          'file': file.path,
+          'class': 'Counter',
+          'property': 'score',
+          'type': 'int',
+        },
+        'selection': const {'files': {}},
+      });
+
+      expect(response['ok'], isTrue);
+      final content = file.readAsStringSync();
+      expect(content, contains('_score'));
+      expect(content, contains('int getScore()'));
+      expect(content, contains('void setScore(int value)'));
+    });
+
+    test('apply supports multi operations across different files', () async {
+      final dir = await Directory.systemTemp.createTemp('codemod_host_multi_file');
+      addTearDown(() => dir.delete(recursive: true));
+      final file = File('${dir.path}/counter.dart')
+        ..writeAsStringSync('class Counter {}\n');
+      final servicePath = '${dir.path}/services/counter_sync_service.dart';
+
+      final host = CodemodHost({'wire': _scaffoldAndWireServiceRecipe()});
+      final response = await host.dispatch({
+        'command': 'apply',
+        'recipe': 'wire',
+        'args': {
+          'root': dir.path,
+          'file': file.path,
+          'class': 'Counter',
+          'service': 'counterSync',
+        },
+        'selection': const {'files': {}},
+      });
+
+      expect(response['ok'], isTrue);
+      final applied = (response['applied'] as List).cast<String>();
+      final createdPath = applied.firstWhere(
+        (path) => path.endsWith('_service.dart'),
+        orElse: () => servicePath,
+      );
+      expect(File(createdPath).existsSync(), isTrue);
+      final content = file.readAsStringSync();
+      expect(content, contains("counter_sync_service.dart"));
+      expect(content, contains('CounterSyncService counterSyncService'));
     });
   });
 }

@@ -26,20 +26,20 @@ export class ExtensionConfig {
     );
   }
 
-  get autoPreview(): boolean {
-    return (
-      vscode.workspace
-        .getConfiguration(CONFIG.section)
-        .get<boolean>(CONFIG.autoPreview) ?? true
-    );
-  }
-
   get autoPreviewDebounceMs(): number {
     const value =
       vscode.workspace
         .getConfiguration(CONFIG.section)
         .get<number>(CONFIG.autoPreviewDebounceMs) ?? 400;
     return Math.min(2000, Math.max(100, value));
+  }
+
+  get previewSnippetLines(): number {
+    const value =
+      vscode.workspace
+        .getConfiguration(CONFIG.section)
+        .get<number>(CONFIG.previewSnippetLines) ?? 5;
+    return Math.min(20, Math.max(1, value));
   }
 
   async updateHostEntrypoint(value: string): Promise<void> {

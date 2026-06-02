@@ -184,6 +184,7 @@ class CodemodHost {
     }
     final recipe = resolved.recipe!;
     final context = resolved.context!;
+    final snippetLines = _parseSnippetLines(request['snippetLines']);
 
     final validationError = _validate(recipe, context);
     if (validationError != null) {
@@ -205,6 +206,7 @@ class CodemodHost {
       changedFiles,
       includeContents: false,
       includePatchReplacements: false,
+      snippetLines: snippetLines,
     );
     serializeWatch.stop();
 
@@ -218,6 +220,16 @@ class CodemodHost {
         'reusedPreviewCache': collected.reusedCache ? 1 : 0,
       },
     };
+  }
+
+  int _parseSnippetLines(Object? raw) {
+    if (raw is num) {
+      final value = raw.toInt();
+      if (value < 1) return 1;
+      if (value > 20) return 20;
+      return value;
+    }
+    return 5;
   }
 
   Future<Map<String, Object?>> _diff(Map<String, Object?> request) async {

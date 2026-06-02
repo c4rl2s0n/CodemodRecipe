@@ -18,8 +18,8 @@ export const CONFIG = {
   hostEntrypoint: 'hostEntrypoint',
   dartPath: 'dartPath',
   performanceLogging: 'performanceLogging',
-  autoPreview: 'autoPreview',
   autoPreviewDebounceMs: 'autoPreviewDebounceMs',
+  previewSnippetLines: 'previewSnippetLines',
 } as const;
 
 export const DIFF = {
@@ -67,8 +67,10 @@ export const WEBVIEW_TO_EXTENSION = {
 } as const;
 
 export const EXTENSION_TO_WEBVIEW = {
+  state: 'state',
   filePicked: 'filePicked',
   previewResult: 'previewResult',
   applyResult: 'applyResult',
   error: 'error',
+  previewState: 'previewState',
 } as const;
