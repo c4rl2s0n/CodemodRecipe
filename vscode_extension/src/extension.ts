@@ -37,6 +37,7 @@ export function activate(context: vscode.ExtensionContext): void {
   };
 
   context.subscriptions.push(
+    { dispose: () => bridge.dispose() },
     vscode.workspace.registerTextDocumentContentProvider(
       DiffContentProvider.scheme,
       diffProvider

@@ -19,10 +19,12 @@ flowchart LR
     Review --> Diff["vscode.diff (native)"]
 ```
 
-The host wraps your recipes with `CodemodHost`. Each request spawns the host,
-sends one JSON command on stdin, and reads one JSON response wrapped in
-`__CODEMOD_RESULT_BEGIN__` / `__CODEMOD_RESULT_END__` markers (so post-execution
-output such as `dart format` never corrupts the response).
+The host wraps your recipes with `CodemodHost`. The extension keeps a persistent
+host process (`--stdio-server`) and sends one JSON command per stdin line,
+reading responses wrapped in `__CODEMOD_RESULT_BEGIN__` /
+`__CODEMOD_RESULT_END__` markers (so post-execution output such as `dart format`
+never corrupts the response). If the persistent host fails, the extension falls
+back to one-shot request mode.
 
 ## Setup
 

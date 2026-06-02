@@ -1,8 +1,9 @@
-import { spawn } from 'child_process';
+import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
 import { ExtensionConfig } from '../config/extensionConfig';
 import { HostDiscovery } from './hostDiscovery';
 import {
   ApplyResponse,
+  extractHostResultFrame,
   HostCommand,
   ListResponse,
   PreviewResponse,
@@ -10,8 +11,24 @@ import {
 } from './hostProtocol';
 import { RecipeSchema, SelectionPayload } from '../types';
 
+type PendingRequest = {
+  command: HostCommand['command'];
+  startedAt: bigint;
+  inputBytes: number;
+  timeout: NodeJS.Timeout;
+  resolve: (value: unknown) => void;
+  reject: (error: Error) => void;
+};
+
 export class DartBridge {
   private static readonly perfPrefix = '[codemod-recipe/perf]';
+  private static readonly requestTimeoutMs = 30000;
+
+  private child: ChildProcessWithoutNullStreams | undefined;
+  private pending: PendingRequest[] = [];
+  private stdoutBuffer = '';
+  private stderrBuffer = '';
+  private queue = Promise.resolve();
 
   constructor(
     private readonly workspaceRoot: string,
@@ -44,7 +61,158 @@ export class DartBridge {
     });
   }
 
-  private send<T>(command: HostCommand): Promise<T> {
+  dispose(): void {
+    this.stopPersistentHost();
+  }
+
+  private async send<T>(command: HostCommand): Promise<T> {
+    try {
+      return await this.sendPersistent<T>(command);
+    } catch (error) {
+      this.logPerfWarning(
+        `Persistent host failed for ${command.command}; retrying one-shot (${String(error)})`
+      );
+      this.stopPersistentHost();
+      return this.sendOneShot<T>(command);
+    }
+  }
+
+  private sendPersistent<T>(command: HostCommand): Promise<T> {
+    return new Promise<T>((resolve, reject) => {
+      this.queue = this.queue
+        .then(async () => {
+          const child = await this.ensurePersistentHost();
+          this.stderrBuffer = '';
+          const payload = `${JSON.stringify(command)}\n`;
+          const inputBytes = Buffer.byteLength(payload, 'utf8');
+          const timeout = setTimeout(() => {
+            const index = this.pending.findIndex((request) => request.resolve === wrappedResolve);
+            if (index >= 0) {
+              const [request] = this.pending.splice(index, 1);
+              request.reject(
+                new Error(
+                  `Timed out waiting for ${command.command} response (${DartBridge.requestTimeoutMs}ms)`
+                )
+              );
+              this.stopPersistentHost();
+            }
+          }, DartBridge.requestTimeoutMs);
+          const wrappedResolve = (value: unknown) => resolve(value as T);
+          const wrappedReject = (err: Error) => reject(err);
+          this.pending.push({
+            command: command.command,
+            startedAt: process.hrtime.bigint(),
+            inputBytes,
+            timeout,
+            resolve: wrappedResolve,
+            reject: wrappedReject,
+          });
+          child.stdin.write(payload);
+        })
+        .catch((err) => reject(err instanceof Error ? err : new Error(String(err))));
+    });
+  }
+
+  private async ensurePersistentHost(): Promise<ChildProcessWithoutNullStreams> {
+    if (this.child && !this.child.killed) {
+      return this.child;
+    }
+    this.stdoutBuffer = '';
+    this.stderrBuffer = '';
+    const entrypoint = this.hostDiscovery.resolveHostEntrypoint();
+    const dart = this.config.dartPath;
+    return new Promise<ChildProcessWithoutNullStreams>((resolve, reject) => {
+      const child = spawn(dart, ['run', entrypoint, '--stdio-server'], {
+        cwd: this.workspaceRoot,
+      });
+
+      let startupResolved = false;
+      child.stdout.on('data', (chunk) => {
+        this.stdoutBuffer += chunk.toString();
+        this.flushFrames();
+        if (!startupResolved) {
+          startupResolved = true;
+          resolve(child);
+        }
+      });
+      child.stderr.on('data', (chunk) => {
+        this.stderrBuffer += chunk.toString();
+      });
+      child.on('error', (err) => {
+        if (!startupResolved) {
+          reject(err);
+        }
+        this.rejectPending(
+          new Error(`Persistent host process error: ${err.message}`)
+        );
+        this.child = undefined;
+      });
+      child.on('close', (code) => {
+        const error = new Error(
+          `Persistent host exited with code ${code}\n${this.stderrBuffer.trim()}`
+        );
+        this.rejectPending(error);
+        this.child = undefined;
+      });
+
+      const startupTimer = setTimeout(() => {
+        if (!startupResolved) {
+          reject(
+            new Error(
+              `Persistent host failed to start within ${DartBridge.requestTimeoutMs}ms`
+            )
+          );
+          this.stopPersistentHost();
+        }
+      }, DartBridge.requestTimeoutMs);
+
+      child.once('spawn', () => {
+        this.child = child;
+        if (!startupResolved) {
+          startupResolved = true;
+          clearTimeout(startupTimer);
+          resolve(child);
+        }
+      });
+
+      child.once('error', () => {
+        clearTimeout(startupTimer);
+      });
+      child.once('close', () => {
+        clearTimeout(startupTimer);
+      });
+    });
+  }
+
+  private flushFrames(): void {
+    while (true) {
+      const frame = extractHostResultFrame(this.stdoutBuffer);
+      if (!frame) {
+        return;
+      }
+      this.stdoutBuffer = frame.rest;
+      const request = this.pending.shift();
+      if (!request) {
+        continue;
+      }
+      clearTimeout(request.timeout);
+      try {
+        const response = JSON.parse(frame.payload);
+        const elapsedMs = Number(process.hrtime.bigint() - request.startedAt) / 1e6;
+        this.logPerf({
+          command: request.command,
+          elapsedMs,
+          inputBytes: request.inputBytes,
+          outputBytes: Buffer.byteLength(frame.payload, 'utf8'),
+        });
+        request.resolve(response);
+      } catch (err) {
+        request.reject(new Error(`Failed to parse host response: ${err}`));
+      }
+    }
+  }
+
+  private sendOneShot<T>(command: HostCommand): Promise<T> {
     const entrypoint = this.hostDiscovery.resolveHostEntrypoint();
     const dart = this.config.dartPath;
     const payload = JSON.stringify(command);
@@ -68,18 +236,11 @@ export class DartBridge {
           const response = parseHostResponse<T>(stdout);
           if (response === undefined) {
             reject(
-              new Error(
-                `Host produced no result (exit ${code}).\n${stderr || stdout}`
-              )
+              new Error(`Host produced no result (exit ${code}).\n${stderr || stdout}`)
             );
             return;
           }
-          this.logPerf({
-            command: command.command,
-            elapsedMs,
-            inputBytes,
-            outputBytes,
-          });
+          this.logPerf({ command: command.command, elapsedMs, inputBytes, outputBytes });
           resolve(response);
         } catch (err) {
           reject(new Error(`Failed to parse host response: ${err}`));
@@ -89,6 +250,21 @@ export class DartBridge {
       child.stdin.write(payload);
       child.stdin.end();
     });
+  }
+
+  private stopPersistentHost(): void {
+    if (this.child && !this.child.killed) {
+      this.child.kill();
+    }
+    this.child = undefined;
+  }
+
+  private rejectPending(error: Error): void {
+    for (const finalRequest of this.pending) {
+      clearTimeout(finalRequest.timeout);
+      finalRequest.reject(error);
+    }
+    this.pending = [];
   }
 
   private logPerf(metrics: {
@@ -105,5 +281,12 @@ export class DartBridge {
         1
       )} inputBytes=${metrics.inputBytes} outputBytes=${metrics.outputBytes}`
     );
+  }
+
+  private logPerfWarning(message: string): void {
+    if (!this.config.performanceLogging) {
+      return;
+    }
+    console.warn(`${DartBridge.perfPrefix} ${message}`);
   }
 }

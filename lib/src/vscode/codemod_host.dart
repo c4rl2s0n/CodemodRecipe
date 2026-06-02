@@ -41,6 +41,8 @@ const String kResultEnd = '__CODEMOD_RESULT_END__';
 /// - `{"command": "list"}`
 /// - `{"command": "preview", "recipe": "id", "args": {..}}`
 /// - `{"command": "apply", "recipe": "id", "args": {..}, "selection": {..}}`
+/// - `--stdio-server` argument: keeps process alive and reads one JSON command
+///   per stdin line.
 class CodemodHost {
   /// Recipes available to the extension, keyed by a stable id.
   final Map<String, CodemodRecipe> recipes;
@@ -66,26 +68,41 @@ class CodemodHost {
 
   /// Reads a JSON request from stdin, dispatches it, and writes the response.
   Future<void> run(List<String> args) async {
-    final raw = await _readStdin();
-    Map<String, Object?> request;
-    try {
-      request = raw.trim().isEmpty
-          ? const {}
-          : jsonDecode(raw) as Map<String, Object?>;
-    } catch (error) {
-      _writeResponse({'ok': false, 'error': 'Invalid JSON request: $error'});
+    if (args.contains('--stdio-server')) {
+      await _runPersistent();
       return;
     }
 
+    final raw = await _readStdin();
+    final request = _decodeRequest(raw);
+    await _handleRequest(request, fallbackCommand: raw);
+  }
+
+  Future<void> _runPersistent() async {
+    await for (final line in stdin
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())) {
+      final request = _decodeRequest(line);
+      await _handleRequest(request, fallbackCommand: line);
+    }
+  }
+
+  Future<void> _handleRequest(
+    Map<String, Object?>? request, {
+    required String fallbackCommand,
+  }) async {
+    if (request == null) {
+      _writeResponse({'ok': false, 'error': 'Invalid JSON request'});
+      return;
+    }
+
+    final command = request['command']?.toString() ?? fallbackCommand;
     try {
       final runWatch = Stopwatch()..start();
       final response = await dispatch(request);
       runWatch.stop();
       _writeResponse(
-        _withMetrics(response, {
-          if (request['command'] is String) 'command': request['command'],
-          'runMs': runWatch.elapsedMilliseconds,
-        }),
+        _withMetrics(response, {'command': command, 'runMs': runWatch.elapsedMilliseconds}),
       );
     } catch (error, stack) {
       _writeResponse({
@@ -94,6 +111,21 @@ class CodemodHost {
         'stack': stack.toString(),
       });
     }
+  }
+
+  Map<String, Object?>? _decodeRequest(String raw) {
+    if (raw.trim().isEmpty) {
+      return const {};
+    }
+
+    Map<String, Object?> request;
+    try {
+      request = jsonDecode(raw) as Map<String, Object?>;
+    } catch (error) {
+      stderr.writeln('Invalid JSON request: $error');
+      return null;
+    }
+    return request;
   }
 
   /// Handles a single decoded [request] and returns a JSON-friendly response.
