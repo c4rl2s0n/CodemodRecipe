@@ -10,6 +10,7 @@ import { RecipeSchema } from './types';
 import { RecipeRunnerViewProvider } from './views/recipeRunnerViewProvider';
 
 export function activate(context: vscode.ExtensionContext): void {
+  const recipeStaleMs = 5 * 60 * 1000;
   const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   if (!workspaceRoot) {
     return;
@@ -36,6 +37,14 @@ export function activate(context: vscode.ExtensionContext): void {
     }
   };
 
+  const refreshIfNeeded = async (showError = false): Promise<void> => {
+    if (repository.shouldRefresh(recipeStaleMs)) {
+      await refreshAndSync(showError);
+    } else {
+      runner.setRecipes(repository.getRecipes(), repository.getLastError());
+    }
+  };
+
   context.subscriptions.push(
     { dispose: () => bridge.dispose() },
     vscode.workspace.registerTextDocumentContentProvider(
@@ -52,7 +61,7 @@ export function activate(context: vscode.ExtensionContext): void {
       COMMANDS.runRecipe,
       async (recipe?: RecipeSchema) => {
         if (!recipe) {
-          await refreshAndSync();
+          await refreshIfNeeded(true);
           const picked = await vscode.window.showQuickPick(
             repository.getRecipes().map((item) => ({
               label: item.name,
@@ -71,7 +80,7 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(
       COMMANDS.runFromCursorContext,
       async () => {
-        await refreshAndSync();
+        await refreshIfNeeded(true);
         const recipes = repository.getRecipes();
         const editorContext = resolveEditorContext(workspaceRoot);
         const candidates = recipes

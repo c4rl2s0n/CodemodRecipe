@@ -86,6 +86,8 @@ You can also run **Codemod Recipe: Set Host Entry Point** from the command palet
 You can also run **Codemod Recipe: Run From Cursor Context** (`Cmd+Alt+R` on
 macOS, `Ctrl+Alt+R` elsewhere). Recipes whose args declare context keys are
 shown in a picker and opened with values derived from the active editor.
+Recipe metadata is cached in-memory and refreshed automatically on startup,
+manual refresh, and staleness checks.
 
 ## Recipe UI metadata
 
