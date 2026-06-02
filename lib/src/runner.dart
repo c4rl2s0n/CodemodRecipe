@@ -40,7 +40,7 @@ class CodemodRunner {
     final apply = args['apply'] as bool;
 
     try {
-      final changes = await _collectChanges(context);
+      final changes = await collectChanges(context);
       final changedFiles = changes
           .where((change) => change.hasChanges)
           .toList();
@@ -105,7 +105,12 @@ class CodemodRunner {
     return context;
   }
 
-  Future<List<FileChange>> _collectChanges(CodemodContext context) async {
+  /// Collects and merges all planned [FileChange]s for [context].
+  ///
+  /// Runs every operation in [recipe], then merges patch changes targeting the
+  /// same file. Exposed so non-CLI front-ends (such as the VS Code extension
+  /// host) can reuse the exact collection and merge behavior of the runner.
+  Future<List<FileChange>> collectChanges(CodemodContext context) async {
     final changes = <FileChange>[];
 
     for (final operation in recipe.operations) {

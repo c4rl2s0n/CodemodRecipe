@@ -1,0 +1,16 @@
+name: vscode_host_example
+description: Example host that exposes recipes to the codemod_recipe VS Code extension.
+publish_to: 'none'
+
+environment:
+  sdk: ^3.10.0
+
+dependencies:
+  codemod_recipe:
+    path: ../..
+
+dev_dependencies:
+  lints: ^6.1.0
+
+executables:
+  codemod_host: codemod_host

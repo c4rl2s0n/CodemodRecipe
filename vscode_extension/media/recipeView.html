@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src {{cspSource}}; script-src 'nonce-{{nonce}}';" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link rel="stylesheet" href="{{cssUri}}" />
+<title>Codemod Recipe</title>
+</head>
+<body>
+  <div class="tabs">
+    <button id="recipesTab" class="tab">Recipes</button>
+    <button id="runnerTab" class="tab">Recipe Runner</button>
+  </div>
+
+  <div id="recipesPane">
+    <h2>Recipes</h2>
+    <div id="recipeList" class="recipe-list"></div>
+  </div>
+
+  <div id="runnerPane">
+    <h2>{{title}}</h2>
+    <div class="desc">{{description}}</div>
+
+    <h3>Parameters</h3>
+    <div id="params" class="param-list"></div>
+    <div id="form"></div>
+    <div id="templates" class="templates"></div>
+    <div class="toolbar">
+      <button id="previewBtn">Preview Changes</button>
+    </div>
+
+    <div id="error" class="error hidden"></div>
+
+    <div id="review" class="hidden">
+      <h3>Review changes</h3>
+      <div class="toolbar">
+        <button id="prevBtn" class="secondary">Previous Change</button>
+        <button id="nextBtn" class="secondary">Next Change</button>
+        <button id="openActiveBtn" class="secondary">Open Current Diff</button>
+      </div>
+      <div id="files"></div>
+      <div class="toolbar">
+        <button id="applyBtn">Apply Selected</button>
+        <button id="backBtn" class="secondary">Back to form</button>
+      </div>
+    </div>
+  </div>
+
+  <script nonce="{{nonce}}">window.__CODEMOD_RECIPE_STATE__ = {{stateJson}};</script>
+  <script nonce="{{nonce}}" src="{{scriptUri}}"></script>
+</body>
+</html>

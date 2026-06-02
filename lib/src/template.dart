@@ -64,6 +64,12 @@ class CodemodTemplate {
     ).renderString(prepared.values);
   }
 
+  /// Raw template source, loaded from disk for file-backed templates.
+  ///
+  /// Editor integrations use this to render live previews while preserving
+  /// placeholder origins for highlighting.
+  String get source => _source;
+
   String get _source {
     final inlineSource = _inlineSource;
     if (inlineSource != null) return inlineSource;

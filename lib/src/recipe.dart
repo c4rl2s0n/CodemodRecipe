@@ -1,6 +1,45 @@
 import 'context.dart';
 import 'operation.dart';
 import 'post_execution.dart';
+import 'template.dart';
+
+/// Preferred UI control for a recipe argument.
+enum CodemodArgInputKind {
+  /// Plain text input.
+  text,
+
+  /// File path input, ideally backed by a file picker.
+  file,
+
+  /// Directory path input, ideally backed by a folder picker.
+  directory,
+
+  /// Dropdown or combobox with enum-like values.
+  enumeration,
+
+  /// Dart type input, usually backed by suggestions but allowing custom values.
+  dartType,
+
+  /// Symbol name input such as class, method, field, or variable.
+  symbol,
+}
+
+/// Well-known editor context values that can pre-fill recipe arguments.
+class CodemodContextKey {
+  /// Relative path of the active editor file.
+  static const file = 'file';
+
+  /// Selected text in the active editor.
+  static const selection = 'selection';
+
+  /// Word under the active editor cursor.
+  static const word = 'word';
+
+  /// Enclosing Dart class name at the active editor cursor.
+  static const dartClass = 'dartClass';
+
+  const CodemodContextKey._();
+}
 
 /// Describes one command-line value accepted by a codemod recipe.
 ///
@@ -51,6 +90,23 @@ class CodemodArg {
   /// does not provide this argument on the command line.
   final String? defaultsTo;
 
+  /// Preferred UI control for this argument in editor integrations.
+  final CodemodArgInputKind inputKind;
+
+  /// Suggested values shown by editor integrations.
+  ///
+  /// When non-empty, the extension should present these as dropdown or
+  /// combobox suggestions.
+  final List<String> options;
+
+  /// Whether editor integrations should allow values outside [options].
+  final bool allowCustomValue;
+
+  /// Optional key used to pre-fill this argument from active editor context.
+  ///
+  /// Common keys are exposed via [CodemodContextKey].
+  final String? contextKey;
+
   /// Optional validation hook run after CLI values are collected.
   ///
   /// Return a non-null string to report an error message. Return null to
@@ -78,6 +134,10 @@ class CodemodArg {
     this.help,
     this.required = false,
     this.defaultsTo,
+    this.inputKind = CodemodArgInputKind.text,
+    this.options = const [],
+    this.allowCustomValue = true,
+    this.contextKey,
     this.validate,
   });
 
@@ -90,9 +150,17 @@ class CodemodArg {
   /// ```dart
   /// CodemodArg.required('file', help: 'Path to the Dart file')
   /// ```
-  const CodemodArg.required(this.name, {this.abbr, this.help, this.validate})
-    : required = true,
-      defaultsTo = null;
+  const CodemodArg.required(
+    this.name, {
+    this.abbr,
+    this.help,
+    this.inputKind = CodemodArgInputKind.text,
+    this.options = const [],
+    this.allowCustomValue = true,
+    this.contextKey,
+    this.validate,
+  }) : required = true,
+       defaultsTo = null;
 
   /// Creates an optional command-line option.
   ///
@@ -113,8 +181,35 @@ class CodemodArg {
     this.abbr,
     this.help,
     this.defaultsTo,
+    this.inputKind = CodemodArgInputKind.text,
+    this.options = const [],
+    this.allowCustomValue = true,
+    this.contextKey,
     this.validate,
   }) : required = false;
+}
+
+/// User-facing template preview metadata for editor integrations.
+///
+/// This is intentionally explicit because recipes can perform arbitrary
+/// operation logic, so integrations cannot reliably infer useful templates from
+/// operation closures.
+class RecipeTemplatePreview {
+  /// Label shown above this template preview.
+  final String label;
+
+  /// Target path template shown with rendered placeholder values.
+  final String path;
+
+  /// Template content shown with rendered placeholder values.
+  final CodemodTemplate content;
+
+  /// Creates a template preview descriptor.
+  const RecipeTemplatePreview({
+    required this.label,
+    required this.path,
+    required this.content,
+  });
 }
 
 /// A complete codemod command made of arguments and target files.
@@ -177,6 +272,9 @@ class CodemodRecipe {
   /// running code generation (`BuildRunnerPostExecution`).
   final List<PostExecution> postExecution;
 
+  /// Optional templates shown by editor integrations before preview/apply.
+  final List<RecipeTemplatePreview> previewTemplates;
+
   /// Creates a recipe from explicit arguments and target file edits.
   const CodemodRecipe({
     required this.name,
@@ -184,6 +282,7 @@ class CodemodRecipe {
     this.args = const [],
     required this.operations,
     this.postExecution = const [],
+    this.previewTemplates = const [],
   });
 
   /// Creates a recipe by concatenating other recipes.
@@ -232,6 +331,7 @@ class CodemodRecipe {
     List<CodemodArg> args = const [],
     required List<CodemodRecipe> recipes,
     List<PostExecution> postExecution = const [],
+    List<RecipeTemplatePreview> previewTemplates = const [],
   }) {
     final mergedArgs = <String, CodemodArg>{};
     for (final arg in args) {
@@ -251,6 +351,10 @@ class CodemodRecipe {
       postExecution: [
         for (final recipe in recipes) ...recipe.postExecution,
         ...postExecution,
+      ],
+      previewTemplates: [
+        for (final recipe in recipes) ...recipe.previewTemplates,
+        ...previewTemplates,
       ],
     );
   }

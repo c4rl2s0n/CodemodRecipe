@@ -159,6 +159,31 @@ dart pub get
 dart run bin/add_method.dart --help
 ```
 
+## VS Code Extension
+
+A GUI front-end lives in [`vscode_extension/`](vscode_extension/README.md). It
+lets you browse recipes, fill placeholder values in a form, preview changes as a
+native diff, and selectively apply individual patches — no command line needed.
+
+The extension talks to a small Dart host that registers your recipes:
+
+```dart
+import 'package:codemod_recipe/codemod_recipe_vscode.dart';
+
+Future<void> main(List<String> args) {
+  return CodemodHost.fromList([addMethodRecipe]).run(args);
+}
+```
+
+Recipes may also add UI metadata such as `inputKind`, `options`, and
+`contextKey`. The extension uses that metadata for file pickers, editable
+dropdown suggestions, and cursor-context shortcuts. File scaffold previews are
+derived from `CreateFileOperation.templatePath`, so previews reuse the same
+template that will be applied.
+
+See [`example/vscode_host_example`](example/vscode_host_example) for a runnable
+host, and the [extension README](vscode_extension/README.md) for setup.
+
 ## Testing
 
 Run package tests:

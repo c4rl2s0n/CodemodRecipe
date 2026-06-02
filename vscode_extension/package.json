@@ -1,0 +1,109 @@
+{
+  "name": "codemod-recipe",
+  "displayName": "Codemod Recipe",
+  "description": "Browse, run, and review codemod_recipe transformations with an interactive diff and selective apply.",
+  "version": "0.1.0",
+  "publisher": "codemod-recipe",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/c4rl2s0n/CodemodRecipe"
+  },
+  "license": "BSD-3-Clause",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "codemodRecipe",
+          "title": "Codemod Recipe",
+          "icon": "media/recipe.svg"
+        }
+      ]
+    },
+    "views": {
+      "codemodRecipe": [
+        {
+          "type": "webview",
+          "id": "codemodRecipe.runner",
+          "name": "Codemod Recipe",
+          "icon": "media/recipe.svg"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "codemodRecipe.refresh",
+        "title": "Codemod Recipe: Refresh Recipes",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "codemodRecipe.runRecipe",
+        "title": "Codemod Recipe: Run Recipe",
+        "icon": "$(play)"
+      },
+      {
+        "command": "codemodRecipe.runFromCursorContext",
+        "title": "Codemod Recipe: Run From Cursor Context",
+        "icon": "$(wand)"
+      },
+      {
+        "command": "codemodRecipe.configureHost",
+        "title": "Codemod Recipe: Set Host Entry Point"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "codemodRecipe.runFromCursorContext",
+        "key": "ctrl+alt+r",
+        "mac": "cmd+alt+r",
+        "when": "editorTextFocus"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "codemodRecipe.refresh",
+          "when": "view == codemodRecipe.runner",
+          "group": "navigation"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "codemodRecipe.runFromCursorContext",
+          "group": "navigation"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Codemod Recipe",
+      "properties": {
+        "codemodRecipe.hostEntrypoint": {
+          "type": "string",
+          "default": "",
+          "description": "Path (relative to the workspace root) of the Dart host entry point that registers recipes via CodemodHost. Defaults to common locations when empty."
+        },
+        "codemodRecipe.dartPath": {
+          "type": "string",
+          "default": "dart",
+          "description": "Path to the Dart executable used to run the host."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/vscode": "^1.85.0",
+    "typescript": "^5.4.0"
+  }
+}

@@ -86,6 +86,8 @@ class CreateFileOperation implements CodemodOperation {
   final CodemodTemplate template;
   final FileExistsStrategy ifExists;
   final bool format;
+  final String? pathTemplate;
+  final String? previewLabel;
 
   /// Creates a file operation.
   const CreateFileOperation({
@@ -93,7 +95,21 @@ class CreateFileOperation implements CodemodOperation {
     required this.template,
     this.ifExists = FileExistsStrategy.fail,
     this.format = true,
-  });
+  }) : pathTemplate = null,
+       previewLabel = null;
+
+  /// Creates a file operation from a target path template.
+  ///
+  /// Editor integrations can reuse [pathTemplate] and [template] for live
+  /// previews, avoiding duplicate recipe-level preview declarations.
+  CreateFileOperation.templatePath({
+    required this.pathTemplate,
+    required this.template,
+    this.ifExists = FileExistsStrategy.fail,
+    this.format = true,
+    this.previewLabel,
+  }) : path = ((context) => context.render(pathTemplate!)),
+       assert(pathTemplate != null);
 
   @override
   Future<List<FileChange>> collect(CodemodContext context) async {
