@@ -10,6 +10,14 @@
   let files = [];
   let activeChangeIndex = 0;
   let previewInFlight = false;
+  let autoPreviewEnabled = state.autoPreview !== false;
+  const autoPreviewDebounceMs = Number(state.autoPreviewDebounceMs || 400);
+  let previewDebounce = undefined;
+  let pendingAutoPreview = false;
+  let lastPreviewSuccess = false;
+  let lastPreviewArgsKey = '';
+  let latestRequestId = 0;
+  let latestHandledRequestId = 0;
 
   const byId = (id) => document.getElementById(id);
 
@@ -25,7 +33,9 @@
     review: byId('review'),
     files: byId('files'),
     error: byId('error'),
+    previewStatus: byId('previewStatus'),
     previewButton: byId('previewBtn'),
+    livePreviewToggle: byId('livePreviewToggle'),
     applyButton: byId('applyBtn'),
     backButton: byId('backBtn'),
     previousButton: byId('prevBtn'),
@@ -132,6 +142,13 @@
       input.oninput = () => {
         renderParams();
         renderTemplates();
+        onArgsChanged(false);
+      };
+      input.onkeydown = (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          triggerPreview(true);
+        }
       };
 
       addOptions(arg, input, row);
@@ -275,6 +292,7 @@
     }
     selectChange(0, false);
     elements.review.classList.remove('hidden');
+    updateApplyState();
   }
 
   function createFileCard(file) {
@@ -400,6 +418,79 @@
     previewInFlight = value;
     elements.previewButton.disabled = value;
     elements.previewButton.textContent = value ? 'Previewing…' : 'Preview Changes';
+    updateApplyState();
+  }
+
+  function setPreviewStatus(text, kind) {
+    elements.previewStatus.textContent = text;
+    elements.previewStatus.classList.remove('warn', 'ok');
+    if (kind) {
+      elements.previewStatus.classList.add(kind);
+    }
+  }
+
+  function collectMissingRequiredArgs() {
+    if (!recipe) return [];
+    const args = collectArgs();
+    return recipe.args
+      .filter((arg) => arg.required && !args[arg.name])
+      .map((arg) => arg.name);
+  }
+
+  function argsKey(args) {
+    const ordered = {};
+    for (const key of Object.keys(args).sort()) {
+      ordered[key] = args[key];
+    }
+    return JSON.stringify(ordered);
+  }
+
+  function updateApplyState() {
+    const missing = collectMissingRequiredArgs();
+    const currentKey = argsKey(collectArgs());
+    const previewOutOfDate = lastPreviewArgsKey !== currentKey;
+    const canApply =
+      !previewInFlight &&
+      lastPreviewSuccess &&
+      missing.length === 0 &&
+      !previewOutOfDate &&
+      files.length > 0;
+    elements.applyButton.disabled = !canApply;
+  }
+
+  function onArgsChanged(immediate) {
+    lastPreviewSuccess = false;
+    const missing = collectMissingRequiredArgs();
+    if (missing.length > 0) {
+      setPreviewStatus('Missing required: ' + missing.join(', '), 'warn');
+    } else {
+      setPreviewStatus('Preview out of date');
+    }
+    updateApplyState();
+    if (autoPreviewEnabled) {
+      triggerPreview(immediate);
+    }
+  }
+
+  function triggerPreview(immediate) {
+    if (!recipe) return;
+    clearTimeout(previewDebounce);
+    if (previewInFlight) {
+      pendingAutoPreview = true;
+      return;
+    }
+    const run = () => {
+      const requestId = ++latestRequestId;
+      clearError();
+      setPreviewInFlight(true);
+      setPreviewStatus('Previewing…');
+      post('preview', { args: collectArgs(), requestId });
+    };
+    if (immediate) {
+      run();
+    } else {
+      previewDebounce = setTimeout(run, autoPreviewDebounceMs);
+    }
   }
 
   function applyCasing(value, casing) {
@@ -436,8 +527,13 @@
       showError('Select a recipe first.');
       return;
     }
-    setPreviewInFlight(true);
-    post('preview', { args: collectArgs() });
+    triggerPreview(true);
+  };
+  elements.livePreviewToggle.onchange = () => {
+    autoPreviewEnabled = elements.livePreviewToggle.checked;
+    if (autoPreviewEnabled) {
+      onArgsChanged(false);
+    }
   };
   elements.applyButton.onclick = () => {
     clearError();
@@ -469,28 +565,66 @@
         el.value = msg.value;
         renderParams();
         renderTemplates();
+        onArgsChanged(false);
       }
     } else if (msg.type === 'previewResult') {
+      if (typeof msg.requestId === 'number' && msg.requestId < latestHandledRequestId) {
+        return;
+      }
+      if (typeof msg.requestId === 'number') {
+        latestHandledRequestId = msg.requestId;
+      }
       files = msg.files;
+      lastPreviewSuccess = true;
+      if (typeof msg.argsKey === 'string') {
+        lastPreviewArgsKey = msg.argsKey;
+      } else {
+        lastPreviewArgsKey = argsKey(collectArgs());
+      }
       setPreviewInFlight(false);
       if (!files.length) {
+        setPreviewStatus('Up to date', 'ok');
         showError('No changes produced by this recipe.');
         elements.review.classList.add('hidden');
       } else {
+        setPreviewStatus('Up to date', 'ok');
         renderReview();
       }
+      updateApplyState();
     } else if (msg.type === 'applyResult') {
       elements.review.classList.add('hidden');
     } else if (msg.type === 'error') {
+      if (
+        typeof msg.requestId === 'number' &&
+        msg.requestId < latestHandledRequestId
+      ) {
+        return;
+      }
       setPreviewInFlight(false);
+      lastPreviewSuccess = false;
+      setPreviewStatus('Host error', 'warn');
       showError(msg.message);
+      updateApplyState();
     } else if (msg.type === 'previewState') {
+      if (
+        typeof msg.requestId === 'number' &&
+        msg.requestId < latestHandledRequestId
+      ) {
+        return;
+      }
       setPreviewInFlight(Boolean(msg.inFlight));
+      if (!msg.inFlight && pendingAutoPreview) {
+        pendingAutoPreview = false;
+        triggerPreview(false);
+      }
     }
   });
 
   renderRecipeList();
   renderForm();
   renderTabs();
+  elements.livePreviewToggle.checked = autoPreviewEnabled;
+  setPreviewStatus('Preview out of date');
   setPreviewInFlight(false);
+  onArgsChanged(false);
 })();

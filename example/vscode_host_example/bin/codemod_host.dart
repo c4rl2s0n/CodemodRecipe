@@ -47,6 +47,15 @@ final addMethodRecipe = CodemodRecipe(
   }
 '''),
         ),
+        AddPropertyTransform(
+          className: (context) => context.require('class'),
+          propertyName: (context) => context.camel('method'),
+          body: const CodemodTemplate.inline('''
+  void {{method:snake}}() {
+    // TODO: Implement {{method:snake}}
+  }
+'''),
+        ),
       ],
     ),
   ],

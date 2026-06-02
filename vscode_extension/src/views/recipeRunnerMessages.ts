@@ -9,7 +9,11 @@ export type WebviewToExtensionMessage =
   | { type: typeof WEBVIEW_TO_EXTENSION.configureHost }
   | { type: typeof WEBVIEW_TO_EXTENSION.pickFile; arg: string }
   | { type: typeof WEBVIEW_TO_EXTENSION.pickDirectory; arg: string }
-  | { type: typeof WEBVIEW_TO_EXTENSION.preview; args: Record<string, string> }
+  | {
+      type: typeof WEBVIEW_TO_EXTENSION.preview;
+      args: Record<string, string>;
+      requestId?: number;
+    }
   | { type: typeof WEBVIEW_TO_EXTENSION.openDiff; path: string }
   | { type: typeof WEBVIEW_TO_EXTENSION.apply; selection: SelectionPayload };
 

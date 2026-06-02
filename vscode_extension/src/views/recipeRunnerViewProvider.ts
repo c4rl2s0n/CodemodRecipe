@@ -9,6 +9,7 @@ import {
   WEBVIEW_TO_EXTENSION,
 } from '../constants';
 import { DiffContentProvider } from '../diff/diffContentProvider';
+import { ExtensionConfig } from '../config/extensionConfig';
 import { DartBridge } from '../host/dartBridge';
 import { FilePreview, RecipeSchema, SelectionPayload } from '../types';
 import { renderRecipeViewHtml } from '../webview/recipeViewHtml';
@@ -23,6 +24,7 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
 
   constructor(
     private readonly bridge: DartBridge,
+    private readonly config: ExtensionConfig,
     private readonly diffProvider: DiffContentProvider,
     private readonly workspaceRoot: string,
     private readonly extensionUri: vscode.Uri
@@ -81,7 +83,7 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
         await this.pickPath(message.arg, true);
         break;
       case WEBVIEW_TO_EXTENSION.preview:
-        await this.preview(message.args);
+        await this.preview(message.args, message.requestId);
         break;
       case WEBVIEW_TO_EXTENSION.openDiff:
         await this.openDiffByPath(message.path);
@@ -136,7 +138,10 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
     });
   }
 
-  private async preview(args: Record<string, string>): Promise<void> {
+  private async preview(
+    args: Record<string, string>,
+    requestId?: number
+  ): Promise<void> {
     const recipe = this.state.currentRecipe;
     if (!recipe) return;
     if (this.previewInFlight) {
@@ -147,14 +152,17 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
     this.postMessage({
       type: 'previewState',
       inFlight: true,
+      requestId,
     });
     this.state.lastArgs = args;
+    const argsKey = this.argsKey(args);
     try {
       const response = await this.bridge.preview(recipe.id, args);
       if (!response.ok) {
         this.postMessage({
           type: 'error',
           message: response.error ?? 'Preview failed',
+          requestId,
         });
         return;
       }
@@ -163,12 +171,15 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
       this.postMessage({
         type: 'previewResult',
         files: this.state.lastFiles,
+        requestId,
+        argsKey,
       });
     } finally {
       this.previewInFlight = false;
       this.postMessage({
         type: 'previewState',
         inFlight: false,
+        requestId,
       });
     }
   }
@@ -275,11 +286,24 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
     this.view.webview.html = renderRecipeViewHtml(
       this.view.webview,
       this.extensionUri,
-      this.state.toWebviewState()
+      {
+        ...this.state.toWebviewState(),
+        autoPreview: this.config.autoPreview,
+        autoPreviewDebounceMs: this.config.autoPreviewDebounceMs,
+      }
     );
   }
 
   private postMessage(message: unknown): void {
     void this.view?.webview.postMessage(message);
+  }
+
+  private argsKey(args: Record<string, string>): string {
+    const keys = Object.keys(args).sort();
+    const ordered: Record<string, string> = {};
+    for (const key of keys) {
+      ordered[key] = args[key];
+    }
+    return JSON.stringify(ordered);
   }
 }

@@ -23,6 +23,7 @@ export function activate(context: vscode.ExtensionContext): void {
   const repository = new RecipeRepository(bridge);
   const runner = new RecipeRunnerViewProvider(
     bridge,
+    config,
     diffProvider,
     workspaceRoot,
     context.extensionUri

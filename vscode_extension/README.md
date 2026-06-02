@@ -58,7 +58,9 @@ or `bin/codemod_host.dart`. To use a different path, set:
 {
   "codemodRecipe.hostEntrypoint": "tool/codemod_host.dart",
   "codemodRecipe.dartPath": "dart", // or an absolute path / fvm wrapper
-  "codemodRecipe.performanceLogging": false // log list/preview/apply timings
+  "codemodRecipe.performanceLogging": false, // log list/preview/apply timings
+  "codemodRecipe.autoPreview": true, // auto-run preview while editing args
+  "codemodRecipe.autoPreviewDebounceMs": 400 // debounce for live preview
 }
 ```
 
@@ -75,7 +77,8 @@ You can also run **Codemod Recipe: Set Host Entry Point** from the command palet
    template previews.
    Rendered placeholder values are highlighted so it remains clear which parts
    came from placeholders.
-4. Click **Preview Changes** for a dry run. The review panel shows a changed-files
+4. Click **Preview Changes** for a dry run (or leave **Live preview** enabled to
+   auto-refresh previews after form edits). The review panel shows a changed-files
    summary tree with per-file and per-patch checkboxes.
 5. Use **Previous Change**, **Next Change**, or click a patch row to step through
    changes and open the native side-by-side diff for that file.

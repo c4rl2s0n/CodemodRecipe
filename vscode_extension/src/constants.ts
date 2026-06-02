@@ -18,6 +18,8 @@ export const CONFIG = {
   hostEntrypoint: 'hostEntrypoint',
   dartPath: 'dartPath',
   performanceLogging: 'performanceLogging',
+  autoPreview: 'autoPreview',
+  autoPreviewDebounceMs: 'autoPreviewDebounceMs',
 } as const;
 
 export const DIFF = {

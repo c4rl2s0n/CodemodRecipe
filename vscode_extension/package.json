@@ -97,6 +97,18 @@
           "type": "boolean",
           "default": false,
           "description": "Enable performance timing logs for list/preview/apply host calls."
+        },
+        "codemodRecipe.autoPreview": {
+          "type": "boolean",
+          "default": true,
+          "description": "Automatically run Preview Changes after form edits in the recipe runner."
+        },
+        "codemodRecipe.autoPreviewDebounceMs": {
+          "type": "number",
+          "default": 400,
+          "minimum": 100,
+          "maximum": 2000,
+          "description": "Debounce delay (milliseconds) for automatic preview updates."
         }
       }
     }

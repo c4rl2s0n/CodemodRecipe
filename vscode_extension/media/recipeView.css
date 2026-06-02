@@ -119,6 +119,17 @@ code,
   gap: 8px;
 }
 
+.toggle {
+  align-items: center;
+  display: inline-flex;
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.toggle input[type='checkbox'] {
+  margin: 0;
+}
+
 .empty-actions {
   flex-wrap: wrap;
   margin-top: 8px;
@@ -235,6 +246,20 @@ mark.missing {
 .error {
   color: var(--vscode-errorForeground);
   margin-top: 12px;
+}
+
+.preview-status {
+  color: var(--vscode-descriptionForeground);
+  margin-top: 8px;
+  min-height: 1.2em;
+}
+
+.preview-status.warn {
+  color: var(--vscode-editorWarning-foreground);
+}
+
+.preview-status.ok {
+  color: var(--vscode-testing-iconPassed);
 }
 
 .hidden {
