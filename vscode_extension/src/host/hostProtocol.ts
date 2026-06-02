@@ -1,12 +1,19 @@
 import { HOST_PROTOCOL } from '../constants';
 import {
   ApplyResponse,
+  DescribeResponse,
   HostCommand,
   ListResponse,
   PreviewResponse,
 } from '../types';
 
-export { HostCommand, ListResponse, PreviewResponse, ApplyResponse };
+export {
+  HostCommand,
+  ListResponse,
+  DescribeResponse,
+  PreviewResponse,
+  ApplyResponse,
+};
 
 export function extractHostResult(output: string): string | undefined {
   const begin = output.indexOf(HOST_PROTOCOL.resultBegin);

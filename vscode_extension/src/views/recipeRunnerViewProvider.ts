@@ -49,8 +49,7 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
   }
 
   run(recipe: RecipeSchema, initialArgs: Record<string, string> = {}): void {
-    this.state.selectRecipe(recipe, initialArgs);
-    void this.revealAndRender();
+    void this.runInternal(recipe, initialArgs);
   }
 
   private async handleMessage(message: unknown): Promise<void> {
@@ -66,7 +65,7 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
         this.render();
         break;
       case WEBVIEW_TO_EXTENSION.selectRecipe:
-        this.selectRecipe(message.id);
+        await this.selectRecipe(message.id);
         break;
       case WEBVIEW_TO_EXTENSION.refreshRecipes:
         await vscode.commands.executeCommand(COMMANDS.refresh);
@@ -92,10 +91,30 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
-  private selectRecipe(recipeId: string): void {
+  private async selectRecipe(recipeId: string): Promise<void> {
     const recipe = this.state.recipes.find((item) => item.id === recipeId);
     if (recipe) {
       this.run(recipe);
+    }
+  }
+
+  private async runInternal(
+    recipe: RecipeSchema,
+    initialArgs: Record<string, string>
+  ): Promise<void> {
+    const hydrated = await this.ensureRecipeDetails(recipe);
+    this.state.selectRecipe(hydrated, initialArgs);
+    await this.revealAndRender();
+  }
+
+  private async ensureRecipeDetails(recipe: RecipeSchema): Promise<RecipeSchema> {
+    if (recipe.templatesLoaded !== false) {
+      return recipe;
+    }
+    try {
+      return await this.bridge.describe(recipe.id);
+    } catch {
+      return recipe;
     }
   }
 

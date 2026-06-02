@@ -137,7 +137,21 @@ void main() {
       final response = await host.dispatch({'command': 'list'});
       expect(response['ok'], isTrue);
       expect(response['recipes'], hasLength(1));
+      final recipe = (response['recipes'] as List).first as Map;
+      expect(recipe['templatesLoaded'], isFalse);
       expect(response['_hostMetrics'], isA<Map>());
+    });
+
+    test('describe returns fully hydrated recipe schema', () async {
+      final host = CodemodHost({'add': _addMethodRecipe()});
+      final response = await host.dispatch({
+        'command': 'describe',
+        'recipe': 'add',
+      });
+      expect(response['ok'], isTrue);
+      final recipe = response['recipe'] as Map;
+      expect(recipe['id'], 'add');
+      expect(recipe['templatesLoaded'], isTrue);
     });
 
     test('preview returns structured diff data', () async {

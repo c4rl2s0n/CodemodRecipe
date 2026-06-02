@@ -13,7 +13,7 @@ export interface RecipeArg {
 export interface RecipeTemplatePreview {
   label: string;
   path: string;
-  content: string;
+  content?: string;
 }
 
 export interface RecipeSchema {
@@ -21,6 +21,7 @@ export interface RecipeSchema {
   name: string;
   description: string;
   args: RecipeArg[];
+  templatesLoaded?: boolean;
   previewTemplates: RecipeTemplatePreview[];
 }
 
@@ -56,6 +57,12 @@ export interface PreviewResponse {
   files?: FilePreview[];
 }
 
+export interface DescribeResponse {
+  ok: boolean;
+  error?: string;
+  recipe?: RecipeSchema;
+}
+
 export interface ApplyResponse {
   ok: boolean;
   error?: string;
@@ -74,6 +81,7 @@ export interface SelectionPayload {
 
 export type HostCommand =
   | { command: 'list' }
+  | { command: 'describe'; recipe: string }
   | { command: 'preview'; recipe: string; args: Record<string, string> }
   | {
       command: 'apply';

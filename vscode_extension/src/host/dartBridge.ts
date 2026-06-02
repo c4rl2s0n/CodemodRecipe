@@ -3,6 +3,7 @@ import { ExtensionConfig } from '../config/extensionConfig';
 import { HostDiscovery } from './hostDiscovery';
 import {
   ApplyResponse,
+  DescribeResponse,
   extractHostResultFrame,
   HostCommand,
   ListResponse,
@@ -42,6 +43,17 @@ export class DartBridge {
       throw new Error(response.error ?? 'Failed to list recipes');
     }
     return response.recipes;
+  }
+
+  async describe(recipe: string): Promise<RecipeSchema> {
+    const response = await this.send<DescribeResponse>({
+      command: 'describe',
+      recipe,
+    });
+    if (!response.ok || !response.recipe) {
+      throw new Error(response.error ?? `Failed to describe recipe: ${recipe}`);
+    }
+    return response.recipe;
   }
 
   preview(recipe: string, args: Record<string, string>): Promise<PreviewResponse> {

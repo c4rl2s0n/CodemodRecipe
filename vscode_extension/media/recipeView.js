@@ -242,7 +242,10 @@
 
       const code = document.createElement('div');
       code.className = 'template-code';
-      code.innerHTML = renderTemplate(template.content, args);
+      code.innerHTML = renderTemplate(
+        template.content || '// Template preview loaded on demand.',
+        args
+      );
 
       title.appendChild(label);
       title.appendChild(target);

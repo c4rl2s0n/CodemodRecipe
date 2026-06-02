@@ -25,12 +25,13 @@ class RecipeSchema {
 
   /// Serializes a single template preview into a JSON-friendly map.
   static Map<String, Object?> templatePreviewToJson(
-    RecipeTemplatePreview preview,
-  ) {
+    RecipeTemplatePreview preview, {
+    required bool includeContent,
+  }) {
     return {
       'label': preview.label,
       'path': preview.path,
-      'content': preview.content.source,
+      if (includeContent) 'content': preview.content.source,
     };
   }
 
@@ -39,14 +40,21 @@ class RecipeSchema {
   /// Operations and transforms are intentionally omitted because they are
   /// closures that cannot be represented as data. The extension only needs
   /// the recipe identity and its argument definitions.
-  static Map<String, Object?> recipeToJson(CodemodRecipe recipe) {
+  static Map<String, Object?> recipeToJson(
+    CodemodRecipe recipe, {
+    bool includeTemplateContent = true,
+  }) {
     return {
       'name': recipe.name,
       'description': recipe.description,
       'args': [for (final arg in recipe.args) argToJson(arg)],
+      'templatesLoaded': includeTemplateContent,
       'previewTemplates': [
         for (final preview in recipe.previewTemplates)
-          templatePreviewToJson(preview),
+          templatePreviewToJson(
+            preview,
+            includeContent: includeTemplateContent,
+          ),
         for (final operation in recipe.operations)
           if (operation is CreateFileOperation &&
               operation.pathTemplate != null)
@@ -55,9 +63,23 @@ class RecipeSchema {
                   operation.previewLabel ??
                   _labelFromPathTemplate(operation.pathTemplate!),
               'path': operation.pathTemplate,
-              'content': operation.template.source,
+              if (includeTemplateContent) 'content': operation.template.source,
             },
       ],
+    };
+  }
+
+  static Map<String, Object?> recipeEntryToJson(
+    String id,
+    CodemodRecipe recipe, {
+    bool includeTemplateContent = true,
+  }) {
+    return {
+      'id': id,
+      ...recipeToJson(
+        recipe,
+        includeTemplateContent: includeTemplateContent,
+      ),
     };
   }
 
@@ -67,7 +89,11 @@ class RecipeSchema {
   ) {
     return [
       for (final entry in recipes.entries)
-        {'id': entry.key, ...recipeToJson(entry.value)},
+        recipeEntryToJson(
+          entry.key,
+          entry.value,
+          includeTemplateContent: false,
+        ),
     ];
   }
 

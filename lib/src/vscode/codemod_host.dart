@@ -137,6 +137,22 @@ class CodemodHost {
       case 'list':
         response = {'ok': true, 'recipes': RecipeSchema.registryToJson(recipes)};
         break;
+      case 'describe':
+        final id = request['recipe'] as String?;
+        if (id == null) {
+          response = {'ok': false, 'error': 'Missing "recipe" id'};
+          break;
+        }
+        final recipe = recipes[id];
+        if (recipe == null) {
+          response = {'ok': false, 'error': 'Unknown recipe: $id'};
+          break;
+        }
+        response = {
+          'ok': true,
+          'recipe': RecipeSchema.recipeEntryToJson(id, recipe),
+        };
+        break;
       case 'preview':
         response = await _preview(request);
         break;
