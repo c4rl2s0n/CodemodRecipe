@@ -78,8 +78,15 @@ class CodemodHost {
     }
 
     try {
+      final runWatch = Stopwatch()..start();
       final response = await dispatch(request);
-      _writeResponse(response);
+      runWatch.stop();
+      _writeResponse(
+        _withMetrics(response, {
+          if (request['command'] is String) 'command': request['command'],
+          'runMs': runWatch.elapsedMilliseconds,
+        }),
+      );
     } catch (error, stack) {
       _writeResponse({
         'ok': false,
@@ -92,16 +99,27 @@ class CodemodHost {
   /// Handles a single decoded [request] and returns a JSON-friendly response.
   Future<Map<String, Object?>> dispatch(Map<String, Object?> request) async {
     final command = request['command'] as String?;
+    final commandWatch = Stopwatch()..start();
+    Map<String, Object?> response;
     switch (command) {
       case 'list':
-        return {'ok': true, 'recipes': RecipeSchema.registryToJson(recipes)};
+        response = {'ok': true, 'recipes': RecipeSchema.registryToJson(recipes)};
+        break;
       case 'preview':
-        return _preview(request);
+        response = await _preview(request);
+        break;
       case 'apply':
-        return _apply(request);
+        response = await _apply(request);
+        break;
       default:
-        return {'ok': false, 'error': 'Unknown command: $command'};
+        response = {'ok': false, 'error': 'Unknown command: $command'};
+        break;
     }
+    commandWatch.stop();
+    return _withMetrics(response, {
+      'command': command,
+      'dispatchMs': commandWatch.elapsedMilliseconds,
+    });
   }
 
   Future<Map<String, Object?>> _preview(Map<String, Object?> request) async {
@@ -117,13 +135,22 @@ class CodemodHost {
       return {'ok': false, 'error': validationError};
     }
 
+    final collectWatch = Stopwatch()..start();
     final changes = await CodemodRunner(recipe).collectChanges(context);
+    collectWatch.stop();
     final changedFiles = changes.where((c) => c.hasChanges).toList();
+    final serializeWatch = Stopwatch()..start();
+    final files = await DiffService.changesToJson(changedFiles);
+    serializeWatch.stop();
 
     return {
       'ok': true,
       'recipe': recipe.name,
-      'files': await DiffService.changesToJson(changedFiles),
+      'files': files,
+      '_timingsMs': {
+        'collectChanges': collectWatch.elapsedMilliseconds,
+        'serializeDiff': serializeWatch.elapsedMilliseconds,
+      },
     };
   }
 
@@ -141,25 +168,39 @@ class CodemodHost {
     }
 
     final selection = _parseSelection(request['selection']);
+    final collectWatch = Stopwatch()..start();
     final changes = await CodemodRunner(recipe).collectChanges(context);
+    collectWatch.stop();
     final changedFiles = changes.where((c) => c.hasChanges).toList();
+    final selectWatch = Stopwatch()..start();
     final selected = PatchSelector.apply(changedFiles, selection);
+    selectWatch.stop();
 
+    final applyWatch = Stopwatch()..start();
     for (final change in selected) {
       await change.apply();
     }
+    applyWatch.stop();
 
+    final postExecutionWatch = Stopwatch()..start();
     if (selected.isNotEmpty) {
       final result = CodemodRunResult(changes: selected);
       for (final action in recipe.postExecution) {
         await action.run(context, result);
       }
     }
+    postExecutionWatch.stop();
 
     return {
       'ok': true,
       'recipe': recipe.name,
       'applied': [for (final change in selected) change.path],
+      '_timingsMs': {
+        'collectChanges': collectWatch.elapsedMilliseconds,
+        'selectPatches': selectWatch.elapsedMilliseconds,
+        'applyChanges': applyWatch.elapsedMilliseconds,
+        'postExecution': postExecutionWatch.elapsedMilliseconds,
+      },
     };
   }
 
@@ -230,6 +271,16 @@ class CodemodHost {
     stdout.writeln(kResultBegin);
     stdout.writeln(jsonEncode(response));
     stdout.writeln(kResultEnd);
+  }
+
+  Map<String, Object?> _withMetrics(
+    Map<String, Object?> response,
+    Map<String, Object?> metrics,
+  ) {
+    return {
+      ...response,
+      '_hostMetrics': metrics,
+    };
   }
 }
 

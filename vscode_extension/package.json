@@ -92,6 +92,11 @@
           "type": "string",
           "default": "dart",
           "description": "Path to the Dart executable used to run the host."
+        },
+        "codemodRecipe.performanceLogging": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable performance timing logs for list/preview/apply host calls."
         }
       }
     }

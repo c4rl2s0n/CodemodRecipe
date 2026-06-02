@@ -137,6 +137,7 @@ void main() {
       final response = await host.dispatch({'command': 'list'});
       expect(response['ok'], isTrue);
       expect(response['recipes'], hasLength(1));
+      expect(response['_hostMetrics'], isA<Map>());
     });
 
     test('preview returns structured diff data', () async {
@@ -160,6 +161,8 @@ void main() {
       expect(entry['original'], contains('class Counter'));
       expect(entry['modified'], contains('void reset()'));
       expect(entry['patches'], hasLength(1));
+      expect(response['_timingsMs'], isA<Map>());
+      expect(response['_hostMetrics'], isA<Map>());
     });
 
     test('preview reports missing required arguments', () async {
@@ -197,6 +200,8 @@ void main() {
       expect(response['ok'], isTrue);
       expect(response['applied'], [file.path]);
       expect(file.readAsStringSync(), contains('void reset()'));
+      expect(response['_timingsMs'], isA<Map>());
+      expect(response['_hostMetrics'], isA<Map>());
     });
 
     test('unknown command returns error', () async {

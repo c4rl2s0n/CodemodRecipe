@@ -55,7 +55,8 @@ or `bin/codemod_host.dart`. To use a different path, set:
 // .vscode/settings.json
 {
   "codemodRecipe.hostEntrypoint": "tool/codemod_host.dart",
-  "codemodRecipe.dartPath": "dart" // or an absolute path / fvm wrapper
+  "codemodRecipe.dartPath": "dart", // or an absolute path / fvm wrapper
+  "codemodRecipe.performanceLogging": false // log list/preview/apply timings
 }
 ```
 

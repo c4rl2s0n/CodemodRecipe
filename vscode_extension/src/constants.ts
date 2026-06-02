@@ -17,6 +17,7 @@ export const CONFIG = {
   section: 'codemodRecipe',
   hostEntrypoint: 'hostEntrypoint',
   dartPath: 'dartPath',
+  performanceLogging: 'performanceLogging',
 } as const;
 
 export const DIFF = {

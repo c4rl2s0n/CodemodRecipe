@@ -18,6 +18,14 @@ export class ExtensionConfig {
     );
   }
 
+  get performanceLogging(): boolean {
+    return (
+      vscode.workspace
+        .getConfiguration(CONFIG.section)
+        .get<boolean>(CONFIG.performanceLogging) ?? false
+    );
+  }
+
   async updateHostEntrypoint(value: string): Promise<void> {
     await vscode.workspace
       .getConfiguration(CONFIG.section)

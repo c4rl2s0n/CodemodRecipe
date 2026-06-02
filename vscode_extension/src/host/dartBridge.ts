@@ -11,6 +11,8 @@ import {
 import { RecipeSchema, SelectionPayload } from '../types';
 
 export class DartBridge {
+  private static readonly perfPrefix = '[codemod-recipe/perf]';
+
   constructor(
     private readonly workspaceRoot: string,
     private readonly config: ExtensionConfig,
@@ -45,6 +47,9 @@ export class DartBridge {
   private send<T>(command: HostCommand): Promise<T> {
     const entrypoint = this.hostDiscovery.resolveHostEntrypoint();
     const dart = this.config.dartPath;
+    const payload = JSON.stringify(command);
+    const inputBytes = Buffer.byteLength(payload, 'utf8');
+    const start = process.hrtime.bigint();
 
     return new Promise<T>((resolve, reject) => {
       const child = spawn(dart, ['run', entrypoint], {
@@ -57,6 +62,8 @@ export class DartBridge {
       child.stderr.on('data', (chunk) => (stderr += chunk.toString()));
       child.on('error', (err) => reject(err));
       child.on('close', (code) => {
+        const elapsedMs = Number(process.hrtime.bigint() - start) / 1e6;
+        const outputBytes = Buffer.byteLength(stdout, 'utf8');
         try {
           const response = parseHostResponse<T>(stdout);
           if (response === undefined) {
@@ -67,14 +74,36 @@ export class DartBridge {
             );
             return;
           }
+          this.logPerf({
+            command: command.command,
+            elapsedMs,
+            inputBytes,
+            outputBytes,
+          });
           resolve(response);
         } catch (err) {
           reject(new Error(`Failed to parse host response: ${err}`));
         }
       });
 
-      child.stdin.write(JSON.stringify(command));
+      child.stdin.write(payload);
       child.stdin.end();
     });
+  }
+
+  private logPerf(metrics: {
+    command: HostCommand['command'];
+    elapsedMs: number;
+    inputBytes: number;
+    outputBytes: number;
+  }): void {
+    if (!this.config.performanceLogging) {
+      return;
+    }
+    console.info(
+      `${DartBridge.perfPrefix} command=${metrics.command} elapsedMs=${metrics.elapsedMs.toFixed(
+        1
+      )} inputBytes=${metrics.inputBytes} outputBytes=${metrics.outputBytes}`
+    );
   }
 }
