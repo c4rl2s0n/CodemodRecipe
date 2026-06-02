@@ -18,6 +18,7 @@ import { RecipeRunnerState } from './recipeRunnerState';
 export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
   private view: vscode.WebviewView | undefined;
   private renderPending = false;
+  private previewInFlight = false;
   private readonly state = new RecipeRunnerState();
 
   constructor(
@@ -138,22 +139,38 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
   private async preview(args: Record<string, string>): Promise<void> {
     const recipe = this.state.currentRecipe;
     if (!recipe) return;
-
-    this.state.lastArgs = args;
-    const response = await this.bridge.preview(recipe.id, args);
-    if (!response.ok) {
-      this.postMessage({
-        type: 'error',
-        message: response.error ?? 'Preview failed',
-      });
+    if (this.previewInFlight) {
       return;
     }
 
-    this.state.lastFiles = response.files ?? [];
+    this.previewInFlight = true;
     this.postMessage({
-      type: 'previewResult',
-      files: this.state.lastFiles,
+      type: 'previewState',
+      inFlight: true,
     });
+    this.state.lastArgs = args;
+    try {
+      const response = await this.bridge.preview(recipe.id, args);
+      if (!response.ok) {
+        this.postMessage({
+          type: 'error',
+          message: response.error ?? 'Preview failed',
+        });
+        return;
+      }
+
+      this.state.lastFiles = response.files ?? [];
+      this.postMessage({
+        type: 'previewResult',
+        files: this.state.lastFiles,
+      });
+    } finally {
+      this.previewInFlight = false;
+      this.postMessage({
+        type: 'previewState',
+        inFlight: false,
+      });
+    }
   }
 
   private async apply(selection: SelectionPayload): Promise<void> {

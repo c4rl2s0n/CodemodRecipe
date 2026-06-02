@@ -9,6 +9,7 @@
   let activeTab = state.activeTab;
   let files = [];
   let activeChangeIndex = 0;
+  let previewInFlight = false;
 
   const byId = (id) => document.getElementById(id);
 
@@ -394,6 +395,12 @@
     elements.error.textContent = '';
   }
 
+  function setPreviewInFlight(value) {
+    previewInFlight = value;
+    elements.previewButton.disabled = value;
+    elements.previewButton.textContent = value ? 'Previewing…' : 'Preview Changes';
+  }
+
   function applyCasing(value, casing) {
     if (casing === 'snake') {
       return value.replace(/([a-z0-9])([A-Z])/g, '$1_$2').replace(/[\s-]+/g, '_').toLowerCase();
@@ -421,10 +428,14 @@
 
   elements.previewButton.onclick = () => {
     clearError();
+    if (previewInFlight) {
+      return;
+    }
     if (!recipe) {
       showError('Select a recipe first.');
       return;
     }
+    setPreviewInFlight(true);
     post('preview', { args: collectArgs() });
   };
   elements.applyButton.onclick = () => {
@@ -460,6 +471,7 @@
       }
     } else if (msg.type === 'previewResult') {
       files = msg.files;
+      setPreviewInFlight(false);
       if (!files.length) {
         showError('No changes produced by this recipe.');
         elements.review.classList.add('hidden');
@@ -469,11 +481,15 @@
     } else if (msg.type === 'applyResult') {
       elements.review.classList.add('hidden');
     } else if (msg.type === 'error') {
+      setPreviewInFlight(false);
       showError(msg.message);
+    } else if (msg.type === 'previewState') {
+      setPreviewInFlight(Boolean(msg.inFlight));
     }
   });
 
   renderRecipeList();
   renderForm();
   renderTabs();
+  setPreviewInFlight(false);
 })();
