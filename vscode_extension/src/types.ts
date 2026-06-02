@@ -29,7 +29,8 @@ export interface PatchInfo {
   index: number;
   offset: number;
   length: number;
-  replacement: string;
+  replacement?: string;
+  replacementPreview?: string;
   description: string | null;
 }
 
@@ -38,8 +39,8 @@ export interface FilePreview {
   kind: 'edit' | 'create' | 'other';
   isNew: boolean;
   skipped: boolean;
-  original: string;
-  modified: string;
+  original?: string;
+  modified?: string;
   preview?: string;
   patches: PatchInfo[];
 }
@@ -70,6 +71,13 @@ export interface ApplyResponse {
   applied?: string[];
 }
 
+export interface DiffResponse {
+  ok: boolean;
+  error?: string;
+  recipe?: string;
+  file?: FilePreview;
+}
+
 export interface FileSelection {
   include: boolean;
   patches?: number[];
@@ -82,6 +90,7 @@ export interface SelectionPayload {
 export type HostCommand =
   | { command: 'list' }
   | { command: 'describe'; recipe: string }
+  | { command: 'diff'; recipe: string; args: Record<string, string>; path: string }
   | { command: 'preview'; recipe: string; args: Record<string, string> }
   | {
       command: 'apply';

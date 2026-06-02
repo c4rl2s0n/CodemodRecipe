@@ -2,6 +2,7 @@ import { HOST_PROTOCOL } from '../constants';
 import {
   ApplyResponse,
   DescribeResponse,
+  DiffResponse,
   HostCommand,
   ListResponse,
   PreviewResponse,
@@ -11,6 +12,7 @@ export {
   HostCommand,
   ListResponse,
   DescribeResponse,
+  DiffResponse,
   PreviewResponse,
   ApplyResponse,
 };

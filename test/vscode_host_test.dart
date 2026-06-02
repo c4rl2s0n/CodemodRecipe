@@ -172,9 +172,33 @@ void main() {
       expect(files, hasLength(1));
       final entry = files.first as Map;
       expect(entry['kind'], 'edit');
+      expect(entry.containsKey('original'), isFalse);
+      expect(entry.containsKey('modified'), isFalse);
+      expect(entry['patches'], hasLength(1));
+      final patch = (entry['patches'] as List).first as Map;
+      expect(patch['replacementPreview'], isA<String>());
+      expect(response['_timingsMs'], isA<Map>());
+      expect(response['_hostMetrics'], isA<Map>());
+    });
+
+    test('diff returns full file data for a preview path', () async {
+      final dir = await Directory.systemTemp.createTemp('codemod_host_diff');
+      addTearDown(() => dir.delete(recursive: true));
+      final file = File('${dir.path}/counter.dart')
+        ..writeAsStringSync('class Counter {\n  int value = 0;\n}\n');
+
+      final host = CodemodHost({'add': _addMethodRecipe()});
+      final response = await host.dispatch({
+        'command': 'diff',
+        'recipe': 'add',
+        'path': file.path,
+        'args': {'file': file.path, 'class': 'Counter', 'method': 'reset'},
+      });
+
+      expect(response['ok'], isTrue);
+      final entry = response['file'] as Map;
       expect(entry['original'], contains('class Counter'));
       expect(entry['modified'], contains('void reset()'));
-      expect(entry['patches'], hasLength(1));
       expect(response['_timingsMs'], isA<Map>());
       expect(response['_hostMetrics'], isA<Map>());
     });

@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import '../context.dart';
+import '../operation.dart';
 import '../post_execution.dart';
 import '../recipe.dart';
 import '../runner.dart';
@@ -39,7 +40,9 @@ const String kResultEnd = '__CODEMOD_RESULT_END__';
 ///
 /// Supported commands:
 /// - `{"command": "list"}`
+/// - `{"command": "describe", "recipe": "id"}`
 /// - `{"command": "preview", "recipe": "id", "args": {..}}`
+/// - `{"command": "diff", "recipe": "id", "path": "file", "args": {..}}`
 /// - `{"command": "apply", "recipe": "id", "args": {..}, "selection": {..}}`
 /// - `--stdio-server` argument: keeps process alive and reads one JSON command
 ///   per stdin line.
@@ -156,6 +159,9 @@ class CodemodHost {
       case 'preview':
         response = await _preview(request);
         break;
+      case 'diff':
+        response = await _diff(request);
+        break;
       case 'apply':
         response = await _apply(request);
         break;
@@ -188,13 +194,60 @@ class CodemodHost {
     collectWatch.stop();
     final changedFiles = changes.where((c) => c.hasChanges).toList();
     final serializeWatch = Stopwatch()..start();
-    final files = await DiffService.changesToJson(changedFiles);
+    final files = await DiffService.changesToJson(
+      changedFiles,
+      includeContents: false,
+      includePatchReplacements: false,
+    );
     serializeWatch.stop();
 
     return {
       'ok': true,
       'recipe': recipe.name,
       'files': files,
+      '_timingsMs': {
+        'collectChanges': collectWatch.elapsedMilliseconds,
+        'serializeDiff': serializeWatch.elapsedMilliseconds,
+      },
+    };
+  }
+
+  Future<Map<String, Object?>> _diff(Map<String, Object?> request) async {
+    final resolved = _resolveRecipe(request);
+    if (resolved.error != null) {
+      return {'ok': false, 'error': resolved.error};
+    }
+    final recipe = resolved.recipe!;
+    final context = resolved.context!;
+    final path = request['path'] as String?;
+    if (path == null || path.isEmpty) {
+      return {'ok': false, 'error': 'Missing "path"'};
+    }
+
+    final validationError = _validate(recipe, context);
+    if (validationError != null) {
+      return {'ok': false, 'error': validationError};
+    }
+
+    final collectWatch = Stopwatch()..start();
+    final changes = await CodemodRunner(recipe).collectChanges(context);
+    collectWatch.stop();
+    final target = changes.firstWhere(
+      (change) => change.path == path,
+      orElse: () => _MissingFileChange(path),
+    );
+    if (target is _MissingFileChange) {
+      return {'ok': false, 'error': 'No preview change found for $path'};
+    }
+
+    final serializeWatch = Stopwatch()..start();
+    final file = await DiffService.changeToJson(target);
+    serializeWatch.stop();
+
+    return {
+      'ok': true,
+      'recipe': recipe.name,
+      'file': file,
       '_timingsMs': {
         'collectChanges': collectWatch.elapsedMilliseconds,
         'serializeDiff': serializeWatch.elapsedMilliseconds,
@@ -338,4 +391,23 @@ class _ResolvedRecipe {
   final String? error;
 
   const _ResolvedRecipe({this.recipe, this.context, this.error});
+}
+
+class _MissingFileChange implements FileChange {
+  @override
+  final String path;
+
+  const _MissingFileChange(this.path);
+
+  @override
+  bool get hasChanges => false;
+
+  @override
+  bool get shouldFormat => false;
+
+  @override
+  Future<void> apply() async {}
+
+  @override
+  String preview() => '';
 }

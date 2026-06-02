@@ -15,7 +15,7 @@ flowchart LR
     Form["Argument Form (webview)"] -->|preview| Host
     Review["Review + checkboxes"] -->|apply selection| Host
     Host["Dart CodemodHost"] -->|JSON| Tree
-    Host -->|original / modified / patches| Form
+    Host -->|preview summaries| Form
     Review --> Diff["vscode.diff (native)"]
 ```
 
@@ -147,6 +147,9 @@ Commands accepted by the host (one JSON object per process on stdin):
 { "command": "list" }
 
 { "command": "preview", "recipe": "add_method",
+  "args": { "file": "lib/foo.dart", "class": "Foo", "method": "bar" } }
+
+{ "command": "diff", "recipe": "add_method", "path": "lib/foo.dart",
   "args": { "file": "lib/foo.dart", "class": "Foo", "method": "bar" } }
 
 { "command": "apply", "recipe": "add_method",

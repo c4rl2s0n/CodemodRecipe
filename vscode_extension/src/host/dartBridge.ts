@@ -4,6 +4,7 @@ import { HostDiscovery } from './hostDiscovery';
 import {
   ApplyResponse,
   DescribeResponse,
+  DiffResponse,
   extractHostResultFrame,
   HostCommand,
   ListResponse,
@@ -58,6 +59,14 @@ export class DartBridge {
 
   preview(recipe: string, args: Record<string, string>): Promise<PreviewResponse> {
     return this.send<PreviewResponse>({ command: 'preview', recipe, args });
+  }
+
+  async diff(
+    recipe: string,
+    args: Record<string, string>,
+    path: string
+  ): Promise<DiffResponse> {
+    return this.send<DiffResponse>({ command: 'diff', recipe, args, path });
   }
 
   apply(

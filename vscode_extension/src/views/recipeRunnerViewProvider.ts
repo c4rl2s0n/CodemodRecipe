@@ -200,20 +200,22 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
 
   private async openDiffByPath(filePath: string): Promise<void> {
     const file = this.state.lastFiles.find((item) => item.path === filePath);
-    if (file) {
-      await this.openDiff(file);
+    if (!file) {
+      return;
     }
+    const materialized = await this.ensureDiffMaterialized(file);
+    await this.openDiff(materialized);
   }
 
   private async openDiff(file: FilePreview): Promise<void> {
     const safe = file.path.replace(/[^a-zA-Z0-9]/g, '_');
     const originalUri = this.diffProvider.store(
       `${DIFF.originalPrefix}/${safe}`,
-      file.original
+      file.original ?? ''
     );
     const modifiedUri = this.diffProvider.store(
       `${DIFF.modifiedPrefix}/${safe}`,
-      file.modified
+      file.modified ?? ''
     );
     await vscode.commands.executeCommand(
       'vscode.diff',
@@ -221,6 +223,37 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
       modifiedUri,
       file.isNew ? `${file.path} (new)` : `${file.path} (proposed)`
     );
+  }
+
+  private async ensureDiffMaterialized(file: FilePreview): Promise<FilePreview> {
+    if (file.original !== undefined && file.modified !== undefined) {
+      return file;
+    }
+
+    const recipe = this.state.currentRecipe;
+    if (!recipe) {
+      return file;
+    }
+
+    const response = await this.bridge.diff(
+      recipe.id,
+      this.state.lastArgs,
+      file.path
+    );
+    if (!response.ok || !response.file) {
+      this.postMessage({
+        type: 'error',
+        message: response.error ?? `Failed to open diff for ${file.path}`,
+      });
+      return file;
+    }
+
+    const index = this.state.lastFiles.findIndex((item) => item.path === file.path);
+    if (index >= 0) {
+      this.state.lastFiles[index] = response.file;
+      return this.state.lastFiles[index];
+    }
+    return response.file;
   }
 
   private async revealAndRender(): Promise<void> {

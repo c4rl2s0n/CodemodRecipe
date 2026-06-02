@@ -31,32 +31,43 @@ class DiffService {
   ///
   /// For created files, `patches` is empty and the diff is a whole-file
   /// comparison between any existing content and the rendered content.
-  static Future<Map<String, Object?>> changeToJson(FileChange change) async {
+  static Future<Map<String, Object?>> changeToJson(
+    FileChange change, {
+    bool includeContents = true,
+    bool includePatchReplacements = true,
+  }) async {
     if (change is PatchFileChange) {
       return {
         'path': change.path,
         'kind': 'edit',
         'isNew': false,
         'skipped': false,
-        'original': change.source,
-        'modified': change.generate(),
+        if (includeContents) 'original': change.source,
+        if (includeContents) 'modified': change.generate(),
         'patches': [
           for (var i = 0; i < change.patches.length; i++)
-            _patchToJson(i, change.patches[i]),
+            _patchToJson(
+              i,
+              change.patches[i],
+              includeReplacement: includePatchReplacements,
+            ),
         ],
       };
     }
 
     if (change is CreateFileChange) {
-      final file = File(change.path);
-      final original = await file.exists() ? await file.readAsString() : '';
+      String? original;
+      if (includeContents) {
+        final file = File(change.path);
+        original = await file.exists() ? await file.readAsString() : '';
+      }
       return {
         'path': change.path,
         'kind': 'create',
         'isNew': !change.exists,
         'skipped': !change.hasChanges,
-        'original': original,
-        'modified': change.content,
+        if (includeContents) 'original': original,
+        if (includeContents) 'modified': change.content,
         'patches': const <Map<String, Object?>>[],
       };
     }
@@ -76,17 +87,35 @@ class DiffService {
 
   /// Serializes a list of [changes] into JSON-friendly maps.
   static Future<List<Map<String, Object?>>> changesToJson(
-    List<FileChange> changes,
-  ) async {
-    return [for (final change in changes) await changeToJson(change)];
+    List<FileChange> changes, {
+    bool includeContents = true,
+    bool includePatchReplacements = true,
+  }) async {
+    return [
+      for (final change in changes)
+        await changeToJson(
+          change,
+          includeContents: includeContents,
+          includePatchReplacements: includePatchReplacements,
+        ),
+    ];
   }
 
-  static Map<String, Object?> _patchToJson(int index, SourcePatch patch) {
+  static Map<String, Object?> _patchToJson(
+    int index,
+    SourcePatch patch, {
+    required bool includeReplacement,
+  }) {
+    final replacement = patch.replacement;
     return {
       'index': index,
       'offset': patch.offset,
       'length': patch.length,
-      'replacement': patch.replacement,
+      if (includeReplacement) 'replacement': replacement,
+      if (!includeReplacement)
+        'replacementPreview': replacement.length > 200
+            ? '${replacement.substring(0, 200)}…'
+            : replacement,
       'description': patch.description,
     };
   }

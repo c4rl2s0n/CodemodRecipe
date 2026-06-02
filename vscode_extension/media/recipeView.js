@@ -341,7 +341,8 @@
     cb.dataset.index = patch.index;
 
     const code = document.createElement('code');
-    code.textContent = (patch.description ? patch.description + '\n' : '') + patch.replacement.trim();
+    const replacementText = patch.replacement || patch.replacementPreview || '';
+    code.textContent = (patch.description ? patch.description + '\n' : '') + replacementText.trim();
 
     row.appendChild(cb);
     row.appendChild(code);
