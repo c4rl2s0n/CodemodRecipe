@@ -49,9 +49,10 @@ const String kResultEnd = '__CODEMOD_RESULT_END__';
 class CodemodHost {
   /// Recipes available to the extension, keyed by a stable id.
   final Map<String, CodemodRecipe> recipes;
+  final Map<String, _CachedPreview> _previewCache = {};
 
   /// Creates a host exposing [recipes] to the VS Code extension.
-  const CodemodHost(this.recipes);
+  CodemodHost(this.recipes);
 
   /// Creates a host from a list of recipes keyed by each recipe's [name].
   ///
@@ -190,9 +191,15 @@ class CodemodHost {
     }
 
     final collectWatch = Stopwatch()..start();
-    final changes = await CodemodRunner(recipe).collectChanges(context);
+    final collected = await _collectChangesWithCache(
+      request,
+      recipe,
+      context,
+      allowReuse: true,
+      updateCache: true,
+    );
     collectWatch.stop();
-    final changedFiles = changes.where((c) => c.hasChanges).toList();
+    final changedFiles = collected.changes.where((c) => c.hasChanges).toList();
     final serializeWatch = Stopwatch()..start();
     final files = await DiffService.changesToJson(
       changedFiles,
@@ -208,6 +215,7 @@ class CodemodHost {
       '_timingsMs': {
         'collectChanges': collectWatch.elapsedMilliseconds,
         'serializeDiff': serializeWatch.elapsedMilliseconds,
+        'reusedPreviewCache': collected.reusedCache ? 1 : 0,
       },
     };
   }
@@ -230,8 +238,15 @@ class CodemodHost {
     }
 
     final collectWatch = Stopwatch()..start();
-    final changes = await CodemodRunner(recipe).collectChanges(context);
+    final collected = await _collectChangesWithCache(
+      request,
+      recipe,
+      context,
+      allowReuse: true,
+      updateCache: true,
+    );
     collectWatch.stop();
+    final changes = collected.changes;
     final target = changes.firstWhere(
       (change) => change.path == path,
       orElse: () => _MissingFileChange(path),
@@ -251,6 +266,7 @@ class CodemodHost {
       '_timingsMs': {
         'collectChanges': collectWatch.elapsedMilliseconds,
         'serializeDiff': serializeWatch.elapsedMilliseconds,
+        'reusedPreviewCache': collected.reusedCache ? 1 : 0,
       },
     };
   }
@@ -270,9 +286,15 @@ class CodemodHost {
 
     final selection = _parseSelection(request['selection']);
     final collectWatch = Stopwatch()..start();
-    final changes = await CodemodRunner(recipe).collectChanges(context);
+    final collected = await _collectChangesWithCache(
+      request,
+      recipe,
+      context,
+      allowReuse: true,
+      updateCache: true,
+    );
     collectWatch.stop();
-    final changedFiles = changes.where((c) => c.hasChanges).toList();
+    final changedFiles = collected.changes.where((c) => c.hasChanges).toList();
     final selectWatch = Stopwatch()..start();
     final selected = PatchSelector.apply(changedFiles, selection);
     selectWatch.stop();
@@ -282,6 +304,7 @@ class CodemodHost {
       await change.apply();
     }
     applyWatch.stop();
+    _previewCache.remove(_cacheKey(request));
 
     final postExecutionWatch = Stopwatch()..start();
     if (selected.isNotEmpty) {
@@ -301,6 +324,7 @@ class CodemodHost {
         'selectPatches': selectWatch.elapsedMilliseconds,
         'applyChanges': applyWatch.elapsedMilliseconds,
         'postExecution': postExecutionWatch.elapsedMilliseconds,
+        'reusedPreviewCache': collected.reusedCache ? 1 : 0,
       },
     };
   }
@@ -360,6 +384,79 @@ class CodemodHost {
     return result;
   }
 
+  Future<_CollectedChanges> _collectChangesWithCache(
+    Map<String, Object?> request,
+    CodemodRecipe recipe,
+    CodemodContext context, {
+    required bool allowReuse,
+    required bool updateCache,
+  }) async {
+    final key = _cacheKey(request);
+    final cached = _previewCache[key];
+    if (allowReuse && cached != null && await _isCacheValid(cached)) {
+      return _CollectedChanges(changes: cached.changes, reusedCache: true);
+    }
+
+    final changes = await CodemodRunner(recipe).collectChanges(context);
+    if (updateCache) {
+      _previewCache[key] = _CachedPreview(
+        changes: changes,
+        snapshots: await _captureSnapshots(changes),
+      );
+    }
+    return _CollectedChanges(changes: changes, reusedCache: false);
+  }
+
+  String _cacheKey(Map<String, Object?> request) {
+    final recipeId = request['recipe']?.toString() ?? '';
+    final rawArgs = request['args'];
+    if (rawArgs is! Map) {
+      return recipeId;
+    }
+    final normalized = <String, String>{
+      for (final entry in rawArgs.entries)
+        entry.key.toString(): entry.value?.toString() ?? '',
+    };
+    final sortedKeys = normalized.keys.toList()..sort();
+    final sortedMap = <String, String>{
+      for (final key in sortedKeys) key: normalized[key]!,
+    };
+    return '$recipeId:${jsonEncode(sortedMap)}';
+  }
+
+  Future<Map<String, _FileSnapshot>> _captureSnapshots(
+    List<FileChange> changes,
+  ) async {
+    final snapshots = <String, _FileSnapshot>{};
+    for (final change in changes) {
+      snapshots[change.path] = await _snapshotForPath(change.path);
+    }
+    return snapshots;
+  }
+
+  Future<bool> _isCacheValid(_CachedPreview cached) async {
+    for (final entry in cached.snapshots.entries) {
+      final current = await _snapshotForPath(entry.key);
+      if (!current.matches(entry.value)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  Future<_FileSnapshot> _snapshotForPath(String path) async {
+    final file = File(path);
+    if (!await file.exists()) {
+      return const _FileSnapshot(exists: false, modifiedMs: -1, size: -1);
+    }
+    final stat = await file.stat();
+    return _FileSnapshot(
+      exists: true,
+      modifiedMs: stat.modified.millisecondsSinceEpoch,
+      size: stat.size,
+    );
+  }
+
   Future<String> _readStdin() async {
     final buffer = StringBuffer();
     await for (final chunk in stdin.transform(utf8.decoder)) {
@@ -410,4 +507,36 @@ class _MissingFileChange implements FileChange {
 
   @override
   String preview() => '';
+}
+
+class _CollectedChanges {
+  final List<FileChange> changes;
+  final bool reusedCache;
+
+  const _CollectedChanges({required this.changes, required this.reusedCache});
+}
+
+class _CachedPreview {
+  final List<FileChange> changes;
+  final Map<String, _FileSnapshot> snapshots;
+
+  const _CachedPreview({required this.changes, required this.snapshots});
+}
+
+class _FileSnapshot {
+  final bool exists;
+  final int modifiedMs;
+  final int size;
+
+  const _FileSnapshot({
+    required this.exists,
+    required this.modifiedMs,
+    required this.size,
+  });
+
+  bool matches(_FileSnapshot other) {
+    return exists == other.exists &&
+        modifiedMs == other.modifiedMs &&
+        size == other.size;
+  }
 }

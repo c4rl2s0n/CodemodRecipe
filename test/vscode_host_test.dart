@@ -221,6 +221,11 @@ void main() {
         ..writeAsStringSync('class Counter {\n  int value = 0;\n}\n');
 
       final host = CodemodHost({'add': _addMethodRecipe()});
+      await host.dispatch({
+        'command': 'preview',
+        'recipe': 'add',
+        'args': {'file': file.path, 'class': 'Counter', 'method': 'reset'},
+      });
       final response = await host.dispatch({
         'command': 'apply',
         'recipe': 'add',
@@ -239,6 +244,8 @@ void main() {
       expect(response['applied'], [file.path]);
       expect(file.readAsStringSync(), contains('void reset()'));
       expect(response['_timingsMs'], isA<Map>());
+      final timings = response['_timingsMs'] as Map;
+      expect(timings['reusedPreviewCache'], 1);
       expect(response['_hostMetrics'], isA<Map>());
     });
 
