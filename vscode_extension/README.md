@@ -158,14 +158,15 @@ npm run watch:webview    # rebuild webview UI (media/recipeView.js) on change
 npm run test:webview     # unit tests for webview arg/selection helpers
 ```
 
-The sidebar UI lives in [`webview-ui/`](webview-ui/) (Vue 3 + Vite) and compiles
+The sidebar UI lives in [`src/webview/`](src/webview/) (Vue 3 + Vite) and compiles
 into [`media/recipeView.js`](media/recipeView.js) and [`media/recipeView.css`](media/recipeView.css).
-Run `npm run build:webview` (or full `npm run compile`) before `F5` if you change
-webview sources. Pressing **F5** with the `vscode_extension` folder open runs the
+Shared message types and constants used by both the extension host and webview are in
+[`src/shared/`](src/shared/). Run `npm run build:webview` (or full `npm run compile`) before `F5`
+if you change webview sources. Pressing **F5** with the `vscode_extension` folder open runs the
 `npm: compile` pre-launch task automatically (see [`.vscode/launch.json`](.vscode/launch.json)).
 
 The files in `media/` (`recipeView.html`, `recipeView.js`, `recipeView.css`) are
-**built artifacts**: edit sources under `webview-ui/`, then compile. They are loaded
+**built artifacts**: edit sources under `src/webview/`, then compile. They are loaded
 as static extension resources at runtime (not generated when you open the view).
 
 ```bash

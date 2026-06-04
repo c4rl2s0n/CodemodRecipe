@@ -1,0 +1,48 @@
+export const EXTENSION = {
+  activityViewId: 'workbench.view.extension.codemodRecipe',
+} as const;
+
+export const COMMANDS = {
+  refresh: 'codemodRecipe.refresh',
+  bootstrap: 'codemodRecipe.bootstrap',
+  runRecipe: 'codemodRecipe.runRecipe',
+  runFromCursorContext: 'codemodRecipe.runFromCursorContext',
+  configureHost: 'codemodRecipe.configureHost',
+} as const;
+
+export const VIEWS = {
+  runner: 'codemodRecipe.runner',
+} as const;
+
+export const CONFIG = {
+  section: 'codemodRecipe',
+  hostEntrypoint: 'hostEntrypoint',
+  dartPath: 'dartPath',
+  performanceLogging: 'performanceLogging',
+  autoPreviewDebounceMs: 'autoPreviewDebounceMs',
+  previewSnippetLines: 'previewSnippetLines',
+} as const;
+
+export const DIFF = {
+  scheme: 'codemod-diff',
+  originalPrefix: '/original',
+  modifiedPrefix: '/modified',
+} as const;
+
+export const HOST_PROTOCOL = {
+  resultBegin: '__CODEMOD_RESULT_BEGIN__',
+  resultEnd: '__CODEMOD_RESULT_END__',
+} as const;
+
+export const DEFAULT_HOST_CANDIDATES = [
+  'tool/codemod_host.dart',
+  'tool/codemods/codemod_host.dart',
+  'bin/codemod_host.dart',
+  'example/vscode_host_example/bin/codemod_host.dart',
+] as const;
+
+export const WEBVIEW_ASSETS = {
+  html: ['src/media', 'recipeView.html'],
+  css: ['src/media', 'recipeView.css'],
+  script: ['src/media', 'recipeView.js'],
+} as const;

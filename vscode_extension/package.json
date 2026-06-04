@@ -34,6 +34,14 @@
           "name": "Codemod Recipe",
           "icon": "media/recipe.svg"
         }
+      ],
+      "treeView": [
+        {
+          "type": "webview",
+          "id": "codemodRecipe.treeView",
+          "name": "TreeView",
+          "icon": "media/recipe.svg"
+        }
       ]
     },
     "commands": [
@@ -116,11 +124,11 @@
     }
   },
   "scripts": {
-    "build:webview": "vite build --config webview-ui/vite.config.ts",
+    "build:webview": "vite build --config src/webview/vite.config.ts",
     "compile": "npm run build:webview && tsc -p ./",
     "watch": "tsc -watch -p ./",
-    "watch:webview": "vite build --config webview-ui/vite.config.ts --watch",
-    "test:webview": "vitest run --config webview-ui/vitest.config.ts",
+    "watch:webview": "vite build --config src/webview/vite.config.ts --watch",
+    "test:webview": "vitest run --config src/webview/vitest.config.ts",
     "vscode:prepublish": "npm run compile"
   },
   "devDependencies": {
