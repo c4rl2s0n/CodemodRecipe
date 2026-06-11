@@ -2,7 +2,6 @@ import 'package:analyzer/dart/ast/ast.dart';
 
 import '../field_spec.dart';
 import 'checkers.dart';
-import 'constructors.dart';
 import 'invocations.dart';
 import 'localizers.dart';
 import 'offsets.dart';
@@ -104,6 +103,9 @@ class AstFocus {
   /// Byte offset after the last parameter in a focused constructor declaration.
   int get afterLastConstructorParameter =>
       findLastParameterOffset(asConstructor);
+
+  /// Byte offset after the last statement in a focused method declaration.
+  int get afterLastStatement => findLastStatementInsertOffset(asMethod);
 
   /// Plans insertion of [text] as a named argument in a focused constructor call.
   InsertionPlan planArgument(String text, {String indent = '      '}) {
