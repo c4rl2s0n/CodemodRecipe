@@ -1,5 +1,6 @@
 import '../../context.dart';
-import '../../dart/code_editor.dart';
+import '../../dart_codegen/ast_helpers/ast_helpers.dart';
+import '../../dart_codegen/code_editor.dart';
 import '../../patch_helpers.dart';
 import '../../template.dart';
 import '../../transform.dart';
@@ -20,9 +21,9 @@ class AddMethodTransform implements CodeTransform {
 
   @override
   Future<List<SourcePatch>> apply(String source, CodemodContext context) async {
+    final focus = AstFocus.parse(source).classNamed(className(context));
     return CodeEditor(source)
-        .inClass(className(context))
-        .addMethodUnlessExists(methodName(context), body.render(context))
+        .addMethodUnlessExists(focus, methodName(context), body.render(context))
         .patches;
   }
 }

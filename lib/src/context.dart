@@ -1,4 +1,5 @@
-import 'dart/naming.dart';
+import 'dart_codegen/field_spec.dart';
+import 'dart_codegen/naming.dart';
 import 'template.dart';
 
 /// Stores recipe arguments and generic naming helpers for a codemod run.

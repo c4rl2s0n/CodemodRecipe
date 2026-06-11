@@ -59,7 +59,6 @@ CodemodRecipe _addPropertyAccessorsRecipe() {
             className: (c) => c.require('class'),
             fieldName: (c) => '_${c.camel('property')}',
             fieldType: (c) => c.require('type'),
-            addToConstructor: false,
           ),
           AddMethodTransform(
             className: (c) => c.require('class'),
@@ -109,7 +108,10 @@ class {{service:pascal}}Service {
             className: (c) => c.require('class'),
             fieldName: (c) => '${c.camel('service')}Service',
             fieldType: (c) => '${c.pascal('service')}Service',
-            addToConstructor: true,
+            constructorArgs: const FieldConstructorArgs(
+              style: ConstructorParamStyle.named,
+              thisPrefix: true,
+            ),
           ),
         ],
       ),

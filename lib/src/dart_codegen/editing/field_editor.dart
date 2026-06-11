@@ -1,42 +1,23 @@
 part of '../code_editor.dart';
 
 extension FieldEditor on CodeEditor {
-  /// Returns whether the selected class declares a field named [name].
-  ///
-  /// Only fields declared directly in the selected class are considered.
-  bool hasField(String name) {
-    if (_currentClass == null) {
-      throw StateError('No class selected. Call inClass() first.');
-    }
-    return hasFieldInClass(_currentClass!, name);
+  /// Returns whether the class declares a field named [name].
+  bool hasField(AstFocus focus, String name) {
+    return focus.classHasField(name);
   }
 
-  /// Returns whether the selected class constructor has a parameter named [name].
-  bool hasConstructorParam(String name) {
-    if (_currentClass == null) {
-      throw StateError('No class selected. Call inClass() first.');
-    }
-
-    final constructor = findConstructor(_currentClass!);
+  /// Returns whether the class constructor has a parameter named [name].
+  bool hasConstructorParam(AstFocus focus, String name) {
+    final classDecl = focus.asClass;
+    final constructor = findConstructor(classDecl);
     if (constructor == null) return false;
 
-    final paramsSource = _source.substring(
-      constructor.parameters.offset,
-      constructor.parameters.end,
-    );
-    return RegExp(
-      r'(\bthis\.|\b)' + RegExp.escape(name) + r'\b',
-    ).hasMatch(paramsSource);
+    return constructorDeclHasParam(constructor, source, name);
   }
 
-
-  /// Adds a field declaration to the selected class.
-  ///
-  /// Modifiers are controlled by [isFinal], [isConst], and [isStatic].
-  /// When [addToConstructor] is true, also wires the field to the first
-  /// unnamed constructor via [addFieldToConstructor]. [isStatic] forces
-  /// [addToConstructor] to false.
+  /// Adds a field declaration to the focused class.
   CodeEditor addField(
+    AstFocus focus,
     String name,
     String type, {
     bool isNullable = false,
@@ -57,16 +38,16 @@ extension FieldEditor on CodeEditor {
       isStatic: isStatic,
     );
     return _addFieldFromSpec(
+      focus,
       spec,
       addToConstructor: addToConstructor,
       constructorArgs: constructorArgs,
     );
   }
 
-  /// Adds a field only when the selected class has no field named [spec.name].
-  ///
-  /// This is the preferred helper for idempotent field transforms.
+  /// Adds a field only when the class has no field named [name].
   CodeEditor addFieldUnlessExists(
+    AstFocus focus,
     String name,
     String type, {
     bool isNullable = false,
@@ -77,8 +58,9 @@ extension FieldEditor on CodeEditor {
     bool isStatic = false,
     FieldConstructorArgs? constructorArgs,
   }) {
-    if (!hasField(name)) {
+    if (!hasField(focus, name)) {
       addField(
+        focus,
         name,
         type,
         isNullable: isNullable,
@@ -93,38 +75,37 @@ extension FieldEditor on CodeEditor {
     return this;
   }
 
-  /// Wires [spec] to the selected class's unnamed constructor.
-  ///
-  /// Skips when [spec.isStatic] is true. Throws when no constructor exists.
+  /// Wires [spec] to the focused class's unnamed constructor.
   CodeEditor addFieldToConstructor(
+    AstFocus focus,
     FieldSpec spec, {
     FieldConstructorArgs? constructorArgs,
   }) {
-    if (_currentClass == null) {
-      throw StateError('No class selected. Call inClass() first.');
-    }
     if (spec.isStatic) return this;
 
-    _wireFieldToConstructor(spec, constructorArgs: constructorArgs);
+    _wireFieldToConstructor(focus, spec, constructorArgs: constructorArgs);
     return this;
   }
 
   /// Wires [spec] to the constructor only when the parameter is not present.
   CodeEditor addFieldToConstructorUnlessExists(
+    AstFocus focus,
     FieldSpec spec, {
     FieldConstructorArgs? constructorArgs,
   }) {
-    if (!hasConstructorParam(spec.name)) {
-      addFieldToConstructor(spec, constructorArgs: constructorArgs);
+    if (!hasConstructorParam(focus, spec.name)) {
+      addFieldToConstructor(
+        focus,
+        spec,
+        constructorArgs: constructorArgs,
+      );
     }
     return this;
   }
 
-  /// Adds a parameter to the selected class's unnamed constructor.
-  ///
-  /// When [thisPrefix] is true, emits `this.name`; otherwise emits
-  /// `type name`.
+  /// Adds a parameter to the focused class's unnamed constructor.
   CodeEditor addConstructorParam(
+    AstFocus focus,
     String name,
     String type, {
     bool isNullable = false,
@@ -140,8 +121,9 @@ extension FieldEditor on CodeEditor {
       isFinal: false,
     );
     return addFieldToConstructor(
+      focus,
       spec,
-      constructorArgs: FieldConstructorArgs(
+      constructorArgs: FieldConstructorArgs.optional(
         style: constructorArgs?.style,
         thisPrefix: thisPrefix,
       ),
@@ -149,9 +131,8 @@ extension FieldEditor on CodeEditor {
   }
 
   /// Adds a constructor parameter only when it is not already present.
-  ///
-  /// This is the preferred helper for idempotent constructor transforms.
   CodeEditor addConstructorParamUnlessExists(
+    AstFocus focus,
     String name,
     String type, {
     bool isNullable = false,
@@ -159,8 +140,9 @@ extension FieldEditor on CodeEditor {
     bool thisPrefix = true,
     FieldConstructorArgs? constructorArgs,
   }) {
-    if (!hasConstructorParam(name)) {
+    if (!hasConstructorParam(focus, name)) {
       addConstructorParam(
+        focus,
         name,
         type,
         isNullable: isNullable,
@@ -172,16 +154,13 @@ extension FieldEditor on CodeEditor {
     return this;
   }
 
-
   CodeEditor _addFieldFromSpec(
+    AstFocus focus,
     FieldSpec spec, {
     required bool addToConstructor,
     FieldConstructorArgs? constructorArgs,
   }) {
-    if (_currentClass == null) {
-      throw StateError('No class selected. Call inClass() first.');
-    }
-
+    final classDecl = focus.asClass;
     final effectiveAddToConstructor = spec.isStatic ? false : addToConstructor;
 
     final modifiers = <String>[];
@@ -200,133 +179,60 @@ extension FieldEditor on CodeEditor {
     }
     fieldDeclaration.write(';');
 
-    final fields = getFields(_currentClass!);
+    final fields = getFields(classDecl);
     final fieldInsertOffset = fields.isNotEmpty
         ? fields.last.end
-        : findClassBodyStartOffset(_currentClass!);
+        : findClassBodyStartOffset(classDecl);
 
-    _patches.add(
-      SourcePatch(
-        fieldInsertOffset,
-        0,
-        fieldDeclaration.toString(),
-        description: 'Add field ${spec.name} to ${_currentClass!.name.lexeme}',
-      ),
+    insert(
+      fieldInsertOffset,
+      fieldDeclaration.toString(),
+      description: 'Add field ${spec.name} to ${classDecl.name.lexeme}',
     );
 
-    if (effectiveAddToConstructor &&
-        findConstructor(_currentClass!) != null) {
-      _wireFieldToConstructor(spec, constructorArgs: constructorArgs);
+    if (effectiveAddToConstructor && findConstructor(classDecl) != null) {
+      _wireFieldToConstructor(
+        focus,
+        spec,
+        constructorArgs: constructorArgs,
+      );
     }
 
     return this;
   }
 
   void _wireFieldToConstructor(
+    AstFocus focus,
     FieldSpec spec, {
     FieldConstructorArgs? constructorArgs,
   }) {
-    final constructor = findConstructor(_currentClass!);
+    final classDecl = focus.asClass;
+    final constructor = findConstructor(classDecl);
     if (constructor == null) {
-      throw StateError('No constructor found in ${_currentClass!.name.lexeme}');
+      throw StateError('No constructor found in ${classDecl.name.lexeme}');
     }
 
     final args = constructorArgs ?? const FieldConstructorArgs();
     final kind = resolveConstructorParamStyle(
       constructor,
-      _source,
-      emptyStyle: args.style ?? _preferences.emptyConstructorStyle,
+      source,
+      emptyStyle: args.style ?? preferences.emptyConstructorStyle,
     );
     final paramText = buildConstructorFieldParam(
       spec,
       kind,
       thisPrefix: args.thisPrefix,
     );
-    final insertion = planConstructorParamInsertion(
+    final plan = planConstructorParamInsertion(
       constructor,
-      _source,
+      source,
       kind,
       paramText,
     );
 
-    _patches.add(
-      SourcePatch(
-        insertion.offset,
-        insertion.length,
-        insertion.text,
-        description: 'Add ${spec.name} parameter to constructor',
-      ),
+    insertPlan(
+      plan,
+      description: 'Add ${spec.name} parameter to constructor',
     );
   }
 }
-
-/// Describes how constructor parameters are added to empty constructors.
-enum ConstructorParamStyle {
-  /// Named parameters in braces, e.g. `({required this.foo})`.
-  named,
-
-  /// Required positional parameters, e.g. `(this.foo)`.
-  positional,
-
-  /// Optional positional parameters in brackets, e.g. `([this.foo])`.
-  optionalPositional,
-}
-
-
-/// Describes a field to add and how it maps to a constructor parameter.
-class FieldSpec {
-  /// Field and constructor parameter name.
-  final String name;
-
-  /// Base type without a nullable suffix.
-  final String type;
-
-  /// When true, appends `?` to [type] for declarations unless already present.
-  final bool isNullable;
-
-  /// Optional initializer expression (source text, not quoted).
-  final String? defaultValue;
-
-  /// Whether the field is declared `final`.
-  final bool isFinal;
-
-  /// Whether the field is declared `const`.
-  final bool isConst;
-
-  /// Whether the field is declared `static`.
-  final bool isStatic;
-
-  /// Creates a field specification.
-  const FieldSpec({
-    required this.name,
-    required this.type,
-    this.isNullable = false,
-    this.defaultValue,
-    this.isFinal = true,
-    this.isConst = false,
-    this.isStatic = false,
-  });
-
-  /// Type string for field and non-`this` constructor parameters.
-  String get declarationType {
-    final base = type.trim();
-    if (!isNullable) return base;
-    if (base.endsWith('?')) return base;
-    return '$base?';
-  }
-}
-
-/// Per-call overrides when wiring a field to a constructor.
-class FieldConstructorArgs {
-  /// Overrides [CodemodPreferences.emptyConstructorStyle] for empty constructors.
-  final ConstructorParamStyle style;
-
-  /// When true, emits `this.name`; otherwise emits `type name`.
-  final bool thisPrefix;
-
-  /// Creates constructor wiring overrides.
-  const FieldConstructorArgs({this.style = ConstructorParamStyle.named, this.thisPrefix = true});
-  const FieldConstructorArgs.optional({ConstructorParamStyle? style, bool? thisPrefix}) : 
-  this(style: style ?? ConstructorParamStyle.named, thisPrefix: thisPrefix ?? true);
-}
-

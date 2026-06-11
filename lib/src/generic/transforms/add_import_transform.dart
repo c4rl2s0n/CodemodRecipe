@@ -1,7 +1,7 @@
 import 'package:analyzer/dart/ast/ast.dart';
 
 import '../../context.dart';
-import '../../dart/ast_helpers.dart';
+import '../../dart_codegen/ast_helpers/ast_helpers.dart';
 import '../../patch_helpers.dart';
 import '../../transform.dart';
 import 'resolvers.dart';

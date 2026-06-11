@@ -354,11 +354,77 @@ void main() {
     });
   });
 
+  group('AstFocus', () {
+    test('afterLastArgument follows the last named argument', () {
+      final focus = AstFocus.parse(_settingsGetterSource)
+          .classNamed('SettingsRepository')
+          .methodNamed('get')
+          .instanceCreation('Settings', returnExpressionOnly: true);
+
+      final offset = focus.afterLastArgument;
+      final result =
+          _settingsGetterSource.substring(0, offset) +
+          '\n      newField: _getNewField(),' +
+          _settingsGetterSource.substring(offset);
+
+      expect(result, contains('language: _getLanguage(),'));
+      expect(result, contains('newField: _getNewField(),'));
+      expect(
+        result.indexOf('newField'),
+        greaterThan(result.indexOf('language')),
+      );
+    });
+
+    test('planArgument appends after the last argument', () {
+      final focus = AstFocus.parse(_settingsGetterSource)
+          .classNamed('SettingsRepository')
+          .methodNamed('get')
+          .instanceCreation('Settings', returnExpressionOnly: true);
+      final plan = focus.planArgument('newField: _getNewField(),');
+
+      final result = applyPatches(_settingsGetterSource, [
+        SourcePatch(plan.offset, plan.length, plan.text),
+      ]);
+
+      expect(result, contains('language: _getLanguage(),'));
+      expect(result, contains('newField: _getNewField(),'));
+    });
+
+    test('returnExpressionOnly ignores nested instance creations', () {
+      const source = '''
+class Repo {
+  Settings get() {
+  final helper = transform(Settings(darkMode: true));
+  return Settings(language: _getLanguage());
+  }
+}
+''';
+
+      final focus = AstFocus.parse(source)
+          .classNamed('Repo')
+          .methodNamed('get')
+          .instanceCreation('Settings', returnExpressionOnly: true);
+
+      expect(focus.argumentsHaveNamed('language'), isTrue);
+      expect(focus.argumentsHaveNamed('darkMode'), isFalse);
+    });
+
+    test('argumentsHaveNamed detects existing named arguments', () {
+      final focus = AstFocus.parse(_settingsGetterSource)
+          .classNamed('SettingsRepository')
+          .methodNamed('get')
+          .instanceCreation('Settings', returnExpressionOnly: true);
+
+      expect(focus.argumentsHaveNamed('language'), isTrue);
+      expect(focus.argumentsHaveNamed('missing'), isFalse);
+    });
+  });
+
   group('CodeEditor', () {
     test('adds a method once', () {
+      final focus = AstFocus.parse(_source).classNamed('Counter');
       final patches = CodeEditor(_source)
-          .inClass('Counter')
-          .addMethodUnlessExists('increment', '''
+          .addMethodUnlessExists(focus, 'increment', '''
   void increment() {
     value++;
   }''')
@@ -369,8 +435,11 @@ void main() {
       expect(result, contains('void increment()'));
       expect(
         CodeEditor(result)
-            .inClass('Counter')
-            .addMethodUnlessExists('increment', 'void increment() {}')
+            .addMethodUnlessExists(
+              AstFocus.parse(result).classNamed('Counter'),
+              'increment',
+              'void increment() {}',
+            )
             .patches,
         isEmpty,
       );
@@ -378,8 +447,10 @@ void main() {
 
     test('adds a method to an empty class body', () {
       const source = 'class Empty {}';
+      final focus = AstFocus.parse(source).classNamed('Empty');
 
-      final result = CodeEditor(source).inClass('Empty').addMethodUnlessExists(
+      final result = CodeEditor(source).addMethodUnlessExists(
+        focus,
         'build',
         '''
   void build() {}''',
@@ -394,11 +465,9 @@ class Counter {
   const Counter();
 }
 ''';
+      final focus = AstFocus.parse(source).classNamed('Counter');
 
-      final result = CodeEditor(source)
-          .inClass('Counter')
-          .addField('value', 'int')
-          .generate();
+      final result = CodeEditor(source).addField(focus, 'value', 'int').generate();
 
       expect(result, contains('final int value;'));
       expect(result, contains('required this.value'));
@@ -407,10 +476,10 @@ class Counter {
 
     test('adds a nullable field type', () {
       const source = 'class Counter {}';
+      final focus = AstFocus.parse(source).classNamed('Counter');
 
       final result = CodeEditor(source)
-          .inClass('Counter')
-          .addField('name', 'String', isNullable: true, addToConstructor: false)
+          .addField(focus, 'name', 'String', isNullable: true, addToConstructor: false)
           .generate();
 
       expect(result, contains('final String? name;'));
@@ -423,11 +492,9 @@ class Counter {
   final int a;
 }
 ''';
+      final focus = AstFocus.parse(source).classNamed('Counter');
 
-      final result = CodeEditor(source)
-          .inClass('Counter')
-          .addField('b', 'int')
-          .generate();
+      final result = CodeEditor(source).addField(focus, 'b', 'int').generate();
 
       expect(result, contains('required this.b'));
     });
@@ -439,10 +506,10 @@ class Counter {
   final int a;
 }
 ''';
+      final focus = AstFocus.parse(source).classNamed('Counter');
 
       final result = CodeEditor(source)
-          .inClass('Counter')
-          .addField('b', 'String', isNullable: true)
+          .addField(focus, 'b', 'String', isNullable: true)
           .generate();
 
       expect(result, contains('final String? b;'));
@@ -457,10 +524,10 @@ class Counter {
   final int? a;
 }
 ''';
+      final focus = AstFocus.parse(source).classNamed('Counter');
 
       final result = CodeEditor(source)
-          .inClass('Counter')
-          .addField('b', 'int', defaultValue: '0')
+          .addField(focus, 'b', 'int', defaultValue: '0')
           .generate();
 
       expect(result, contains('this.b = 0'));
@@ -473,11 +540,9 @@ class Counter {
   final int a;
 }
 ''';
+      final focus = AstFocus.parse(source).classNamed('Counter');
 
-      final result = CodeEditor(source)
-          .inClass('Counter')
-          .addField('b', 'int')
-          .generate();
+      final result = CodeEditor(source).addField(focus, 'b', 'int').generate();
 
       expect(
         result.contains('this.a, this.b') ||
@@ -492,11 +557,9 @@ class Counter {
   Counter();
 }
 ''';
+      final focus = AstFocus.parse(source).classNamed('Counter');
 
-      final result = CodeEditor(source)
-          .inClass('Counter')
-          .addField('value', 'int')
-          .generate();
+      final result = CodeEditor(source).addField(focus, 'value', 'int').generate();
 
       expect(result, contains('({required this.value})'));
     });
@@ -507,13 +570,14 @@ class Counter {
   Counter();
 }
 ''';
+      final focus = AstFocus.parse(source).classNamed('Counter');
 
       final result = CodeEditor(
         source,
         preferences: const CodemodPreferences(
           emptyConstructorStyle: ConstructorParamStyle.positional,
         ),
-      ).inClass('Counter').addField('value', 'int').generate();
+      ).addField(focus, 'value', 'int').generate();
 
       expect(result, contains('Counter(this.value)'));
     });
@@ -524,10 +588,11 @@ class Counter {
   Counter();
 }
 ''';
+      final focus = AstFocus.parse(source).classNamed('Counter');
 
       final result = CodeEditor(source)
-          .inClass('Counter')
           .addField(
+            focus,
             'value',
             'int',
             constructorArgs: const FieldConstructorArgs(
@@ -547,17 +612,19 @@ class Counter {
 }
 ''';
       const spec = FieldSpec(name: 'value', type: 'int');
+      final focus = AstFocus.parse(source).classNamed('Counter');
 
       final result = CodeEditor(source)
-          .inClass('Counter')
-          .addFieldToConstructorUnlessExists(spec)
+          .addFieldToConstructorUnlessExists(focus, spec)
           .generate();
 
       expect(result, contains('required this.value'));
       expect(
         CodeEditor(result)
-            .inClass('Counter')
-            .addFieldToConstructorUnlessExists(spec)
+            .addFieldToConstructorUnlessExists(
+              AstFocus.parse(result).classNamed('Counter'),
+              spec,
+            )
             .patches,
         isEmpty,
       );
@@ -570,10 +637,10 @@ class Counter {
   final int value;
 }
 ''';
+      final focus = AstFocus.parse(source).classNamed('Counter');
 
       final result = CodeEditor(source)
-          .inClass('Counter')
-          .addField('count', 'int', addToConstructor: true, isStatic: true)
+          .addField(focus, 'count', 'int', addToConstructor: true, isStatic: true)
           .generate();
 
       expect(result, contains('static final int count;'));
@@ -582,10 +649,11 @@ class Counter {
 
     test('adds a const field with initializer', () {
       const source = 'class Counter {}';
+      final focus = AstFocus.parse(source).classNamed('Counter');
 
       final result = CodeEditor(source)
-          .inClass('Counter')
           .addField(
+            focus,
             'zero',
             'int',
             defaultValue: '0',
@@ -599,17 +667,20 @@ class Counter {
 
     test('adds a field once', () {
       const source = 'class Counter {}';
+      final focus = AstFocus.parse(source).classNamed('Counter');
 
       final result = CodeEditor(source)
-          .inClass('Counter')
-          .addFieldUnlessExists('value', 'int')
+          .addFieldUnlessExists(focus, 'value', 'int')
           .generate();
 
       expect(result, contains('final int value;'));
       expect(
         CodeEditor(result)
-            .inClass('Counter')
-            .addFieldUnlessExists('value', 'int')
+            .addFieldUnlessExists(
+              AstFocus.parse(result).classNamed('Counter'),
+              'value',
+              'int',
+            )
             .patches,
         isEmpty,
       );
@@ -673,7 +744,6 @@ class Counter {
         fieldName: (_) => 'name',
         fieldType: (_) => 'String',
         isNullable: true,
-        addToConstructor: false,
       );
 
       final patches = await transform.apply(source, CodemodContext());
@@ -709,5 +779,18 @@ class Counter {
 const _source = '''
 class Counter {
   int value = 0;
+}
+''';
+
+const _settingsGetterSource = '''
+class SettingsRepository {
+  @override
+  Settings get() {
+    return Settings(
+      darkMode: _getDarkMode(),
+      logTraffic: _getLogTraffic(),
+      language: _getLanguage(),
+    );
+  }
 }
 ''';

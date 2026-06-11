@@ -1,6 +1,7 @@
 import '../../context.dart';
-import '../../dart/code_editor.dart';
-import '../../dart/field_spec.dart';
+import '../../dart_codegen/ast_helpers/ast_helpers.dart';
+import '../../dart_codegen/code_editor.dart';
+import '../../dart_codegen/field_spec.dart';
 import '../../patch_helpers.dart';
 import '../../transform.dart';
 import 'resolvers.dart';
@@ -28,9 +29,10 @@ class AddConstructorParamTransform implements CodeTransform {
 
   @override
   Future<List<SourcePatch>> apply(String source, CodemodContext context) async {
+    final focus = AstFocus.parse(source).classNamed(className(context));
     return CodeEditor(source, preferences: context.preferences)
-        .inClass(className(context))
         .addConstructorParamUnlessExists(
+          focus,
           paramName(context),
           paramType(context),
           isNullable: isNullable,

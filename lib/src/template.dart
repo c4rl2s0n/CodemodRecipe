@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:mustache_template/mustache_template.dart';
 
 import 'context.dart';
-import 'dart/naming.dart';
+import 'dart_codegen/naming.dart';
 
 /// Renders inline or file-backed templates with codemod context values.
 ///

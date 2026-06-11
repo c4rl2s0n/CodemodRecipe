@@ -55,7 +55,7 @@ final addModelPropertyRecipe = CodemodRecipe(
           className: (ctx) => ctx.require('model'),
           fieldName: (ctx) => ctx.camel('property'),
           fieldType: (ctx) => ctx.require('fieldType'),
-          addToConstructor: true,
+          constructorArgs: const FieldConstructorArgs()
         ),
       ],
     ),

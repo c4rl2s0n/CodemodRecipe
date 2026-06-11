@@ -24,6 +24,7 @@ class CodemodRunResult {
 
 /// Action that runs after a recipe is successfully applied.
 abstract class PostExecution with CodemodStep {
+  const PostExecution();
 
   /// Runs this action.
   Future<void> run(CodemodContext context, CodemodRunResult result);
@@ -34,7 +35,7 @@ abstract class PostExecution with CodemodStep {
 /// Base class for post actions backed by an external process.
 abstract class ProcessPostExecutionBase extends PostExecution {
   /// Creates a process-backed post action.
-  ProcessPostExecutionBase();
+  const ProcessPostExecutionBase();
 
   /// Executable to run.
   String executable(CodemodContext context, CodemodRunResult result);

@@ -27,6 +27,8 @@ enum FileExistsStrategy {
 
 /// One recipe step that plans one or more file changes.
 abstract class CodemodOperation with CodemodStep {
+  const CodemodOperation();
+
   /// Collects planned changes for this operation.
   Future<List<FileChange>> collect(CodemodContext context);
   @override
@@ -57,7 +59,7 @@ class EditDartFileOperation extends CodemodOperation {
   final TransformResolver transforms;
 
   /// Creates an operation that edits an existing Dart file.
-  EditDartFileOperation({required this.path, required this.transforms});
+  const EditDartFileOperation({required this.path, required this.transforms});
 
   @override
   Future<List<FileChange>> collect(CodemodContext context) async {
@@ -93,7 +95,7 @@ class CreateFileOperation extends CodemodOperation {
   final String? previewLabel;
 
   /// Creates a file operation.
-  CreateFileOperation({
+  const CreateFileOperation({
     required this.path,
     required this.template,
     this.ifExists = FileExistsStrategy.fail,

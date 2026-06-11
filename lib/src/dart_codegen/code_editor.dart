@@ -7,29 +7,29 @@ import 'package:analyzer/dart/ast/ast.dart';
 
 import '../context.dart';
 import '../patch_helpers.dart';
-import 'ast_helpers.dart';
+import 'ast_helpers/ast_helpers.dart';
+import 'field_spec.dart';
+
+export 'field_spec.dart';
 
 part 'editing/field_editor.dart';
 
-/// Fluent editor for collecting AST-guided Dart source patches.
+/// Collects [SourcePatch]es for AST-guided Dart source edits.
 ///
-/// `CodeEditor` parses a Dart source string once and exposes chainable helpers
-/// for common class-level modifications. The editor only collects
-/// [SourcePatch]es; call [generate] or [applyPatches] to produce the modified
-/// source.
+/// Use [AstFocus] for navigation and this editor for patching. Call
+/// [generate] or read [patches] to produce the modified source.
 ///
 /// ## Example
 ///
 /// ```dart
-/// final editor = CodeEditor(source)
-///     .inClass('Counter')
-///     .addMethodUnlessExists('increment', '''
+/// final focus = AstFocus.parse(source).classNamed('Counter');
+/// final generated = CodeEditor(source)
+///     .addMethodUnlessExists(focus, 'increment', '''
 ///   void increment() {
 ///     value++;
 ///   }
-/// ''');
-///
-/// final generated = editor.generate();
+/// ''')
+///     .generate();
 /// ```
 class CodeEditor {
   final String _source;
@@ -37,13 +37,9 @@ class CodeEditor {
   final CodemodPreferences _preferences;
   final List<SourcePatch> _patches = [];
 
-  ClassDeclaration? _currentClass;
-
   CodeEditor._(this._source, this._unit, this._preferences);
 
   /// Parses [source] and creates an editor for collecting patches.
-  ///
-  /// Parsing uses the analyzer package without resolving imports or types.
   factory CodeEditor(
     String source, {
     CodemodPreferences preferences = const CodemodPreferences(),
@@ -51,75 +47,65 @@ class CodeEditor {
     return CodeEditor._(source, parseSource(source), preferences);
   }
 
-  /// Selects the class named [name] as the target for subsequent operations.
-  ///
-  /// Subsequent helpers such as [addMethod] and [addField] operate on this
-  /// selected class.
-  ///
-  /// Throws when no matching class declaration is found.
-  CodeEditor inClass(String name) {
-    final classDecl = findClassByName(_unit, name);
-    if (classDecl == null) {
-      throw StateError('Class "$name" not found in source');
-    }
-    _currentClass = classDecl;
+  /// The original source string.
+  String get source => _source;
+
+  /// Parsed compilation unit for [source].
+  CompilationUnit get unit => _unit;
+
+  /// Root navigation focus for [source].
+  AstFocus get root => AstFocus(_source, _unit, _unit);
+
+  /// Inserts [text] at [offset].
+  CodeEditor insert(int offset, String text, {String? description}) {
+    _patches.add(
+      SourcePatch(offset, 0, text, description: description),
+    );
     return this;
   }
 
-  /// Returns whether the selected class declares a method named [name].
-  ///
-  /// Only methods declared directly in the selected class are considered.
-  bool hasMethod(String name) {
-    if (_currentClass == null) {
-      throw StateError('No class selected. Call inClass() first.');
-    }
-    return hasMethodInClass(_currentClass!, name);
-  }
-
-  
-
-  /// Adds [code] as a method-like class member near existing members.
-  ///
-  /// The code should include the desired indentation and method body. The
-  /// editor inserts a blank line before the member.
-  CodeEditor addMethod(String code) {
-    if (_currentClass == null) {
-      throw StateError('No class selected. Call inClass() first.');
-    }
-
-    final insertOffset = findOptimalInsertionOffset(_currentClass!);
-
+  /// Applies an [InsertionPlan] as a patch.
+  CodeEditor insertPlan(InsertionPlan plan, {String? description}) {
     _patches.add(
       SourcePatch(
-        insertOffset,
-        0,
-        '\n\n$code',
-        description: 'Add method to ${_currentClass!.name.lexeme}',
+        plan.offset,
+        plan.length,
+        plan.text,
+        description: description,
       ),
+    );
+    return this;
+  }
+
+  /// Adds [code] as a method-like class member near existing members.
+  CodeEditor addMethod(AstFocus focus, String code) {
+    final classDecl = focus.asClass;
+
+    insert(
+      findOptimalInsertionOffset(classDecl),
+      '\n\n$code',
+      description: 'Add method to ${classDecl.name.lexeme}',
     );
 
     return this;
   }
 
-  /// Adds [code] only when the selected class has no method named [name].
-  ///
-  /// This is the preferred helper for idempotent transforms.
-  CodeEditor addMethodUnlessExists(String name, String code) {
-    if (!hasMethod(name)) {
-      addMethod(code);
+  /// Adds [code] only when the class has no method named [name].
+  CodeEditor addMethodUnlessExists(
+    AstFocus focus,
+    String name,
+    String code,
+  ) {
+    if (!focus.classHasMethod(name)) {
+      addMethod(focus, code);
     }
     return this;
   }
 
-
   /// Returns all patches accumulated so far.
-  ///
-  /// The returned list is immutable.
   List<SourcePatch> get patches => List.unmodifiable(_patches);
 
   /// Generates the modified source code with all patches applied.
-  ///
-  /// This does not write to disk.
   String generate() => applyPatches(_source, _patches);
 
   /// Returns true if any patches have been generated.
@@ -128,4 +114,5 @@ class CodeEditor {
   /// Returns the number of patches.
   int get changeCount => _patches.length;
 
+  CodemodPreferences get preferences => _preferences;
 }
