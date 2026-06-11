@@ -10,8 +10,6 @@ import '../patch_helpers.dart';
 import 'ast_helpers/ast_helpers.dart';
 import 'field_spec.dart';
 
-export 'field_spec.dart';
-
 part 'editing/field_editor.dart';
 
 /// Collects [SourcePatch]es for AST-guided Dart source edits.

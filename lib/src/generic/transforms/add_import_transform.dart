@@ -4,11 +4,10 @@ import '../../context.dart';
 import '../../dart_codegen/ast_helpers/ast_helpers.dart';
 import '../../patch_helpers.dart';
 import '../../transform.dart';
-import 'resolvers.dart';
 
 /// Adds a Dart import directive unless it already exists.
 class AddImportTransform implements CodeTransform {
-  final StringResolver uri;
+  final String uri;
 
   /// Creates an import transform.
   const AddImportTransform({required this.uri});
@@ -18,7 +17,7 @@ class AddImportTransform implements CodeTransform {
 
   @override
   Future<List<SourcePatch>> apply(String source, CodemodContext context) async {
-    final importUri = uri(context);
+    final importUri = uri;
     final unit = parseSource(source);
     final imports = unit.directives.whereType<ImportDirective>().toList();
 

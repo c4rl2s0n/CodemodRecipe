@@ -4,14 +4,13 @@ import '../../dart_codegen/code_editor.dart';
 import '../../dart_codegen/field_spec.dart';
 import '../../patch_helpers.dart';
 import '../../transform.dart';
-import 'resolvers.dart';
 
 /// Adds a field to a class unless that field already exists.
 class AddFieldTransform implements CodeTransform {
-  final StringResolver className;
-  final StringResolver fieldName;
-  final StringResolver fieldType;
-  final StringResolver? defaultValue;
+  final String className;
+  final String fieldName;
+  final String fieldType;
+  final String? defaultValue;
   final bool isNullable;
   final bool isFinal;
   final bool isConst;
@@ -33,14 +32,14 @@ class AddFieldTransform implements CodeTransform {
 
   @override
   Future<List<SourcePatch>> apply(String source, CodemodContext context) async {
-    final focus = AstFocus.parse(source).classNamed(className(context));
+    final focus = AstFocus.parse(source).classNamed(className);
     return CodeEditor(source, preferences: context.preferences)
         .addFieldUnlessExists(
           focus,
-          fieldName(context),
-          fieldType(context),
+          fieldName,
+          fieldType,
           isNullable: isNullable,
-          defaultValue: defaultValue?.call(context),
+          defaultValue: defaultValue,
           isFinal: isFinal,
           isConst: isConst,
           isStatic: isStatic,

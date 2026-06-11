@@ -84,7 +84,7 @@ class CodemodTemplate {
   }
 
   _PreparedTemplate _prepare(String source, CodemodContext context) {
-    final values = <String, String>{...context.values};
+    final values = context.values;
     var index = 0;
     final rewritten = source.replaceAllMapped(
       RegExp(r'\{\{\s*([A-Za-z_]\w*)(?::(snake|camel|pascal))?\s*\}\}'),
