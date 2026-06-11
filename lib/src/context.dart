@@ -135,6 +135,10 @@ class CodemodContext {
     return value;
   }
 
+
+  /// Returns the named value as a string.
+  String asString(String name) => stringifyArgValue(require<Object>(name));
+
   /// Returns the named value as a string.
   String text(String name) => require<String>(name);
 
