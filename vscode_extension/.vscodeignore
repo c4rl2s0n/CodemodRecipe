@@ -1,4 +1,5 @@
 .vscode/**
+build.sh
 src/**
 node_modules/**
 tsconfig.json

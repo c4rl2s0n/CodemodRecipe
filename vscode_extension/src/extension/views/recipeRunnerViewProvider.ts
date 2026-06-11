@@ -6,7 +6,6 @@ import { ExtensionConfig } from '../config/extensionConfig';
 import { DartBridge } from '../host/dartBridge';
 import {
   EXTENSION_TO_WEBVIEW,
-  RUNNER_TABS,
   WEBVIEW_TO_EXTENSION,
   isWebviewToExtensionMessage,
   type FilePreview,
@@ -35,7 +34,7 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
     this.view = webviewView;
     webviewView.webview.options = {
       enableScripts: true,
-      localResourceRoots: [vscode.Uri.joinPath(this.extensionUri, 'src/media')],
+      localResourceRoots: [vscode.Uri.joinPath(this.extensionUri, 'media')],
     };
     const hadPendingRender = this.renderPending;
     this.ensureWebviewHtml();
@@ -82,14 +81,6 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
         break;
       case WEBVIEW_TO_EXTENSION.bootstrapRetry:
         await vscode.commands.executeCommand(COMMANDS.bootstrap);
-        break;
-      case WEBVIEW_TO_EXTENSION.showRecipes:
-        this.state.activeTab = RUNNER_TABS.recipes;
-        this.postState();
-        break;
-      case WEBVIEW_TO_EXTENSION.showRunner:
-        this.state.activeTab = RUNNER_TABS.runner;
-        this.postState();
         break;
       case WEBVIEW_TO_EXTENSION.selectRecipe:
         await this.selectRecipe(message.id);

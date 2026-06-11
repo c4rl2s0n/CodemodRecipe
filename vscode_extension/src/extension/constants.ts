@@ -42,7 +42,7 @@ export const DEFAULT_HOST_CANDIDATES = [
 ] as const;
 
 export const WEBVIEW_ASSETS = {
-  html: ['src/media', 'recipeView.html'],
-  css: ['src/media', 'recipeView.css'],
-  script: ['src/media', 'recipeView.js'],
+  html: ['media', 'recipeView.html'],
+  css: ['media', 'recipeView.css'],
+  script: ['media', 'recipeView.js'],
 } as const;

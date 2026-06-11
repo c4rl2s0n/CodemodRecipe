@@ -3,8 +3,6 @@ import type { FilePreview, SelectionPayload, RecipeViewState } from './types';
 export const WEBVIEW_TO_EXTENSION = {
   ready: 'ready',
   bootstrapRetry: 'bootstrapRetry',
-  showRecipes: 'showRecipes',
-  showRunner: 'showRunner',
   selectRecipe: 'selectRecipe',
   refreshRecipes: 'refreshRecipes',
   configureHost: 'configureHost',
@@ -27,8 +25,6 @@ export const EXTENSION_TO_WEBVIEW = {
 export type WebviewToExtensionMessage =
   | { type: typeof WEBVIEW_TO_EXTENSION.ready }
   | { type: typeof WEBVIEW_TO_EXTENSION.bootstrapRetry }
-  | { type: typeof WEBVIEW_TO_EXTENSION.showRecipes }
-  | { type: typeof WEBVIEW_TO_EXTENSION.showRunner }
   | { type: typeof WEBVIEW_TO_EXTENSION.selectRecipe; id: string }
   | { type: typeof WEBVIEW_TO_EXTENSION.refreshRecipes }
   | { type: typeof WEBVIEW_TO_EXTENSION.configureHost }

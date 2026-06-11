@@ -15,7 +15,7 @@ export default defineConfig({
     __VUE_PROD_HYDRATION_MISMATCH_DETAILS__: 'false',
   },
   build: {
-    outDir: path.join(webviewUiRoot, '../media'),
+    outDir: path.join(webviewUiRoot, '../../media'),
     emptyOutDir: false,
     cssCodeSplit: false,
     lib: {

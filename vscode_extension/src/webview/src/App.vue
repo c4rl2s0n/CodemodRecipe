@@ -78,12 +78,6 @@ let unsubscribe: (() => void) | undefined;
 function switchTab(tab: RunnerTab) {
   activeTab.value = tab;
   persistUiState();
-  postToExtension({
-    type:
-      tab === RUNNER_TABS.recipes
-        ? WEBVIEW_TO_EXTENSION.showRecipes
-        : WEBVIEW_TO_EXTENSION.showRunner,
-  });
 }
 
 function retryBootstrap(): void {
