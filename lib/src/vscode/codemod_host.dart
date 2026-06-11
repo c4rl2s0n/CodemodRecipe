@@ -366,10 +366,33 @@ class CodemodHost {
 
     final context = CodemodContext(const {}, preferences);
     final rawArgs = request['args'];
+    final requestValues = <String, String>{};
     if (rawArgs is Map) {
       rawArgs.forEach((key, value) {
-        if (value != null) context.set(key.toString(), value.toString());
+        if (value != null) {
+          requestValues[key.toString()] = value.toString();
+        }
       });
+    }
+
+    for (final arg in recipe.args) {
+      if (arg.hidden) {
+        arg.contributeToContext(context);
+        continue;
+      }
+      final error = arg.contributeToContext(
+        context,
+        rawValue: requestValues[arg.name],
+        hiddenWins: true,
+      );
+      if (error != null && error.startsWith('--')) {
+        return _ResolvedRecipe(
+          error: 'Missing required arguments: ${arg.name}',
+        );
+      }
+      if (error != null) {
+        return _ResolvedRecipe(error: error);
+      }
     }
 
     return _ResolvedRecipe(recipe: recipe, context: context);
@@ -388,7 +411,7 @@ class CodemodHost {
     }
 
     for (final arg in recipe.args) {
-      final message = arg.validate?.call(context.get(arg.name), context);
+      final message = arg.validateInContext(context);
       if (message != null) return message;
     }
     return null;

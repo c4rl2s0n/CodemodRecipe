@@ -54,9 +54,9 @@ Future<void> main(List<String> args) {
 final addMethodRecipe = CodemodRecipe(
   name: 'add_method',
   args: [
-    CodemodArg.required('file'),
-    CodemodArg.required('class'),
-    CodemodArg.required('method'),
+    CodemodArg<String>.required('file'),
+    CodemodArg<String>.required('class'),
+    CodemodArg<String>.required('method'),
   ],
   operations: [
     EditDartFileOperation(
@@ -136,6 +136,7 @@ See the [API documentation](https://pub.dev/documentation/codemod_recipe/latest/
 
 Key components:
 
+- **CodemodArg\<T\>**: Typed recipe arguments (`String`, `bool`, `int`, `double`, `Enum`). Use `CodemodArg<String>.required(...)`, `CodemodArg<bool>.optional(defaultsTo: false)`, and `CodemodArg<String>.fixed(...)` for workspace-pinned hidden args. `inputKind` is inferred for non-`String` types (`bool` → checkbox in the VS Code UI).
 - **CodemodRecipe**: Define recipes with arguments, operations, and post-execution actions. Use `CodemodRecipe.compose(steps: ...)` to mix recipes, operations, and post-execution actions in one ordered list.
 - **CodemodStep**: Marker interface implemented by recipes, operations, and post-execution actions for composition.
 - **CodemodRunner**: Execute recipes with CLI parsing and dry-run/apply support.

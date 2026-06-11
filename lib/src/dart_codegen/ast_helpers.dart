@@ -7,6 +7,7 @@
 import 'package:analyzer/dart/analysis/utilities.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
+import 'package:codemod_recipe/codemod_recipe.dart';
 
 /// Parses Dart [source] into an unresolved analyzer compilation unit.
 CompilationUnit parseSource(String source, {String path = '<unknown>'}) {

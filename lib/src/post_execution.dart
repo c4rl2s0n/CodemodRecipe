@@ -34,7 +34,7 @@ abstract class PostExecution with CodemodStep {
 /// Base class for post actions backed by an external process.
 abstract class ProcessPostExecutionBase extends PostExecution {
   /// Creates a process-backed post action.
-  const ProcessPostExecutionBase();
+  ProcessPostExecutionBase();
 
   /// Executable to run.
   String executable(CodemodContext context, CodemodRunResult result);

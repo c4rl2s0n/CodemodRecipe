@@ -1,3 +1,4 @@
+import 'arg_codec.dart';
 import 'context.dart';
 import 'operation.dart';
 import 'post_execution.dart';
@@ -23,6 +24,9 @@ enum CodemodArgInputKind {
 
   /// Symbol name input such as class, method, field, or variable.
   symbol,
+
+  /// Boolean flag input, rendered as a checkbox in editor integrations.
+  boolean,
 }
 
 /// Well-known editor context values that can pre-fill recipe arguments.
@@ -42,73 +46,136 @@ class CodemodContextKey {
   const CodemodContextKey._();
 }
 
+/// Wire-level operations shared by all [CodemodArg] value types.
+abstract interface class CodemodArgDescriptor {
+  String get name;
+  String? get abbr;
+  String? get help;
+  bool get required;
+  bool get hidden;
+  CodemodArgInputKind get resolvedInputKind;
+  List<String> get options;
+  bool get allowCustomValue;
+  String? get contextKey;
+
+  /// Whether this argument should appear in CLI and editor UIs.
+  bool get isUserFacing;
+
+  /// Default value serialized for CLI and schema output.
+  String? get serializedDefault;
+
+  /// Injects this argument into [context], parsing [rawValue] when provided.
+  String? contributeToContext(
+    CodemodContext context, {
+    String? rawValue,
+    bool hiddenWins = false,
+  });
+
+  /// Returns a validation error message, or null when valid.
+  String? validateInContext(CodemodContext context);
+}
+
+CodemodArgInputKind _inferredInputKind<T extends Object>() {
+  if (T == bool) return CodemodArgInputKind.boolean;
+  if (T == int || T == double) return CodemodArgInputKind.text;
+  if (<T>[] is List<Enum>) return CodemodArgInputKind.enumeration;
+  return CodemodArgInputKind.text;
+}
+
+List<String> _resolvedOptions<T extends Object>({
+  required List<String> options,
+  List<T>? enumValues,
+}) {
+  if (options.isNotEmpty) return options;
+  if (enumValues != null) {
+    return enumValues.map((value) => (value as Enum).name).toList();
+  }
+  return const [];
+}
+
 /// Describes one command-line value accepted by a codemod recipe.
 ///
 /// Arguments define the CLI interface for a codemod. Each argument can be
-/// required or optional, with optional support for default values and
-/// custom validation.
+/// required, optional, or fixed (hidden workspace-pinned). Values are typed
+/// at recipe definition time and serialized to strings in [CodemodContext].
 ///
 /// ## Example
 ///
 /// ```dart
 /// final args = [
-///   CodemodArg.required('file', help: 'Path to the Dart file'),
-///   CodemodArg.required('class', abbr: 'c', help: 'Class name'),
-///   CodemodArg.optional(
+///   CodemodArg<String>.required(
+///     'file',
+///     inputKind: CodemodArgInputKind.file,
+///   ),
+///   CodemodArg<bool>.optional(
 ///     'format',
-///     defaultsTo: 'true',
+///     defaultsTo: true,
 ///     help: 'Whether to format after changes',
 ///   ),
 /// ];
 /// ```
-class CodemodArg {
+class CodemodArg<T extends Object> implements CodemodArgDescriptor {
   /// Long option name, without the leading `--`.
   ///
   /// This is the primary way users specify the argument on the command line.
   /// Must be a valid Dart identifier (letters, numbers, underscores, starting
   /// with a letter or underscore).
+  @override
   final String name;
 
   /// Optional one-character abbreviation for CLI usage.
   ///
   /// When provided, users can specify the argument with a single dash followed
   /// by this character (e.g., `-f` for a file argument).
+  @override
   final String? abbr;
 
   /// User-facing help text shown by the runner.
   ///
   /// Displayed in the `--help` output to explain what this argument is for.
+  @override
   final String? help;
 
   /// Whether the runner should reject missing or empty values.
   ///
   /// When true, the codemod will fail if this argument is not provided.
+  @override
   final bool required;
 
-  /// Default value passed to the CLI parser for optional args.
+  /// Typed default used when the user does not provide this argument.
   ///
   /// Only used when [required] is false. The value is used when the user
   /// does not provide this argument on the command line.
-  final String? defaultsTo;
+  final T? defaultsTo;
 
-  /// Preferred UI control for this argument in editor integrations.
-  final CodemodArgInputKind inputKind;
+  @override
+  final bool hidden;
 
   /// Suggested values shown by editor integrations.
   ///
   /// When non-empty, the extension should present these as dropdown or
   /// combobox suggestions.
+  late final CodemodArgInputKind? _inputKind;
+
+  /// Preferred UI control for this argument in editor integrations.
+  CodemodArgInputKind? get inputKind => _inputKind;
+
+  @override
   final List<String> options;
 
   /// Whether editor integrations should allow values outside [options].
+  @override
   final bool allowCustomValue;
 
   /// Optional key used to pre-fill this argument from active editor context.
   ///
   /// Common keys are exposed via [CodemodContextKey].
+  @override
   final String? contextKey;
 
-  /// Optional validation hook run after CLI values are collected.
+  final ArgCodec<T> codec;
+
+  /// Optional validation hook run after values are parsed.
   ///
   /// Return a non-null string to report an error message. Return null to
   /// indicate the value is valid.
@@ -126,21 +193,38 @@ class CodemodArg {
   ///   },
   /// )
   /// ```
-  final String? Function(String? value, CodemodContext context)? validate;
+  final String? Function(T? value, CodemodContext context)? validate;
+
+  @override
+  CodemodArgInputKind get resolvedInputKind =>
+      _inputKind ?? _inferredInputKind<T>();
+
+  @override
+  bool get isUserFacing => !hidden;
+
+  @override
+  String? get serializedDefault =>
+      defaultsTo == null ? null : codec.serialize(defaultsTo as T);
 
   /// Creates a custom argument descriptor.
-  const CodemodArg({
+  CodemodArg({
     required this.name,
     this.abbr,
     this.help,
     this.required = false,
     this.defaultsTo,
-    this.inputKind = CodemodArgInputKind.text,
-    this.options = const [],
+    this.hidden = false,
+    CodemodArgInputKind? inputKind,
+    List<String> options = const [],
     this.allowCustomValue = true,
     this.contextKey,
     this.validate,
-  });
+    List<T>? enumValues,
+    ArgCodec<T>? codec,
+  }) : assert(!hidden || (!required && defaultsTo != null)),
+       _inputKind = inputKind,
+       options = _resolvedOptions(options: options, enumValues: enumValues),
+       codec = codec ?? _codecFor<T>(enumValues: enumValues);
 
   /// Creates a required command-line option.
   ///
@@ -151,17 +235,23 @@ class CodemodArg {
   /// ```dart
   /// CodemodArg.required('file', help: 'Path to the Dart file')
   /// ```
-  const CodemodArg.required(
+  CodemodArg.required(
     this.name, {
     this.abbr,
     this.help,
-    this.inputKind = CodemodArgInputKind.text,
-    this.options = const [],
+    CodemodArgInputKind? inputKind,
+    List<String> options = const [],
     this.allowCustomValue = true,
     this.contextKey,
     this.validate,
+    List<T>? enumValues,
+    ArgCodec<T>? codec,
   }) : required = true,
-       defaultsTo = null;
+       defaultsTo = null,
+       hidden = false,
+       _inputKind = inputKind,
+       options = _resolvedOptions(options: options, enumValues: enumValues),
+       codec = codec ?? _codecFor<T>(enumValues: enumValues);
 
   /// Creates an optional command-line option.
   ///
@@ -177,17 +267,99 @@ class CodemodArg {
   ///   help: 'Output directory',
   /// )
   /// ```
-  const CodemodArg.optional(
+  CodemodArg.optional(
     this.name, {
     this.abbr,
     this.help,
     this.defaultsTo,
-    this.inputKind = CodemodArgInputKind.text,
-    this.options = const [],
+    this.hidden = false,
+    CodemodArgInputKind? inputKind,
+    List<String> options = const [],
     this.allowCustomValue = true,
     this.contextKey,
     this.validate,
-  }) : required = false;
+    List<T>? enumValues,
+    ArgCodec<T>? codec,
+  }) : assert(!hidden || defaultsTo != null),
+       required = false,
+       _inputKind = inputKind,
+       options = _resolvedOptions(options: options, enumValues: enumValues),
+       codec = codec ?? _codecFor<T>(enumValues: enumValues);
+
+  /// Creates a workspace-pinned argument excluded from CLI and editor UIs.
+  ///
+  /// Equivalent to [CodemodArg.optional] with [hidden] true and [defaultsTo]
+  /// set to [value].
+  CodemodArg.fixed(
+    this.name,
+    T value, {
+    this.hidden = true,
+    this.help,
+    this.validate,
+    List<T>? enumValues,
+    ArgCodec<T>? codec,
+  }) : required = false,
+       defaultsTo = value,
+       abbr = null,
+       _inputKind = null,
+       options = _resolvedOptions(options: const [], enumValues: enumValues),
+       allowCustomValue = false,
+       contextKey = null,
+       codec = codec ?? _codecFor<T>(enumValues: enumValues);
+
+  static ArgCodec<T> _codecFor<T extends Object>({List<T>? enumValues}) {
+    if (enumValues != null) {
+      return ArgCodec.forEnumValues(enumValues);
+    }
+    return ArgCodec.of<T>();
+  }
+
+  @override
+  String? contributeToContext(
+    CodemodContext context, {
+    String? rawValue,
+    bool hiddenWins = false,
+  }) {
+    if (hidden) {
+      context.set(name, serializedDefault!);
+      return null;
+    }
+
+    if (hiddenWins && context.has(name)) {
+      return null;
+    }
+
+    final effectiveRaw = rawValue ?? serializedDefault;
+    if (effectiveRaw == null || effectiveRaw.isEmpty) {
+      if (required) {
+        return '--$name';
+      }
+      return null;
+    }
+
+    final parsed = codec.parse(effectiveRaw);
+    if (parsed == null) {
+      return 'Invalid value for --$name: expected ${_typeLabel<T>()}';
+    }
+
+    context.set(name, codec.serialize(parsed));
+    return null;
+  }
+
+  @override
+  String? validateInContext(CodemodContext context) {
+    final parsed = codec.parse(context.get(name));
+    return validate?.call(parsed, context);
+  }
+
+  static String _typeLabel<T extends Object>() {
+    if (T == bool) return 'bool';
+    if (T == int) return 'int';
+    if (T == double) return 'double';
+    if (T == String) return 'string';
+    if (<T>[] is List<Enum>) return 'enum';
+    return 'value';
+  }
 }
 
 /// User-facing template preview metadata for editor integrations.
@@ -258,7 +430,7 @@ class CodemodRecipe with CodemodStep {
   /// Command-line options accepted by this recipe.
   ///
   /// These define the arguments users can pass to configure the codemod.
-  final List<CodemodArg> args;
+  final List<CodemodArgDescriptor> args;
 
   /// Ordered file operations this recipe applies.
   ///
@@ -319,11 +491,11 @@ class CodemodRecipe with CodemodStep {
   factory CodemodRecipe.compose({
     required String name,
     String description = '',
-    List<CodemodArg> args = const [],
+    List<CodemodArgDescriptor> args = const [],
     required List<CodemodStep> steps,
     List<RecipeTemplatePreview> previewTemplates = const [],
   }) {
-    final mergedArgs = <String, CodemodArg>{};
+    final mergedArgs = <String, CodemodArgDescriptor>{};
     for (final arg in args) {
       mergedArgs[arg.name] = arg;
     }
@@ -334,11 +506,11 @@ class CodemodRecipe with CodemodStep {
 
     for (final step in steps) {
       for (final arg in step.args) {
-            mergedArgs.putIfAbsent(arg.name, () => arg);
-          }
-          operations.addAll(step.operations);
-          postExecution.addAll(step.postExecution);
-          mergedPreviewTemplates.addAll(step.previewTemplates);
+        mergedArgs.putIfAbsent(arg.name, () => arg);
+      }
+      operations.addAll(step.operations);
+      postExecution.addAll(step.postExecution);
+      mergedPreviewTemplates.addAll(step.previewTemplates);
     }
 
     return CodemodRecipe(

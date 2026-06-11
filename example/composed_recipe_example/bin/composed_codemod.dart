@@ -14,9 +14,15 @@ Future<void> main(List<String> args) {
 }
 
 // Shared argument definitions
-const fileArg = CodemodArg.required('file', help: 'Path to the Dart file');
-const modelArg = CodemodArg.required('model', help: 'Name of the model class');
-const propertyArg = CodemodArg.required(
+final fileArg = CodemodArg<String>.required(
+  'file',
+  help: 'Path to the Dart file',
+);
+final modelArg = CodemodArg<String>.required(
+  'model',
+  help: 'Name of the model class',
+);
+final propertyArg = CodemodArg<String>.required(
   'property',
   help: 'Name of the property to add',
 );
@@ -40,7 +46,7 @@ final addModelImportRecipe = CodemodRecipe(
 // Second recipe: Add property to the model class
 final addModelPropertyRecipe = CodemodRecipe(
   name: 'add_model_property',
-  args: [fileArg, modelArg, propertyArg],
+  args: [fileArg, modelArg, propertyArg, CodemodArg<String>.required('fieldType')],
   operations: [
     EditDartFileOperation(
       path: (context) => context.require('file'),
@@ -48,7 +54,7 @@ final addModelPropertyRecipe = CodemodRecipe(
         AddFieldTransform(
           className: (ctx) => ctx.require('model'),
           fieldName: (ctx) => ctx.camel('property'),
-          fieldType: (_) => 'String',
+          fieldType: (ctx) => ctx.require('fieldType'),
           addToConstructor: true,
         ),
       ],
@@ -60,9 +66,10 @@ final addModelPropertyRecipe = CodemodRecipe(
 final composedRecipe = CodemodRecipe.compose(
   name: 'composed_codemod',
   description: 'Composes add_model_import and add_model_property recipes',
+  args: [CodemodArg<String>.fixed('fieldType', 'String')],
   steps: [
     addModelImportRecipe,
     addModelPropertyRecipe,
-    const DartFormatPostExecution(),
+    DartFormatPostExecution(),
   ],
 );

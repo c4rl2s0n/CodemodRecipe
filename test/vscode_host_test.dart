@@ -8,17 +8,17 @@ CodemodRecipe _addMethodRecipe() {
     name: 'add_method',
     description: 'Adds a method to a class',
     args: [
-      CodemodArg.required(
+      CodemodArg<String>.required(
         'file',
         inputKind: CodemodArgInputKind.file,
         contextKey: CodemodContextKey.file,
       ),
-      CodemodArg.required(
+      CodemodArg<String>.required(
         'class',
         inputKind: CodemodArgInputKind.symbol,
         contextKey: CodemodContextKey.dartClass,
       ),
-      CodemodArg.required(
+      CodemodArg<String>.required(
         'method',
         inputKind: CodemodArgInputKind.symbol,
         options: ['reset', 'increment'],
@@ -46,10 +46,10 @@ CodemodRecipe _addPropertyAccessorsRecipe() {
   return CodemodRecipe(
     name: 'add_property_accessors',
     args: [
-      CodemodArg.required('file'),
-      CodemodArg.required('class'),
-      CodemodArg.required('property'),
-      CodemodArg.optional('type', defaultsTo: 'int'),
+      CodemodArg<String>.required('file'),
+      CodemodArg<String>.required('class'),
+      CodemodArg<String>.required('property'),
+      CodemodArg<String>.optional('type', defaultsTo: 'int'),
     ],
     operations: [
       EditDartFileOperation(
@@ -85,10 +85,10 @@ CodemodRecipe _scaffoldAndWireServiceRecipe() {
   return CodemodRecipe(
     name: 'scaffold_and_wire_service',
     args: [
-      CodemodArg.required('root'),
-      CodemodArg.required('file'),
-      CodemodArg.required('class'),
-      CodemodArg.required('service'),
+      CodemodArg<String>.required('root'),
+      CodemodArg<String>.required('file'),
+      CodemodArg<String>.required('class'),
+      CodemodArg<String>.required('service'),
     ],
     operations: [
       CreateFileOperation.templatePath(
@@ -132,10 +132,46 @@ void main() {
       expect((args.last as Map)['options'], ['reset', 'increment']);
     });
 
+    test('omits hidden fixed args from serialized schema', () {
+      final recipe = CodemodRecipe.compose(
+        name: 'composed',
+        args: [CodemodArg<String>.fixed('root', 'lib/features')],
+        steps: [
+          CodemodRecipe(
+            name: 'step',
+            args: [CodemodArg<String>.required('feature')],
+            operations: const [],
+          ),
+        ],
+      );
+
+      final json = RecipeSchema.recipeToJson(recipe);
+      final args = json['args'] as List;
+      expect(args.map((a) => (a as Map)['name']), ['feature']);
+    });
+
+    test('serializes bool input kind and typed default', () {
+      final recipe = CodemodRecipe(
+        name: 'flags',
+        args: [
+          CodemodArg<bool>.optional(
+            'addToConstructor',
+            defaultsTo: true,
+          ),
+        ],
+        operations: const [],
+      );
+
+      final json = RecipeSchema.recipeToJson(recipe);
+      final arg = (json['args'] as List).single as Map;
+      expect(arg['inputKind'], 'bool');
+      expect(arg['defaultsTo'], 'true');
+    });
+
     test('derives template previews from template-path create operations', () {
       final recipe = CodemodRecipe(
         name: 'scaffold',
-        args: [CodemodArg.required('feature')],
+        args: [CodemodArg<String>.required('feature')],
         operations: [
           CreateFileOperation.templatePath(
             pathTemplate: 'lib/{{feature:snake}}.dart',

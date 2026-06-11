@@ -5,6 +5,7 @@
 
 import 'package:analyzer/dart/ast/ast.dart';
 
+import '../context.dart';
 import '../patch_helpers.dart';
 import 'ast_helpers.dart';
 

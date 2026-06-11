@@ -14,6 +14,13 @@ const inputKind = computed(() => effectiveInputKind(props.arg));
 
 const listId = computed(() => `options-${props.arg.name}`);
 
+const isChecked = computed({
+  get: () => model.value === 'true',
+  set: (checked: boolean) => {
+    model.value = checked ? 'true' : 'false';
+  },
+});
+
 function pickPath() {
   const type =
     inputKind.value === ARG_INPUT_KIND.directory
@@ -28,7 +35,15 @@ function pickPath() {
     {{ arg.name }}{{ arg.required ? ' *' : '' }}
     <span v-if="arg.help" class="help"> — {{ arg.help }}</span>
   </label>
-  <div class="row">
+  <div v-if="inputKind === ARG_INPUT_KIND.bool" class="row">
+    <input
+      :id="'arg-' + arg.name"
+      v-model="isChecked"
+      type="checkbox"
+      @keydown.enter.prevent="$emit('submit-preview')"
+    />
+  </div>
+  <div v-else class="row">
     <datalist v-if="arg.options?.length" :id="listId">
       <option v-for="opt in arg.options" :key="opt" :value="opt" />
     </datalist>

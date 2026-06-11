@@ -4,7 +4,7 @@ import '../../post_execution.dart';
 /// Runs `dart format` on changed Dart files.
 class DartFormatPostExecution extends ProcessPostExecutionBase {
   /// Creates a Dart format post action.
-  const DartFormatPostExecution();
+  DartFormatPostExecution();
 
   @override
   String executable(CodemodContext context, CodemodRunResult result) => 'dart';

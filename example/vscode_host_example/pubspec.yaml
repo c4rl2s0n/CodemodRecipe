@@ -6,6 +6,8 @@ environment:
   sdk: ^3.10.0
 
 dependencies:
+  flutter:
+    sdk: flutter
   codemod_recipe:
     path: ../..
 
@@ -14,3 +16,6 @@ dev_dependencies:
 
 executables:
   codemod_host: codemod_host
+
+flutter:
+  uses-material-design: true

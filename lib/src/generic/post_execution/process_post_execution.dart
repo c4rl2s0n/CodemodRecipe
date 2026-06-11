@@ -8,7 +8,7 @@ class ProcessPostExecution extends ProcessPostExecutionBase {
   final String? _workingDirectory;
 
   /// Creates a process post action.
-  const ProcessPostExecution(
+  ProcessPostExecution(
     this._executable,
     this._arguments, {
     String? workingDirectory,

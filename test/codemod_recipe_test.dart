@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:codemod_recipe/codemod_recipe.dart';
 import 'package:test/test.dart';
 
+enum _TestMode { increment, reset }
+
 void main() {
   group('patch helpers', () {
     test('preserves declaration order for same-offset insertions', () {
@@ -43,9 +45,24 @@ void main() {
     });
   });
 
+  group('arg codecs', () {
+    test('round-trips bool values', () {
+      const codec = BoolArgCodec();
+      expect(codec.parse('true'), isTrue);
+      expect(codec.parse('false'), isFalse);
+      expect(codec.serialize(true), 'true');
+    });
+
+    test('round-trips int values', () {
+      const codec = IntArgCodec();
+      expect(codec.parse('42'), 42);
+      expect(codec.serialize(42), '42');
+    });
+  });
+
   group('recipes', () {
     test('compose deduplicates shared args and concatenates operations', () {
-      final arg = CodemodArg.required('name');
+      final arg = CodemodArg<String>.required('name');
       final first = CodemodRecipe(
         name: 'first',
         args: [arg],
@@ -78,18 +95,83 @@ void main() {
       expect(composed.postExecution, isEmpty);
     });
 
-    test('compose keeps explicit arg definitions before recipe args', () {
-      const explicit = CodemodArg.required('name', help: 'Explicit help');
-      const recipeArg = CodemodArg.optional('name', help: 'Recipe help');
-      final recipe = CodemodRecipe(
-        name: 'recipe',
-        args: const [recipeArg],
+    test('enum arg infers enumeration input kind and options', () {
+      final arg = CodemodArg<_TestMode>.optional(
+        'mode',
+        defaultsTo: _TestMode.increment,
+        enumValues: _TestMode.values,
+      );
+
+      expect(arg.resolvedInputKind, CodemodArgInputKind.enumeration);
+      expect(arg.options, ['increment', 'reset']);
+      expect(arg.serializedDefault, 'increment');
+    });
+
+    test('typed bool arg infers bool input kind and serializes default', () {
+      final arg = CodemodArg<bool>.optional(
+        'addToConstructor',
+        defaultsTo: false,
+      );
+
+      expect(arg.resolvedInputKind, CodemodArgInputKind.boolean);
+      expect(arg.serializedDefault, 'false');
+    });
+
+    test('fixed arg is hidden and serializes pinned default', () {
+      final arg = CodemodArg<String>.fixed('root', 'lib/features');
+
+      expect(arg.hidden, isTrue);
+      expect(arg.isUserFacing, isFalse);
+      expect(arg.serializedDefault, 'lib/features');
+    });
+
+    test('hidden fixed args inject defaults into context', () {
+      final args = [
+        CodemodArg<String>.fixed('root', 'lib/features'),
+        CodemodArg<String>.required('feature'),
+      ];
+
+      final context = CodemodContext(const {});
+      for (final arg in args) {
+        arg.contributeToContext(
+          context,
+          rawValue: arg.name == 'feature' ? 'UserProfile' : null,
+        );
+      }
+
+      expect(context.get('root'), 'lib/features');
+      expect(context.get('feature'), 'UserProfile');
+    });
+
+    test('compose replaces step arg with explicit fixed arg', () {
+      final stepRecipe = CodemodRecipe(
+        name: 'step',
+        args: [CodemodArg<String>.required('root')],
         operations: const [],
       );
 
       final composed = CodemodRecipe.compose(
         name: 'composed',
-        args: const [explicit],
+        args: [CodemodArg<String>.fixed('root', 'lib/features')],
+        steps: [stepRecipe],
+      );
+
+      expect(composed.args.single.hidden, isTrue);
+      expect(composed.args.single.serializedDefault, 'lib/features');
+    });
+
+    test('compose keeps explicit arg definitions before recipe args', () {
+      final explicit = CodemodArg<String>.required('name', help: 'Explicit help');
+      final recipeArg = CodemodArg<String>.optional('name', help: 'Recipe help');
+      final recipe = CodemodRecipe(
+        name: 'recipe',
+        args: [recipeArg],
+        operations: const [],
+      );
+
+      final composed = CodemodRecipe.compose(
+        name: 'composed',
+        args: [explicit],
         steps: [recipe],
       );
 
@@ -133,13 +215,13 @@ void main() {
     });
 
     test('compose preserves post-execution order from steps', () {
-      const format = DartFormatPostExecution();
+      final format = DartFormatPostExecution();
       final recipeWithFormat = CodemodRecipe(
         name: 'recipe',
         operations: const [],
         postExecution: [format],
       );
-      const buildRunner = BuildRunnerPostExecution();
+      final buildRunner = BuildRunnerPostExecution();
 
       final composed = CodemodRecipe.compose(
         name: 'composed',
@@ -150,13 +232,13 @@ void main() {
     });
 
     test('compose accepts inline post-execution between recipe steps', () {
-      const format = DartFormatPostExecution();
+      final format = DartFormatPostExecution();
       final first = CodemodRecipe(
         name: 'first',
         operations: const [],
         postExecution: [format],
       );
-      const buildRunner = BuildRunnerPostExecution();
+      final buildRunner = BuildRunnerPostExecution();
       final second = CodemodRecipe(name: 'second', operations: const []);
 
       final composed = CodemodRecipe.compose(

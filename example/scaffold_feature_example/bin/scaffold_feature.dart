@@ -17,7 +17,7 @@ final scaffoldFeatureRecipe = CodemodRecipe(
   name: 'scaffold_feature',
   description: 'Scaffolds a new feature with model and view files',
   args: [
-    CodemodArg.required(
+    CodemodArg<String>.required(
       'feature',
       help: 'Name of the feature to scaffold (e.g., user_profile)',
     ),

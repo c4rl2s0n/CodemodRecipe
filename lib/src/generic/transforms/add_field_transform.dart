@@ -1,5 +1,5 @@
 import '../../context.dart';
-import '../../dart/code_editor.dart';
+import '../../dart_codegen/code_editor.dart';
 import '../../patch_helpers.dart';
 import '../../transform.dart';
 import 'resolvers.dart';

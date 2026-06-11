@@ -15,12 +15,18 @@ final addMethodRecipe = CodemodRecipe(
   name: 'add_method',
   description: 'Adds a method to an existing Dart class',
   args: [
-    CodemodArg.required('file', help: 'Path to the Dart file to modify'),
-    CodemodArg.required(
+    CodemodArg<String>.required(
+      'file',
+      help: 'Path to the Dart file to modify',
+    ),
+    CodemodArg<String>.required(
       'class',
       help: 'Name of the class to add the method to',
     ),
-    CodemodArg.required('method', help: 'Name of the method to add'),
+    CodemodArg<String>.required(
+      'method',
+      help: 'Name of the method to add',
+    ),
   ],
   operations: [
     EditDartFileOperation(

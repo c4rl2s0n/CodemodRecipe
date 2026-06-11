@@ -2,28 +2,23 @@ import '../operation.dart';
 import '../recipe.dart';
 
 /// Serializes recipe metadata into JSON-friendly maps for the VS Code host.
-///
-/// The VS Code extension uses these maps to render the recipe list and to
-/// build the argument input form without any knowledge of Dart types.
 class RecipeSchema {
   const RecipeSchema._();
 
-  /// Serializes a single [CodemodArg] into a JSON-friendly map.
-  static Map<String, Object?> argToJson(CodemodArg arg) {
+  static Map<String, Object?> argToJson(CodemodArgDescriptor arg) {
     return {
       'name': arg.name,
       'abbr': arg.abbr,
       'help': arg.help,
       'required': arg.required,
-      'defaultsTo': arg.defaultsTo,
-      'inputKind': _inputKindToJson(arg.inputKind),
+      'defaultsTo': arg.serializedDefault,
+      'inputKind': _inputKindToJson(arg.resolvedInputKind),
       'options': arg.options,
       'allowCustomValue': arg.allowCustomValue,
       'contextKey': arg.contextKey,
     };
   }
 
-  /// Serializes a single template preview into a JSON-friendly map.
   static Map<String, Object?> templatePreviewToJson(
     RecipeTemplatePreview preview, {
     required bool includeContent,
@@ -35,11 +30,6 @@ class RecipeSchema {
     };
   }
 
-  /// Serializes a [CodemodRecipe] (without its operations) into a JSON map.
-  ///
-  /// Operations and transforms are intentionally omitted because they are
-  /// closures that cannot be represented as data. The extension only needs
-  /// the recipe identity and its argument definitions.
   static Map<String, Object?> recipeToJson(
     CodemodRecipe recipe, {
     bool includeTemplateContent = true,
@@ -47,7 +37,10 @@ class RecipeSchema {
     return {
       'name': recipe.name,
       'description': recipe.description,
-      'args': [for (final arg in recipe.args) argToJson(arg)],
+      'args': [
+        for (final arg in recipe.args)
+          if (arg.isUserFacing) argToJson(arg),
+      ],
       'templatesLoaded': includeTemplateContent,
       'previewTemplates': [
         for (final preview in recipe.previewTemplates)
@@ -83,7 +76,6 @@ class RecipeSchema {
     };
   }
 
-  /// Serializes a named registry of recipes into a JSON list.
   static List<Map<String, Object?>> registryToJson(
     Map<String, CodemodRecipe> recipes,
   ) {
@@ -105,6 +97,7 @@ class RecipeSchema {
       CodemodArgInputKind.enumeration => 'enum',
       CodemodArgInputKind.dartType => 'dartType',
       CodemodArgInputKind.symbol => 'symbol',
+      CodemodArgInputKind.boolean => 'bool',
     };
   }
 

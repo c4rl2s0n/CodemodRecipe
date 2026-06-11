@@ -57,11 +57,15 @@ What `describe` returns:
   - `lib/src/recipe.dart` (definitions)
 
 Key serialized fields (recipe schema):
-- `name`, `abbr`, `help`, `required`, `defaultsTo`
-- `inputKind`
+- `name`, `abbr`, `help`, `required`, `defaultsTo` (wire string via `ArgCodec`)
+- `inputKind` (includes `bool` for checkboxes)
 - `options`
 - `allowCustomValue`
 - `contextKey`
+
+Hidden/fixed args (`CodemodArg.fixed`, or `optional(..., hidden: true)`) are omitted from serialized `args`.
+
+Typed authoring: `CodemodArg<T>` with `T` in `String | bool | int | double | Enum`. Use `CodemodArg<String>.required(...)` syntax.
 
 Serialization logic:
 - `lib/src/vscode/recipe_schema.dart`
@@ -88,6 +92,7 @@ Where pickers/suggestions are enabled:
   - `inputKind` computed from `effectiveInputKind(...)`
   - shows datalist options when `arg.options?.length`
   - if `inputKind` is `file` or `directory`, shows “Browse…” button
+  - if `inputKind` is `bool`, shows a checkbox (`'true'` / `'false'` wire values)
 
 Context prefill:
 - The command palette “Run From Cursor Context” prefills arguments using:

@@ -66,11 +66,12 @@ class CodemodRunner {
   ArgParser _buildParser() {
     final parser = ArgParser();
     for (final arg in recipe.args) {
+      if (arg.hidden) continue;
       parser.addOption(
         arg.name,
         abbr: arg.abbr,
         help: arg.help,
-        defaultsTo: arg.defaultsTo,
+        defaultsTo: arg.serializedDefault,
       );
     }
     parser
@@ -82,16 +83,29 @@ class CodemodRunner {
   CodemodContext _buildContext(ArgResults args, ArgParser parser) {
     final context = CodemodContext(const {}, preferences);
     final missing = <String>[];
+    final invalid = <String>[];
 
     for (final arg in recipe.args) {
-      final value = args[arg.name] as String?;
-      if (value == null || value.isEmpty) {
-        if (arg.required) {
-          missing.add('--${arg.name}');
-        }
+      if (arg.hidden) {
+        final error = arg.contributeToContext(context);
+        if (error != null) invalid.add(error);
         continue;
       }
-      context.set(arg.name, value);
+
+      final cliValue = args[arg.name] as String?;
+      final error = arg.contributeToContext(context, rawValue: cliValue);
+      if (error == null) continue;
+      if (error.startsWith('--')) {
+        missing.add(error);
+      } else {
+        invalid.add(error);
+      }
+    }
+
+    if (invalid.isNotEmpty) {
+      stderr.writeln('Error: ${invalid.first}');
+      _printUsage(parser);
+      exit(1);
     }
 
     if (missing.isNotEmpty) {
@@ -101,7 +115,7 @@ class CodemodRunner {
     }
 
     for (final arg in recipe.args) {
-      final message = arg.validate?.call(context.get(arg.name), context);
+      final message = arg.validateInContext(context);
       if (message != null) {
         stderr.writeln('Error: $message');
         exit(1);

@@ -5,9 +5,11 @@
 /// package.
 library;
 
+export 'src/arg_codec.dart';
 export 'src/context.dart';
 export 'src/dart/ast_helpers.dart';
 export 'src/dart/code_editor.dart';
+export 'src/dart/field_spec.dart';
 export 'src/dart/naming.dart';
 export 'src/generic/post_execution.dart';
 export 'src/generic/transforms.dart';

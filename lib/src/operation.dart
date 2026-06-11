@@ -57,7 +57,7 @@ class EditDartFileOperation extends CodemodOperation {
   final TransformResolver transforms;
 
   /// Creates an operation that edits an existing Dart file.
-  const EditDartFileOperation({required this.path, required this.transforms});
+  EditDartFileOperation({required this.path, required this.transforms});
 
   @override
   Future<List<FileChange>> collect(CodemodContext context) async {
@@ -93,7 +93,7 @@ class CreateFileOperation extends CodemodOperation {
   final String? previewLabel;
 
   /// Creates a file operation.
-  const CreateFileOperation({
+  CreateFileOperation({
     required this.path,
     required this.template,
     this.ifExists = FileExistsStrategy.fail,

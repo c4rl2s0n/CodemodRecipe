@@ -17,19 +17,19 @@ final addMethodRecipe = CodemodRecipe(
   name: 'add_method',
   description: 'Adds a method to an existing Dart class',
   args: [
-    CodemodArg.required(
+    CodemodArg<String>.required(
       'file',
       help: 'Path to the Dart file to modify',
       inputKind: CodemodArgInputKind.file,
       contextKey: CodemodContextKey.file,
     ),
-    CodemodArg.required(
+    CodemodArg<String>.required(
       'class',
       help: 'Name of the class to add the method to',
       inputKind: CodemodArgInputKind.symbol,
       contextKey: CodemodContextKey.dartClass,
     ),
-    CodemodArg.required(
+    CodemodArg<String>.required(
       'method',
       help: 'Name of the method to add',
       inputKind: CodemodArgInputKind.symbol,
@@ -54,19 +54,18 @@ final addMethodRecipe = CodemodRecipe(
           fieldName: (context) => context.camel('method'),
           fieldType: (_) => 'int',
           defaultValue: (_) => '0',
-          addToConstructor: false,
         ),
       ],
     ),
   ],
-  postExecution: const [DartFormatPostExecution()],
+  postExecution: [DartFormatPostExecution()],
 );
 
 final scaffoldFeatureRecipe = CodemodRecipe(
   name: 'scaffold_feature',
   description: 'Scaffolds a new feature with model and view files',
   args: [
-    CodemodArg.required(
+    CodemodArg<String>.required(
       'feature',
       help: 'Name of the feature to scaffold (e.g., user_profile)',
       inputKind: CodemodArgInputKind.symbol,
@@ -115,25 +114,25 @@ final addPropertyAccessorsRecipe = CodemodRecipe(
   name: 'add_property_accessors',
   description: 'Adds a private field with getter and setter methods',
   args: [
-    CodemodArg.required(
+    CodemodArg<String>.required(
       'file',
       help: 'Path to the Dart file to modify',
       inputKind: CodemodArgInputKind.file,
       contextKey: CodemodContextKey.file,
     ),
-    CodemodArg.required(
+    CodemodArg<String>.required(
       'class',
       help: 'Name of the class to update',
       inputKind: CodemodArgInputKind.symbol,
       contextKey: CodemodContextKey.dartClass,
     ),
-    CodemodArg.required(
+    CodemodArg<String>.required(
       'property',
       help: 'Property name (for example: score)',
       inputKind: CodemodArgInputKind.symbol,
       contextKey: CodemodContextKey.word,
     ),
-    CodemodArg.optional(
+    CodemodArg<String>.optional(
       'type',
       help: 'Property type',
       defaultsTo: 'int',
@@ -148,7 +147,6 @@ final addPropertyAccessorsRecipe = CodemodRecipe(
           className: (c) => c.require('class'),
           fieldName: (c) => '_${c.camel('property')}',
           fieldType: (c) => c.require('type'),
-          addToConstructor: false,
         ),
         AddMethodTransform(
           className: (c) => c.require('class'),
@@ -174,20 +172,20 @@ final scaffoldAndWireServiceRecipe = CodemodRecipe(
   name: 'scaffold_and_wire_service',
   description: 'Creates a service file and wires it into an existing class',
   args: [
-    CodemodArg.required(
+    CodemodArg<String>.required(
       'service',
       help: 'Service name (for example: counter_sync)',
       inputKind: CodemodArgInputKind.symbol,
       contextKey: CodemodContextKey.word,
     ),
-    CodemodArg.optional(
+    CodemodArg<String>.optional(
       'file',
       help: 'Target Dart file to wire service into',
       defaultsTo: 'lib/counter.dart',
       inputKind: CodemodArgInputKind.file,
       contextKey: CodemodContextKey.file,
     ),
-    CodemodArg.optional(
+    CodemodArg<String>.optional(
       'class',
       help: 'Target class in the file',
       defaultsTo: 'Counter',
@@ -215,7 +213,7 @@ class {{service:pascal}}Service {
           className: (c) => c.require('class'),
           fieldName: (c) => '${c.camel('service')}Service',
           fieldType: (c) => '${c.pascal('service')}Service',
-          addToConstructor: true,
+          constructorArgs: const FieldConstructorArgs(),
         ),
       ],
     ),
