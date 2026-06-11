@@ -1,3 +1,4 @@
+import 'arg_codec.dart';
 import 'dart_codegen/field_spec.dart';
 import 'dart_codegen/naming.dart';
 import 'template.dart';
@@ -5,7 +6,7 @@ import 'template.dart';
 /// Stores recipe arguments and generic naming helpers for a codemod run.
 ///
 /// The context is populated from CLI arguments and provides methods to
-/// access values and convert between naming conventions (snake_case,
+/// access typed values and convert between naming conventions (snake_case,
 /// camelCase, PascalCase).
 ///
 /// ## Example
@@ -13,8 +14,8 @@ import 'template.dart';
 /// ```dart
 /// final context = CodemodContext({'feature': 'UserProfile'});
 ///
-/// // Get raw value
-/// context.get('feature'); // 'UserProfile'
+/// // Get typed value
+/// context.get<String>('feature'); // 'UserProfile'
 ///
 /// // Convert naming conventions
 /// context.snake('feature'); // 'user_profile'
@@ -31,13 +32,13 @@ import 'template.dart';
 ///
 /// ```dart
 /// extension MyProjectContext on CodemodContext {
-///   String get featureName => require('feature');
+///   String get featureName => require<String>('feature');
 ///   String get featurePath => 'lib/features/${snake('feature')}';
 ///   String get featureModelFile => '$featurePath/${snake('feature')}_model.dart';
 /// }
 /// ```
 class CodemodContext {
-  final Map<String, String> _values;
+  final Map<String, Object?> _values;
 
   /// Project-wide code generation preferences for this run.
   final CodemodPreferences preferences;
@@ -47,15 +48,17 @@ class CodemodContext {
   /// Values are copied into a new mutable map, so changes to the provided
   /// map after construction do not affect the context.
   CodemodContext([
-    Map<String, String> values = const {},
+    Map<String, Object?> values = const {},
     this.preferences = const CodemodPreferences(),
-  ]) : _values = Map<String, String>.from(values);
+  ]) : _values = Map<String, Object?>.from(values);
 
-  /// Returns an immutable view of all values currently available to recipes.
+  /// Returns wire-format strings for all values currently available to recipes.
   ///
   /// Changes to the returned map do not affect the context. To modify values,
   /// use [set] instead.
-  Map<String, String> get values => Map.unmodifiable(_values);
+  Map<String, String> get values => Map.unmodifiable(
+    _values.map((name, value) => MapEntry(name, stringifyArgValue(value!))),
+  );
 
   /// Sets or replaces a named context value.
   ///
@@ -68,24 +71,34 @@ class CodemodContext {
   /// final context = CodemodContext();
   /// context.set('timestamp', DateTime.now().toIso8601String());
   /// ```
-  void set(String name, String value) => _values[name] = value;
+  void set<T extends Object>(String name, T value) => _values[name] = value;
 
-  /// Returns the value for [name], or null when it has not been provided.
+  /// Returns the typed value for [name], or null when it has not been provided.
   ///
   /// Use this for optional arguments where a missing value is acceptable.
   /// For required arguments, use [require] instead.
   ///
+  /// Throws a [StateError] when the stored value is not assignable to [T].
+  ///
   /// ## Example
   ///
   /// ```dart
-  /// final outputDir = context.get('output') ?? 'lib/generated';
+  /// final outputDir = context.get<String>('output') ?? 'lib/generated';
+  /// final enabled = context.get<bool>('verbose') ?? false;
   /// ```
-  String? get(String name) => _values[name];
+  T? get<T extends Object>(String name) {
+    final value = _values[name];
+    if (value == null) return null;
+    if (value is T) return value;
+    throw StateError(
+      'Type mismatch for "$name": expected $T, got ${value.runtimeType}',
+    );
+  }
 
   /// Returns whether [name] is available in this context.
   ///
-  /// Returns true if the value exists, even when it is empty. Use [require]
-  /// when empty values should be rejected.
+  /// Returns true if the value exists, even when it is empty or false.
+  /// Use [require] when empty string values should be rejected.
   ///
   /// ## Example
   ///
@@ -96,21 +109,27 @@ class CodemodContext {
   /// ```
   bool has(String name) => _values.containsKey(name);
 
-  /// Returns the value for [name], throwing when it is missing or empty.
+  /// Returns the typed value for [name], throwing when it is missing or empty.
   ///
   /// Use this for required arguments that must be present for the codemod
-  /// to function correctly.
+  /// to function correctly. Empty strings are rejected; other falsy values such
+  /// as `false` and `0` are valid.
   ///
-  /// Throws a [StateError] if the value is null or empty.
+  /// Throws a [StateError] if the value is missing, empty, or not assignable
+  /// to [T].
   ///
   /// ## Example
   ///
   /// ```dart
-  /// final filePath = context.require('file'); // Never null
+  /// final filePath = context.require<String>('file');
+  /// final mode = context.require<MyMode>('mode');
   /// ```
-  String require(String name) {
-    final value = get(name);
-    if (value == null || value.isEmpty) {
+  T require<T extends Object>(String name) {
+    if (!has(name)) {
+      throw StateError('Required variable "$name" is not set');
+    }
+    final value = get<T>(name);
+    if (value == null || (value is String && value.isEmpty)) {
       throw StateError('Required variable "$name" is not set');
     }
     return value;
@@ -130,7 +149,7 @@ class CodemodContext {
   /// context.set('name', 'URLParser');
   /// context.snake('name'); // 'url_parser'
   /// ```
-  String snake(String name) => toSnakeCase(require(name));
+  String snake(String name) => toSnakeCase(require<String>(name));
 
   /// Returns the named value converted from PascalCase to camelCase.
   ///
@@ -142,7 +161,7 @@ class CodemodContext {
   /// context.set('name', 'UserProfile');
   /// context.camel('name'); // 'userProfile'
   /// ```
-  String camel(String name) => toCamelCase(require(name));
+  String camel(String name) => toCamelCase(require<String>(name));
 
   /// Returns the named value converted from camelCase to PascalCase.
   ///
@@ -154,7 +173,7 @@ class CodemodContext {
   /// context.set('name', 'userProfile');
   /// context.pascal('name'); // 'UserProfile'
   /// ```
-  String pascal(String name) => toPascalCase(require(name));
+  String pascal(String name) => toPascalCase(require<String>(name));
 
   /// Renders an inline codemod template with this context.
   ///

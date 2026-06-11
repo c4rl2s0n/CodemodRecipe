@@ -401,8 +401,7 @@ class CodemodHost {
   String? _validate(CodemodRecipe recipe, CodemodContext context) {
     final missing = <String>[];
     for (final arg in recipe.args) {
-      final value = context.get(arg.name);
-      if ((value == null || value.isEmpty) && arg.required) {
+      if (arg.required && !context.has(arg.name)) {
         missing.add(arg.name);
       }
     }

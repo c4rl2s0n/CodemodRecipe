@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'package:mustache_template/mustache_template.dart';
 
+import 'arg_codec.dart';
 import 'context.dart';
 import 'dart_codegen/naming.dart';
 
@@ -90,10 +91,13 @@ class CodemodTemplate {
       (match) {
         final name = match.group(1)!;
         final casing = match.group(2);
-        final value = context.require(name);
         final rendered = casing == null
-            ? value
-            : _applyCasing(value, casing, variableName: name);
+            ? stringifyArgValue(context.require<Object>(name))
+            : _applyCasing(
+                context.require<String>(name),
+                casing,
+                variableName: name,
+              );
         final key = '__codemod_template_${name}_${casing ?? 'raw'}_${index++}';
         values[key] = rendered;
         return '{{$key}}';

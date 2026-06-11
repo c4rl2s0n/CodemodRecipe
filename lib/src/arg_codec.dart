@@ -1,3 +1,15 @@
+/// Converts a stored context value to its wire-format string.
+///
+/// Mirrors [ArgCodec] serialization rules for template rendering.
+String stringifyArgValue(Object value) {
+  return switch (value) {
+    String s => s,
+    bool b => b ? 'true' : 'false',
+    Enum e => e.name,
+    _ => value.toString(),
+  };
+}
+
 /// Converts between typed recipe argument values and wire-format strings.
 ///
 /// Supported value types: [String], [bool], [int], [double], and [Enum] subtypes.

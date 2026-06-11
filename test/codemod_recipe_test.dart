@@ -139,8 +139,42 @@ void main() {
         );
       }
 
-      expect(context.get('root'), 'lib/features');
-      expect(context.get('feature'), 'UserProfile');
+      expect(context.get<String>('root'), 'lib/features');
+      expect(context.get<String>('feature'), 'UserProfile');
+    });
+
+    test('typed args store parsed values in context', () {
+      final args = [
+        CodemodArg<bool>.optional('addToConstructor', defaultsTo: true),
+        CodemodArg<int>.optional('count', defaultsTo: 0),
+        CodemodArg<_TestMode>.required(
+          'mode',
+          enumValues: _TestMode.values,
+        ),
+      ];
+
+      final context = CodemodContext(const {});
+      for (final arg in args) {
+        final rawValue = switch (arg.name) {
+          'addToConstructor' => 'false',
+          'count' => '42',
+          'mode' => 'reset',
+          _ => null,
+        };
+        expect(arg.contributeToContext(context, rawValue: rawValue), isNull);
+      }
+
+      expect(context.get<bool>('addToConstructor'), isFalse);
+      expect(context.get<int>('count'), 42);
+      expect(context.get<_TestMode>('mode'), _TestMode.reset);
+      expect(context.values['addToConstructor'], 'false');
+      expect(context.values['count'], '42');
+      expect(context.values['mode'], 'reset');
+    });
+
+    test('get throws on type mismatch', () {
+      final context = CodemodContext({'flag': true});
+      expect(() => context.get<String>('flag'), throwsStateError);
     });
 
     test('compose replaces step arg with explicit fixed arg', () {

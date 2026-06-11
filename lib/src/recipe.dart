@@ -321,7 +321,7 @@ class CodemodArg<T extends Object> implements CodemodArgDescriptor {
     bool hiddenWins = false,
   }) {
     if (hidden) {
-      context.set(name, serializedDefault!);
+      context.set(name, defaultsTo as T);
       return null;
     }
 
@@ -342,13 +342,13 @@ class CodemodArg<T extends Object> implements CodemodArgDescriptor {
       return 'Invalid value for --$name: expected ${_typeLabel<T>()}';
     }
 
-    context.set(name, codec.serialize(parsed));
+    context.set(name, parsed);
     return null;
   }
 
   @override
   String? validateInContext(CodemodContext context) {
-    final parsed = codec.parse(context.get(name));
+    final parsed = context.get<T>(name);
     return validate?.call(parsed, context);
   }
 
