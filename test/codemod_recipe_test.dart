@@ -319,7 +319,166 @@ class Counter {
           .generate();
 
       expect(result, contains('final int value;'));
-      expect(result, contains('this.value'));
+      expect(result, contains('required this.value'));
+      expect(result, isNot(contains('Counter(,')));
+    });
+
+    test('adds a nullable field type', () {
+      const source = 'class Counter {}';
+
+      final result = CodeEditor(source)
+          .inClass('Counter')
+          .addField('name', 'String', isNullable: true, addToConstructor: false)
+          .generate();
+
+      expect(result, contains('final String? name;'));
+    });
+
+    test('adds required named constructor param to existing brace list', () {
+      const source = '''
+class Counter {
+  Counter({this.a});
+  final int a;
+}
+''';
+
+      final result = CodeEditor(source)
+          .inClass('Counter')
+          .addField('b', 'int')
+          .generate();
+
+      expect(result, contains('required this.b'));
+    });
+
+    test('adds optional named constructor param for nullable field', () {
+      const source = '''
+class Counter {
+  Counter({this.a = 1});
+  final int a;
+}
+''';
+
+      final result = CodeEditor(source)
+          .inClass('Counter')
+          .addField('b', 'String', isNullable: true)
+          .generate();
+
+      expect(result, contains('final String? b;'));
+      expect(result, contains('this.b'));
+      expect(result, isNot(contains('required this.b')));
+    });
+
+    test('adds optional positional constructor param with default', () {
+      const source = '''
+class Counter {
+  Counter([this.a]);
+  final int? a;
+}
+''';
+
+      final result = CodeEditor(source)
+          .inClass('Counter')
+          .addField('b', 'int', defaultValue: '0')
+          .generate();
+
+      expect(result, contains('this.b = 0'));
+    });
+
+    test('adds positional constructor param to positional constructor', () {
+      const source = '''
+class Counter {
+  Counter(this.a);
+  final int a;
+}
+''';
+
+      final result = CodeEditor(source)
+          .inClass('Counter')
+          .addField('b', 'int')
+          .generate();
+
+      expect(
+        result.contains('this.a, this.b') ||
+            result.contains('this.a,\n    this.b'),
+        isTrue,
+      );
+    });
+
+    test('uses named style for empty constructor by default', () {
+      const source = '''
+class Counter {
+  Counter();
+}
+''';
+
+      final result = CodeEditor(source)
+          .inClass('Counter')
+          .addField('value', 'int')
+          .generate();
+
+      expect(result, contains('({required this.value})'));
+    });
+
+    test('uses positional style for empty constructor when preferred', () {
+      const source = '''
+class Counter {
+  Counter();
+}
+''';
+
+      final result = CodeEditor(
+        source,
+        preferences: const CodemodPreferences(
+          emptyConstructorStyle: ConstructorParamStyle.positional,
+        ),
+      ).inClass('Counter').addField('value', 'int').generate();
+
+      expect(result, contains('Counter(this.value)'));
+    });
+
+    test('overrides empty constructor style per field', () {
+      const source = '''
+class Counter {
+  Counter();
+}
+''';
+
+      final result = CodeEditor(source)
+          .inClass('Counter')
+          .addField(
+            'value',
+            'int',
+            constructorArgs: const FieldConstructorArgs(
+              style: ConstructorParamStyle.positional,
+            ),
+          )
+          .generate();
+
+      expect(result, contains('Counter(this.value)'));
+      expect(result, isNot(contains('required this.value')));
+    });
+
+    test('wires field to constructor once', () {
+      const source = '''
+class Counter {
+  Counter();
+}
+''';
+      const spec = FieldSpec(name: 'value', type: 'int');
+
+      final result = CodeEditor(source)
+          .inClass('Counter')
+          .addFieldToConstructorUnlessExists(spec)
+          .generate();
+
+      expect(result, contains('required this.value'));
+      expect(
+        CodeEditor(result)
+            .inClass('Counter')
+            .addFieldToConstructorUnlessExists(spec)
+            .patches,
+        isEmpty,
+      );
     });
 
     test('adds a static field without constructor parameter', () {
@@ -421,8 +580,24 @@ class Counter {
       final result = applyPatches(source, patches);
       final secondRunPatches = await transform.apply(result, CodemodContext());
 
-      expect(result, contains('this.value'));
+      expect(result, contains('required this.value'));
       expect(secondRunPatches, isEmpty);
+    });
+
+    test('adds a nullable field once', () async {
+      const source = 'class Counter {}';
+      final transform = AddFieldTransform(
+        className: (_) => 'Counter',
+        fieldName: (_) => 'name',
+        fieldType: (_) => 'String',
+        isNullable: true,
+        addToConstructor: false,
+      );
+
+      final patches = await transform.apply(source, CodemodContext());
+      final result = applyPatches(source, patches);
+
+      expect(result, contains('final String? name;'));
     });
 
     test('adds a static field once', () async {

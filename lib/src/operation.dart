@@ -26,7 +26,7 @@ enum FileExistsStrategy {
 }
 
 /// One recipe step that plans one or more file changes.
-abstract class CodemodOperation implements CodemodStep {
+abstract class CodemodOperation with CodemodStep {
   /// Collects planned changes for this operation.
   Future<List<FileChange>> collect(CodemodContext context);
   @override
@@ -52,7 +52,7 @@ abstract interface class FileChange {
 }
 
 /// Edits an existing Dart file with source patches from transforms.
-class EditDartFileOperation implements CodemodOperation {
+class EditDartFileOperation extends CodemodOperation {
   final PathResolver path;
   final TransformResolver transforms;
 
@@ -84,7 +84,7 @@ class EditDartFileOperation implements CodemodOperation {
 }
 
 /// Creates a file from a rendered template.
-class CreateFileOperation implements CodemodOperation {
+class CreateFileOperation extends CodemodOperation {
   final PathResolver path;
   final CodemodTemplate template;
   final FileExistsStrategy ifExists;

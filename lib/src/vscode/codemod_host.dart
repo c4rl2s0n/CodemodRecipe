@@ -49,10 +49,17 @@ const String kResultEnd = '__CODEMOD_RESULT_END__';
 class CodemodHost {
   /// Recipes available to the extension, keyed by a stable id.
   final Map<String, CodemodRecipe> recipes;
+
+  /// Project-wide code generation preferences for all recipes in this host.
+  final CodemodPreferences preferences;
+
   final Map<String, _CachedPreview> _previewCache = {};
 
   /// Creates a host exposing [recipes] to the VS Code extension.
-  CodemodHost(this.recipes);
+  CodemodHost(
+    this.recipes, {
+    this.preferences = const CodemodPreferences(),
+  });
 
   /// Creates a host from a list of recipes keyed by each recipe's [name].
   ///
@@ -66,8 +73,14 @@ class CodemodHost {
   /// ```
   ///
   /// If two recipes share a name, the later recipe replaces the earlier one.
-  factory CodemodHost.fromList(Iterable<CodemodRecipe> recipes) {
-    return CodemodHost({for (final recipe in recipes) recipe.name: recipe});
+  factory CodemodHost.fromList(
+    Iterable<CodemodRecipe> recipes, {
+    CodemodPreferences preferences = const CodemodPreferences(),
+  }) {
+    return CodemodHost(
+      {for (final recipe in recipes) recipe.name: recipe},
+      preferences: preferences,
+    );
   }
 
   /// Reads a JSON request from stdin, dispatches it, and writes the response.
@@ -351,7 +364,7 @@ class CodemodHost {
       return _ResolvedRecipe(error: 'Unknown recipe: $id');
     }
 
-    final context = CodemodContext();
+    final context = CodemodContext(const {}, preferences);
     final rawArgs = request['args'];
     if (rawArgs is Map) {
       rawArgs.forEach((key, value) {
@@ -409,7 +422,10 @@ class CodemodHost {
       return _CollectedChanges(changes: cached.changes, reusedCache: true);
     }
 
-    final changes = await CodemodRunner(recipe).collectChanges(context);
+    final changes = await CodemodRunner(
+      recipe,
+      preferences: preferences,
+    ).collectChanges(context);
     if (updateCache) {
       _previewCache[key] = _CachedPreview(
         changes: changes,

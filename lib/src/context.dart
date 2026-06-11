@@ -38,12 +38,17 @@ import 'template.dart';
 class CodemodContext {
   final Map<String, String> _values;
 
+  /// Project-wide code generation preferences for this run.
+  final CodemodPreferences preferences;
+
   /// Creates a context seeded with optional argument [values].
   ///
   /// Values are copied into a new mutable map, so changes to the provided
   /// map after construction do not affect the context.
-  CodemodContext([Map<String, String> values = const {}])
-    : _values = Map<String, String>.from(values);
+  CodemodContext([
+    Map<String, String> values = const {},
+    this.preferences = const CodemodPreferences(),
+  ]) : _values = Map<String, String>.from(values);
 
   /// Returns an immutable view of all values currently available to recipes.
   ///
@@ -165,6 +170,18 @@ class CodemodContext {
   /// ```
   String render(String template) =>
       CodemodTemplate.inline(template).render(this);
+}
+
+
+/// Project-wide defaults for code generation behavior.
+class CodemodPreferences {
+  /// Style used when adding a parameter to an empty `()` constructor.
+  final ConstructorParamStyle emptyConstructorStyle;
+
+  /// Creates preferences with optional overrides.
+  const CodemodPreferences({
+    this.emptyConstructorStyle = ConstructorParamStyle.named,
+  });
 }
 
 /// Backwards-compatible name for older codemod examples.

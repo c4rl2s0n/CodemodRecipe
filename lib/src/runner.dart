@@ -15,8 +15,14 @@ class CodemodRunner {
   /// Recipe executed by this runner.
   final CodemodRecipe recipe;
 
+  /// Default preferences injected into contexts built by this runner.
+  final CodemodPreferences preferences;
+
   /// Creates a runner for [recipe].
-  const CodemodRunner(this.recipe);
+  const CodemodRunner(
+    this.recipe, {
+    this.preferences = const CodemodPreferences(),
+  });
 
   /// Parses CLI [arguments], previews or applies edits, and exits on failure.
   Future<void> run(List<String> arguments) async {
@@ -74,7 +80,7 @@ class CodemodRunner {
   }
 
   CodemodContext _buildContext(ArgResults args, ArgParser parser) {
-    final context = CodemodContext();
+    final context = CodemodContext(const {}, preferences);
     final missing = <String>[];
 
     for (final arg in recipe.args) {

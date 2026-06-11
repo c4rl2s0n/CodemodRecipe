@@ -178,3 +178,174 @@ int findOptimalInsertionOffset(ClassDeclaration classNode) {
 
   return findClassBodyStartOffset(classNode);
 }
+
+
+/// Infers the constructor parameter list kind from existing parameters.
+///
+/// Returns null when the list is empty `()` and no delimiter is present.
+ConstructorParamStyle? inferConstructorParamStyle(
+  ConstructorDeclaration constructor,
+  String source,
+) {
+  final params = constructor.parameters;
+  if (params.parameters.isNotEmpty) {
+    for (final parameter in params.parameters) {
+      if (parameter is DefaultFormalParameter) {
+        return parameter.isPositional
+            ? ConstructorParamStyle.optionalPositional
+            : ConstructorParamStyle.named;
+      }
+    }
+    return ConstructorParamStyle.positional;
+  }
+
+  final inner = source
+      .substring(params.leftParenthesis.end, params.rightParenthesis.offset)
+      .trim();
+  if (inner.startsWith('{')) return ConstructorParamStyle.named;
+  if (inner.startsWith('[')) return ConstructorParamStyle.optionalPositional;
+  if (inner.isEmpty) return null;
+
+  return ConstructorParamStyle.positional;
+}
+
+/// Resolves the constructor parameter list kind, using [emptyStyle] for `()`.
+ConstructorParamStyle resolveConstructorParamStyle(
+  ConstructorDeclaration constructor,
+  String source, {
+  ConstructorParamStyle? emptyStyle,
+}) {
+  final inferred = inferConstructorParamStyle(constructor, source);
+  if (inferred != null) return inferred;
+
+  return emptyStyle ?? ConstructorParamStyle.named;
+}
+
+/// Builds the constructor parameter text for a [FieldSpec].
+String buildConstructorFieldParam(
+  FieldSpec spec,
+  ConstructorParamStyle kind, {
+  bool thisPrefix = true,
+}) {
+  final paramName = thisPrefix
+      ? 'this.${spec.name}'
+      : '${spec.declarationType} ${spec.name}';
+
+  switch (kind) {
+    case ConstructorParamStyle.named:
+      if (spec.defaultValue != null) {
+        return '$paramName = ${spec.defaultValue}';
+      }
+      if (!spec.isNullable) {
+        return 'required $paramName';
+      }
+      return paramName;
+    case ConstructorParamStyle.positional:
+      if (spec.defaultValue != null) {
+        throw StateError(
+          'Positional constructor parameters cannot have default values',
+        );
+      }
+      return paramName;
+    case ConstructorParamStyle.optionalPositional:
+      if (!spec.isNullable && spec.defaultValue == null) {
+        throw StateError(
+          'Non-nullable optional positional parameters require a defaultValue',
+        );
+      }
+      if (spec.defaultValue != null) {
+        return '$paramName = ${spec.defaultValue}';
+      }
+      return paramName;
+  }
+}
+
+/// Describes a patch to insert or replace constructor parameter text.
+class ConstructorParamInsertion {
+  /// Start offset in the source.
+  final int offset;
+
+  /// Number of characters to replace, or 0 for pure insertion.
+  final int length;
+
+  /// Text to insert or substitute.
+  final String text;
+
+  /// Creates a constructor parameter insertion plan.
+  const ConstructorParamInsertion({
+    required this.offset,
+    required this.length,
+    required this.text,
+  });
+}
+
+/// Plans where and how to insert [paramText] into a constructor parameter list.
+ConstructorParamInsertion planConstructorParamInsertion(
+  ConstructorDeclaration constructor,
+  String source,
+  ConstructorParamStyle kind,
+  String paramText,
+) {
+  final params = constructor.parameters;
+  final hasParams = params.parameters.isNotEmpty;
+
+  if (!hasParams) {
+    final innerStart = params.leftParenthesis.end;
+    final innerEnd = params.rightParenthesis.offset;
+    final inner = source.substring(innerStart, innerEnd).trim();
+
+    if (inner.isEmpty) {
+      switch (kind) {
+        case ConstructorParamStyle.named:
+          return ConstructorParamInsertion(
+            offset: innerStart,
+            length: innerEnd - innerStart,
+            text: '{$paramText}',
+          );
+        case ConstructorParamStyle.optionalPositional:
+          return ConstructorParamInsertion(
+            offset: innerStart,
+            length: innerEnd - innerStart,
+            text: '[$paramText]',
+          );
+        case ConstructorParamStyle.positional:
+          return ConstructorParamInsertion(
+            offset: innerStart,
+            length: innerEnd - innerStart,
+            text: paramText,
+          );
+      }
+    }
+
+    if (inner.startsWith('{')) {
+      final braceOffset = source.indexOf('{', params.leftParenthesis.offset);
+      return ConstructorParamInsertion(
+        offset: braceOffset + 1,
+        length: 0,
+        text: paramText,
+      );
+    }
+
+    if (inner.startsWith('[')) {
+      final bracketOffset = source.indexOf('[', params.leftParenthesis.offset);
+      return ConstructorParamInsertion(
+        offset: bracketOffset + 1,
+        length: 0,
+        text: paramText,
+      );
+    }
+  }
+
+  final buffer = StringBuffer();
+  if (hasParams) {
+    buffer.writeln(',');
+    buffer.write('    ');
+  }
+  buffer.write(paramText);
+
+  return ConstructorParamInsertion(
+    offset: findLastParameterOffset(constructor),
+    length: 0,
+    text: buffer.toString(),
+  );
+}

@@ -244,7 +244,7 @@ class RecipeTemplatePreview {
 ///   postExecution: const [DartFormatPostExecution()],
 /// );
 /// ```
-class CodemodRecipe implements CodemodStep {
+class CodemodRecipe with CodemodStep {
   /// Stable command name used in help output.
   ///
   /// This should be a short, descriptive identifier without spaces.
@@ -333,19 +333,12 @@ class CodemodRecipe implements CodemodStep {
     final mergedPreviewTemplates = <RecipeTemplatePreview>[];
 
     for (final step in steps) {
-      switch (step) {
-        case CodemodRecipe recipe:
-          for (final arg in recipe.args) {
+      for (final arg in step.args) {
             mergedArgs.putIfAbsent(arg.name, () => arg);
           }
-          operations.addAll(recipe.operations);
-          postExecution.addAll(recipe.postExecution);
-          mergedPreviewTemplates.addAll(recipe.previewTemplates);
-        case CodemodOperation operation:
-          operations.add(operation);
-        case PostExecution action:
-          postExecution.add(action);
-      }
+          operations.addAll(step.operations);
+          postExecution.addAll(step.postExecution);
+          mergedPreviewTemplates.addAll(step.previewTemplates);
     }
 
     return CodemodRecipe(
