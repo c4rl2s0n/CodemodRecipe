@@ -135,6 +135,9 @@ class CodemodContext {
     return value;
   }
 
+  /// Returns the named value as a string.
+  String text(String name) => require<String>(name);
+
   /// Returns the named value converted to snake_case.
   ///
   /// Handles various input formats (PascalCase, camelCase, existing snake_case)
