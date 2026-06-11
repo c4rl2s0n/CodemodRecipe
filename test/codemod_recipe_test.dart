@@ -235,6 +235,74 @@ void main() {
 
       expect(result, contains('void build() {}'));
     });
+
+    test('adds a final field with constructor parameter by default', () {
+      const source = '''
+class Counter {
+  const Counter();
+}
+''';
+
+      final result = CodeEditor(source)
+          .inClass('Counter')
+          .addField('value', 'int')
+          .generate();
+
+      expect(result, contains('final int value;'));
+      expect(result, contains('this.value'));
+    });
+
+    test('adds a static field without constructor parameter', () {
+      const source = '''
+class Counter {
+  Counter({required this.value});
+  final int value;
+}
+''';
+
+      final result = CodeEditor(source)
+          .inClass('Counter')
+          .addField('count', 'int', addToConstructor: true, isStatic: true)
+          .generate();
+
+      expect(result, contains('static final int count;'));
+      expect(result, isNot(contains('this.count')));
+    });
+
+    test('adds a const field with initializer', () {
+      const source = 'class Counter {}';
+
+      final result = CodeEditor(source)
+          .inClass('Counter')
+          .addField(
+            'zero',
+            'int',
+            defaultValue: '0',
+            addToConstructor: false,
+            isConst: true,
+          )
+          .generate();
+
+      expect(result, contains('const int zero = 0;'));
+    });
+
+    test('adds a field once', () {
+      const source = 'class Counter {}';
+
+      final result = CodeEditor(source)
+          .inClass('Counter')
+          .addFieldUnlessExists('value', 'int')
+          .generate();
+
+      expect(result, contains('final int value;'));
+      expect(
+        CodeEditor(result)
+            .inClass('Counter')
+            .addFieldUnlessExists('value', 'int')
+            .patches,
+        isEmpty,
+      );
+    });
   });
 
   group('generic transforms', () {
@@ -284,6 +352,28 @@ class Counter {
       final secondRunPatches = await transform.apply(result, CodemodContext());
 
       expect(result, contains('this.value'));
+      expect(secondRunPatches, isEmpty);
+    });
+
+    test('adds a static field once', () async {
+      const source = '''
+class Counter {
+  Counter();
+}
+''';
+      final transform = AddFieldTransform(
+        className: (_) => 'Counter',
+        fieldName: (_) => 'count',
+        fieldType: (_) => 'int',
+        isStatic: true,
+      );
+
+      final patches = await transform.apply(source, CodemodContext());
+      final result = applyPatches(source, patches);
+      final secondRunPatches = await transform.apply(result, CodemodContext());
+
+      expect(result, contains('static final int count;'));
+      expect(result, isNot(contains('this.count')));
       expect(secondRunPatches, isEmpty);
     });
   });

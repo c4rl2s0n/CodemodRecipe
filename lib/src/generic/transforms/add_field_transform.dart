@@ -11,6 +11,9 @@ class AddFieldTransform implements CodeTransform {
   final StringResolver fieldType;
   final StringResolver? defaultValue;
   final bool addToConstructor;
+  final bool isFinal;
+  final bool isConst;
+  final bool isStatic;
 
   /// Creates a field transform.
   const AddFieldTransform({
@@ -19,6 +22,9 @@ class AddFieldTransform implements CodeTransform {
     required this.fieldType,
     this.defaultValue,
     this.addToConstructor = true,
+    this.isFinal = true,
+    this.isConst = false,
+    this.isStatic = false,
   });
 
   @override
@@ -30,6 +36,9 @@ class AddFieldTransform implements CodeTransform {
           fieldType(context),
           defaultValue: defaultValue?.call(context),
           addToConstructor: addToConstructor,
+          isFinal: isFinal,
+          isConst: isConst,
+          isStatic: isStatic,
         )
         .patches;
   }

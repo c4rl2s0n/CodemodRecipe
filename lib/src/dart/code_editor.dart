@@ -130,19 +130,42 @@ class CodeEditor {
     return this;
   }
 
-  /// Adds a `final` field declaration to the selected class.
+  /// Adds a field declaration to the selected class.
   ///
+  /// Modifiers are controlled by [isFinal], [isConst], and [isStatic].
   /// When [addToConstructor] is true, also adds a `this.name` constructor
-  /// parameter to the first unnamed constructor.
+  /// parameter to the first unnamed constructor. [isStatic] forces
+  /// [addToConstructor] to false.
   CodeEditor addField(
     String name,
     String type, {
     String? defaultValue,
     bool addToConstructor = true,
+    bool isFinal = true,
+    bool isConst = false,
+    bool isStatic = false,
   }) {
     if (_currentClass == null) {
       throw StateError('No class selected. Call inClass() first.');
     }
+
+    final effectiveAddToConstructor = isStatic ? false : addToConstructor;
+
+    final modifiers = <String>[];
+    if (isStatic) modifiers.add('static');
+    if (isConst) {
+      modifiers.add('const');
+    } else if (isFinal) {
+      modifiers.add('final');
+    }
+    final prefix = modifiers.isEmpty ? '' : '${modifiers.join(' ')} ';
+
+    final fieldDeclaration = StringBuffer()
+      ..write('\n\n  $prefix$type $name');
+    if (isConst && defaultValue != null) {
+      fieldDeclaration.write(' = $defaultValue');
+    }
+    fieldDeclaration.write(';');
 
     final fields = getFields(_currentClass!);
     final fieldInsertOffset = fields.isNotEmpty
@@ -153,12 +176,12 @@ class CodeEditor {
       SourcePatch(
         fieldInsertOffset,
         0,
-        '\n\n  final $type $name;',
+        fieldDeclaration.toString(),
         description: 'Add field $name to ${_currentClass!.name.lexeme}',
       ),
     );
 
-    if (addToConstructor) {
+    if (effectiveAddToConstructor) {
       final constructor = findConstructor(_currentClass!);
       if (constructor != null) {
         final paramOffset = findLastParameterOffset(constructor);
@@ -192,6 +215,9 @@ class CodeEditor {
     String type, {
     String? defaultValue,
     bool addToConstructor = true,
+    bool isFinal = true,
+    bool isConst = false,
+    bool isStatic = false,
   }) {
     if (!hasField(name)) {
       addField(
@@ -199,6 +225,9 @@ class CodeEditor {
         type,
         defaultValue: defaultValue,
         addToConstructor: addToConstructor,
+        isFinal: isFinal,
+        isConst: isConst,
+        isStatic: isStatic,
       );
     }
     return this;
