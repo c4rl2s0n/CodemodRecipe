@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'context.dart';
 import 'patch_helpers.dart';
+import 'step.dart';
 import 'template.dart';
 import 'transform.dart';
 
@@ -25,9 +26,11 @@ enum FileExistsStrategy {
 }
 
 /// One recipe step that plans one or more file changes.
-abstract interface class CodemodOperation {
+abstract class CodemodOperation implements CodemodStep {
   /// Collects planned changes for this operation.
   Future<List<FileChange>> collect(CodemodContext context);
+  @override
+  List<CodemodOperation> get operations => [this];
 }
 
 /// A planned file change that can be previewed or applied.

@@ -60,6 +60,9 @@ final addModelPropertyRecipe = CodemodRecipe(
 final composedRecipe = CodemodRecipe.compose(
   name: 'composed_codemod',
   description: 'Composes add_model_import and add_model_property recipes',
-  recipes: [addModelImportRecipe, addModelPropertyRecipe],
-  postExecution: const [DartFormatPostExecution()],
+  steps: [
+    addModelImportRecipe,
+    addModelPropertyRecipe,
+    const DartFormatPostExecution(),
+  ],
 );

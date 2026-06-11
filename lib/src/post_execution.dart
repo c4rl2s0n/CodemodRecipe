@@ -2,6 +2,7 @@ import 'dart:io';
 
 import 'context.dart';
 import 'operation.dart';
+import 'step.dart';
 
 /// Result passed to post-execution actions after apply.
 class CodemodRunResult {
@@ -22,9 +23,11 @@ class CodemodRunResult {
 }
 
 /// Action that runs after a recipe is successfully applied.
-abstract interface class PostExecution {
+abstract class PostExecution implements CodemodStep {
   /// Runs this action.
   Future<void> run(CodemodContext context, CodemodRunResult result);
+  @override
+  List<PostExecution> get postExecution => [this];
 }
 
 /// Base class for post actions backed by an external process.

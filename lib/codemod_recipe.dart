@@ -16,5 +16,6 @@ export 'src/patch_helpers.dart';
 export 'src/post_execution.dart';
 export 'src/recipe.dart';
 export 'src/runner.dart';
+export 'src/step.dart';
 export 'src/template.dart';
 export 'src/transform.dart';

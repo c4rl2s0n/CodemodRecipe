@@ -215,8 +215,9 @@ Understanding the architecture helps contribute effectively:
 1. **Idempotency**: Transforms must produce no changes when run again on their
    own output.
 
-2. **Composability**: Recipes can be composed with `CodemodRecipe.compose()`,
-   merging arguments and concatenating operations.
+2. **Composability**: Recipes, operations, and post-execution actions can be
+   composed with `CodemodRecipe.compose(steps: ...)`, merging arguments and
+   flattening steps in order.
 
 3. **Separation of concerns**: Generic primitives in this package,
    project-specific conventions in extensions outside this package.

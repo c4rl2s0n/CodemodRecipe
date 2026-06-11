@@ -1,6 +1,7 @@
 import 'context.dart';
 import 'operation.dart';
 import 'post_execution.dart';
+import 'step.dart';
 import 'template.dart';
 
 /// Preferred UI control for a recipe argument.
@@ -243,7 +244,7 @@ class RecipeTemplatePreview {
 ///   postExecution: const [DartFormatPostExecution()],
 /// );
 /// ```
-class CodemodRecipe {
+class CodemodRecipe implements CodemodStep {
   /// Stable command name used in help output.
   ///
   /// This should be a short, descriptive identifier without spaces.
@@ -285,61 +286,65 @@ class CodemodRecipe {
     this.previewTemplates = const [],
   });
 
-  /// Creates a recipe by concatenating other recipes.
+
+  /// Creates a recipe from an ordered mix of recipes, operations, and
+  /// post-execution actions.
   ///
-  /// Composing recipes allows building complex workflows from simpler parts.
-  /// Arguments are merged by name, with explicit [args] taking precedence
-  /// over definitions from composed recipes. When composed recipes define the
-  /// same argument, the first recipe's definition is kept. Operations are
-  /// concatenated in recipe order.
+  /// [steps] may contain [CodemodRecipe], [CodemodOperation], and
+  /// [PostExecution] values in any order. Recipe steps contribute their
+  /// arguments, operations, post-execution actions, and template previews.
+  /// Operation and post-execution steps are appended directly.
+  ///
+  /// Arguments are merged by name, with explicit [args] taking precedence over
+  /// definitions from recipe steps. When recipe steps define the same argument,
+  /// the first definition encountered in [steps] is kept.
+  ///
+  /// Post-execution steps control ordering in the composed recipe's
+  /// [postExecution] list. All post-execution actions still run after every
+  /// file change has been applied.
   ///
   /// ## Example
   ///
   /// ```dart
-  /// // Define shared arguments
-  /// final fileArg = CodemodArg.required('file');
-  /// final classArg = CodemodArg.required('class');
-  ///
-  /// // Create individual recipes
-  /// final addImportRecipe = CodemodRecipe(
-  ///   name: 'add_import',
-  ///   args: [fileArg],
-  ///   operations: [/* ... */],
-  /// );
-  ///
-  /// final addMethodRecipe = CodemodRecipe(
-  ///   name: 'add_method',
-  ///   args: [fileArg, classArg],
-  ///   operations: [/* ... */],
-  /// );
-  ///
-  /// // Compose them into a single recipe
   /// final composed = CodemodRecipe.compose(
   ///   name: 'enhance_class',
-  ///   recipes: [addImportRecipe, addMethodRecipe],
+  ///   steps: [
+  ///     addImportRecipe,
+  ///     EditDartFileOperation(...),
+  ///     const DartFormatPostExecution(),
+  ///     addMethodRecipe,
+  ///   ],
   /// );
-  ///
-  /// // The composed recipe has 2 args: file, class
-  /// // The composed recipe has 2 operations: add import, add method
   /// ```
-  ///
-  /// Argument definitions are merged by name, with explicit [args] taking
-  /// precedence over definitions from composed recipes.
   factory CodemodRecipe.compose({
     required String name,
     String description = '',
     List<CodemodArg> args = const [],
-    required List<CodemodRecipe> recipes,
-    List<PostExecution> postExecution = const [],
+    required List<CodemodStep> steps,
     List<RecipeTemplatePreview> previewTemplates = const [],
   }) {
     final mergedArgs = <String, CodemodArg>{};
     for (final arg in args) {
       mergedArgs[arg.name] = arg;
     }
-    for (final recipe in recipes) {
-      for (final arg in recipe.args) {
-        mergedArgs.putIfAbsent(arg.name, () => arg);
+
+    final operations = <CodemodOperation>[];
+    final postExecution = <PostExecution>[];
+    final mergedPreviewTemplates = <RecipeTemplatePreview>[];
+
+    for (final step in steps) {
+      switch (step) {
+        case CodemodRecipe recipe:
+          for (final arg in recipe.args) {
+            mergedArgs.putIfAbsent(arg.name, () => arg);
+          }
+          operations.addAll(recipe.operations);
+          postExecution.addAll(recipe.postExecution);
+          mergedPreviewTemplates.addAll(recipe.previewTemplates);
+        case CodemodOperation operation:
+          operations.add(operation);
+        case PostExecution action:
+          postExecution.add(action);
       }
     }
 
@@ -347,15 +352,9 @@ class CodemodRecipe {
       name: name,
       description: description,
       args: mergedArgs.values.toList(),
-      operations: [for (final recipe in recipes) ...recipe.operations],
-      postExecution: [
-        for (final recipe in recipes) ...recipe.postExecution,
-        ...postExecution,
-      ],
-      previewTemplates: [
-        for (final recipe in recipes) ...recipe.previewTemplates,
-        ...previewTemplates,
-      ],
+      operations: operations,
+      postExecution: postExecution,
+      previewTemplates: [...mergedPreviewTemplates, ...previewTemplates],
     );
   }
 }

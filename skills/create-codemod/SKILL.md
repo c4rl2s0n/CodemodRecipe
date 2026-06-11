@@ -124,19 +124,24 @@ The reusable package must not contain consuming-project concepts, paths, generat
 
 ## Composition
 
-Prefer `CodemodRecipe.compose` for workflows that combine existing recipes:
+Prefer `CodemodRecipe.compose` for workflows that combine recipes, inline
+operations, and post-execution actions in one ordered list:
 
 ```dart
 final composedRecipe = CodemodRecipe.compose(
   name: 'add_feature_property',
   args: sharedArgs,
-  recipes: [
+  steps: [
     addStatePropertyRecipe,
     addSetterRecipe,
     addModelPropertyRecipe,
+    const DartFormatPostExecution(),
   ],
 );
 ```
+
+`steps` accepts any mix of `CodemodRecipe`, `CodemodOperation`, and
+`PostExecution` values via the shared `CodemodStep` marker interface.
 
 ## Tests
 

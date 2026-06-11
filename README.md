@@ -136,7 +136,8 @@ See the [API documentation](https://pub.dev/documentation/codemod_recipe/latest/
 
 Key components:
 
-- **CodemodRecipe**: Define recipes with arguments, operations, and post-execution actions.
+- **CodemodRecipe**: Define recipes with arguments, operations, and post-execution actions. Use `CodemodRecipe.compose(steps: ...)` to mix recipes, operations, and post-execution actions in one ordered list.
+- **CodemodStep**: Marker interface implemented by recipes, operations, and post-execution actions for composition.
 - **CodemodRunner**: Execute recipes with CLI parsing and dry-run/apply support.
 - **CodemodContext**: Access arguments and convert between naming conventions.
 - **CodemodTemplate**: Render file and code templates with variable substitution.

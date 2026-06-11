@@ -35,7 +35,7 @@ From `README.md`:
   - declares ordered operations (`CodemodOperation`)
   - declares post-execution actions (`PostExecution`)
   - optionally declares template previews (`RecipeTemplatePreview`)
-  - supports composition (`CodemodRecipe.compose(...)`)
+  - supports composition (`CodemodRecipe.compose(steps: ...)` with `CodemodStep`)
 
 ### `CodemodContext`
 

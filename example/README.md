@@ -31,8 +31,8 @@ dart run bin/scaffold_feature.dart --feature=user_profile --apply
 
 ### composed_recipe_example
 
-Demonstrates composing multiple recipes with shared arguments using
-`CodemodRecipe.compose`.
+Demonstrates composing recipes, operations, and post-execution actions with
+shared arguments using `CodemodRecipe.compose(steps: ...)`.
 
 ```bash
 cd composed_recipe_example

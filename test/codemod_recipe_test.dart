@@ -63,15 +63,15 @@ void main() {
 
       final composed = CodemodRecipe.compose(
         name: 'composed',
-        recipes: [first, second],
+        steps: [first, second],
       );
 
       expect(composed.args, hasLength(1));
       expect(composed.operations, hasLength(2));
     });
 
-    test('compose accepts an empty recipe list', () {
-      final composed = CodemodRecipe.compose(name: 'empty', recipes: const []);
+    test('compose accepts an empty step list', () {
+      final composed = CodemodRecipe.compose(name: 'empty', steps: const []);
 
       expect(composed.args, isEmpty);
       expect(composed.operations, isEmpty);
@@ -90,11 +90,81 @@ void main() {
       final composed = CodemodRecipe.compose(
         name: 'composed',
         args: const [explicit],
-        recipes: [recipe],
+        steps: [recipe],
       );
 
       expect(composed.args.single.required, isTrue);
       expect(composed.args.single.help, 'Explicit help');
+    });
+
+    test('compose interleaves recipes and operations in step order', () {
+      final first = CodemodRecipe(
+        name: 'first',
+        operations: [
+          EditDartFileOperation(path: (_) => 'a.dart', transforms: (_) => []),
+        ],
+      );
+      final inline = EditDartFileOperation(
+        path: (_) => 'inline.dart',
+        transforms: (_) => [],
+      );
+      final second = CodemodRecipe(
+        name: 'second',
+        operations: [
+          EditDartFileOperation(path: (_) => 'b.dart', transforms: (_) => []),
+        ],
+      );
+
+      final composed = CodemodRecipe.compose(
+        name: 'composed',
+        steps: [first, inline, second],
+      );
+
+      final context = CodemodContext();
+      expect(
+        composed.operations
+            .map(
+              (operation) =>
+                  (operation as EditDartFileOperation).path(context),
+            )
+            .toList(),
+        ['a.dart', 'inline.dart', 'b.dart'],
+      );
+    });
+
+    test('compose preserves post-execution order from steps', () {
+      const format = DartFormatPostExecution();
+      final recipeWithFormat = CodemodRecipe(
+        name: 'recipe',
+        operations: const [],
+        postExecution: [format],
+      );
+      const buildRunner = BuildRunnerPostExecution();
+
+      final composed = CodemodRecipe.compose(
+        name: 'composed',
+        steps: [recipeWithFormat, buildRunner],
+      );
+
+      expect(composed.postExecution, [format, buildRunner]);
+    });
+
+    test('compose accepts inline post-execution between recipe steps', () {
+      const format = DartFormatPostExecution();
+      final first = CodemodRecipe(
+        name: 'first',
+        operations: const [],
+        postExecution: [format],
+      );
+      const buildRunner = BuildRunnerPostExecution();
+      final second = CodemodRecipe(name: 'second', operations: const []);
+
+      final composed = CodemodRecipe.compose(
+        name: 'composed',
+        steps: [first, buildRunner, second],
+      );
+
+      expect(composed.postExecution, [format, buildRunner]);
     });
   });
 
