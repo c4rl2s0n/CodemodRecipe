@@ -64,6 +64,7 @@ const {
   restorePersistedOnMount,
   handleExtensionMessage: handleRunnerExtensionMessage,
   onArgsChanged,
+  persistUiState,
 } = useRunnerController({
   recipe,
   autoPreviewDebounceMs,

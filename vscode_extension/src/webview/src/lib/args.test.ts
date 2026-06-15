@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { argsKey, collectArgs, collectMissingRequiredArgs } from './args';
+import {
+  argsKey,
+  collectArgs,
+  collectMissingRequiredArgs,
+  mergeArgValuesOnRefresh,
+} from './args';
 import type { RecipeSchema } from '../shared';
 
 const sampleRecipe: RecipeSchema = {
@@ -51,5 +56,37 @@ describe('collectArgs', () => {
     expect(
       collectArgs(sampleRecipe, { file: 'a.dart', optional: '' })
     ).toEqual({ file: 'a.dart' });
+  });
+});
+
+describe('mergeArgValuesOnRefresh', () => {
+  it('keeps values for surviving args and drops removed keys', () => {
+    const updatedRecipe: RecipeSchema = {
+      ...sampleRecipe,
+      args: [
+        sampleRecipe.args[0],
+        {
+          name: 'added',
+          abbr: null,
+          help: null,
+          required: false,
+          defaultsTo: 'new-default',
+          inputKind: 'text',
+          options: [],
+          allowCustomValue: true,
+          contextKey: null,
+        },
+      ],
+    };
+    expect(
+      mergeArgValuesOnRefresh(updatedRecipe, {
+        file: 'lib/a.dart',
+        optional: 'keep-me',
+        removed: 'gone',
+      })
+    ).toEqual({
+      file: 'lib/a.dart',
+      added: 'new-default',
+    });
   });
 });

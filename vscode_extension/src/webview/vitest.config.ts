@@ -7,6 +7,6 @@ const webviewUiRoot = path.dirname(fileURLToPath(import.meta.url));
 export default defineConfig({
   root: webviewUiRoot,
   test: {
-    include: ['src/**/*.test.ts'],
+    include: ['src/**/*.test.ts', '../extension/**/*.test.ts'],
   },
 });

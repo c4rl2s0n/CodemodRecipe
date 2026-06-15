@@ -69,3 +69,21 @@ export function initArgValues(
   }
   return values;
 }
+
+/** Keeps user-entered values for args that still exist; drops removed args; fills new defaults. */
+export function mergeArgValuesOnRefresh(
+  recipe: RecipeSchema | undefined,
+  existing: Record<string, string>
+): Record<string, string> {
+  if (!recipe) {
+    return {};
+  }
+  const argNames = new Set(recipe.args.map((arg) => arg.name));
+  const preserved: Record<string, string> = {};
+  for (const [key, value] of Object.entries(existing)) {
+    if (argNames.has(key)) {
+      preserved[key] = value;
+    }
+  }
+  return initArgValues(recipe, preserved);
+}

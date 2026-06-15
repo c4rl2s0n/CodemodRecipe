@@ -28,6 +28,22 @@ export class RecipeRunnerState {
     this.discoveryError = discoveryError;
   }
 
+  syncRecipesAfterRefresh(
+    recipes: readonly RecipeSchema[],
+    discoveryError?: string
+  ): void {
+    this.recipes = recipes;
+    this.discoveryError = discoveryError;
+    if (!this.currentRecipe) {
+      return;
+    }
+    const fresh = recipes.find((item) => item.id === this.currentRecipe!.id);
+    if (fresh) {
+      this.currentRecipe = fresh;
+    }
+    this.lastFiles = [];
+  }
+
   setBootstrap(state: {
     inFlight: boolean;
     phase: 'startingHost' | 'loadingRecipes' | 'ready' | 'error';

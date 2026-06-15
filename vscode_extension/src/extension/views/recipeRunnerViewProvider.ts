@@ -52,6 +52,15 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
     this.postState();
   }
 
+  async refreshRecipes(recipes: readonly RecipeSchema[], error?: string): Promise<void> {
+    this.state.syncRecipesAfterRefresh(recipes, error);
+    if (this.state.currentRecipe) {
+      this.state.currentRecipe = await this.ensureRecipeDetails(this.state.currentRecipe);
+    }
+    this.diffProvider.clear();
+    this.postState();
+  }
+
   setRecipesRefreshing(inFlight: boolean): void {
     this.state.setRecipesRefreshing(inFlight);
     this.postState();

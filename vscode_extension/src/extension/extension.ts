@@ -10,7 +10,6 @@ import type { RecipeSchema } from '../shared';
 import { RecipeRunnerViewProvider } from './views/recipeRunnerViewProvider';
 
 export function activate(context: vscode.ExtensionContext): void {
-  const recipeStaleMs = 5 * 60 * 1000;
   const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
   if (!workspaceRoot) {
     return;
@@ -29,11 +28,22 @@ export function activate(context: vscode.ExtensionContext): void {
     context.extensionUri
   );
 
-  const refreshAndSync = async (showError = false): Promise<void> => {
+  const refreshAndSync = async (
+    showError = false,
+    options?: { restartHost?: boolean }
+  ): Promise<void> => {
+    const restartHost = options?.restartHost !== false;
     runner.setRecipesRefreshing(true);
     try {
+      if (restartHost) {
+        bridge.dispose();
+        await bridge.ensureHost();
+      }
       await repository.refresh();
-      runner.setRecipes(repository.getRecipes(), repository.getLastError());
+      await runner.refreshRecipes(
+        repository.getRecipes(),
+        repository.getLastError()
+      );
       const error = repository.getLastError();
       if (showError && error) {
         vscode.window.showWarningMessage(`Codemod Recipe: ${error}`);
@@ -43,20 +53,12 @@ export function activate(context: vscode.ExtensionContext): void {
     }
   };
 
-  const refreshIfNeeded = async (showError = false): Promise<void> => {
-    if (repository.shouldRefresh(recipeStaleMs)) {
-      await refreshAndSync(showError);
-    } else {
-      runner.setRecipes(repository.getRecipes(), repository.getLastError());
-    }
-  };
-
   const bootstrap = async (showError = false): Promise<void> => {
     runner.setBootstrap({ inFlight: true, phase: 'startingHost' });
     try {
       await bridge.ensureHost();
       runner.setBootstrap({ inFlight: true, phase: 'loadingRecipes' });
-      await refreshAndSync(showError);
+      await refreshAndSync(showError, { restartHost: false });
       runner.setBootstrap({ inFlight: false, phase: 'ready' });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -81,7 +83,6 @@ export function activate(context: vscode.ExtensionContext): void {
       COMMANDS.runRecipe,
       async (recipe?: RecipeSchema) => {
         if (!recipe) {
-          await refreshIfNeeded(true);
           const picked = await vscode.window.showQuickPick(
             repository.getRecipes().map((item) => ({
               label: item.name,
@@ -100,7 +101,6 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(
       COMMANDS.runFromCursorContext,
       async () => {
-        await refreshIfNeeded(true);
         const recipes = repository.getRecipes();
         const editorContext = resolveEditorContext(workspaceRoot);
         const candidates = recipes

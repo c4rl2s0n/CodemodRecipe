@@ -1,5 +1,11 @@
 import { computed, ref, watch } from 'vue';
-import { argsKey, collectArgs, collectMissingRequiredArgs, initArgValues } from '../lib/args';
+import {
+  argsKey,
+  collectArgs,
+  collectMissingRequiredArgs,
+  initArgValues,
+  mergeArgValuesOnRefresh,
+} from '../lib/args';
 import { defaultFileSelections, type FileCardSelection } from '../lib/selection';
 import {
   EXTENSION_TO_WEBVIEW,
@@ -32,6 +38,8 @@ export function useRunnerController(params: {
   const latestRequestId = ref(0);
   const latestHandledRequestId = ref(0);
   const pendingAutoPreview = ref(false);
+  const wasRecipesRefreshing = ref(false);
+  const lastSyncedRecipeId = ref<string | undefined>(undefined);
   let previewDebounce: ReturnType<typeof setTimeout> | undefined;
 
   const canApply = computed(() => {
@@ -125,32 +133,46 @@ export function useRunnerController(params: {
     }
   }
 
+  function clearPreviewState(): void {
+    files.value = [];
+    fileSelections.value = [];
+    showReview.value = false;
+    activeChangeIndex.value = 0;
+    lastPreviewSuccess.value = false;
+    lastPreviewArgsKey.value = '';
+    clearError();
+    setPreviewStatus('');
+  }
+
   function applyHostState(state: RecipeViewState): void {
-    const recipeChanged = state.recipe?.id !== params.recipe.value?.id;
+    const recipeId = state.recipe?.id;
+    const recipeChanged = recipeId !== lastSyncedRecipeId.value;
+    const refreshCompleted = wasRecipesRefreshing.value && !state.recipesRefreshing;
     params.setActiveTab(state.activeTab);
 
     if (recipeChanged) {
       argValues.value = initArgValues(state.recipe, state.initialArgs);
-      files.value = [];
-      fileSelections.value = [];
-      showReview.value = false;
-      activeChangeIndex.value = 0;
-      lastPreviewSuccess.value = false;
-      lastPreviewArgsKey.value = '';
+      clearPreviewState();
       restorePersistedForRecipe(state.recipe?.id);
-    }
-
-    if (state.recipe && !recipeChanged) {
+    } else if (state.recipe) {
       argValues.value = initArgValues(state.recipe, {
         ...argValues.value,
         ...state.initialArgs,
       });
     }
 
+    if (refreshCompleted && state.recipe) {
+      argValues.value = mergeArgValuesOnRefresh(state.recipe, argValues.value);
+      clearPreviewState();
+    }
+
     persistUiState();
-    if (state.recipe && recipeChanged) {
+    if (state.recipe && (recipeChanged || refreshCompleted)) {
       onArgsChanged(false);
     }
+
+    lastSyncedRecipeId.value = recipeId;
+    wasRecipesRefreshing.value = state.recipesRefreshing;
   }
 
   function handleExtensionMessage(msg: ExtensionToWebviewMessage, state?: RecipeViewState) {
@@ -238,6 +260,7 @@ export function useRunnerController(params: {
     lastPreviewArgsKey.value = persisted.lastPreviewArgsKey;
     lastPreviewSuccess.value = persisted.lastPreviewSuccess;
     showReview.value = persisted.files.length > 0 && persisted.lastPreviewSuccess;
+    lastSyncedRecipeId.value = persisted.recipeId;
   }
 
   watch([() => params.activeTab.value, argValues, files, activeChangeIndex], persistUiState, {
@@ -258,6 +281,7 @@ export function useRunnerController(params: {
     restorePersistedOnMount,
     handleExtensionMessage,
     onArgsChanged,
+    persistUiState,
   };
 }
 
