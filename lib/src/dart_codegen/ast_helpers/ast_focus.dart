@@ -77,6 +77,16 @@ class AstFocus {
     return AstFocus(source, unit, ctor);
   }
 
+  /// Focuses on the field named [name] in the focused class.
+  AstFocus fieldNamed(String name) {
+    final classDecl = asClass;
+    final field = findFieldByName(classDecl, name);
+    if (field == null) {
+      throw StateError('Field "$name" not found in ${classDecl.name.lexeme}');
+    }
+    return AstFocus(source, unit, field);
+  }
+
   /// Focuses on a constructor-like call named [typeName] under the current node.
   ///
   /// Matches [InstanceCreationExpression] and unresolved [MethodInvocation]

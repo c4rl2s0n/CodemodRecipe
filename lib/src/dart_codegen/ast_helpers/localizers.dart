@@ -78,6 +78,31 @@ List<FieldDeclaration> getFields(ClassDeclaration classNode) {
   return classNode.members.whereType<FieldDeclaration>().toList();
 }
 
+/// Returns the field declaration containing variable [fieldName] in [classNode].
+FieldDeclaration? findFieldByName(
+  ClassDeclaration classNode,
+  String fieldName,
+) {
+  for (final field in getFields(classNode)) {
+    for (final variable in field.fields.variables) {
+      if (variable.name.lexeme == fieldName) {
+        return field;
+      }
+    }
+  }
+  return null;
+}
+
+/// Returns all class declarations named [className] in [unit].
+List<ClassDeclaration> findClassesByName(
+  CompilationUnit unit,
+  String className,
+) {
+  return findAllClasses(unit)
+      .where((node) => node.name.lexeme == className)
+      .toList();
+}
+
 /// Returns whether [classNode] extends a class named [baseClassName].
 bool extendsClass(ClassDeclaration classNode, String baseClassName) {
   final extendsClause = classNode.extendsClause;

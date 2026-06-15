@@ -1,6 +1,7 @@
 import 'package:analyzer/dart/ast/ast.dart';
 
 import '../dart_codegen/ast_helpers/ast_focus.dart';
+import '../dart_codegen/ast_helpers/localizers.dart';
 import '../dart_codegen/ast_helpers/planners.dart';
 import 'anchors.dart';
 import 'model.dart';
@@ -31,6 +32,15 @@ class AstPathInterpreter {
     AstPath path, {
     String filePath = '<unknown>',
   }) {
+    return resolveSpan(source, path, filePath: filePath).offset;
+  }
+
+  /// Resolves [path] to a byte span in [source].
+  AnchorSpan resolveSpan(
+    String source,
+    AstPath path, {
+    String filePath = '<unknown>',
+  }) {
     final focus = navigateTo(source, path.navigate, filePath: filePath);
     final node = focus.node;
 
@@ -41,7 +51,7 @@ class AstPathInterpreter {
       );
     }
 
-    return resolveAnchorOffset(source: source, node: node, anchor: path.anchor);
+    return resolveAnchorSpan(source: source, node: node, anchor: path.anchor);
   }
 
   /// Navigates [source] using [steps] and returns the focused node.
@@ -83,17 +93,29 @@ class AstPathInterpreter {
   AstFocus _applyStep(AstFocus focus, NavigateStep step) {
     return switch (step.kind) {
       NavigateKind.root => focus,
-      NavigateKind.classDecl => _classNamed(focus, step.name!),
-      NavigateKind.method => _methodNamed(focus, step.name!),
-      NavigateKind.constructor => _constructor(focus, step.name),
-      NavigateKind.call => _call(focus, step.name!),
+      NavigateKind.classDecl => _classNamed(focus, step.name!, step.match),
+      NavigateKind.method => _methodNamed(focus, step.name!, step.match),
+      NavigateKind.constructor => _constructor(focus, step.name, step.match),
+      NavigateKind.call => _call(focus, step.name!, step.match),
       NavigateKind.import => _import(focus, step.name!),
+      NavigateKind.field => _fieldNamed(focus, step.name!, step.match),
     };
   }
 
-  AstFocus _classNamed(AstFocus focus, String name) {
+  AstFocus _classNamed(AstFocus focus, String name, String? match) {
     try {
-      return focus.classNamed(name);
+      final candidates = findClassesByName(focus.unit, name);
+      if (candidates.isEmpty) {
+        throw StateError('Class "$name" not found in source');
+      }
+
+      final classDecl = _selectMatch(
+        candidates,
+        focus.source,
+        match,
+        label: 'class "$name"',
+      );
+      return AstFocus(focus.source, focus.unit, classDecl);
     } on StateError catch (error) {
       throw AstPathResolutionException(
         error.message,
@@ -102,9 +124,24 @@ class AstPathInterpreter {
     }
   }
 
-  AstFocus _methodNamed(AstFocus focus, String name) {
+  AstFocus _methodNamed(AstFocus focus, String name, String? match) {
     try {
-      return focus.methodNamed(name);
+      final classDecl = focus.asClass;
+      final methods = classDecl.members
+          .whereType<MethodDeclaration>()
+          .where((method) => method.name.lexeme == name)
+          .toList();
+      if (methods.isEmpty) {
+        throw StateError('Method "$name" not found in ${classDecl.name.lexeme}');
+      }
+
+      final method = _selectMatch(
+        methods,
+        focus.source,
+        match,
+        label: 'method "$name"',
+      );
+      return AstFocus(focus.source, focus.unit, method);
     } on StateError catch (error) {
       throw AstPathResolutionException(
         error.message,
@@ -113,9 +150,41 @@ class AstPathInterpreter {
     }
   }
 
-  AstFocus _constructor(AstFocus focus, String? name) {
+  AstFocus _constructor(AstFocus focus, String? name, String? match) {
     try {
-      return focus.constructor(name: name);
+      final classDecl = focus.asClass;
+      final constructors = classDecl.members
+          .whereType<ConstructorDeclaration>()
+          .where((ctor) {
+            final ctorName = ctor.name?.lexeme;
+            if (name == null) {
+              return ctorName == null;
+            }
+            return ctorName == name;
+          })
+          .toList();
+
+      if (constructors.isEmpty && name == null) {
+        final fallback = classDecl.members
+            .whereType<ConstructorDeclaration>()
+            .toList();
+        if (fallback.length == 1) {
+          return AstFocus(focus.source, focus.unit, fallback.first);
+        }
+      }
+
+      if (constructors.isEmpty) {
+        final label = name == null ? 'unnamed constructor' : 'constructor "$name"';
+        throw StateError('$label not found in ${classDecl.name.lexeme}');
+      }
+
+      final ctor = _selectMatch(
+        constructors,
+        focus.source,
+        match,
+        label: name == null ? 'constructor' : 'constructor "$name"',
+      );
+      return AstFocus(focus.source, focus.unit, ctor);
     } on StateError catch (error) {
       throw AstPathResolutionException(
         error.message,
@@ -124,9 +193,43 @@ class AstPathInterpreter {
     }
   }
 
-  AstFocus _call(AstFocus focus, String typeName) {
+  AstFocus _fieldNamed(AstFocus focus, String name, String? match) {
     try {
-      return focus.instanceCreation(typeName);
+      final classDecl = focus.asClass;
+      final fields = getFields(classDecl)
+          .where(
+            (field) => field.fields.variables.any(
+              (variable) => variable.name.lexeme == name,
+            ),
+          )
+          .toList();
+
+      if (fields.isEmpty) {
+        throw StateError('Field "$name" not found in ${classDecl.name.lexeme}');
+      }
+
+      final field = _selectMatch(
+        fields,
+        focus.source,
+        match,
+        label: 'field "$name"',
+      );
+      return AstFocus(focus.source, focus.unit, field);
+    } on StateError catch (error) {
+      throw AstPathResolutionException(
+        error.message,
+        code: 'E_NODE_NOT_FOUND',
+      );
+    }
+  }
+
+  AstFocus _call(AstFocus focus, String typeName, String? match) {
+    try {
+      final call = focus.instanceCreation(typeName);
+      if (match != null && !_nodeMatches(focus.source, call.node, match)) {
+        throw StateError('$typeName(...) not found matching "$match"');
+      }
+      return call;
     } on StateError catch (error) {
       throw AstPathResolutionException(
         error.message,
@@ -147,5 +250,35 @@ class AstPathInterpreter {
       'Import "$uri" not found',
       code: 'E_NODE_NOT_FOUND',
     );
+  }
+
+  T _selectMatch<T extends AstNode>(
+    List<T> candidates,
+    String source,
+    String? match, {
+    required String label,
+  }) {
+    if (match == null) {
+      if (candidates.length > 1) {
+        throw StateError('Multiple $label matches; add a "match" filter');
+      }
+      return candidates.first;
+    }
+
+    final filtered = candidates
+        .where((node) => _nodeMatches(source, node, match))
+        .toList();
+    if (filtered.isEmpty) {
+      throw StateError('$label not found matching "$match"');
+    }
+    if (filtered.length > 1) {
+      throw StateError('Multiple $label matches for "$match"');
+    }
+    return filtered.first;
+  }
+
+  bool _nodeMatches(String source, AstNode node, String match) {
+    final snippet = source.substring(node.offset, node.end);
+    return snippet.contains(match);
   }
 }

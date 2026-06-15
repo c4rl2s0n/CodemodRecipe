@@ -69,13 +69,47 @@ AstPath parsePathString(String input) {
   return AstPath(navigate: steps, anchor: parseAnchor(anchorPart));
 }
 
-/// Parses an anchor token string such as `stmt:last` or `stmt:$`.
+/// Parses an anchor token string such as `stmt:last` or `param:name:key`.
 Anchor parseAnchor(String token) {
   final normalized = token.trim();
   if (normalized.isEmpty) {
     throw AstPathParseException('Anchor token must not be empty');
   }
 
+  if (normalized.startsWith('param:name:')) {
+    final name = normalized.substring('param:name:'.length).trim();
+    if (name.isEmpty) {
+      throw AstPathParseException('Anchor "param:name:" requires a parameter name');
+    }
+    return Anchor(AnchorKind.paramName, name: name);
+  }
+
+  if (normalized.startsWith('arg:name:')) {
+    final name = normalized.substring('arg:name:'.length).trim();
+    if (name.isEmpty) {
+      throw AstPathParseException('Anchor "arg:name:" requires an argument name');
+    }
+    return Anchor(AnchorKind.argName, name: name);
+  }
+
+  final colonIndex = normalized.indexOf(':');
+  if (colonIndex > 0) {
+    final prefix = normalized.substring(0, colonIndex);
+    final suffix = normalized.substring(colonIndex + 1);
+    final index = int.tryParse(suffix);
+    if (index != null) {
+      return switch (prefix) {
+        'param' => Anchor(AnchorKind.paramIndex, index: index),
+        'arg' => Anchor(AnchorKind.argIndex, index: index),
+        _ => _parseSimpleAnchor(normalized),
+      };
+    }
+  }
+
+  return _parseSimpleAnchor(normalized);
+}
+
+Anchor _parseSimpleAnchor(String normalized) {
   final kind = switch (normalized) {
     'body:start' => AnchorKind.bodyStart,
     'body:end' => AnchorKind.bodyEnd,
@@ -84,6 +118,9 @@ Anchor parseAnchor(String token) {
     'param:last' => AnchorKind.paramLast,
     'arg:last' => AnchorKind.argLast,
     'meta:before' => AnchorKind.metaBefore,
+    'doc:before' => AnchorKind.docBefore,
+    'doc:after' => AnchorKind.docAfter,
+    'initializer:replace' => AnchorKind.initializerReplace,
     _ => throw AstPathParseException('Unknown anchor token "$normalized"'),
   };
 
@@ -96,22 +133,43 @@ NavigateStep _parseNavigateEntry(Object? entry) {
   }
 
   if (entry is Map) {
-    if (entry.length != 1) {
-      throw AstPathParseException(
-        'Navigate map entry must have exactly one key, got $entry',
-      );
+    String? match;
+    NavigateStep? step;
+
+    for (final key in entry.keys) {
+      if (key == 'match') {
+        final value = entry[key];
+        if (value == null) {
+          throw AstPathParseException('Navigate "match" must not be null');
+        }
+        match = value.toString();
+        continue;
+      }
+
+      if (step != null) {
+        throw AstPathParseException(
+          'Navigate map entry must have one step key plus optional "match", got $entry',
+        );
+      }
+
+      if (key is! String) {
+        throw AstPathParseException('Navigate key must be a string, got $key');
+      }
+
+      final value = entry[key];
+      final name = value == null ? null : value.toString();
+      step = _navigateStepForKey(key, name);
     }
-    final key = entry.keys.first;
-    final value = entry.values.first;
-    if (key is! String) {
-      throw AstPathParseException('Navigate key must be a string, got $key');
+
+    if (step == null) {
+      throw AstPathParseException('Navigate map entry is empty: $entry');
     }
-    final name = value == null ? null : value.toString();
-    return _navigateStepForKey(key, name);
+
+    return NavigateStep(step.kind, name: step.name, match: match);
   }
 
   throw AstPathParseException(
-    'Navigate entry must be a string or single-key map, got $entry',
+    'Navigate entry must be a string or map, got $entry',
   );
 }
 
@@ -144,6 +202,7 @@ NavigateStep _navigateStepForKey(String key, String? name) {
     'ctor' => NavigateStep(NavigateKind.constructor, name: name),
     'call' => NavigateStep(NavigateKind.call, name: _requireName(name, key)),
     'import' => NavigateStep(NavigateKind.import, name: _requireName(name, key)),
+    'field' => NavigateStep(NavigateKind.field, name: _requireName(name, key)),
     _ => throw AstPathParseException('Unknown navigate step "$key"'),
   };
 }

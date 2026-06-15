@@ -65,6 +65,42 @@ void main() {
         throwsA(isA<AstPathParseException>()),
       );
     });
+
+    test('parses v2 anchors', () {
+      expect(
+        parseAnchor('param:name:key'),
+        const Anchor(AnchorKind.paramName, name: 'key'),
+      );
+      expect(
+        parseAnchor('arg:name:home'),
+        const Anchor(AnchorKind.argName, name: 'home'),
+      );
+      expect(parseAnchor('doc:before'), const Anchor(AnchorKind.docBefore));
+      expect(parseAnchor('doc:after'), const Anchor(AnchorKind.docAfter));
+      expect(
+        parseAnchor('initializer:replace'),
+        const Anchor(AnchorKind.initializerReplace),
+      );
+      expect(parseAnchor('param:0'), const Anchor(AnchorKind.paramIndex, index: 0));
+    });
+
+    test('parses field navigate step', () {
+      final path = parsePathString('class:Settings > field:count @ initializer:replace');
+      expect(path.navigate.last.kind, NavigateKind.field);
+      expect(path.navigate.last.name, 'count');
+      expect(path.anchor.kind, AnchorKind.initializerReplace);
+    });
+
+    test('parses navigate match filter', () {
+      final path = parseStructuredPath({
+        'at': [
+          {'class': 'DerivedSettings', 'match': 'extends BaseSettings'},
+        ],
+        'anchor': 'member:last',
+      });
+
+      expect(path.navigate.single.match, 'extends BaseSettings');
+    });
   });
 
   group('AstPathInterpreter', () {
@@ -142,6 +178,61 @@ void main() {
           ),
         ),
       );
+    });
+
+    test('resolves param:name anchor on constructor', () {
+      final path = parsePathString('class:Widget > ctor: @ param:name:key');
+      final offset = interpreter.resolveOffset(settingsSource, path);
+
+      expect(settingsSource.substring(offset - 3, offset), 'key');
+    });
+
+    test('resolves arg:name anchor on constructor call', () {
+      final path = parsePathString('call:MaterialApp @ arg:name:home');
+      final offset = interpreter.resolveOffset(settingsSource, path);
+
+      final patched = applyPatches(settingsSource, [
+        SourcePatch(offset, 0, ', title: "x"'),
+      ]);
+      expect(patched, contains('MaterialApp(home: Container(), title: "x")'));
+    });
+
+    test('resolves doc:before on class', () {
+      final path = parsePathString('class:Settings @ doc:before');
+      final offset = interpreter.resolveOffset(settingsSource, path);
+
+      expect(settingsSource.substring(offset, offset + 3), '///');
+    });
+
+    test('resolves doc:after on class', () {
+      final path = parsePathString('class:Settings @ doc:after');
+      final offset = interpreter.resolveOffset(settingsSource, path);
+
+      expect(settingsSource.substring(offset, offset + 5), 'class');
+    });
+
+    test('resolves initializer:replace on field', () {
+      final path = parsePathString(
+        'class:Settings > field:count @ initializer:replace',
+      );
+      final span = interpreter.resolveSpan(settingsSource, path);
+
+      expect(
+        settingsSource.substring(span.offset, span.offset + span.length),
+        '0',
+      );
+    });
+
+    test('disambiguates classes with match filter', () {
+      final path = parseStructuredPath({
+        'at': [
+          {'class': 'DerivedSettings', 'match': 'extends BaseSettings'},
+        ],
+        'anchor': 'member:last',
+      });
+      final offset = interpreter.resolveOffset(settingsSource, path);
+
+      expect(settingsSource.substring(offset - 4, offset), '= 0;');
     });
   });
 }

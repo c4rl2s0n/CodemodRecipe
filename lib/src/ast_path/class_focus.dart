@@ -44,6 +44,9 @@ List<NavigateStep> _renderNavigateSteps(
         name: step.name == null
             ? null
             : CodemodTemplate.inline(step.name!).render(context),
+        match: step.match == null
+            ? null
+            : CodemodTemplate.inline(step.match!).render(context),
       ),
   ];
 }
@@ -76,13 +79,26 @@ NavigateStep _parseNavigateEntry(Object? entry) {
     return _parseNavigateToken(entry);
   }
   if (entry is Map) {
-    if (entry.length != 1) {
-      throw FormatException('Navigate map must have one key: $entry');
+    String? match;
+    NavigateStep? step;
+
+    for (final key in entry.keys) {
+      if (key == 'match') {
+        match = entry[key]?.toString();
+        continue;
+      }
+      if (step != null) {
+        throw FormatException('Navigate map must have one step key: $entry');
+      }
+      final name = entry[key] == null ? null : entry[key].toString();
+      step = _navigateStepForKey(key.toString(), name);
     }
-    final key = entry.keys.first.toString();
-    final raw = entry.values.first;
-    final name = raw == null ? null : raw.toString();
-    return _navigateStepForKey(key, name);
+
+    if (step == null) {
+      throw FormatException('Navigate map is empty: $entry');
+    }
+
+    return NavigateStep(step.kind, name: step.name, match: match);
   }
   throw FormatException('Unsupported navigate entry: $entry');
 }
@@ -116,6 +132,7 @@ NavigateStep _navigateStepForKey(String key, String? name) {
     'ctor' => NavigateStep(NavigateKind.constructor, name: name),
     'call' => NavigateStep(NavigateKind.call, name: _requireName(name, key)),
     'import' => NavigateStep(NavigateKind.import, name: _requireName(name, key)),
+    'field' => NavigateStep(NavigateKind.field, name: _requireName(name, key)),
     _ => throw FormatException('Unknown navigate step "$key"'),
   };
 }
