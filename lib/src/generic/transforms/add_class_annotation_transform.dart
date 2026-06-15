@@ -1,29 +1,34 @@
+import '../../ast_path/ast_path.dart';
+import '../../ast_path/class_focus.dart';
 import '../../context.dart';
-import '../../dart_codegen/ast_helpers/ast_helpers.dart';
 import '../../patch_helpers.dart';
 import '../../transform.dart';
+import 'resolvers.dart';
 
 /// Adds an annotation above a class unless it already exists.
 class AddClassAnnotationTransform implements CodeTransform {
-  final String className;
-  final String annotation;
+  final List<NavigateStep>? navigate;
+  final StringResolver? className;
+  final StringResolver annotation;
 
   /// Creates a class annotation transform.
   const AddClassAnnotationTransform({
-    required this.className,
+    this.navigate,
+    this.className,
     required this.annotation,
-  });
+  }) : assert(navigate != null || className != null);
 
   @override
   Future<List<SourcePatch>> apply(String source, CodemodContext context) async {
-    final targetClassName = className;
-    final unit = parseSource(source);
-    final classNode = findClassByName(unit, targetClassName);
-    if (classNode == null) {
-      throw StateError('Class "$targetClassName" not found in source');
-    }
+    final focus = resolveClassFocus(
+      source,
+      context,
+      navigate: navigate,
+      className: className,
+    );
+    final classNode = focus.asClass;
 
-    final annotationCode = annotation;
+    final annotationCode = annotation(context);
     final annotationName = annotationCode
         .replaceFirst('@', '')
         .split(RegExp(r'[\s(]'))

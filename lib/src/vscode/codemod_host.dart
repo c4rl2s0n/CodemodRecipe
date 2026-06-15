@@ -6,6 +6,9 @@ import '../operation.dart';
 import '../post_execution.dart';
 import '../recipe.dart';
 import '../runner.dart';
+import '../yaml/diagnostics.dart';
+import '../yaml/host_config.dart';
+import '../yaml/recipe_registry.dart';
 import 'diff_service.dart';
 import 'patch_selector.dart';
 import 'recipe_schema.dart';
@@ -44,22 +47,47 @@ const String kResultEnd = '__CODEMOD_RESULT_END__';
 /// - `{"command": "preview", "recipe": "id", "args": {..}}`
 /// - `{"command": "diff", "recipe": "id", "path": "file", "args": {..}}`
 /// - `{"command": "apply", "recipe": "id", "args": {..}, "selection": {..}}`
+/// - `{"command": "reload"}`
+/// - `{"command": "validate"}`
 /// - `--stdio-server` argument: keeps process alive and reads one JSON command
 ///   per stdin line.
 class CodemodHost {
   /// Recipes available to the extension, keyed by a stable id.
-  final Map<String, CodemodRecipe> recipes;
+  Map<String, CodemodRecipe> _recipes;
+
+  /// Read-only view of loaded recipes.
+  Map<String, CodemodRecipe> get recipes => Map.unmodifiable(_recipes);
 
   /// Project-wide code generation preferences for all recipes in this host.
   final CodemodPreferences preferences;
+
+  /// Optional YAML configuration used to load [recipes].
+  final HostConfig? hostConfig;
+
+  List<RecipeDiagnostic> _diagnostics = [];
+
+  /// Load-time diagnostics from the most recent registry load.
+  List<RecipeDiagnostic> get diagnostics => List.unmodifiable(_diagnostics);
 
   final Map<String, _CachedPreview> _previewCache = {};
 
   /// Creates a host exposing [recipes] to the VS Code extension.
   CodemodHost(
-    this.recipes, {
+    Map<String, CodemodRecipe> recipes, {
     this.preferences = const CodemodPreferences(),
-  });
+    this.hostConfig,
+  }) : _recipes = Map.of(recipes);
+
+  /// Creates a host that loads YAML recipes from [config].
+  factory CodemodHost.fromConfig(HostConfig config) {
+    final host = CodemodHost(
+      const {},
+      preferences: config.preferences,
+      hostConfig: config,
+    );
+    host._reloadFromConfig();
+    return host;
+  }
 
   /// Creates a host from a list of recipes keyed by each recipe's [name].
   ///
@@ -81,6 +109,22 @@ class CodemodHost {
       {for (final recipe in recipes) recipe.name: recipe},
       preferences: preferences,
     );
+  }
+
+  void _reloadFromConfig() {
+    final config = hostConfig;
+    if (config == null) {
+      throw StateError('hostConfig is required to reload YAML recipes');
+    }
+
+    final result = YamlRecipeRegistry.load(config);
+    _recipes = result.recipes;
+    _diagnostics = result.diagnostics;
+    _previewCache.clear();
+  }
+
+  List<Map<String, Object?>> _diagnosticsJson() {
+    return [for (final item in _diagnostics) item.toJson()];
   }
 
   /// Reads a JSON request from stdin, dispatches it, and writes the response.
@@ -152,7 +196,42 @@ class CodemodHost {
     Map<String, Object?> response;
     switch (command) {
       case 'list':
-        response = {'ok': true, 'recipes': RecipeSchema.registryToJson(recipes)};
+        response = {
+          'ok': true,
+          'recipes': RecipeSchema.registryToJson(_recipes),
+          'diagnostics': _diagnosticsJson(),
+        };
+        break;
+      case 'reload':
+        if (hostConfig == null) {
+          response = {
+            'ok': false,
+            'error': 'Reload requires a YAML-enabled host (fromConfig)',
+          };
+          break;
+        }
+        _reloadFromConfig();
+        response = {
+          'ok': true,
+          'recipes': RecipeSchema.registryToJson(_recipes),
+          'diagnostics': _diagnosticsJson(),
+        };
+        break;
+      case 'validate':
+        if (hostConfig == null) {
+          response = {
+            'ok': false,
+            'error': 'Validate requires a YAML-enabled host (fromConfig)',
+          };
+          break;
+        }
+        _reloadFromConfig();
+        response = {
+          'ok': _diagnostics.every(
+            (item) => item.severity != DiagnosticSeverity.error,
+          ),
+          'diagnostics': _diagnosticsJson(),
+        };
         break;
       case 'describe':
         final id = request['recipe'] as String?;
@@ -160,7 +239,7 @@ class CodemodHost {
           response = {'ok': false, 'error': 'Missing "recipe" id'};
           break;
         }
-        final recipe = recipes[id];
+        final recipe = _recipes[id];
         if (recipe == null) {
           response = {'ok': false, 'error': 'Unknown recipe: $id'};
           break;
@@ -359,7 +438,7 @@ class CodemodHost {
     if (id == null) {
       return const _ResolvedRecipe(error: 'Missing "recipe" id');
     }
-    final recipe = recipes[id];
+    final recipe = _recipes[id];
     if (recipe == null) {
       return _ResolvedRecipe(error: 'Unknown recipe: $id');
     }

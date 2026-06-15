@@ -6,7 +6,9 @@
 library;
 
 export 'src/arg_codec.dart';
+export 'src/ast_path/ast_path.dart';
 export 'src/context.dart';
+export 'src/yaml/yaml.dart';
 export 'src/dart_codegen/ast_helpers/ast_helpers.dart';
 export 'src/dart_codegen/code_editor.dart';
 export 'src/dart_codegen/field_spec.dart';

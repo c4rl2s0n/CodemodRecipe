@@ -1,0 +1,30 @@
+dslVersion: 1
+id: add_log_line
+name: add_log_line
+description: Inserts a log line at the end of a method
+
+args:
+  - name: file
+    required: true
+    inputKind: file
+  - name: className
+    required: true
+    inputKind: symbol
+  - name: methodName
+    required: true
+    inputKind: symbol
+
+steps:
+  - edit:
+      path: "{{file}}"
+      steps:
+        - insert:
+            at:
+              - class: "{{className}}"
+              - method: "{{methodName}}"
+            anchor: stmt:last
+            text: |
+              print('codemod');
+
+postExecution:
+  - dartFormat

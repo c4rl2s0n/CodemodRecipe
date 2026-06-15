@@ -1,16 +1,19 @@
+import '../../ast_path/ast_path.dart';
+import '../../ast_path/class_focus.dart';
 import '../../context.dart';
-import '../../dart_codegen/ast_helpers/ast_helpers.dart';
 import '../../dart_codegen/code_editor.dart';
 import '../../dart_codegen/field_spec.dart';
 import '../../patch_helpers.dart';
 import '../../transform.dart';
+import 'resolvers.dart';
 
 /// Adds a field to a class unless that field already exists.
 class AddFieldTransform implements CodeTransform {
-  final String className;
-  final String fieldName;
-  final String fieldType;
-  final String? defaultValue;
+  final List<NavigateStep>? navigate;
+  final StringResolver? className;
+  final StringResolver fieldName;
+  final StringResolver fieldType;
+  final StringResolver? defaultValue;
   final bool isNullable;
   final bool isFinal;
   final bool isConst;
@@ -19,7 +22,8 @@ class AddFieldTransform implements CodeTransform {
 
   /// Creates a field transform.
   const AddFieldTransform({
-    required this.className,
+    this.navigate,
+    this.className,
     required this.fieldName,
     required this.fieldType,
     this.defaultValue,
@@ -28,18 +32,24 @@ class AddFieldTransform implements CodeTransform {
     this.isConst = false,
     this.isStatic = false,
     this.constructorArgs,
-  });
+  }) : assert(navigate != null || className != null);
 
   @override
   Future<List<SourcePatch>> apply(String source, CodemodContext context) async {
-    final focus = AstFocus.parse(source).classNamed(className);
+    final focus = resolveClassFocus(
+      source,
+      context,
+      navigate: navigate,
+      className: className,
+    );
+
     return CodeEditor(source, preferences: context.preferences)
         .addFieldUnlessExists(
           focus,
-          fieldName,
-          fieldType,
+          fieldName(context),
+          fieldType(context),
           isNullable: isNullable,
-          defaultValue: defaultValue,
+          defaultValue: defaultValue?.call(context),
           isFinal: isFinal,
           isConst: isConst,
           isStatic: isStatic,
