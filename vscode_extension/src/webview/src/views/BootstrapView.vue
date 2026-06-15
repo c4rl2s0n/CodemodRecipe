@@ -5,6 +5,7 @@ import { BOOTSTRAP_PHASES, type BootstrapPhase } from '../shared';
 const props = defineProps<{
   inFlight: boolean;
   phase: BootstrapPhase;
+  title?: string;
   error?: string;
 }>();
 
@@ -12,7 +13,10 @@ const emit = defineEmits<{
   retry: [];
 }>();
 
-const title = computed(() => {
+const computedTitle = computed(() => {
+  if (props.title) {
+    return props.title;
+  }
   switch (props.phase) {
     case BOOTSTRAP_PHASES.startingHost:
       return 'Starting extension…';
@@ -30,7 +34,7 @@ const title = computed(() => {
   <div class="bootstrap-screen">
     <div class="bootstrap-card">
       <div v-if="inFlight" class="spinner" aria-label="Loading"></div>
-      <div class="bootstrap-title">{{ title }}</div>
+      <div class="bootstrap-title">{{ computedTitle }}</div>
       <div v-if="phase === BOOTSTRAP_PHASES.error" class="bootstrap-error">
         {{ error }}
       </div>

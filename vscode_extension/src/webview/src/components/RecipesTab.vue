@@ -46,9 +46,6 @@ function recipeSubtitle(recipe: RecipeSchema): string {
       </div>
     </div>
     <div v-else class="recipe-list">
-      <div v-if="refreshing" class="desc" style="margin-bottom: 8px">
-        Refreshing recipes…
-      </div>
       <button
         v-for="item in recipes"
         :key="item.id"

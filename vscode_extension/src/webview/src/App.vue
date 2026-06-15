@@ -40,6 +40,14 @@ const showBootstrapOverlay = computed(
   () => bootstrapInFlight.value || bootstrapPhase.value === BOOTSTRAP_PHASES.error
 );
 
+const showReloadOverlay = computed(
+  () => recipesRefreshing.value && !showBootstrapOverlay.value
+);
+
+const showBlockingOverlay = computed(
+  () => showBootstrapOverlay.value || showReloadOverlay.value
+);
+
 const runnerTitle = computed(() => recipe.value?.name ?? 'Recipe Runner');
 const runnerDescription = computed(
   () =>
@@ -113,12 +121,19 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <div v-if="showBootstrapOverlay" class="bootstrap-screen">
+  <div v-if="showBlockingOverlay" class="bootstrap-screen">
     <BootstrapView
+      v-if="showBootstrapOverlay"
       :in-flight="bootstrapInFlight"
       :phase="bootstrapPhase"
       :error="bootstrapError"
       @retry="retryBootstrap"
+    />
+    <BootstrapView
+      v-else
+      :in-flight="true"
+      :phase="BOOTSTRAP_PHASES.loadingRecipes"
+      title="Reloading recipes…"
     />
   </div>
 
