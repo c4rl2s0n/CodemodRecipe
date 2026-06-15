@@ -1,0 +1,30 @@
+dslVersion: 1
+id: add_counter_field
+name: add_counter_field
+description: Adds a field to a class
+
+args:
+  - name: file
+    required: true
+    inputKind: file
+  - name: className
+    required: true
+    inputKind: symbol
+  - name: field
+    required: true
+    inputKind: symbol
+
+steps:
+  - edit:
+      path: "{{file}}"
+      steps:
+        - addField:
+            at:
+              - class: "{{className}}"
+            field:
+              name: "{{field:camel}}"
+              type: int
+              final: true
+
+postExecution:
+  - dartFormat

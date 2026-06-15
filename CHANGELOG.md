@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- YAML recipe front-end (branch `feature/yaml-ast-dsl`): AST path DSL (`lib/src/ast_path/`), YAML compiler and registry (`lib/src/yaml/`), generic `bin/codemod_host.dart` with `--validate` and `--stdio-server`, `CodemodHost.fromConfig` with `reload`/`validate` and structured `diagnostics`.
+- Example YAML recipes under `.codemod/recipes/`.
+- Built-in transforms accept optional `navigate` steps via `resolveClassFocus`; `StringResolver` API restored on transform types.
 - Added `dart run` executables for all examples to improve UX.
 - Extended test suite with edge-case tests for template rendering (empty context, special characters, Unicode identifiers).
 - Enhanced documentation with inline code examples in docstrings.
