@@ -8,12 +8,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- YAML recipe front-end (branch `feature/yaml-ast-dsl`): AST path DSL (`lib/src/ast_path/`), YAML compiler and registry (`lib/src/yaml/`), generic `bin/codemod_host.dart` with `--validate` and `--stdio-server`, `CodemodHost.fromConfig` with `reload`/`validate` and structured `diagnostics`.
+- YAML recipe front-end: AST path DSL, YAML compiler/registry, generic `bin/codemod_host.dart`, VS Code extension YAML host wiring.
+- YAML steps: `addConstructorParam`; post-execution `buildRunner`.
 - Example YAML recipes under `.codemod/recipes/`.
 - Built-in transforms accept optional `navigate` steps via `resolveClassFocus`; `StringResolver` API restored on transform types.
-- Added `dart run` executables for all examples to improve UX.
-- Extended test suite with edge-case tests for template rendering (empty context, special characters, Unicode identifiers).
+- `dart run` executables for all examples.
+- Extended test suite with edge-case tests for template rendering.
 - Enhanced documentation with inline code examples in docstrings.
+
+### Fixed
+- `FieldConstructorArgs.style` is nullable so `CodemodPreferences.emptyConstructorStyle` applies when no per-field override is set.
 
 ## [0.1.0] - 2026-06-01
 

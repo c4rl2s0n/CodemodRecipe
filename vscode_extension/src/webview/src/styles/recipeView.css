@@ -172,6 +172,60 @@ code,
   padding: 10px;
 }
 
+.diagnostics {
+  border: 1px solid var(--vscode-panel-border);
+  border-radius: 4px;
+  margin-bottom: 12px;
+  padding: 10px;
+}
+
+.diagnostics h3 {
+  font-size: 0.95em;
+  margin: 0 0 8px;
+}
+
+.diagnostics-errors {
+  border-color: var(--vscode-inputValidation-errorBorder, var(--vscode-errorForeground));
+}
+
+.diagnostics-warnings {
+  border-color: var(--vscode-inputValidation-warningBorder, var(--vscode-editorWarning-foreground));
+}
+
+.diagnostic-item + .diagnostic-item {
+  margin-top: 8px;
+}
+
+.diagnostic-head {
+  align-items: baseline;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.diagnostic-code {
+  font-family: var(--vscode-editor-font-family);
+  font-size: 0.85em;
+  font-weight: 600;
+}
+
+.diagnostic-error .diagnostic-code {
+  color: var(--vscode-errorForeground);
+}
+
+.diagnostic-warning .diagnostic-code {
+  color: var(--vscode-editorWarning-foreground);
+}
+
+.diagnostic-source {
+  font-size: 0.85em;
+  opacity: 0.85;
+}
+
+.diagnostic-message {
+  margin: 4px 0 0;
+}
+
 .empty-actions,
 .toolbar {
   display: flex;

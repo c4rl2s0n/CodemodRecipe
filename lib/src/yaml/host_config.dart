@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:args/args.dart';
 
 import '../context.dart';
+import '../dart_codegen/field_spec.dart';
 import '../recipe.dart';
 
 /// Shared configuration for the generic host and CLI entrypoint.
@@ -52,7 +53,21 @@ class HostConfig {
           results['recipes-dir'] as String? ?? '.codemod/recipes',
       templatesRoot:
           results['templates-root'] as String? ?? '.codemod/templates',
+      preferences: CodemodPreferences(
+        emptyConstructorStyle: _parseEmptyConstructorStyle(
+          results['empty-constructor-style'] as String?,
+        ),
+      ),
     );
+  }
+
+  static ConstructorParamStyle _parseEmptyConstructorStyle(String? value) {
+    switch (value) {
+      case 'positional':
+        return ConstructorParamStyle.positional;
+      default:
+        return ConstructorParamStyle.named;
+    }
   }
 
   /// Builds a shared [ArgParser] for host/CLI flags.
@@ -72,6 +87,12 @@ class HostConfig {
         'templates-root',
         help: 'Root for templateFile and runScript paths (workspace-relative)',
         defaultsTo: '.codemod/templates',
+      )
+      ..addOption(
+        'empty-constructor-style',
+        help: 'Style for empty constructor params (named|positional)',
+        defaultsTo: 'named',
+        allowed: ['named', 'positional'],
       )
       ..addFlag(
         'stdio-server',

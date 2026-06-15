@@ -18,6 +18,9 @@ export const CONFIG = {
   section: 'codemodRecipe',
   hostEntrypoint: 'hostEntrypoint',
   dartPath: 'dartPath',
+  recipesDirectory: 'recipesDirectory',
+  templatesRoot: 'templatesRoot',
+  emptyConstructorStyle: 'emptyConstructorStyle',
   performanceLogging: 'performanceLogging',
   autoPreviewDebounceMs: 'autoPreviewDebounceMs',
   previewSnippetLines: 'previewSnippetLines',
@@ -35,9 +38,9 @@ export const HOST_PROTOCOL = {
 } as const;
 
 export const DEFAULT_HOST_CANDIDATES = [
+  'bin/codemod_host.dart',
   'tool/codemod_host.dart',
   'tool/codemods/codemod_host.dart',
-  'bin/codemod_host.dart',
   'example/vscode_host_example/bin/codemod_host.dart',
 ] as const;
 

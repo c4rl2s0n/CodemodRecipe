@@ -9,6 +9,7 @@ import {
   WEBVIEW_TO_EXTENSION,
   isWebviewToExtensionMessage,
   type FilePreview,
+  type RecipeDiagnostic,
   type RecipeSchema,
   type SelectionPayload,
 } from '../../shared';
@@ -47,13 +48,21 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
     });
   }
 
-  setRecipes(recipes: readonly RecipeSchema[], error?: string): void {
-    this.state.setRecipes(recipes, error);
+  setRecipes(
+    recipes: readonly RecipeSchema[],
+    error?: string,
+    diagnostics: readonly RecipeDiagnostic[] = []
+  ): void {
+    this.state.setRecipes(recipes, error, diagnostics);
     this.postState();
   }
 
-  async refreshRecipes(recipes: readonly RecipeSchema[], error?: string): Promise<void> {
-    this.state.syncRecipesAfterRefresh(recipes, error);
+  async refreshRecipes(
+    recipes: readonly RecipeSchema[],
+    error?: string,
+    diagnostics: readonly RecipeDiagnostic[] = []
+  ): Promise<void> {
+    this.state.syncRecipesAfterRefresh(recipes, error, diagnostics);
     if (this.state.currentRecipe) {
       this.state.currentRecipe = await this.ensureRecipeDetails(this.state.currentRecipe);
     }

@@ -1,3 +1,4 @@
+import * as path from 'path';
 import * as vscode from 'vscode';
 import { COMMANDS, VIEWS } from './constants';
 import { ExtensionConfig } from './config/extensionConfig';
@@ -28,37 +29,87 @@ export function activate(context: vscode.ExtensionContext): void {
     context.extensionUri
   );
 
-  const refreshAndSync = async (
-    showError = false,
-    options?: { restartHost?: boolean }
-  ): Promise<void> => {
-    const restartHost = options?.restartHost !== false;
+  let recipeReloadTimer: NodeJS.Timeout | undefined;
+  let recipeWatcher: vscode.FileSystemWatcher | undefined;
+
+  const syncRunnerFromRepository = async (): Promise<void> => {
+    await runner.refreshRecipes(
+      repository.getRecipes(),
+      repository.getLastError(),
+      repository.getDiagnostics()
+    );
+  };
+
+  const reloadRecipesFromHost = async (showError = false): Promise<void> => {
     runner.setRecipesRefreshing(true);
     try {
-      if (restartHost) {
+      await bridge.ensureHost();
+      try {
+        await repository.reload();
+      } catch {
         bridge.dispose();
         await bridge.ensureHost();
+        await repository.refresh();
       }
-      await repository.refresh();
-      await runner.refreshRecipes(
-        repository.getRecipes(),
-        repository.getLastError()
-      );
-      const error = repository.getLastError();
-      if (showError && error) {
-        vscode.window.showWarningMessage(`Codemod Recipe: ${error}`);
+      await syncRunnerFromRepository();
+      if (showError && repository.getLastError()) {
+        vscode.window.showWarningMessage(
+          `Codemod Recipe: ${repository.getLastError()}`
+        );
       }
     } finally {
       runner.setRecipesRefreshing(false);
     }
   };
 
+  const restartHostAndRefresh = async (showError = false): Promise<void> => {
+    runner.setRecipesRefreshing(true);
+    try {
+      bridge.dispose();
+      await bridge.ensureHost();
+      await repository.refresh();
+      await syncRunnerFromRepository();
+      if (showError && repository.getLastError()) {
+        vscode.window.showWarningMessage(
+          `Codemod Recipe: ${repository.getLastError()}`
+        );
+      }
+    } finally {
+      runner.setRecipesRefreshing(false);
+    }
+  };
+
+  const scheduleRecipeReload = (): void => {
+    if (recipeReloadTimer) {
+      clearTimeout(recipeReloadTimer);
+    }
+    recipeReloadTimer = setTimeout(() => {
+      void reloadRecipesFromHost();
+    }, 300);
+  };
+
+  const disposeRecipeWatcher = (): void => {
+    recipeWatcher?.dispose();
+    recipeWatcher = undefined;
+  };
+
+  const createRecipeWatcher = (): void => {
+    disposeRecipeWatcher();
+    const recipesDir = path.join(workspaceRoot, config.recipesDirectory);
+    recipeWatcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(recipesDir, '**/*.{yaml,yml}')
+    );
+    recipeWatcher.onDidChange(scheduleRecipeReload);
+    recipeWatcher.onDidCreate(scheduleRecipeReload);
+    recipeWatcher.onDidDelete(scheduleRecipeReload);
+  };
+
   const bootstrap = async (showError = false): Promise<void> => {
     runner.setBootstrap({ inFlight: true, phase: 'startingHost' });
     try {
-      await bridge.ensureHost();
+      createRecipeWatcher();
       runner.setBootstrap({ inFlight: true, phase: 'loadingRecipes' });
-      await refreshAndSync(showError, { restartHost: false });
+      await restartHostAndRefresh(showError);
       runner.setBootstrap({ inFlight: false, phase: 'ready' });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -68,6 +119,19 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     { dispose: () => bridge.dispose() },
+    { dispose: () => disposeRecipeWatcher() },
+    vscode.workspace.onDidChangeConfiguration((event) => {
+      if (
+        event.affectsConfiguration('codemodRecipe.hostEntrypoint') ||
+        event.affectsConfiguration('codemodRecipe.recipesDirectory') ||
+        event.affectsConfiguration('codemodRecipe.templatesRoot') ||
+        event.affectsConfiguration('codemodRecipe.emptyConstructorStyle') ||
+        event.affectsConfiguration('codemodRecipe.dartPath')
+      ) {
+        bridge.dispose();
+        void bootstrap(true);
+      }
+    }),
     vscode.workspace.registerTextDocumentContentProvider(
       DiffContentProvider.scheme,
       diffProvider
@@ -77,7 +141,9 @@ export function activate(context: vscode.ExtensionContext): void {
       runner,
       { webviewOptions: { retainContextWhenHidden: true } }
     ),
-    vscode.commands.registerCommand(COMMANDS.refresh, () => refreshAndSync(true)),
+    vscode.commands.registerCommand(COMMANDS.refresh, () =>
+      reloadRecipesFromHost(true)
+    ),
     vscode.commands.registerCommand(COMMANDS.bootstrap, () => bootstrap(true)),
     vscode.commands.registerCommand(
       COMMANDS.runRecipe,
@@ -140,7 +206,7 @@ export function activate(context: vscode.ExtensionContext): void {
         const value = await vscode.window.showInputBox({
           prompt:
             'Path (relative to workspace) of the Dart host entry point registering recipes',
-          placeHolder: 'tool/codemod_host.dart',
+          placeHolder: 'bin/codemod_host.dart',
         });
         if (value !== undefined) {
           await config.updateHostEntrypoint(value);

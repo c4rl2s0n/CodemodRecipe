@@ -18,6 +18,30 @@ export class ExtensionConfig {
     );
   }
 
+  get recipesDirectory(): string {
+    return (
+      vscode.workspace
+        .getConfiguration(CONFIG.section)
+        .get<string>(CONFIG.recipesDirectory) ?? '.codemod/recipes'
+    );
+  }
+
+  get templatesRoot(): string {
+    return (
+      vscode.workspace
+        .getConfiguration(CONFIG.section)
+        .get<string>(CONFIG.templatesRoot) ?? '.codemod/templates'
+    );
+  }
+
+  get emptyConstructorStyle(): 'named' | 'positional' {
+    const value =
+      vscode.workspace
+        .getConfiguration(CONFIG.section)
+        .get<string>(CONFIG.emptyConstructorStyle) ?? 'named';
+    return value === 'positional' ? 'positional' : 'named';
+  }
+
   get performanceLogging(): boolean {
     return (
       vscode.workspace

@@ -4,13 +4,13 @@ import type {
   DescribeResponse,
   DiffResponse,
   HostCommand,
-  ListResponse,
   PreviewResponse,
+  RecipeCatalogResponse,
 } from '../../shared';
 
 export type {
   HostCommand,
-  ListResponse,
+  RecipeCatalogResponse,
   DescribeResponse,
   DiffResponse,
   PreviewResponse,

@@ -1,0 +1,28 @@
+dslVersion: 1
+id: add_constructor_param
+name: add_constructor_param
+description: Adds a constructor parameter to a class
+
+args:
+  - name: file
+    required: true
+    inputKind: file
+  - name: className
+    required: true
+    inputKind: symbol
+  - name: param
+    required: true
+    inputKind: symbol
+
+steps:
+  - edit:
+      path: "{{file}}"
+      steps:
+        - addConstructorParam:
+            at:
+              - class: "{{className}}"
+            name: "{{param:camel}}"
+            type: String
+
+postExecution:
+  - dartFormat

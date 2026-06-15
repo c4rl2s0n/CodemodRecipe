@@ -1,0 +1,31 @@
+dslVersion: 1
+id: with_build_runner
+name: with_build_runner
+description: Recipe that runs build_runner after apply
+
+args:
+  - name: file
+    required: true
+    inputKind: file
+  - name: className
+    required: true
+    inputKind: symbol
+  - name: methodName
+    required: true
+    inputKind: symbol
+
+steps:
+  - edit:
+      path: "{{file}}"
+      steps:
+        - insert:
+            at:
+              - class: "{{className}}"
+              - method: "{{methodName}}"
+            anchor: stmt:last
+            text: |
+              // codemod
+
+postExecution:
+  - dartFormat
+  - buildRunner

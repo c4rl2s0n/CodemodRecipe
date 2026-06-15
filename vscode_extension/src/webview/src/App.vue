@@ -18,6 +18,7 @@ const boot = window.__CODEMOD_RECIPE_BOOT__ ?? { autoPreviewDebounceMs: 400 };
 
 const hostState = ref<RecipeViewState>({
   recipes: [],
+  diagnostics: [],
   initialArgs: {},
   activeTab: RUNNER_TABS.recipes,
   autoPreviewDebounceMs: boot.autoPreviewDebounceMs,
@@ -31,6 +32,7 @@ const activeTab = ref<RunnerTab>(RUNNER_TABS.recipes);
 const recipe = computed(() => hostState.value.recipe);
 const recipes = computed(() => hostState.value.recipes);
 const discoveryError = computed(() => hostState.value.discoveryError);
+const diagnostics = computed(() => hostState.value.diagnostics ?? []);
 const recipesRefreshing = computed(() => hostState.value.recipesRefreshing);
 const bootstrapInFlight = computed(() => hostState.value.bootstrapInFlight);
 const bootstrapPhase = computed(() => hostState.value.bootstrapPhase);
@@ -161,6 +163,7 @@ onUnmounted(() => {
       <RecipesView
         :recipes="recipes"
         :discovery-error="discoveryError"
+        :diagnostics="diagnostics"
         :refreshing="recipesRefreshing"
       />
     </div>

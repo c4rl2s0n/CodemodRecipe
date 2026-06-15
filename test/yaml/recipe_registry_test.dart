@@ -47,6 +47,53 @@ void main() {
     expect(operation, isA<EditDartFileOperation>());
   });
 
+  test('compiles addConstructorParam yaml recipe', () async {
+    final workspace = await Directory.systemTemp.createTemp('codemod_yaml_ctor_');
+    addTearDown(() => workspace.deleteSync(recursive: true));
+
+    await _copyFile(
+      'test/fixtures/yaml_recipes/add_constructor_param.yaml',
+      '${workspace.path}/.codemod/recipes/add_constructor_param.yaml',
+    );
+
+    final result = YamlRecipeRegistry.load(
+      HostConfig(
+        workspaceRoot: workspace.path,
+        recipesDirectory: '.codemod/recipes',
+      ),
+    );
+
+    expect(result.diagnostics.where((d) => d.severity == DiagnosticSeverity.error), isEmpty);
+    expect(result.recipes['add_constructor_param'], isNotNull);
+    final operation = result.recipes['add_constructor_param']!.operations.single;
+    expect(operation, isA<EditDartFileOperation>());
+  });
+
+  test('compiles buildRunner postExecution', () async {
+    final workspace = await Directory.systemTemp.createTemp('codemod_yaml_br_');
+    addTearDown(() => workspace.deleteSync(recursive: true));
+
+    await _copyFile(
+      'test/fixtures/yaml_recipes/with_build_runner.yaml',
+      '${workspace.path}/.codemod/recipes/with_build_runner.yaml',
+    );
+
+    final result = YamlRecipeRegistry.load(
+      HostConfig(
+        workspaceRoot: workspace.path,
+        recipesDirectory: '.codemod/recipes',
+      ),
+    );
+
+    expect(result.diagnostics.where((d) => d.severity == DiagnosticSeverity.error), isEmpty);
+    final recipe = result.recipes['with_build_runner'];
+    expect(recipe, isNotNull);
+    expect(
+      recipe!.postExecution.any((action) => action is BuildRunnerPostExecution),
+      isTrue,
+    );
+  });
+
   test('reports duplicate recipe ids', () async {
     final workspace = await Directory.systemTemp.createTemp('codemod_yaml_dup_');
     addTearDown(() => workspace.deleteSync(recursive: true));

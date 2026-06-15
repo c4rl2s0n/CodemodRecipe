@@ -43,11 +43,25 @@ export interface FilePreview {
   patches: PatchInfo[];
 }
 
-export interface ListResponse {
+export interface RecipeDiagnostic {
+  severity: 'error' | 'warning';
+  code: string;
+  message: string;
+  sources?: { file: string; line?: number; column?: number }[];
+}
+
+export interface RecipeCatalogResponse {
   ok: boolean;
   error?: string;
   recipes?: RecipeSchema[];
+  diagnostics?: RecipeDiagnostic[];
 }
+
+/** @deprecated Use {@link RecipeCatalogResponse} */
+export type ListResponse = RecipeCatalogResponse;
+
+/** @deprecated Use {@link RecipeCatalogResponse} */
+export type ReloadResponse = RecipeCatalogResponse;
 
 export interface PreviewResponse {
   ok: boolean;
@@ -78,6 +92,7 @@ export interface DiffResponse {
 
 export type HostCommand =
   | { command: 'list' }
+  | { command: 'reload' }
   | { command: 'describe'; recipe: string }
   | { command: 'diff'; recipe: string; args: Record<string, string>; path: string }
   | {
@@ -111,6 +126,7 @@ export interface SelectionPayload {
 export interface RecipeViewState {
   recipes: readonly RecipeSchema[];
   discoveryError?: string;
+  diagnostics: readonly RecipeDiagnostic[];
   recipesRefreshing: boolean;
   bootstrapInFlight: boolean;
   bootstrapPhase: BootstrapPhase;
@@ -118,7 +134,7 @@ export interface RecipeViewState {
   recipe?: RecipeSchema;
   initialArgs: Record<string, string>;
   activeTab: RunnerTab;
-  autoPreviewDebounceMs: number;
+  autoPreviewDebounceMs?: number;
 }
 
 export interface PersistedWebviewState {

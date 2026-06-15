@@ -2,16 +2,23 @@ import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
 import { ExtensionConfig } from '../config/extensionConfig';
 import { HostDiscovery } from './hostDiscovery';
 import {
+  buildHostSpawnArgs,
+  hostSpawnConfigFromExtension,
+  hostSpawnConfigSignature,
+  type HostSpawnConfig,
+} from './hostSpawnArgs';
+import {
   ApplyResponse,
   DescribeResponse,
   DiffResponse,
   extractHostResultFrame,
   HostCommand,
-  ListResponse,
   PreviewResponse,
+  RecipeCatalogResponse,
   parseHostResponse,
 } from './hostProtocol';
 import type { RecipeSchema, SelectionPayload } from '../../shared';
+import type { RecipeLoadResult } from '../recipes/recipeRepository';
 
 type PendingRequest = {
   command: HostCommand['command'];
@@ -27,6 +34,7 @@ export class DartBridge {
   private static readonly requestTimeoutMs = 30000;
 
   private child: ChildProcessWithoutNullStreams | undefined;
+  private hostConfigSignature: string | undefined;
   private pending: PendingRequest[] = [];
   private stdoutBuffer = '';
   private stderrBuffer = '';
@@ -38,12 +46,14 @@ export class DartBridge {
     private readonly hostDiscovery: HostDiscovery
   ) {}
 
-  async list(): Promise<RecipeSchema[]> {
-    const response = await this.send<ListResponse>({ command: 'list' });
-    if (!response.ok || !response.recipes) {
-      throw new Error(response.error ?? 'Failed to list recipes');
-    }
-    return response.recipes;
+  async listRecipes(): Promise<RecipeLoadResult> {
+    const response = await this.send<RecipeCatalogResponse>({ command: 'list' });
+    return this.parseRecipeLoadResponse(response, 'list');
+  }
+
+  async reloadRecipes(): Promise<RecipeLoadResult> {
+    const response = await this.send<RecipeCatalogResponse>({ command: 'reload' });
+    return this.parseRecipeLoadResponse(response, 'reload');
   }
 
   async ensureHost(): Promise<void> {
@@ -99,6 +109,39 @@ export class DartBridge {
     this.stopPersistentHost();
   }
 
+  private parseRecipeLoadResponse(
+    response: RecipeCatalogResponse,
+    command: 'list' | 'reload'
+  ): RecipeLoadResult {
+    if (!response.ok) {
+      throw new Error(response.error ?? `Failed to ${command} recipes`);
+    }
+    return {
+      recipes: response.recipes ?? [],
+      diagnostics: response.diagnostics ?? [],
+    };
+  }
+
+  private currentHostSpawnConfig(entrypoint: string): HostSpawnConfig {
+    return hostSpawnConfigFromExtension(
+      this.workspaceRoot,
+      entrypoint,
+      this.config
+    );
+  }
+
+  private ensureHostConfigCurrent(entrypoint: string): void {
+    const signature = hostSpawnConfigSignature(this.currentHostSpawnConfig(entrypoint));
+    if (this.hostConfigSignature !== undefined && this.hostConfigSignature !== signature) {
+      this.stopPersistentHost();
+    }
+    this.hostConfigSignature = signature;
+  }
+
+  private buildSpawnArgs(entrypoint: string): string[] {
+    return buildHostSpawnArgs(this.currentHostSpawnConfig(entrypoint));
+  }
+
   private async send<T>(command: HostCommand): Promise<T> {
     try {
       return await this.sendPersistent<T>(command);
@@ -148,15 +191,17 @@ export class DartBridge {
   }
 
   private async ensurePersistentHost(): Promise<ChildProcessWithoutNullStreams> {
+    const entrypoint = this.hostDiscovery.resolveHostEntrypoint();
+    this.ensureHostConfigCurrent(entrypoint);
     if (this.child && !this.child.killed) {
       return this.child;
     }
     this.stdoutBuffer = '';
     this.stderrBuffer = '';
-    const entrypoint = this.hostDiscovery.resolveHostEntrypoint();
     const dart = this.config.dartPath;
+    const spawnArgs = this.buildSpawnArgs(entrypoint);
     return new Promise<ChildProcessWithoutNullStreams>((resolve, reject) => {
-      const child = spawn(dart, ['run', entrypoint, '--stdio-server'], {
+      const child = spawn(dart, spawnArgs, {
         cwd: this.workspaceRoot,
       });
 
@@ -249,12 +294,13 @@ export class DartBridge {
   private sendOneShot<T>(command: HostCommand): Promise<T> {
     const entrypoint = this.hostDiscovery.resolveHostEntrypoint();
     const dart = this.config.dartPath;
+    const spawnArgs = this.buildSpawnArgs(entrypoint);
     const payload = JSON.stringify(command);
     const inputBytes = Buffer.byteLength(payload, 'utf8');
     const start = process.hrtime.bigint();
 
     return new Promise<T>((resolve, reject) => {
-      const child = spawn(dart, ['run', entrypoint], {
+      const child = spawn(dart, spawnArgs, {
         cwd: this.workspaceRoot,
       });
       let stdout = '';
@@ -281,7 +327,7 @@ export class DartBridge {
         }
       });
 
-      child.stdin.write(payload);
+      child.stdin.write(`${payload}\n`);
       child.stdin.end();
     });
   }
@@ -291,6 +337,7 @@ export class DartBridge {
       this.child.kill();
     }
     this.child = undefined;
+    this.hostConfigSignature = undefined;
   }
 
   private rejectPending(error: Error): void {

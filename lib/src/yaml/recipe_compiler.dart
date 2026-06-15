@@ -1,6 +1,7 @@
 import 'package:yaml/yaml.dart';
 
 import '../context.dart';
+import '../generic/post_execution/build_runner_post_execution.dart';
 import '../generic/post_execution/dart_format_post_execution.dart';
 import '../operation.dart';
 import '../generic/post_execution/process_post_execution.dart';
@@ -16,6 +17,7 @@ import '../ast_path/ast_path.dart';
 import '../ast_path/class_focus.dart';
 import '../dart_codegen/field_spec.dart';
 import '../generic/transforms/add_class_annotation_transform.dart';
+import '../generic/transforms/add_constructor_param_transform.dart';
 import '../generic/transforms/add_field_transform.dart';
 import '../generic/transforms/add_import_transform.dart';
 import '../generic/transforms/add_method_transform.dart';
@@ -319,6 +321,16 @@ class YamlRecipeCompiler {
         continue;
       }
 
+      if (entry.containsKey('addConstructorParam')) {
+        final transform = _parseAddConstructorParamStep(
+          entry['addConstructorParam'],
+          filePath,
+          diagnostics,
+        );
+        if (transform != null) transforms.add(transform);
+        continue;
+      }
+
       diagnostics.add(_schemaError('Unsupported edit step', filePath));
     }
 
@@ -368,18 +380,18 @@ class YamlRecipeCompiler {
       return null;
     }
 
-    final navigate = _parseNavigate(step['at'], filePath, diagnostics);
-    final className = navigate == null
-        ? _stringField(step, 'className') ?? _stringField(field, 'className')
-        : null;
-    if (navigate == null && className == null) {
-      diagnostics.add(_schemaError('addField requires at or className', filePath));
-      return null;
-    }
+    final target = _parseClassTarget(
+      step,
+      filePath,
+      diagnostics,
+      stepName: 'addField',
+      fallbackClassName: _stringField(field, 'className'),
+    );
+    if (target == null) return null;
 
     return AddFieldTransform(
-      navigate: navigate,
-      className: className == null ? null : _templateResolver(className),
+      navigate: target.navigate,
+      className: target.className,
       fieldName: _templateResolver(name),
       fieldType: _templateResolver(type),
       defaultValue: _optionalTemplateResolver(_stringField(field, 'default')),
@@ -408,16 +420,17 @@ class YamlRecipeCompiler {
       return null;
     }
 
-    final navigate = _parseNavigate(step['at'], filePath, diagnostics);
-    final className = navigate == null ? _stringField(step, 'className') : null;
-    if (navigate == null && className == null) {
-      diagnostics.add(_schemaError('addMethod requires at or className', filePath));
-      return null;
-    }
+    final target = _parseClassTarget(
+      step,
+      filePath,
+      diagnostics,
+      stepName: 'addMethod',
+    );
+    if (target == null) return null;
 
     return AddMethodTransform(
-      navigate: navigate,
-      className: className == null ? null : _templateResolver(className),
+      navigate: target.navigate,
+      className: target.className,
       methodName: _templateResolver(methodName),
       body: CodemodTemplate.inline(body),
     );
@@ -461,19 +474,81 @@ class YamlRecipeCompiler {
       return null;
     }
 
-    final navigate = _parseNavigate(step['at'], filePath, diagnostics);
-    final className = navigate == null ? _stringField(step, 'className') : null;
-    if (navigate == null && className == null) {
+    final target = _parseClassTarget(
+      step,
+      filePath,
+      diagnostics,
+      stepName: 'addAnnotation',
+    );
+    if (target == null) return null;
+
+    return AddClassAnnotationTransform(
+      navigate: target.navigate,
+      className: target.className,
+      annotation: _templateResolver(annotation),
+    );
+  }
+
+  CodeTransform? _parseAddConstructorParamStep(
+    Object? step,
+    String filePath,
+    List<RecipeDiagnostic> diagnostics,
+  ) {
+    if (step is! YamlMap) {
+      diagnostics.add(_schemaError('addConstructorParam must be a map', filePath));
+      return null;
+    }
+
+    final name = _stringField(step, 'name') ?? _stringField(step, 'param');
+    final type = _stringField(step, 'type');
+    if (name == null || type == null) {
       diagnostics.add(
-        _schemaError('addAnnotation requires at or className', filePath),
+        _schemaError('addConstructorParam requires name and type', filePath),
       );
       return null;
     }
 
-    return AddClassAnnotationTransform(
+    final target = _parseClassTarget(
+      step,
+      filePath,
+      diagnostics,
+      stepName: 'addConstructorParam',
+    );
+    if (target == null) return null;
+
+    return AddConstructorParamTransform(
+      navigate: target.navigate,
+      className: target.className,
+      paramName: _templateResolver(name),
+      paramType: _templateResolver(type),
+      defaultValue: _optionalTemplateResolver(_stringField(step, 'default')),
+      isNullable: step['nullable'] == true,
+      thisPrefix: step['thisPrefix'] != false,
+      constructorArgs: _parseConstructorArgs(step['constructor']),
+    );
+  }
+
+  ({List<NavigateStep>? navigate, StringResolver? className})? _parseClassTarget(
+    YamlMap step,
+    String filePath,
+    List<RecipeDiagnostic> diagnostics, {
+    required String stepName,
+    String? fallbackClassName,
+  }) {
+    final navigate = _parseNavigate(step['at'], filePath, diagnostics);
+    final classNameRaw = navigate == null
+        ? _stringField(step, 'className') ?? fallbackClassName
+        : null;
+    if (navigate == null && classNameRaw == null) {
+      diagnostics.add(
+        _schemaError('$stepName requires at or className', filePath),
+      );
+      return null;
+    }
+
+    return (
       navigate: navigate,
-      className: className == null ? null : _templateResolver(className),
-      annotation: _templateResolver(annotation),
+      className: classNameRaw == null ? null : _templateResolver(classNameRaw),
     );
   }
 
@@ -502,8 +577,10 @@ class YamlRecipeCompiler {
     if (value is! YamlMap) return null;
     final styleName = _stringField(value, 'style');
     final style = switch (styleName) {
+      'named' => ConstructorParamStyle.named,
       'positional' => ConstructorParamStyle.positional,
       'optionalPositional' => ConstructorParamStyle.optionalPositional,
+      null => null,
       _ => ConstructorParamStyle.named,
     };
     return FieldConstructorArgs(
@@ -696,6 +773,7 @@ class CompileResult {
 PostExecution? _builtinPostExecution(String name) {
   return switch (name) {
     'dartFormat' => const DartFormatPostExecution(),
+    'buildRunner' => BuildRunnerPostExecution(),
     _ => null,
   };
 }

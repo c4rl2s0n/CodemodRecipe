@@ -1,6 +1,7 @@
 import {
   RUNNER_TABS,
   type FilePreview,
+  type RecipeDiagnostic,
   type RecipeSchema,
   type RecipeViewState,
   type RunnerTab,
@@ -9,6 +10,7 @@ import {
 export class RecipeRunnerState {
   recipes: readonly RecipeSchema[] = [];
   discoveryError: string | undefined;
+  diagnostics: readonly RecipeDiagnostic[] = [];
   recipesRefreshing = false;
   bootstrapInFlight = false;
   bootstrapPhase: 'startingHost' | 'loadingRecipes' | 'ready' | 'error' = 'startingHost';
@@ -23,17 +25,24 @@ export class RecipeRunnerState {
     this.recipesRefreshing = inFlight;
   }
 
-  setRecipes(recipes: readonly RecipeSchema[], discoveryError?: string): void {
+  setRecipes(
+    recipes: readonly RecipeSchema[],
+    discoveryError?: string,
+    diagnostics: readonly RecipeDiagnostic[] = []
+  ): void {
     this.recipes = recipes;
     this.discoveryError = discoveryError;
+    this.diagnostics = diagnostics;
   }
 
   syncRecipesAfterRefresh(
     recipes: readonly RecipeSchema[],
-    discoveryError?: string
+    discoveryError?: string,
+    diagnostics: readonly RecipeDiagnostic[] = []
   ): void {
     this.recipes = recipes;
     this.discoveryError = discoveryError;
+    this.diagnostics = diagnostics;
     if (!this.currentRecipe) {
       return;
     }
@@ -66,6 +75,7 @@ export class RecipeRunnerState {
     return {
       recipes: this.recipes,
       discoveryError: this.discoveryError,
+      diagnostics: this.diagnostics,
       recipesRefreshing: this.recipesRefreshing,
       bootstrapInFlight: this.bootstrapInFlight,
       bootstrapPhase: this.bootstrapPhase,
@@ -73,7 +83,6 @@ export class RecipeRunnerState {
       recipe: this.currentRecipe,
       initialArgs: this.initialArgs,
       activeTab: this.activeTab,
-      autoPreviewDebounceMs: 400,
     };
   }
 }

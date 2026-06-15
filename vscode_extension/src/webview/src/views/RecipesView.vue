@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import RecipesTab from '../components/RecipesTab.vue';
-import type { RecipeSchema } from '../shared.js';
+import type { RecipeDiagnostic, RecipeSchema } from '../shared.js';
 
 defineProps<{
   recipes: readonly RecipeSchema[];
   discoveryError?: string;
+  diagnostics: readonly RecipeDiagnostic[];
   refreshing: boolean;
 }>();
 </script>
@@ -13,6 +14,7 @@ defineProps<{
   <RecipesTab
     :recipes="recipes"
     :discovery-error="discoveryError"
+    :diagnostics="diagnostics"
     :refreshing="refreshing"
   />
 </template>

@@ -45,4 +45,19 @@ describe('RecipeRunnerState.syncRecipesAfterRefresh', () => {
 
     expect(state.currentRecipe).toEqual(recipeA);
   });
+
+  it('includes diagnostics in webview state', () => {
+    const state = new RecipeRunnerState();
+    state.syncRecipesAfterRefresh([], undefined, [
+      {
+        severity: 'error',
+        code: 'E_DUPLICATE_RECIPE_ID',
+        message: 'Duplicate recipe id: foo',
+        sources: [{ file: '.codemod/recipes/a.yaml', line: 1 }],
+      },
+    ]);
+
+    expect(state.toWebviewState().diagnostics).toHaveLength(1);
+    expect(state.toWebviewState().diagnostics[0]?.code).toBe('E_DUPLICATE_RECIPE_ID');
+  });
 });

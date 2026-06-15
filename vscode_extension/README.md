@@ -11,60 +11,66 @@ entry point you provide, and talks to it over a JSON-over-stdio protocol.
 
 ```mermaid
 flowchart LR
-    Tree["Recipes TreeView"] -->|list| Host
-    Form["Argument Form (webview)"] -->|preview| Host
-    Review["Review + checkboxes"] -->|apply selection| Host
-    Host["Dart CodemodHost"] -->|JSON| Tree
-    Host -->|preview summaries| Form
-    Review --> Diff["vscode.diff (native)"]
+    RecipesTab["Recipes tab"] -->|list/reload| Host
+    Form["Argument form"] -->|preview| Host
+    Review["Review + checkboxes"] -->|apply| Host
+    Host["bin/codemod_host.dart"] -->|JSON| RecipesTab
+    Host -->|preview| Form
+    Review --> Diff["vscode.diff"]
 ```
 
-The host wraps your recipes with `CodemodHost`. The extension keeps a persistent
-host process (`--stdio-server`) and sends one JSON command per stdin line,
-reading responses wrapped in `__CODEMOD_RESULT_BEGIN__` /
-`__CODEMOD_RESULT_END__` markers (so post-execution output such as `dart format`
-never corrupts the response). If the persistent host fails, the extension falls
-back to one-shot request mode.
+The extension does **not** bundle Dart or the host. It spawns `dart run
+bin/codemod_host.dart --stdio-server` from your workspace (or a configured
+entrypoint) and talks JSON over stdio.
 
 ## Setup
 
-### 1. Create a host entry point
+### Option A — YAML recipes (recommended)
 
-In your project, add a Dart file that registers the recipes you want to expose:
-
-```dart
-// tool/codemod_host.dart
-import 'package:codemod_recipe/codemod_recipe_vscode.dart';
-import 'recipes.dart';
-
-Future<void> main(List<String> args) {
-  return CodemodHost.fromList([
-    addMethodRecipe,
-    scaffoldFeatureRecipe,
-  ]).run(args);
-}
-```
-
-A complete working example lives in
-[`example/vscode_host_example`](../example/vscode_host_example).
-
-### 2. Point the extension at it
-
-The extension auto-detects `tool/codemod_host.dart`, `tool/codemods/codemod_host.dart`,
-or `bin/codemod_host.dart`. To use a different path, set:
+1. Add `codemod_recipe` as a dependency and copy or symlink
+   [`bin/codemod_host.dart`](bin/codemod_host.dart) into your project.
+2. Create `.codemod/recipes/*.yaml` (see [root README](../README.md#yaml-recipes)).
+3. Build and install the extension from `vscode_extension/` (`npm run compile`,
+   then package/install the VSIX).
+4. Open your project in VS Code and configure settings if needed:
 
 ```jsonc
 // .vscode/settings.json
 {
-  "codemodRecipe.hostEntrypoint": "tool/codemod_host.dart",
-  "codemodRecipe.dartPath": "dart", // or an absolute path / fvm wrapper
-  "codemodRecipe.performanceLogging": false, // log list/preview/apply timings
-  "codemodRecipe.autoPreviewDebounceMs": 400, // debounce for live preview
-  "codemodRecipe.previewSnippetLines": 5 // max lines shown in review snippets
+  "codemodRecipe.hostEntrypoint": "bin/codemod_host.dart",
+  "codemodRecipe.dartPath": "dart", // absolute path if dart is not on PATH
+  "codemodRecipe.recipesDirectory": ".codemod/recipes",
+  "codemodRecipe.templatesRoot": ".codemod/templates",
+  "codemodRecipe.emptyConstructorStyle": "named",
+  "codemodRecipe.autoPreviewDebounceMs": 400,
+  "codemodRecipe.previewSnippetLines": 5
 }
 ```
 
-You can also run **Codemod Recipe: Set Host Entry Point** from the command palette.
+The extension auto-detects `bin/codemod_host.dart` when `hostEntrypoint` is empty.
+YAML files are reloaded automatically when saved; recipe load errors (e.g.
+duplicate ids) appear in the Recipes tab.
+
+### Option B — Dart-registered recipes
+
+For recipes defined in Dart, use `CodemodHost.fromList` in a custom host entry
+point. A complete example lives in
+[`example/vscode_host_example`](../example/vscode_host_example).
+
+```dart
+// tool/codemod_host.dart
+import 'package:codemod_recipe/codemod_recipe_vscode.dart';
+
+Future<void> main(List<String> args) {
+  return CodemodHost.fromList([addMethodRecipe, scaffoldFeatureRecipe]).run(args);
+}
+```
+
+### Host entry point
+
+The extension auto-detects, in order: `bin/codemod_host.dart`,
+`tool/codemod_host.dart`, `tool/codemods/codemod_host.dart`. Override with
+`codemodRecipe.hostEntrypoint` or **Codemod Recipe: Set Host Entry Point**.
 
 ## Usage
 

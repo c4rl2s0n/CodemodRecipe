@@ -34,14 +34,6 @@
           "name": "Codemod Recipe",
           "icon": "media/recipe.svg"
         }
-      ],
-      "treeView": [
-        {
-          "type": "webview",
-          "id": "codemodRecipe.treeView",
-          "name": "TreeView",
-          "icon": "media/recipe.svg"
-        }
       ]
     },
     "commands": [
@@ -100,6 +92,22 @@
           "type": "string",
           "default": "dart",
           "description": "Path to the Dart executable used to run the host."
+        },
+        "codemodRecipe.recipesDirectory": {
+          "type": "string",
+          "default": ".codemod/recipes",
+          "description": "Workspace-relative directory containing YAML recipe files."
+        },
+        "codemodRecipe.templatesRoot": {
+          "type": "string",
+          "default": ".codemod/templates",
+          "description": "Workspace-relative root for templateFile and runScript paths in YAML recipes."
+        },
+        "codemodRecipe.emptyConstructorStyle": {
+          "type": "string",
+          "enum": ["named", "positional"],
+          "default": "named",
+          "description": "Constructor parameter style for empty constructors in generated code."
         },
         "codemodRecipe.performanceLogging": {
           "type": "boolean",

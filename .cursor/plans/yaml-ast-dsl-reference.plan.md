@@ -30,13 +30,19 @@ todos:
     status: completed
   - id: extension-yaml
     content: "Phase 4: Extension spawns generic host, HostConfig settings, diagnostics UI"
-    status: pending
+    status: completed
   - id: dsl-v2
     content: "Phase 3: field/param/arg/doc anchors; optional match:"
     status: pending
   - id: fix-positional-ctor-test
     content: "Fix CodeEditor positional emptyConstructorStyle test regression"
-    status: pending
+    status: completed
+  - id: yaml-add-ctor-param
+    content: "addConstructorParam YAML step"
+    status: completed
+  - id: yaml-build-runner
+    content: "buildRunner postExecution in YAML compiler"
+    status: completed
 isProject: true
 ---
 
@@ -53,7 +59,7 @@ Canonical spec for YAML recipes and the navigate + anchor DSL. **Implementation 
 | Area | Modules | Tests |
 |------|---------|-------|
 | AST path v1 | `lib/src/ast_path/` | `test/ast_path/` (12) |
-| YAML load/compile | `lib/src/yaml/recipe_compiler.dart`, `recipe_registry.dart` | `test/yaml/` (6) |
+| YAML load/compile | `lib/src/yaml/recipe_compiler.dart`, `recipe_registry.dart` | `test/yaml/` (8) |
 | Host protocol | `reload`, `validate`, `diagnostics` on `list` in `codemod_host.dart` | `test/yaml/codemod_host_yaml_test.dart` |
 | Generic entrypoint | `bin/codemod_host.dart` | manual + host tests |
 | Builtin transforms + AstPath | `resolveClassFocus`, `StringResolver` on transforms | existing + generic transform tests |
@@ -61,11 +67,23 @@ Canonical spec for YAML recipes and the navigate + anchor DSL. **Implementation 
 
 ### Not done
 
-- VS Code extension wiring (spawn `bin/codemod_host.dart --stdio-server`, settings → `HostConfig`, diagnostics in UI)
 - Bundled compiled host binary in extension
 - v2 navigate/anchor (`field:`, `param:name:`, `doc:before`, …)
-- `buildRunner` post-execution builtin in YAML compiler
+
+### Merge-ready (done)
+
 - `addConstructorParam` YAML step
+- `buildRunner` post-execution builtin in YAML compiler
+- `FieldConstructorArgs.style` nullable — respects `CodemodPreferences.emptyConstructorStyle`
+- Full test suite green (89/89)
+
+### Phase 4 extension (done)
+
+- Spawns `dart run bin/codemod_host.dart --stdio-server` with HostConfig CLI flags
+- Settings: `recipesDirectory`, `templatesRoot`, `emptyConstructorStyle`
+- Parses `diagnostics` from `list` / `reload`; shown in RecipesTab
+- YAML recipe file watcher triggers `reload` (debounced)
+- No YAML parsing in TypeScript
 
 ### Try it now
 
@@ -84,8 +102,8 @@ Default paths: recipes `.codemod/recipes`, templates `.codemod/templates` (works
 
 ### Test suite
 
-- `dart test test/ast_path test/yaml` — 18/18 pass
-- Full suite: 87/88 (1 pre-existing failure: `CodeEditor uses positional style for empty constructor when preferred`)
+- `dart test test/ast_path test/yaml` — 20/20 pass
+- Full suite: 89/89
 
 ---
 
@@ -94,7 +112,7 @@ Default paths: recipes `.codemod/recipes`, templates `.codemod/templates` (works
 ```mermaid
 flowchart TB
   subgraph clients [Frontends]
-    Ext[VS Code extension - NOT WIRED YET]
+    Ext[VS Code extension]
     CLI[bin/codemod_host.dart]
   end
   subgraph core [lib/ - DONE]
@@ -104,7 +122,7 @@ flowchart TB
     Host[CodemodHost.fromConfig]
   end
   CLI --> Host
-  Ext -.-> Host
+  Ext --> Host
   Registry --> Compiler
   Compiler --> AstPath
 ```
@@ -151,12 +169,14 @@ steps:
         - addMethod: { at: [...], name: foo, body: "..." }
         - addImport: package:foo/bar.dart
         - addAnnotation: { at: [...], annotation: "@override" }
+        - addConstructorParam: { at: [...], name: foo, type: String }
   - create:
       path: "lib/{{name}}.dart"
       template: |
         ...
 postExecution:
   - dartFormat
+  - buildRunner
   - run: echo done
   - runScript: scripts/post.sh
 ```

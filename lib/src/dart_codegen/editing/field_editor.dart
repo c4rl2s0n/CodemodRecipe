@@ -123,7 +123,7 @@ extension FieldEditor on CodeEditor {
     return addFieldToConstructor(
       focus,
       spec,
-      constructorArgs: FieldConstructorArgs.optional(
+      constructorArgs: FieldConstructorArgs(
         style: constructorArgs?.style,
         thisPrefix: thisPrefix,
       ),

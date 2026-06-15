@@ -58,13 +58,13 @@ class FieldSpec {
 /// Per-call overrides when wiring a field to a constructor.
 class FieldConstructorArgs {
   /// Overrides [CodemodPreferences.emptyConstructorStyle] for empty constructors.
-  final ConstructorParamStyle style;
+  ///
+  /// When null, [CodemodPreferences.emptyConstructorStyle] is used.
+  final ConstructorParamStyle? style;
 
   /// When true, emits `this.name`; otherwise emits `type name`.
   final bool thisPrefix;
 
   /// Creates constructor wiring overrides.
-  const FieldConstructorArgs({this.style = ConstructorParamStyle.named, this.thisPrefix = true});
-  const FieldConstructorArgs.optional({ConstructorParamStyle? style, bool? thisPrefix}) : 
-  this(style: style ?? ConstructorParamStyle.named, thisPrefix: thisPrefix ?? true);
+  const FieldConstructorArgs({this.style, this.thisPrefix = true});
 }
