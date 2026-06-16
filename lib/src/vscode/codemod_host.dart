@@ -105,10 +105,9 @@ class CodemodHost {
     Iterable<CodemodRecipe> recipes, {
     CodemodPreferences preferences = const CodemodPreferences(),
   }) {
-    return CodemodHost(
-      {for (final recipe in recipes) recipe.name: recipe},
-      preferences: preferences,
-    );
+    return CodemodHost({
+      for (final recipe in recipes) recipe.name: recipe,
+    }, preferences: preferences);
   }
 
   void _reloadFromConfig() {
@@ -140,9 +139,8 @@ class CodemodHost {
   }
 
   Future<void> _runPersistent() async {
-    await for (final line in stdin
-        .transform(utf8.decoder)
-        .transform(const LineSplitter())) {
+    await for (final line
+        in stdin.transform(utf8.decoder).transform(const LineSplitter())) {
       final request = _decodeRequest(line);
       await _handleRequest(request, fallbackCommand: line);
     }
@@ -163,7 +161,10 @@ class CodemodHost {
       final response = await dispatch(request);
       runWatch.stop();
       _writeResponse(
-        _withMetrics(response, {'command': command, 'runMs': runWatch.elapsedMilliseconds}),
+        _withMetrics(response, {
+          'command': command,
+          'runMs': runWatch.elapsedMilliseconds,
+        }),
       );
     } catch (error, stack) {
       _writeResponse({
@@ -604,10 +605,7 @@ class CodemodHost {
     Map<String, Object?> response,
     Map<String, Object?> metrics,
   ) {
-    return {
-      ...response,
-      '_hostMetrics': metrics,
-    };
+    return {...response, '_hostMetrics': metrics};
   }
 }
 

@@ -65,11 +65,7 @@ InsertionPlan planConstructorParamInsertion(
 
     if (inner.startsWith('{')) {
       final braceOffset = source.indexOf('{', params.leftParenthesis.offset);
-      return InsertionPlan(
-        offset: braceOffset + 1,
-        length: 0,
-        text: paramText,
-      );
+      return InsertionPlan(offset: braceOffset + 1, length: 0, text: paramText);
     }
 
     if (inner.startsWith('[')) {

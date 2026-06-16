@@ -56,9 +56,7 @@ class CodeEditor {
 
   /// Inserts [text] at [offset].
   CodeEditor insert(int offset, String text, {String? description}) {
-    _patches.add(
-      SourcePatch(offset, 0, text, description: description),
-    );
+    _patches.add(SourcePatch(offset, 0, text, description: description));
     return this;
   }
 
@@ -89,11 +87,7 @@ class CodeEditor {
   }
 
   /// Adds [code] only when the class has no method named [name].
-  CodeEditor addMethodUnlessExists(
-    AstFocus focus,
-    String name,
-    String code,
-  ) {
+  CodeEditor addMethodUnlessExists(AstFocus focus, String name, String code) {
     if (!focus.classHasMethod(name)) {
       addMethod(focus, code);
     }

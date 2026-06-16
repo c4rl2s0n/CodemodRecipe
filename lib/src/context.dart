@@ -23,7 +23,7 @@ import 'template.dart';
 /// context.pascal('feature'); // 'UserProfile'
 ///
 /// // Render templates
-/// context.render('lib/{{feature:snake}}.dart'); // 'lib/user_profile.dart'
+/// context.render('lib/{{\$snake feature}}.dart'); // 'lib/user_profile.dart'
 /// ```
 ///
 /// ## Project Extensions
@@ -59,6 +59,12 @@ class CodemodContext {
   Map<String, String> get values => Map.unmodifiable(
     _values.map((name, value) => MapEntry(name, stringifyArgValue(value!))),
   );
+
+  /// Returns typed values suitable for template rendering.
+  ///
+  /// Unlike [values], this preserves booleans and numbers so template conditionals
+  /// and expressions can work without stringly-typed hacks.
+  Map<String, Object?> toTemplateData() => Map.unmodifiable(_values);
 
   /// Sets or replaces a named context value.
   ///
@@ -135,7 +141,6 @@ class CodemodContext {
     return value;
   }
 
-
   /// Returns the named value as a string.
   String asString(String name) => stringifyArgValue(require<Object>(name));
 
@@ -193,12 +198,11 @@ class CodemodContext {
   ///
   /// ```dart
   /// context.set('feature', 'UserProfile');
-  /// context.render('lib/{{feature:snake}}.dart'); // 'lib/user_profile.dart'
+  /// context.render('lib/{{\$snake feature}}.dart'); // 'lib/user_profile.dart'
   /// ```
   String render(String template) =>
       CodemodTemplate.inline(template).render(this);
 }
-
 
 /// Project-wide defaults for code generation behavior.
 class CodemodPreferences {

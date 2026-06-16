@@ -33,7 +33,7 @@ todos:
     status: completed
   - id: dsl-v2
     content: "Phase 3: field/param/arg/doc anchors; optional match:"
-    status: pending
+    status: completed
   - id: fix-positional-ctor-test
     content: "Fix CodeEditor positional emptyConstructorStyle test regression"
     status: completed
@@ -58,7 +58,7 @@ Canonical spec for YAML recipes and the navigate + anchor DSL. **Implementation 
 
 | Area | Modules | Tests |
 |------|---------|-------|
-| AST path v1 | `lib/src/ast_path/` | `test/ast_path/` (12) |
+| AST path v1 + v2 | `lib/src/ast_path/` | `test/ast_path/` (21) |
 | YAML load/compile | `lib/src/yaml/recipe_compiler.dart`, `recipe_registry.dart` | `test/yaml/` (8) |
 | Host protocol | `reload`, `validate`, `diagnostics` on `list` in `codemod_host.dart` | `test/yaml/codemod_host_yaml_test.dart` |
 | Generic entrypoint | `bin/codemod_host.dart` | manual + host tests |
@@ -68,7 +68,8 @@ Canonical spec for YAML recipes and the navigate + anchor DSL. **Implementation 
 ### Not done
 
 - Bundled compiled host binary in extension
-- v2 navigate/anchor (`field:`, `param:name:`, `doc:before`, …)
+- Consumer DX: pubspec executable, `.codemod` bootstrap template
+- ast-grep-style `match:` patterns (v2 has substring `match` filter on navigate steps only)
 
 ### Merge-ready (done)
 
@@ -102,8 +103,8 @@ Default paths: recipes `.codemod/recipes`, templates `.codemod/templates` (works
 
 ### Test suite
 
-- `dart test test/ast_path test/yaml` — 20/20 pass
-- Full suite: 89/89
+- `dart test test/ast_path test/yaml` — 29/29 pass
+- Full suite: 100/100
 
 ---
 

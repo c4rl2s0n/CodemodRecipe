@@ -69,10 +69,7 @@ class RecipeSchema {
   }) {
     return {
       'id': id,
-      ...recipeToJson(
-        recipe,
-        includeTemplateContent: includeTemplateContent,
-      ),
+      ...recipeToJson(recipe, includeTemplateContent: includeTemplateContent),
     };
   }
 

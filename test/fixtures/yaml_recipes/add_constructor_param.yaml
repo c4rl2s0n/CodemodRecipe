@@ -18,11 +18,13 @@ steps:
   - edit:
       path: "{{file}}"
       steps:
-        - addConstructorParam:
+        - insert:
             at:
               - class: "{{className}}"
-            name: "{{param:camel}}"
-            type: String
+              - ctor: null
+            anchor: param:last
+            text: |
+              , String {{$camel param}}
 
 postExecution:
   - dartFormat

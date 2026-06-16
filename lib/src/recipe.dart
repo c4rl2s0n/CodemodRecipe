@@ -458,7 +458,6 @@ class CodemodRecipe with CodemodStep {
     this.previewTemplates = const [],
   });
 
-
   /// Creates a recipe from an ordered mix of recipes, operations, and
   /// post-execution actions.
   ///

@@ -80,7 +80,10 @@ class PathSandboxException implements Exception {
 }
 
 /// Converts a [PathSandboxException] to a [RecipeDiagnostic].
-RecipeDiagnostic diagnosticFromSandbox(PathSandboxException error, String file) {
+RecipeDiagnostic diagnosticFromSandbox(
+  PathSandboxException error,
+  String file,
+) {
   return RecipeDiagnostic(
     severity: DiagnosticSeverity.error,
     code: error.code ?? 'E_PATH_TRAVERSAL',

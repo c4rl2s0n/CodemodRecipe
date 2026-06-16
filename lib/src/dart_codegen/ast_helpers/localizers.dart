@@ -98,9 +98,9 @@ List<ClassDeclaration> findClassesByName(
   CompilationUnit unit,
   String className,
 ) {
-  return findAllClasses(unit)
-      .where((node) => node.name.lexeme == className)
-      .toList();
+  return findAllClasses(
+    unit,
+  ).where((node) => node.name.lexeme == className).toList();
 }
 
 /// Returns whether [classNode] extends a class named [baseClassName].
@@ -146,7 +146,6 @@ List<ClassDeclaration> findAllClasses(CompilationUnit unit) {
   return classes;
 }
 
-
 /// Returns a stable insertion offset for adding a new class member.
 int findOptimalInsertionOffset(ClassDeclaration classNode) {
   final methods = getMethods(classNode);
@@ -161,4 +160,3 @@ int findOptimalInsertionOffset(ClassDeclaration classNode) {
 
   return findClassBodyStartOffset(classNode);
 }
-

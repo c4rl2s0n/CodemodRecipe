@@ -71,7 +71,9 @@ class AstFocus {
     final classDecl = asClass;
     final ctor = findConstructor(classDecl, name: name);
     if (ctor == null) {
-      final label = name == null ? 'unnamed constructor' : 'constructor "$name"';
+      final label = name == null
+          ? 'unnamed constructor'
+          : 'constructor "$name"';
       throw StateError('$label not found in ${classDecl.name.lexeme}');
     }
     return AstFocus(source, unit, ctor);
@@ -119,12 +121,7 @@ class AstFocus {
 
   /// Plans insertion of [text] as a named argument in a focused constructor call.
   InsertionPlan planArgument(String text, {String indent = '      '}) {
-    return planArgumentInsertion(
-      source,
-      argumentList,
-      text,
-      indent: indent,
-    );
+    return planArgumentInsertion(source, argumentList, text, indent: indent);
   }
 
   /// Plans insertion of [text] into a focused constructor parameter list.
@@ -139,15 +136,12 @@ class AstFocus {
   bool classHasField(String name) => hasFieldInClass(asClass, name);
 
   /// Whether the focused constructor call has named argument [name].
-  bool argumentsHaveNamed(String name) =>
-      hasNamedArgument(argumentList, name);
+  bool argumentsHaveNamed(String name) => hasNamedArgument(argumentList, name);
 
   T _require<T extends AstNode>(String label) {
     final focused = node;
     if (focused is! T) {
-      throw StateError(
-        'Expected $label, got ${focused.runtimeType}',
-      );
+      throw StateError('Expected $label, got ${focused.runtimeType}');
     }
     return focused;
   }

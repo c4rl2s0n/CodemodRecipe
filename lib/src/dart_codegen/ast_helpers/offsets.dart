@@ -28,7 +28,6 @@ int findLastArgumentInsertOffset(String source, ArgumentList argumentList) {
   return skipTrailingComma(source, args.last.end, argumentList.end);
 }
 
-
 int findLastStatementInsertOffset(MethodDeclaration method) {
   final body = method.body;
   if (body is! BlockFunctionBody) {

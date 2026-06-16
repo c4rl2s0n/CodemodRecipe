@@ -94,11 +94,7 @@ extension FieldEditor on CodeEditor {
     FieldConstructorArgs? constructorArgs,
   }) {
     if (!hasConstructorParam(focus, spec.name)) {
-      addFieldToConstructor(
-        focus,
-        spec,
-        constructorArgs: constructorArgs,
-      );
+      addFieldToConstructor(focus, spec, constructorArgs: constructorArgs);
     }
     return this;
   }
@@ -191,11 +187,7 @@ extension FieldEditor on CodeEditor {
     );
 
     if (effectiveAddToConstructor && findConstructor(classDecl) != null) {
-      _wireFieldToConstructor(
-        focus,
-        spec,
-        constructorArgs: constructorArgs,
-      );
+      _wireFieldToConstructor(focus, spec, constructorArgs: constructorArgs);
     }
 
     return this;
@@ -230,9 +222,6 @@ extension FieldEditor on CodeEditor {
       paramText,
     );
 
-    insertPlan(
-      plan,
-      description: 'Add ${spec.name} parameter to constructor',
-    );
+    insertPlan(plan, description: 'Add ${spec.name} parameter to constructor');
   }
 }

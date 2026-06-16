@@ -54,7 +54,7 @@ Use `CodemodTemplate` for generated snippets and files. Templates use
 Mustache-style placeholders plus package-defined casing filters:
 
 ```mustache
-{{feature}} {{feature:snake}} {{feature:camel}} {{feature:pascal}}
+{{feature}} {{$snake feature}} {{$camel feature}} {{$pascal feature}}
 ```
 
 Unknown variables and unsupported casing filters should fail the run. Use
@@ -66,8 +66,8 @@ Use `CreateFileOperation` for new files:
 
 ```dart
 CreateFileOperation(
-  path: (context) => context.render('lib/{{feature:snake}}/view.dart'),
-  template: const CodemodTemplate.inline('class {{feature:pascal}}View {}'),
+  path: (context) => context.render('lib/{{$snake feature}}/view.dart'),
+  template: const CodemodTemplate.inline('class {{$pascal feature}}View {}'),
 )
 ```
 

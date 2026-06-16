@@ -19,9 +19,7 @@ AstFocus resolveClassFocus(
     final renderedNavigate = _renderNavigateSteps(navigate, context);
     final focus = AstPathInterpreter().navigateTo(source, renderedNavigate);
     if (focus.node is! ClassDeclaration) {
-      throw StateError(
-        'Expected class focus, got ${focus.node.runtimeType}',
-      );
+      throw StateError('Expected class focus, got ${focus.node.runtimeType}');
     }
     return focus;
   }
@@ -62,9 +60,7 @@ List<NavigateStep>? parseNavigateSteps(Object? value) {
   }
 
   if (value is List) {
-    return [
-      for (final entry in value) _parseNavigateEntry(entry),
-    ];
+    return [for (final entry in value) _parseNavigateEntry(entry)];
   }
 
   if (value is Map) {
@@ -128,10 +124,16 @@ NavigateStep _navigateStepForKey(String key, String? name) {
       NavigateKind.classDecl,
       name: _requireName(name, key),
     ),
-    'method' => NavigateStep(NavigateKind.method, name: _requireName(name, key)),
+    'method' => NavigateStep(
+      NavigateKind.method,
+      name: _requireName(name, key),
+    ),
     'ctor' => NavigateStep(NavigateKind.constructor, name: name),
     'call' => NavigateStep(NavigateKind.call, name: _requireName(name, key)),
-    'import' => NavigateStep(NavigateKind.import, name: _requireName(name, key)),
+    'import' => NavigateStep(
+      NavigateKind.import,
+      name: _requireName(name, key),
+    ),
     'field' => NavigateStep(NavigateKind.field, name: _requireName(name, key)),
     _ => throw FormatException('Unknown navigate step "$key"'),
   };

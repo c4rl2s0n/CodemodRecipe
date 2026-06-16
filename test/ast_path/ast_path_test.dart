@@ -35,7 +35,9 @@ void main() {
     });
 
     test('parses path string with typed steps', () {
-      final path = parsePathString('class:Settings > method:update @ stmt:last');
+      final path = parsePathString(
+        'class:Settings > method:update @ stmt:last',
+      );
 
       expect(path.navigate.length, 2);
       expect(path.anchor.kind, AnchorKind.stmtLast);
@@ -81,11 +83,16 @@ void main() {
         parseAnchor('initializer:replace'),
         const Anchor(AnchorKind.initializerReplace),
       );
-      expect(parseAnchor('param:0'), const Anchor(AnchorKind.paramIndex, index: 0));
+      expect(
+        parseAnchor('param:0'),
+        const Anchor(AnchorKind.paramIndex, index: 0),
+      );
     });
 
     test('parses field navigate step', () {
-      final path = parsePathString('class:Settings > field:count @ initializer:replace');
+      final path = parsePathString(
+        'class:Settings > field:count @ initializer:replace',
+      );
       expect(path.navigate.last.kind, NavigateKind.field);
       expect(path.navigate.last.name, 'count');
       expect(path.anchor.kind, AnchorKind.initializerReplace);
@@ -107,7 +114,9 @@ void main() {
     final interpreter = AstPathInterpreter();
 
     test('resolves stmt:last in method body', () {
-      final path = parsePathString('class:Settings > method:update @ stmt:last');
+      final path = parsePathString(
+        'class:Settings > method:update @ stmt:last',
+      );
       final offset = interpreter.resolveOffset(settingsSource, path);
 
       expect(settingsSource.substring(offset - 1, offset), ';');

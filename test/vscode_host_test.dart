@@ -33,7 +33,7 @@ CodemodRecipe _addMethodRecipe() {
             className: (c) => c.require('class'),
             methodName: (c) => c.camel('method'),
             body: const CodemodTemplate.inline(
-              '  void {{method:camel}}() {}\n',
+              '  void {{\$camel method}}() {}\n',
             ),
           ),
         ],
@@ -64,14 +64,14 @@ CodemodRecipe _addPropertyAccessorsRecipe() {
             className: (c) => c.require('class'),
             methodName: (c) => 'get${c.pascal('property')}',
             body: const CodemodTemplate.inline(
-              '  {{type}} get{{property:pascal}}() => _{{property:camel}};\n',
+              '  {{type}} get{{\$pascal property}}() => _{{\$camel property}};\n',
             ),
           ),
           AddMethodTransform(
             className: (c) => c.require('class'),
             methodName: (c) => 'set${c.pascal('property')}',
             body: const CodemodTemplate.inline(
-              '  void set{{property:pascal}}({{type}} value) => _{{property:camel}} = value;\n',
+              '  void set{{\$pascal property}}({{type}} value) => _{{\$camel property}} = value;\n',
             ),
           ),
         ],
@@ -91,10 +91,10 @@ CodemodRecipe _scaffoldAndWireServiceRecipe() {
     ],
     operations: [
       CreateFileOperation.templatePath(
-        pathTemplate: '{{root}}/services/{{service:snake}}_service.dart',
+        pathTemplate: '{{root}}/services/{{\$snake service}}_service.dart',
         template: const CodemodTemplate.inline('''
-class {{service:pascal}}Service {
-  const {{service:pascal}}Service();
+class {{\$pascal service}}Service {
+  const {{\$pascal service}}Service();
 }
 '''),
       ),
@@ -155,12 +155,7 @@ void main() {
     test('serializes bool input kind and typed default', () {
       final recipe = CodemodRecipe(
         name: 'flags',
-        args: [
-          CodemodArg<bool>.optional(
-            'addToConstructor',
-            defaultsTo: true,
-          ),
-        ],
+        args: [CodemodArg<bool>.optional('addToConstructor', defaultsTo: true)],
         operations: const [],
       );
 
@@ -176,10 +171,10 @@ void main() {
         args: [CodemodArg<String>.required('feature')],
         operations: [
           CreateFileOperation.templatePath(
-            pathTemplate: 'lib/{{feature:snake}}.dart',
+            pathTemplate: 'lib/{{\$snake feature}}.dart',
             previewLabel: 'Feature file',
             template: const CodemodTemplate.inline(
-              'class {{feature:pascal}} {}\n',
+              'class {{\$pascal feature}} {}\n',
             ),
           ),
         ],
@@ -188,10 +183,10 @@ void main() {
       final previews = json['previewTemplates'] as List;
       expect(previews, hasLength(1));
       expect((previews.first as Map)['label'], 'Feature file');
-      expect((previews.first as Map)['path'], 'lib/{{feature:snake}}.dart');
+      expect((previews.first as Map)['path'], 'lib/{{\$snake feature}}.dart');
       expect(
         (previews.first as Map)['content'],
-        contains('{{feature:pascal}}'),
+        contains('{{\$pascal feature}}'),
       );
     });
   });
@@ -316,33 +311,39 @@ void main() {
       expect('\n'.allMatches(snippet).length <= 0, isTrue);
     });
 
-    test('preview includes create-file snippet with configured line limit', () async {
-      final dir = await Directory.systemTemp.createTemp('codemod_host_snippet_create');
-      addTearDown(() => dir.delete(recursive: true));
-      final file = File('${dir.path}/counter.dart')..writeAsStringSync('class Counter {}\n');
+    test(
+      'preview includes create-file snippet with configured line limit',
+      () async {
+        final dir = await Directory.systemTemp.createTemp(
+          'codemod_host_snippet_create',
+        );
+        addTearDown(() => dir.delete(recursive: true));
+        final file = File('${dir.path}/counter.dart')
+          ..writeAsStringSync('class Counter {}\n');
 
-      final host = CodemodHost({'wire': _scaffoldAndWireServiceRecipe()});
-      final response = await host.dispatch({
-        'command': 'preview',
-        'recipe': 'wire',
-        'snippetLines': 2,
-        'args': {
-          'root': dir.path,
-          'file': file.path,
-          'class': 'Counter',
-          'service': 'counter_sync',
-        },
-      });
+        final host = CodemodHost({'wire': _scaffoldAndWireServiceRecipe()});
+        final response = await host.dispatch({
+          'command': 'preview',
+          'recipe': 'wire',
+          'snippetLines': 2,
+          'args': {
+            'root': dir.path,
+            'file': file.path,
+            'class': 'Counter',
+            'service': 'counter_sync',
+          },
+        });
 
-      expect(response['ok'], isTrue);
-      final files = response['files'] as List;
-      final created = files
-          .cast<Map>()
-          .firstWhere((entry) => entry['kind'] == 'create');
-      final snippet = (created['snippet'] as String?) ?? '';
-      expect(snippet, contains('class CounterSyncService'));
-      expect('\n'.allMatches(snippet).length <= 1, isTrue);
-    });
+        expect(response['ok'], isTrue);
+        final files = response['files'] as List;
+        final created = files.cast<Map>().firstWhere(
+          (entry) => entry['kind'] == 'create',
+        );
+        final snippet = (created['snippet'] as String?) ?? '';
+        expect(snippet, contains('class CounterSyncService'));
+        expect('\n'.allMatches(snippet).length <= 1, isTrue);
+      },
+    );
 
     test('diff returns full file data for a preview path', () async {
       final dir = await Directory.systemTemp.createTemp('codemod_host_diff');
@@ -419,7 +420,9 @@ void main() {
     });
 
     test('apply supports multi transforms on the same file', () async {
-      final dir = await Directory.systemTemp.createTemp('codemod_host_multi_same');
+      final dir = await Directory.systemTemp.createTemp(
+        'codemod_host_multi_same',
+      );
       addTearDown(() => dir.delete(recursive: true));
       final file = File('${dir.path}/counter.dart')
         ..writeAsStringSync('class Counter {}\n');
@@ -445,7 +448,9 @@ void main() {
     });
 
     test('apply supports multi operations across different files', () async {
-      final dir = await Directory.systemTemp.createTemp('codemod_host_multi_file');
+      final dir = await Directory.systemTemp.createTemp(
+        'codemod_host_multi_file',
+      );
       addTearDown(() => dir.delete(recursive: true));
       final file = File('${dir.path}/counter.dart')
         ..writeAsStringSync('class Counter {}\n');

@@ -147,10 +147,7 @@ void main() {
       final args = [
         CodemodArg<bool>.optional('addToConstructor', defaultsTo: true),
         CodemodArg<int>.optional('count', defaultsTo: 0),
-        CodemodArg<_TestMode>.required(
-          'mode',
-          enumValues: _TestMode.values,
-        ),
+        CodemodArg<_TestMode>.required('mode', enumValues: _TestMode.values),
       ];
 
       final context = CodemodContext(const {});
@@ -195,8 +192,14 @@ void main() {
     });
 
     test('compose keeps explicit arg definitions before recipe args', () {
-      final explicit = CodemodArg<String>.required('name', help: 'Explicit help');
-      final recipeArg = CodemodArg<String>.optional('name', help: 'Recipe help');
+      final explicit = CodemodArg<String>.required(
+        'name',
+        help: 'Explicit help',
+      );
+      final recipeArg = CodemodArg<String>.optional(
+        'name',
+        help: 'Recipe help',
+      );
       final recipe = CodemodRecipe(
         name: 'recipe',
         args: [recipeArg],
@@ -240,8 +243,7 @@ void main() {
       expect(
         composed.operations
             .map(
-              (operation) =>
-                  (operation as EditDartFileOperation).path(context),
+              (operation) => (operation as EditDartFileOperation).path(context),
             )
             .toList(),
         ['a.dart', 'inline.dart', 'b.dart'],
@@ -285,10 +287,10 @@ void main() {
   });
 
   group('templates', () {
-    test('renders explicit casing placeholders', () {
+    test('renders explicit casing helpers', () {
       final context = CodemodContext({'feature': 'FeedList'});
       final result = context.render(
-        '{{feature}} {{feature:snake}} {{feature:camel}} {{feature:pascal}}',
+        '{{feature}} {{\$snake feature}} {{\$camel feature}} {{\$pascal feature}}',
       );
 
       expect(result, 'FeedList feed_list feedList FeedList');
@@ -297,7 +299,7 @@ void main() {
     test('fails when a placeholder value is missing', () {
       expect(
         () => CodemodTemplate.inline(
-          '{{feature:snake}}',
+          '{{\$snake feature}}',
         ).render(CodemodContext()),
         throwsStateError,
       );
@@ -323,19 +325,37 @@ void main() {
       final context = CodemodContext({'label': 'Über'});
 
       final result = CodemodTemplate.inline(
-        '{{label}} {{label:snake}}',
+        '{{label}} {{\$snake label}}',
       ).render(context);
 
       expect(result, 'Über über');
     });
 
-    test('fails on unsupported casing filters', () {
-      expect(
-        () => CodemodTemplate.inline(
-          '{{feature:kebab}}',
-        ).render(CodemodContext({'feature': 'FeedList'})),
-        throwsA(isA<Object>()),
+    // Unsupported helpers are handled by stubble; we don't provide ad-hoc casing filters.
+
+    test('supports if blocks with boolean conditions', () {
+      final template = CodemodTemplate.inline('{{#when nullable}}X{{/when}}');
+
+      expect(template.render(CodemodContext({'nullable': true})), 'X');
+      expect(template.render(CodemodContext({'nullable': false})), '');
+    });
+
+    test('supports map helper with fallback to key', () {
+      const env = TemplateEnvironment(
+        maps: {
+          'columnType': {'int': 'intColumn'},
+        },
       );
+      final template = CodemodTemplate.inline(
+        "{{\$map 'columnType' type}} {{\$map 'columnType' other}} {{\$map 'missing' type}}",
+        environment: env,
+      );
+
+      final result = template.render(
+        CodemodContext({'type': 'int', 'other': 'bool'}),
+      );
+
+      expect(result, 'intColumn bool int');
     });
   });
 
@@ -347,7 +367,7 @@ void main() {
       final operation = CreateFileOperation(
         path: (context) => '${tempDir.path}/lib/{{feature:snake}}.dart'
             .replaceAll('{{feature:snake}}', context.snake('feature')),
-        template: const CodemodTemplate.inline('class {{feature:pascal}} {}'),
+        template: const CodemodTemplate.inline('class {{\$pascal feature}} {}'),
       );
 
       final changes = await operation.collect(
@@ -457,12 +477,14 @@ class Repo {
   group('CodeEditor', () {
     test('adds a method once', () {
       final focus = AstFocus.parse(_source).classNamed('Counter');
-      final patches = CodeEditor(_source)
-          .addMethodUnlessExists(focus, 'increment', '''
+      final patches = CodeEditor(_source).addMethodUnlessExists(
+        focus,
+        'increment',
+        '''
   void increment() {
     value++;
-  }''')
-          .patches;
+  }''',
+      ).patches;
 
       final result = applyPatches(_source, patches);
 
@@ -501,7 +523,9 @@ class Counter {
 ''';
       final focus = AstFocus.parse(source).classNamed('Counter');
 
-      final result = CodeEditor(source).addField(focus, 'value', 'int').generate();
+      final result = CodeEditor(
+        source,
+      ).addField(focus, 'value', 'int').generate();
 
       expect(result, contains('final int value;'));
       expect(result, contains('required this.value'));
@@ -513,7 +537,13 @@ class Counter {
       final focus = AstFocus.parse(source).classNamed('Counter');
 
       final result = CodeEditor(source)
-          .addField(focus, 'name', 'String', isNullable: true, addToConstructor: false)
+          .addField(
+            focus,
+            'name',
+            'String',
+            isNullable: true,
+            addToConstructor: false,
+          )
           .generate();
 
       expect(result, contains('final String? name;'));
@@ -542,9 +572,9 @@ class Counter {
 ''';
       final focus = AstFocus.parse(source).classNamed('Counter');
 
-      final result = CodeEditor(source)
-          .addField(focus, 'b', 'String', isNullable: true)
-          .generate();
+      final result = CodeEditor(
+        source,
+      ).addField(focus, 'b', 'String', isNullable: true).generate();
 
       expect(result, contains('final String? b;'));
       expect(result, contains('this.b'));
@@ -560,9 +590,9 @@ class Counter {
 ''';
       final focus = AstFocus.parse(source).classNamed('Counter');
 
-      final result = CodeEditor(source)
-          .addField(focus, 'b', 'int', defaultValue: '0')
-          .generate();
+      final result = CodeEditor(
+        source,
+      ).addField(focus, 'b', 'int', defaultValue: '0').generate();
 
       expect(result, contains('this.b = 0'));
     });
@@ -593,7 +623,9 @@ class Counter {
 ''';
       final focus = AstFocus.parse(source).classNamed('Counter');
 
-      final result = CodeEditor(source).addField(focus, 'value', 'int').generate();
+      final result = CodeEditor(
+        source,
+      ).addField(focus, 'value', 'int').generate();
 
       expect(result, contains('({required this.value})'));
     });
@@ -648,9 +680,9 @@ class Counter {
       const spec = FieldSpec(name: 'value', type: 'int');
       final focus = AstFocus.parse(source).classNamed('Counter');
 
-      final result = CodeEditor(source)
-          .addFieldToConstructorUnlessExists(focus, spec)
-          .generate();
+      final result = CodeEditor(
+        source,
+      ).addFieldToConstructorUnlessExists(focus, spec).generate();
 
       expect(result, contains('required this.value'));
       expect(
@@ -674,7 +706,13 @@ class Counter {
       final focus = AstFocus.parse(source).classNamed('Counter');
 
       final result = CodeEditor(source)
-          .addField(focus, 'count', 'int', addToConstructor: true, isStatic: true)
+          .addField(
+            focus,
+            'count',
+            'int',
+            addToConstructor: true,
+            isStatic: true,
+          )
           .generate();
 
       expect(result, contains('static final int count;'));
@@ -703,9 +741,9 @@ class Counter {
       const source = 'class Counter {}';
       final focus = AstFocus.parse(source).classNamed('Counter');
 
-      final result = CodeEditor(source)
-          .addFieldUnlessExists(focus, 'value', 'int')
-          .generate();
+      final result = CodeEditor(
+        source,
+      ).addFieldUnlessExists(focus, 'value', 'int').generate();
 
       expect(result, contains('final int value;'));
       expect(
@@ -738,7 +776,7 @@ class Counter {
         className: (_) => 'Counter',
         methodName: (context) => context.camel('method'),
         body: const CodemodTemplate.inline('''
-  void {{method:camel}}() {}
+  void {{\$camel method}}() {}
 '''),
       );
       final context = CodemodContext({'method': 'Increment'});

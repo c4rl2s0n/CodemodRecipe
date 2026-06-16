@@ -14,14 +14,6 @@ import 'host_config.dart';
 import 'insert_transform.dart';
 import 'path_sandbox.dart';
 import '../ast_path/ast_path.dart';
-import '../ast_path/class_focus.dart';
-import '../dart_codegen/field_spec.dart';
-import '../generic/transforms/add_class_annotation_transform.dart';
-import '../generic/transforms/add_constructor_param_transform.dart';
-import '../generic/transforms/add_field_transform.dart';
-import '../generic/transforms/add_import_transform.dart';
-import '../generic/transforms/add_method_transform.dart';
-import '../generic/transforms/resolvers.dart';
 
 /// Raw parse result for one YAML recipe file before registry linking.
 class YamlRecipeDefinition {
@@ -53,6 +45,7 @@ class YamlRecipeCompiler {
     required this.config,
     required this.definitionsById,
     required this.dartRecipes,
+    required this.mapsById,
   });
 
   /// Host configuration.
@@ -64,6 +57,9 @@ class YamlRecipeCompiler {
   /// Dart-registered recipes available for reference.
   final Map<String, CodemodRecipe> dartRecipes;
 
+  /// Globally loaded YAML maps by id.
+  final Map<String, Map<String, String>> mapsById;
+
   /// Compiles [definition] into a [CodemodRecipe].
   CompileResult compile(YamlRecipeDefinition definition) {
     final diagnostics = <RecipeDiagnostic>[];
@@ -71,6 +67,12 @@ class YamlRecipeCompiler {
     final sandbox = PathSandbox(config);
 
     try {
+      final mergedMaps = _mergeMaps(
+        global: mapsById,
+        inline: _parseInlineMaps(doc['maps'], definition.filePath, diagnostics),
+      );
+      final templateEnvironment = TemplateEnvironment(maps: mergedMaps);
+
       final name = _stringField(doc, 'name') ?? definition.id;
       final description = _stringField(doc, 'description') ?? '';
       final args = _parseArgs(doc['args'], definition.filePath, diagnostics);
@@ -79,6 +81,7 @@ class YamlRecipeCompiler {
         definition.filePath,
         sandbox,
         diagnostics,
+        templateEnvironment,
       );
       final postExecution = _parsePostExecution(
         doc['postExecution'],
@@ -87,7 +90,9 @@ class YamlRecipeCompiler {
         diagnostics,
       );
 
-      if (diagnostics.any((item) => item.severity == DiagnosticSeverity.error)) {
+      if (diagnostics.any(
+        (item) => item.severity == DiagnosticSeverity.error,
+      )) {
         return CompileResult(diagnostics: diagnostics);
       }
 
@@ -128,7 +133,9 @@ class YamlRecipeCompiler {
     final args = <CodemodArgDescriptor>[];
     for (final entry in value) {
       if (entry is! YamlMap) {
-        diagnostics.add(_schemaError('Each args entry must be a map', filePath));
+        diagnostics.add(
+          _schemaError('Each args entry must be a map', filePath),
+        );
         continue;
       }
 
@@ -183,6 +190,7 @@ class YamlRecipeCompiler {
     String filePath,
     PathSandbox sandbox,
     List<RecipeDiagnostic> diagnostics,
+    TemplateEnvironment templateEnvironment,
   ) {
     if (value == null) return const [];
     if (value is! YamlList) {
@@ -203,7 +211,11 @@ class YamlRecipeCompiler {
           diagnostics.add(_schemaError('recipe step missing id', filePath));
           continue;
         }
-        final referenced = _resolveReferencedRecipe(recipeId, filePath, diagnostics);
+        final referenced = _resolveReferencedRecipe(
+          recipeId,
+          filePath,
+          diagnostics,
+        );
         if (referenced != null) {
           operations.addAll(referenced.operations);
         }
@@ -226,6 +238,7 @@ class YamlRecipeCompiler {
           edit['steps'],
           filePath,
           diagnostics,
+          templateEnvironment,
         );
 
         operations.add(
@@ -250,7 +263,13 @@ class YamlRecipeCompiler {
           continue;
         }
 
-        final template = _parseTemplate(create, filePath, sandbox, diagnostics);
+        final template = _parseTemplate(
+          create,
+          filePath,
+          sandbox,
+          diagnostics,
+          templateEnvironment,
+        );
         if (template == null) continue;
 
         final ifExists = _parseIfExists(_stringField(create, 'ifExists'));
@@ -274,6 +293,7 @@ class YamlRecipeCompiler {
     Object? value,
     String filePath,
     List<RecipeDiagnostic> diagnostics,
+    TemplateEnvironment templateEnvironment,
   ) {
     if (value is! YamlList) {
       diagnostics.add(_schemaError('edit.steps must be a list', filePath));
@@ -288,44 +308,11 @@ class YamlRecipeCompiler {
       }
 
       if (entry.containsKey('insert')) {
-        final transform = _parseInsertStep(entry['insert'], filePath, diagnostics);
-        if (transform != null) transforms.add(transform);
-        continue;
-      }
-
-      if (entry.containsKey('addField')) {
-        final transform = _parseAddFieldStep(entry['addField'], filePath, diagnostics);
-        if (transform != null) transforms.add(transform);
-        continue;
-      }
-
-      if (entry.containsKey('addMethod')) {
-        final transform = _parseAddMethodStep(entry['addMethod'], filePath, diagnostics);
-        if (transform != null) transforms.add(transform);
-        continue;
-      }
-
-      if (entry.containsKey('addImport')) {
-        final transform = _parseAddImportStep(entry['addImport'], filePath, diagnostics);
-        if (transform != null) transforms.add(transform);
-        continue;
-      }
-
-      if (entry.containsKey('addAnnotation')) {
-        final transform = _parseAddAnnotationStep(
-          entry['addAnnotation'],
+        final transform = _parseInsertStep(
+          entry['insert'],
           filePath,
           diagnostics,
-        );
-        if (transform != null) transforms.add(transform);
-        continue;
-      }
-
-      if (entry.containsKey('addConstructorParam')) {
-        final transform = _parseAddConstructorParamStep(
-          entry['addConstructorParam'],
-          filePath,
-          diagnostics,
+          templateEnvironment,
         );
         if (transform != null) transforms.add(transform);
         continue;
@@ -341,6 +328,7 @@ class YamlRecipeCompiler {
     Object? insert,
     String filePath,
     List<RecipeDiagnostic> diagnostics,
+    TemplateEnvironment templateEnvironment,
   ) {
     if (insert is! YamlMap) {
       diagnostics.add(_schemaError('insert must be a map', filePath));
@@ -351,252 +339,104 @@ class YamlRecipeCompiler {
     final text = _stringField(insert, 'text');
     if (path == null || text == null) return null;
 
+    _warnOnMissingMapIds(
+      template: text,
+      filePath: filePath,
+      diagnostics: diagnostics,
+      mapsById: templateEnvironment.maps,
+    );
+
     return AstPathInsertTransform(
       path: path,
-      template: CodemodTemplate.inline(text),
+      template: CodemodTemplate.inline(text, environment: templateEnvironment),
     );
   }
 
-  CodeTransform? _parseAddFieldStep(
-    Object? step,
-    String filePath,
-    List<RecipeDiagnostic> diagnostics,
-  ) {
-    if (step is! YamlMap) {
-      diagnostics.add(_schemaError('addField must be a map', filePath));
-      return null;
-    }
+  // Intentionally no additional edit steps beyond `insert` in the YAML surface.
 
-    final field = step['field'];
-    if (field is! YamlMap) {
-      diagnostics.add(_schemaError('addField.field is required', filePath));
-      return null;
-    }
-
-    final name = _stringField(field, 'name');
-    final type = _stringField(field, 'type');
-    if (name == null || type == null) {
-      diagnostics.add(_schemaError('addField.field.name and type required', filePath));
-      return null;
-    }
-
-    final target = _parseClassTarget(
-      step,
-      filePath,
-      diagnostics,
-      stepName: 'addField',
-      fallbackClassName: _stringField(field, 'className'),
-    );
-    if (target == null) return null;
-
-    return AddFieldTransform(
-      navigate: target.navigate,
-      className: target.className,
-      fieldName: _templateResolver(name),
-      fieldType: _templateResolver(type),
-      defaultValue: _optionalTemplateResolver(_stringField(field, 'default')),
-      isNullable: field['nullable'] == true,
-      isFinal: field['final'] != false,
-      isConst: field['const'] == true,
-      isStatic: field['static'] == true,
-      constructorArgs: _parseConstructorArgs(field['constructor']),
-    );
-  }
-
-  CodeTransform? _parseAddMethodStep(
-    Object? step,
-    String filePath,
-    List<RecipeDiagnostic> diagnostics,
-  ) {
-    if (step is! YamlMap) {
-      diagnostics.add(_schemaError('addMethod must be a map', filePath));
-      return null;
-    }
-
-    final methodName = _stringField(step, 'name') ?? _stringField(step, 'method');
-    final body = _stringField(step, 'body') ?? _stringField(step, 'text');
-    if (methodName == null || body == null) {
-      diagnostics.add(_schemaError('addMethod requires name and body', filePath));
-      return null;
-    }
-
-    final target = _parseClassTarget(
-      step,
-      filePath,
-      diagnostics,
-      stepName: 'addMethod',
-    );
-    if (target == null) return null;
-
-    return AddMethodTransform(
-      navigate: target.navigate,
-      className: target.className,
-      methodName: _templateResolver(methodName),
-      body: CodemodTemplate.inline(body),
-    );
-  }
-
-  CodeTransform? _parseAddImportStep(
-    Object? step,
-    String filePath,
-    List<RecipeDiagnostic> diagnostics,
-  ) {
-    if (step is String) {
-      return AddImportTransform(uri: _templateResolver(step));
-    }
-    if (step is! YamlMap) {
-      diagnostics.add(_schemaError('addImport must be a string or map', filePath));
-      return null;
-    }
-
-    final uri = _stringField(step, 'uri');
-    if (uri == null) {
-      diagnostics.add(_schemaError('addImport.uri is required', filePath));
-      return null;
-    }
-
-    return AddImportTransform(uri: _templateResolver(uri));
-  }
-
-  CodeTransform? _parseAddAnnotationStep(
-    Object? step,
-    String filePath,
-    List<RecipeDiagnostic> diagnostics,
-  ) {
-    if (step is! YamlMap) {
-      diagnostics.add(_schemaError('addAnnotation must be a map', filePath));
-      return null;
-    }
-
-    final annotation = _stringField(step, 'annotation');
-    if (annotation == null) {
-      diagnostics.add(_schemaError('addAnnotation.annotation is required', filePath));
-      return null;
-    }
-
-    final target = _parseClassTarget(
-      step,
-      filePath,
-      diagnostics,
-      stepName: 'addAnnotation',
-    );
-    if (target == null) return null;
-
-    return AddClassAnnotationTransform(
-      navigate: target.navigate,
-      className: target.className,
-      annotation: _templateResolver(annotation),
-    );
-  }
-
-  CodeTransform? _parseAddConstructorParamStep(
-    Object? step,
-    String filePath,
-    List<RecipeDiagnostic> diagnostics,
-  ) {
-    if (step is! YamlMap) {
-      diagnostics.add(_schemaError('addConstructorParam must be a map', filePath));
-      return null;
-    }
-
-    final name = _stringField(step, 'name') ?? _stringField(step, 'param');
-    final type = _stringField(step, 'type');
-    if (name == null || type == null) {
-      diagnostics.add(
-        _schemaError('addConstructorParam requires name and type', filePath),
-      );
-      return null;
-    }
-
-    final target = _parseClassTarget(
-      step,
-      filePath,
-      diagnostics,
-      stepName: 'addConstructorParam',
-    );
-    if (target == null) return null;
-
-    return AddConstructorParamTransform(
-      navigate: target.navigate,
-      className: target.className,
-      paramName: _templateResolver(name),
-      paramType: _templateResolver(type),
-      defaultValue: _optionalTemplateResolver(_stringField(step, 'default')),
-      isNullable: step['nullable'] == true,
-      thisPrefix: step['thisPrefix'] != false,
-      constructorArgs: _parseConstructorArgs(step['constructor']),
-    );
-  }
-
-  ({List<NavigateStep>? navigate, StringResolver? className})? _parseClassTarget(
-    YamlMap step,
-    String filePath,
-    List<RecipeDiagnostic> diagnostics, {
-    required String stepName,
-    String? fallbackClassName,
+  static Map<String, Map<String, String>> _mergeMaps({
+    required Map<String, Map<String, String>> global,
+    required Map<String, Map<String, String>> inline,
   }) {
-    final navigate = _parseNavigate(step['at'], filePath, diagnostics);
-    final classNameRaw = navigate == null
-        ? _stringField(step, 'className') ?? fallbackClassName
-        : null;
-    if (navigate == null && classNameRaw == null) {
-      diagnostics.add(
-        _schemaError('$stepName requires at or className', filePath),
-      );
-      return null;
+    final merged = <String, Map<String, String>>{
+      for (final entry in global.entries) entry.key: Map.of(entry.value),
+    };
+    for (final entry in inline.entries) {
+      merged.putIfAbsent(entry.key, () => <String, String>{});
+      merged[entry.key]!.addAll(entry.value);
     }
-
-    return (
-      navigate: navigate,
-      className: classNameRaw == null ? null : _templateResolver(classNameRaw),
-    );
+    return merged;
   }
 
-  List<NavigateStep>? _parseNavigate(
+  Map<String, Map<String, String>> _parseInlineMaps(
     Object? value,
     String filePath,
     List<RecipeDiagnostic> diagnostics,
   ) {
-    if (value == null) return null;
-    try {
-      return parseNavigateSteps(value is YamlList ? value.toList() : value);
-    } catch (error) {
+    if (value == null) return const {};
+    if (value is! YamlMap) {
+      diagnostics.add(_schemaError('maps must be a map', filePath));
+      return const {};
+    }
+
+    final result = <String, Map<String, String>>{};
+    for (final entry in value.entries) {
+      final id = entry.key.toString();
+      final entriesNode = entry.value;
+      if (entriesNode is! YamlMap) {
+        diagnostics.add(_schemaError('maps.$id must be a map', filePath));
+        continue;
+      }
+      result[id] = {
+        for (final mapEntry in entriesNode.entries)
+          mapEntry.key.toString(): mapEntry.value?.toString() ?? '',
+      };
+    }
+    return result;
+  }
+
+  static void _warnOnMissingMapIds({
+    required String template,
+    required String filePath,
+    required List<RecipeDiagnostic> diagnostics,
+    required Map<String, Map<String, String>> mapsById,
+  }) {
+    // Only warn when mapId is a literal string in the template.
+    // Expected syntax: `{{\$map 'mapId' key}}` or `{{\$map \"mapId\" key}}`.
+    var index = 0;
+    while (true) {
+      final start = template.indexOf('{{\$map', index);
+      if (start < 0) return;
+      var i = start + '{{\$map'.length;
+      while (i < template.length && template[i].trim().isEmpty) {
+        i++;
+      }
+      if (i >= template.length) return;
+
+      final quote = template[i];
+      if (quote != '\'' && quote != '"') {
+        index = i;
+        continue;
+      }
+      i++;
+      final idStart = i;
+      while (i < template.length && template[i] != quote) {
+        i++;
+      }
+      if (i >= template.length) return;
+      final mapId = template.substring(idStart, i);
+      index = i + 1;
+
+      if (mapsById.containsKey(mapId)) continue;
       diagnostics.add(
         RecipeDiagnostic(
-          severity: DiagnosticSeverity.error,
-          code: 'E_AST_PATH_PARSE',
-          message: '$error',
+          severity: DiagnosticSeverity.warning,
+          code: 'W_MAP_ID_NOT_FOUND',
+          message: 'Template references missing map id \"$mapId\"',
           sources: [DiagnosticSource(file: filePath)],
         ),
       );
-      return null;
     }
-  }
-
-  FieldConstructorArgs? _parseConstructorArgs(Object? value) {
-    if (value is! YamlMap) return null;
-    final styleName = _stringField(value, 'style');
-    final style = switch (styleName) {
-      'named' => ConstructorParamStyle.named,
-      'positional' => ConstructorParamStyle.positional,
-      'optionalPositional' => ConstructorParamStyle.optionalPositional,
-      null => null,
-      _ => ConstructorParamStyle.named,
-    };
-    return FieldConstructorArgs(
-      style: style,
-      thisPrefix: value['thisPrefix'] != false,
-    );
-  }
-
-  StringResolver _templateResolver(String template) {
-    final compiled = CodemodTemplate.inline(template);
-    return (context) => compiled.render(context);
-  }
-
-  StringResolver? _optionalTemplateResolver(String? template) {
-    if (template == null) return null;
-    return _templateResolver(template);
   }
 
   AstPath? _parseAstPath(
@@ -642,17 +482,24 @@ class YamlRecipeCompiler {
     String filePath,
     PathSandbox sandbox,
     List<RecipeDiagnostic> diagnostics,
+    TemplateEnvironment templateEnvironment,
   ) {
     final inline = _stringField(create, 'template');
     if (inline != null) {
-      return CodemodTemplate.inline(inline);
+      _warnOnMissingMapIds(
+        template: inline,
+        filePath: filePath,
+        diagnostics: diagnostics,
+        mapsById: templateEnvironment.maps,
+      );
+      return CodemodTemplate.inline(inline, environment: templateEnvironment);
     }
 
     final templateFile = _stringField(create, 'templateFile');
     if (templateFile != null) {
       try {
         final resolved = sandbox.resolveTemplateRelative(templateFile);
-        return CodemodTemplate.file(resolved);
+        return CodemodTemplate.file(resolved, environment: templateEnvironment);
       } on PathSandboxException catch (error) {
         diagnostics.add(diagnosticFromSandbox(error, filePath));
         return null;
@@ -685,7 +532,9 @@ class YamlRecipeCompiler {
         if (builtin != null) {
           actions.add(builtin);
         } else {
-          diagnostics.add(_schemaError('Unknown postExecution "$name"', filePath));
+          diagnostics.add(
+            _schemaError('Unknown postExecution "$name"', filePath),
+          );
         }
         continue;
       }
@@ -829,9 +678,5 @@ YamlRecipeDefinition parseYamlRecipeFile(String filePath, String contents) {
     throw FormatException('Recipe must declare id or name', filePath);
   }
 
-  return YamlRecipeDefinition(
-    id: id,
-    filePath: filePath,
-    document: node,
-  );
+  return YamlRecipeDefinition(id: id, filePath: filePath, document: node);
 }

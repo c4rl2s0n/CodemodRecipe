@@ -46,7 +46,12 @@ final addModelImportRecipe = CodemodRecipe(
 // Second recipe: Add property to the model class
 final addModelPropertyRecipe = CodemodRecipe(
   name: 'add_model_property',
-  args: [fileArg, modelArg, propertyArg, CodemodArg<String>.required('fieldType')],
+  args: [
+    fileArg,
+    modelArg,
+    propertyArg,
+    CodemodArg<String>.required('fieldType'),
+  ],
   operations: [
     EditDartFileOperation(
       path: (context) => context.require('file'),
@@ -55,7 +60,7 @@ final addModelPropertyRecipe = CodemodRecipe(
           className: (ctx) => ctx.require('model'),
           fieldName: (ctx) => ctx.camel('property'),
           fieldType: (ctx) => ctx.require('fieldType'),
-          constructorArgs: const FieldConstructorArgs()
+          constructorArgs: const FieldConstructorArgs(),
         ),
       ],
     ),

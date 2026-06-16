@@ -39,9 +39,7 @@ abstract class ArgCodec<T extends Object> {
       return const DoubleArgCodec() as ArgCodec<T>;
     }
     if (<T>[] is List<Enum>) {
-      throw ArgumentError(
-        'enumValues is required for enum argument type $T',
-      );
+      throw ArgumentError('enumValues is required for enum argument type $T');
     }
     throw ArgumentError('Unsupported CodemodArg type: $T');
   }

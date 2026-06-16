@@ -1,4 +1,3 @@
-
 /// Describes how constructor parameters are added to empty constructors.
 enum ConstructorParamStyle {
   /// Named parameters in braces, e.g. `({required this.foo})`.
@@ -10,7 +9,6 @@ enum ConstructorParamStyle {
   /// Optional positional parameters in brackets, e.g. `([this.foo])`.
   optionalPositional,
 }
-
 
 /// Describes a field to add and how it maps to a constructor parameter.
 class FieldSpec {

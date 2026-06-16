@@ -44,8 +44,8 @@ final addMethodRecipe = CodemodRecipe(
           className: (context) => context.require('class'),
           methodName: (context) => context.camel('method'),
           body: const CodemodTemplate.inline('''
-  void {{method:camel}}() {
-    // TODO: Implement {{method:camel}}
+  void {{\$camel method}}() {
+    // TODO: Implement {{\$camel method}}
   }
 '''),
         ),
@@ -75,12 +75,12 @@ final scaffoldFeatureRecipe = CodemodRecipe(
   operations: [
     CreateFileOperation.templatePath(
       pathTemplate:
-          'lib/features/{{feature:snake}}/{{feature:snake}}_model.dart',
+          'lib/features/{{\$snake feature}}/{{\$snake feature}}_model.dart',
       previewLabel: 'Model file',
       template: const CodemodTemplate.inline('''
-/// Data model for {{feature:pascal}} feature.
-class {{feature:pascal}}Model {
-  const {{feature:pascal}}Model();
+/// Data model for {{\$pascal feature}} feature.
+class {{\$pascal feature}}Model {
+  const {{\$pascal feature}}Model();
 
   // TODO: Add model properties
 }
@@ -88,16 +88,16 @@ class {{feature:pascal}}Model {
     ),
     CreateFileOperation.templatePath(
       pathTemplate:
-          'lib/features/{{feature:snake}}/{{feature:snake}}_view.dart',
+          'lib/features/{{\$snake feature}}/{{\$snake feature}}_view.dart',
       previewLabel: 'View file',
       template: const CodemodTemplate.inline('''
 import 'package:flutter/material.dart';
 
-import '{{feature:snake}}_model.dart';
+import '{{\$snake feature}}_model.dart';
 
-/// View widget for {{feature:pascal}} feature.
-class {{feature:pascal}}View extends StatelessWidget {
-  const {{feature:pascal}}View({super.key});
+/// View widget for {{\$pascal feature}} feature.
+class {{\$pascal feature}}View extends StatelessWidget {
+  const {{\$pascal feature}}View({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -152,14 +152,14 @@ final addPropertyAccessorsRecipe = CodemodRecipe(
           className: (c) => c.require('class'),
           methodName: (c) => 'get${c.pascal('property')}',
           body: const CodemodTemplate.inline(
-            '  {{type}} get{{property:pascal}}() => _{{property:camel}};\n',
+            '  {{type}} get{{\$pascal property}}() => _{{\$camel property}};\n',
           ),
         ),
         AddMethodTransform(
           className: (c) => c.require('class'),
           methodName: (c) => 'set${c.pascal('property')}',
           body: const CodemodTemplate.inline(
-            '  void set{{property:pascal}}({{type}} value) => _{{property:camel}} = value;\n',
+            '  void set{{\$pascal property}}({{type}} value) => _{{\$camel property}} = value;\n',
           ),
         ),
       ],
@@ -195,11 +195,11 @@ final scaffoldAndWireServiceRecipe = CodemodRecipe(
   ],
   operations: [
     CreateFileOperation.templatePath(
-      pathTemplate: 'lib/services/{{service:snake}}_service.dart',
+      pathTemplate: 'lib/services/{{\$snake service}}_service.dart',
       previewLabel: 'Service file',
       template: const CodemodTemplate.inline('''
-class {{service:pascal}}Service {
-  const {{service:pascal}}Service();
+class {{\$pascal service}}Service {
+  const {{\$pascal service}}Service();
 }
 '''),
     ),

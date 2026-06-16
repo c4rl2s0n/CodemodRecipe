@@ -26,12 +26,12 @@ final scaffoldFeatureRecipe = CodemodRecipe(
     // Create the model file
     CreateFileOperation(
       path: (context) => context.render(
-        'lib/features/{{feature:snake}}/{{feature:snake}}_model.dart',
+        'lib/features/{{\$snake feature}}/{{\$snake feature}}_model.dart',
       ),
       template: const CodemodTemplate.inline('''
-/// Data model for {{feature:pascal}} feature.
-class {{feature:pascal}}Model {
-  const {{feature:pascal}}Model();
+/// Data model for {{\$pascal feature}} feature.
+class {{\$pascal feature}}Model {
+  const {{\$pascal feature}}Model();
 
   // TODO: Add model properties
 }
@@ -40,16 +40,16 @@ class {{feature:pascal}}Model {
     // Create the view file
     CreateFileOperation(
       path: (context) => context.render(
-        'lib/features/{{feature:snake}}/{{feature:snake}}_view.dart',
+        'lib/features/{{\$snake feature}}/{{\$snake feature}}_view.dart',
       ),
       template: const CodemodTemplate.inline('''
 import 'package:flutter/material.dart';
 
-import '{{feature:snake}}_model.dart';
+import '{{\$snake feature}}_model.dart';
 
-/// View widget for {{feature:pascal}} feature.
-class {{feature:pascal}}View extends StatelessWidget {
-  const {{feature:pascal}}View({super.key});
+/// View widget for {{\$pascal feature}} feature.
+class {{\$pascal feature}}View extends StatelessWidget {
+  const {{\$pascal feature}}View({super.key});
 
   @override
   Widget build(BuildContext context) {

@@ -3,6 +3,7 @@ import 'dart:io';
 import '../recipe.dart';
 import 'diagnostics.dart';
 import 'host_config.dart';
+import 'map_registry.dart';
 import 'recipe_compiler.dart';
 
 /// Result of loading YAML and Dart recipes into a registry.
@@ -19,8 +20,9 @@ class YamlRecipeLoadResult {
   /// Load-time diagnostics including ID collisions.
   final List<RecipeDiagnostic> diagnostics;
 
-  List<Map<String, Object?>> diagnosticsJson() =>
-      [for (final item in diagnostics) item.toJson()];
+  List<Map<String, Object?>> diagnosticsJson() => [
+    for (final item in diagnostics) item.toJson(),
+  ];
 }
 
 /// Loads YAML recipes from [config] and merges optional Dart recipes.
@@ -31,13 +33,20 @@ class YamlRecipeRegistry {
     final definitionsById = <String, YamlRecipeDefinition>{};
     final idSources = <String, List<DiagnosticSource>>{};
 
+    final mapLoad = YamlMapRegistry.load(
+      workspaceRoot: config.workspaceRoot,
+      mapsDirectoryPath: config.mapsDirectoryPath,
+    );
+    diagnostics.addAll(mapLoad.diagnostics);
+
     final recipesDir = config.recipesDirectoryPath;
     final directory = Directory(recipesDir);
     if (directory.existsSync()) {
-      for (final file in directory
-          .listSync(recursive: true)
-          .whereType<File>()
-          .where((file) => _isYaml(file.path))) {
+      for (final file
+          in directory
+              .listSync(recursive: true)
+              .whereType<File>()
+              .where((file) => _isYaml(file.path))) {
         final relativePath = _relativePath(config.workspaceRoot, file.path);
         try {
           final definition = parseYamlRecipeFile(
@@ -91,6 +100,7 @@ class YamlRecipeRegistry {
         for (final entry in config.dartRecipes.entries)
           if (!rejectedIds.contains(entry.key)) entry.key: entry.value,
       },
+      mapsById: mapLoad.mapsById,
     );
 
     final recipes = <String, CodemodRecipe>{};

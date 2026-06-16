@@ -34,9 +34,7 @@ AstPath parseStructuredPath(Map<Object?, Object?> map) {
   }
 
   return AstPath(
-    navigate: [
-      for (final step in navigateValue) _parseNavigateEntry(step),
-    ],
+    navigate: [for (final step in navigateValue) _parseNavigateEntry(step)],
     anchor: parseAnchor(anchorValue),
   );
 }
@@ -79,7 +77,9 @@ Anchor parseAnchor(String token) {
   if (normalized.startsWith('param:name:')) {
     final name = normalized.substring('param:name:'.length).trim();
     if (name.isEmpty) {
-      throw AstPathParseException('Anchor "param:name:" requires a parameter name');
+      throw AstPathParseException(
+        'Anchor "param:name:" requires a parameter name',
+      );
     }
     return Anchor(AnchorKind.paramName, name: name);
   }
@@ -87,7 +87,9 @@ Anchor parseAnchor(String token) {
   if (normalized.startsWith('arg:name:')) {
     final name = normalized.substring('arg:name:'.length).trim();
     if (name.isEmpty) {
-      throw AstPathParseException('Anchor "arg:name:" requires an argument name');
+      throw AstPathParseException(
+        'Anchor "arg:name:" requires an argument name',
+      );
     }
     return Anchor(AnchorKind.argName, name: name);
   }
@@ -197,11 +199,20 @@ NavigateStep _parseNavigateToken(String token) {
 
 NavigateStep _navigateStepForKey(String key, String? name) {
   return switch (key) {
-    'class' => NavigateStep(NavigateKind.classDecl, name: _requireName(name, key)),
-    'method' => NavigateStep(NavigateKind.method, name: _requireName(name, key)),
+    'class' => NavigateStep(
+      NavigateKind.classDecl,
+      name: _requireName(name, key),
+    ),
+    'method' => NavigateStep(
+      NavigateKind.method,
+      name: _requireName(name, key),
+    ),
     'ctor' => NavigateStep(NavigateKind.constructor, name: name),
     'call' => NavigateStep(NavigateKind.call, name: _requireName(name, key)),
-    'import' => NavigateStep(NavigateKind.import, name: _requireName(name, key)),
+    'import' => NavigateStep(
+      NavigateKind.import,
+      name: _requireName(name, key),
+    ),
     'field' => NavigateStep(NavigateKind.field, name: _requireName(name, key)),
     _ => throw AstPathParseException('Unknown navigate step "$key"'),
   };

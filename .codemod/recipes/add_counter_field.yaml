@@ -18,13 +18,12 @@ steps:
   - edit:
       path: "{{file}}"
       steps:
-        - addField:
+        - insert:
             at:
               - class: "{{className}}"
-            field:
-              name: "{{field:camel}}"
-              type: int
-              final: true
+            anchor: member:last
+            text: |
+              final int {{$camel field}};
 
 postExecution:
   - dartFormat

@@ -16,7 +16,9 @@ AstNode? findConstructorCall(
   AstNode? found;
 
   if (returnExpressionOnly) {
-    root.accept(_ReturnConstructorCallFinder(typeName, (node) => found ??= node));
+    root.accept(
+      _ReturnConstructorCallFinder(typeName, (node) => found ??= node),
+    );
   } else {
     root.accept(_ConstructorCallFinder(typeName, (node) => found ??= node));
   }
@@ -45,9 +47,7 @@ ArgumentList argumentListOf(AstNode node) {
   if (node is MethodInvocation && node.target == null) {
     return node.argumentList;
   }
-  throw StateError(
-    'Expected constructor call, got ${node.runtimeType}',
-  );
+  throw StateError('Expected constructor call, got ${node.runtimeType}');
 }
 
 /// Returns whether [node] is a constructor-like call named [typeName].

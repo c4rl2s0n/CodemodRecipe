@@ -32,7 +32,9 @@ void main() {
   });
 
   test('reload refreshes registry from disk', () async {
-    final workspace = await Directory.systemTemp.createTemp('codemod_host_reload_');
+    final workspace = await Directory.systemTemp.createTemp(
+      'codemod_host_reload_',
+    );
     addTearDown(() => workspace.deleteSync(recursive: true));
 
     await _copyFile(

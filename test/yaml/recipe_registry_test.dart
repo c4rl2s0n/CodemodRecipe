@@ -20,13 +20,18 @@ void main() {
       ),
     );
 
-    expect(result.diagnostics.where((d) => d.severity == DiagnosticSeverity.error), isEmpty);
+    expect(
+      result.diagnostics.where((d) => d.severity == DiagnosticSeverity.error),
+      isEmpty,
+    );
     expect(result.recipes['add_log_line'], isNotNull);
     expect(result.recipes['add_log_line']!.operations.length, 1);
   });
 
-  test('compiles addField yaml recipe', () async {
-    final workspace = await Directory.systemTemp.createTemp('codemod_yaml_field_');
+  test('compiles insert-based yaml recipe', () async {
+    final workspace = await Directory.systemTemp.createTemp(
+      'codemod_yaml_field_',
+    );
     addTearDown(() => workspace.deleteSync(recursive: true));
 
     await _copyFile(
@@ -41,14 +46,19 @@ void main() {
       ),
     );
 
-    expect(result.diagnostics.where((d) => d.severity == DiagnosticSeverity.error), isEmpty);
+    expect(
+      result.diagnostics.where((d) => d.severity == DiagnosticSeverity.error),
+      isEmpty,
+    );
     expect(result.recipes['add_counter_field'], isNotNull);
     final operation = result.recipes['add_counter_field']!.operations.single;
     expect(operation, isA<EditDartFileOperation>());
   });
 
-  test('compiles addConstructorParam yaml recipe', () async {
-    final workspace = await Directory.systemTemp.createTemp('codemod_yaml_ctor_');
+  test('compiles constructor param insertion yaml recipe', () async {
+    final workspace = await Directory.systemTemp.createTemp(
+      'codemod_yaml_ctor_',
+    );
     addTearDown(() => workspace.deleteSync(recursive: true));
 
     await _copyFile(
@@ -63,9 +73,13 @@ void main() {
       ),
     );
 
-    expect(result.diagnostics.where((d) => d.severity == DiagnosticSeverity.error), isEmpty);
+    expect(
+      result.diagnostics.where((d) => d.severity == DiagnosticSeverity.error),
+      isEmpty,
+    );
     expect(result.recipes['add_constructor_param'], isNotNull);
-    final operation = result.recipes['add_constructor_param']!.operations.single;
+    final operation =
+        result.recipes['add_constructor_param']!.operations.single;
     expect(operation, isA<EditDartFileOperation>());
   });
 
@@ -85,7 +99,10 @@ void main() {
       ),
     );
 
-    expect(result.diagnostics.where((d) => d.severity == DiagnosticSeverity.error), isEmpty);
+    expect(
+      result.diagnostics.where((d) => d.severity == DiagnosticSeverity.error),
+      isEmpty,
+    );
     final recipe = result.recipes['with_build_runner'];
     expect(recipe, isNotNull);
     expect(
@@ -95,7 +112,9 @@ void main() {
   });
 
   test('reports duplicate recipe ids', () async {
-    final workspace = await Directory.systemTemp.createTemp('codemod_yaml_dup_');
+    final workspace = await Directory.systemTemp.createTemp(
+      'codemod_yaml_dup_',
+    );
     addTearDown(() => workspace.deleteSync(recursive: true));
 
     await _copyTree(

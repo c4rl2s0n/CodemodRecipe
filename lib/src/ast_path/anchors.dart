@@ -49,20 +49,17 @@ AnchorSpan resolveAnchorSpan({
 /// Returns whether [anchor] is valid for a focused [node] of the given type.
 bool isAnchorValidFor(AstNode node, Anchor anchor) {
   return switch (anchor.kind) {
-    AnchorKind.bodyStart || AnchorKind.bodyEnd || AnchorKind.memberLast =>
-      node is ClassDeclaration,
+    AnchorKind.bodyStart ||
+    AnchorKind.bodyEnd ||
+    AnchorKind.memberLast => node is ClassDeclaration,
     AnchorKind.stmtLast => node is MethodDeclaration,
     AnchorKind.paramLast ||
     AnchorKind.paramName ||
-    AnchorKind.paramIndex =>
-      node is ConstructorDeclaration,
+    AnchorKind.paramIndex => node is ConstructorDeclaration,
     AnchorKind.argLast ||
     AnchorKind.argName ||
-    AnchorKind.argIndex =>
-      _isCallLike(node),
-    AnchorKind.metaBefore ||
-    AnchorKind.docBefore ||
-    AnchorKind.docAfter =>
+    AnchorKind.argIndex => _isCallLike(node),
+    AnchorKind.metaBefore || AnchorKind.docBefore || AnchorKind.docAfter =>
       node is ClassDeclaration ||
           node is MethodDeclaration ||
           node is ConstructorDeclaration ||
@@ -73,21 +70,27 @@ bool isAnchorValidFor(AstNode node, Anchor anchor) {
 
 int _bodyStart(AstNode node) {
   if (node is! ClassDeclaration) {
-    throw StateError('Anchor body:start requires a class, got ${node.runtimeType}');
+    throw StateError(
+      'Anchor body:start requires a class, got ${node.runtimeType}',
+    );
   }
   return findClassBodyStartOffset(node);
 }
 
 int _bodyEnd(AstNode node) {
   if (node is! ClassDeclaration) {
-    throw StateError('Anchor body:end requires a class, got ${node.runtimeType}');
+    throw StateError(
+      'Anchor body:end requires a class, got ${node.runtimeType}',
+    );
   }
   return findClassEndOffset(node);
 }
 
 int _stmtLast(AstNode node) {
   if (node is! MethodDeclaration) {
-    throw StateError('Anchor stmt:last requires a method, got ${node.runtimeType}');
+    throw StateError(
+      'Anchor stmt:last requires a method, got ${node.runtimeType}',
+    );
   }
   return findLastStatementInsertOffset(node);
 }
@@ -207,7 +210,8 @@ int _declarationKeywordOffset(AstNode node) {
     return node.returnType.offset;
   }
   if (node is FieldDeclaration) {
-    return node.fields.keyword?.offset ?? node.fields.variables.first.name.offset;
+    return node.fields.keyword?.offset ??
+        node.fields.variables.first.name.offset;
   }
   return node.offset;
 }
@@ -269,7 +273,9 @@ int? _docBlockStart(String source, int declarationOffset) {
       previousLineStart--;
     }
 
-    final line = source.substring(previousLineStart, previousLineEnd).trimLeft();
+    final line = source
+        .substring(previousLineStart, previousLineEnd)
+        .trimLeft();
     if (!line.startsWith('///')) {
       break;
     }

@@ -23,10 +23,7 @@ final addMethodRecipe = CodemodRecipe(
       'class',
       help: 'Name of the class to add the method to',
     ),
-    CodemodArg<String>.required(
-      'method',
-      help: 'Name of the method to add',
-    ),
+    CodemodArg<String>.required('method', help: 'Name of the method to add'),
   ],
   operations: [
     EditDartFileOperation(
@@ -36,8 +33,8 @@ final addMethodRecipe = CodemodRecipe(
           className: (context) => context.require('class'),
           methodName: (context) => context.camel('method'),
           body: const CodemodTemplate.inline('''
-  void {{method:camel}}() {
-    // TODO: Implement {{method:camel}}
+  void {{\$camel method}}() {
+    // TODO: Implement {{\$camel method}}
   }
 '''),
         ),

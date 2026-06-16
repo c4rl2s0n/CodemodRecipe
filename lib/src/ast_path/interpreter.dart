@@ -117,10 +117,7 @@ class AstPathInterpreter {
       );
       return AstFocus(focus.source, focus.unit, classDecl);
     } on StateError catch (error) {
-      throw AstPathResolutionException(
-        error.message,
-        code: 'E_NODE_NOT_FOUND',
-      );
+      throw AstPathResolutionException(error.message, code: 'E_NODE_NOT_FOUND');
     }
   }
 
@@ -132,7 +129,9 @@ class AstPathInterpreter {
           .where((method) => method.name.lexeme == name)
           .toList();
       if (methods.isEmpty) {
-        throw StateError('Method "$name" not found in ${classDecl.name.lexeme}');
+        throw StateError(
+          'Method "$name" not found in ${classDecl.name.lexeme}',
+        );
       }
 
       final method = _selectMatch(
@@ -143,10 +142,7 @@ class AstPathInterpreter {
       );
       return AstFocus(focus.source, focus.unit, method);
     } on StateError catch (error) {
-      throw AstPathResolutionException(
-        error.message,
-        code: 'E_NODE_NOT_FOUND',
-      );
+      throw AstPathResolutionException(error.message, code: 'E_NODE_NOT_FOUND');
     }
   }
 
@@ -174,7 +170,9 @@ class AstPathInterpreter {
       }
 
       if (constructors.isEmpty) {
-        final label = name == null ? 'unnamed constructor' : 'constructor "$name"';
+        final label = name == null
+            ? 'unnamed constructor'
+            : 'constructor "$name"';
         throw StateError('$label not found in ${classDecl.name.lexeme}');
       }
 
@@ -186,10 +184,7 @@ class AstPathInterpreter {
       );
       return AstFocus(focus.source, focus.unit, ctor);
     } on StateError catch (error) {
-      throw AstPathResolutionException(
-        error.message,
-        code: 'E_NODE_NOT_FOUND',
-      );
+      throw AstPathResolutionException(error.message, code: 'E_NODE_NOT_FOUND');
     }
   }
 
@@ -216,10 +211,7 @@ class AstPathInterpreter {
       );
       return AstFocus(focus.source, focus.unit, field);
     } on StateError catch (error) {
-      throw AstPathResolutionException(
-        error.message,
-        code: 'E_NODE_NOT_FOUND',
-      );
+      throw AstPathResolutionException(error.message, code: 'E_NODE_NOT_FOUND');
     }
   }
 
@@ -231,10 +223,7 @@ class AstPathInterpreter {
       }
       return call;
     } on StateError catch (error) {
-      throw AstPathResolutionException(
-        error.message,
-        code: 'E_NODE_NOT_FOUND',
-      );
+      throw AstPathResolutionException(error.message, code: 'E_NODE_NOT_FOUND');
     }
   }
 
