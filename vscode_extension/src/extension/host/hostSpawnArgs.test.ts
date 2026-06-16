@@ -6,21 +6,17 @@ describe('buildHostSpawnArgs', () => {
     expect(
       buildHostSpawnArgs({
         workspaceRoot: '/workspace',
-        entrypoint: '/workspace/bin/codemod_host.dart',
-        recipesDirectory: '.codemod/recipes',
-        templatesRoot: '.codemod/templates',
+        codemodRoot: '.codemod',
         emptyConstructorStyle: 'positional',
       })
     ).toEqual([
       'run',
-      '/workspace/bin/codemod_host.dart',
+      'bin/codemod_host.dart',
       '--stdio-server',
       '--workspace-root',
       '/workspace',
-      '--recipes-dir',
-      '.codemod/recipes',
-      '--templates-root',
-      '.codemod/templates',
+      '--codemod-root',
+      '.codemod',
       '--empty-constructor-style',
       'positional',
     ]);

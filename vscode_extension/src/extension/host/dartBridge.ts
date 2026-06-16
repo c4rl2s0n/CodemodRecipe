@@ -1,4 +1,8 @@
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
 import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
+import * as vscode from 'vscode';
 import { ExtensionConfig } from '../config/extensionConfig';
 import { HostDiscovery } from './hostDiscovery';
 import {
@@ -43,8 +47,82 @@ export class DartBridge {
   constructor(
     private readonly workspaceRoot: string,
     private readonly config: ExtensionConfig,
-    private readonly hostDiscovery: HostDiscovery
+    private readonly hostDiscovery: HostDiscovery,
+    private readonly extensionUri: vscode.Uri
   ) {}
+
+  /**
+   * Returns the path to the bundled codemod_host binary for the current platform.
+   */
+  private getBinaryPath(): string {
+    const platform = os.platform();
+    const binDir = path.join(this.extensionUri.fsPath, 'bin');
+    
+    // Map platform to executable name
+    switch (platform) {
+      case 'win32':
+        return path.join(binDir, 'codemod_host.exe');
+      case 'darwin':
+      case 'linux':
+      default:
+        return path.join(binDir, 'codemod_host');
+    }
+  }
+
+  /**
+   * Returns true if the bundled binary exists and we should use it.
+   */
+  private hasBundledBinary(): boolean {
+    try {
+      const binaryPath = this.getBinaryPath();
+      return fs.existsSync(binaryPath);
+    } catch {
+      return false;
+    }
+  }
+
+  /**
+   * Returns the command and arguments to spawn the host process.
+   */
+  private getSpawnCommand(): { command: string; args: string[] } {
+    if (this.config.useDartRun) {
+      // Use 'dart run' mode for debugging
+      return {
+        command: this.config.dartPath,
+        args: this.buildSpawnArgs(),
+      };
+    }
+    
+    // Use bundled binary (default)
+    if (this.hasBundledBinary()) {
+      return {
+        command: this.getBinaryPath(),
+        args: this.buildBinaryArgs(),
+      };
+    }
+    
+    // Fallback to dart run if binary doesn't exist
+    return {
+      command: this.config.dartPath,
+      args: this.buildSpawnArgs(),
+    };
+  }
+
+  /**
+   * Builds arguments for the bundled binary (without 'run' and entrypoint).
+   */
+  private buildBinaryArgs(): string[] {
+    const hostConfig = this.currentHostSpawnConfig();
+    return [
+      '--stdio-server',
+      '--workspace-root',
+      hostConfig.workspaceRoot,
+      '--codemod-root',
+      hostConfig.codemodRoot,
+      '--empty-constructor-style',
+      hostConfig.emptyConstructorStyle,
+    ];
+  }
 
   async listRecipes(): Promise<RecipeLoadResult> {
     const response = await this.send<RecipeCatalogResponse>({ command: 'list' });
@@ -122,24 +200,23 @@ export class DartBridge {
     };
   }
 
-  private currentHostSpawnConfig(entrypoint: string): HostSpawnConfig {
+  private currentHostSpawnConfig(): HostSpawnConfig {
     return hostSpawnConfigFromExtension(
       this.workspaceRoot,
-      entrypoint,
       this.config
     );
   }
 
-  private ensureHostConfigCurrent(entrypoint: string): void {
-    const signature = hostSpawnConfigSignature(this.currentHostSpawnConfig(entrypoint));
+  private ensureHostConfigCurrent(): void {
+    const signature = hostSpawnConfigSignature(this.currentHostSpawnConfig());
     if (this.hostConfigSignature !== undefined && this.hostConfigSignature !== signature) {
       this.stopPersistentHost();
     }
     this.hostConfigSignature = signature;
   }
 
-  private buildSpawnArgs(entrypoint: string): string[] {
-    return buildHostSpawnArgs(this.currentHostSpawnConfig(entrypoint));
+  private buildSpawnArgs(): string[] {
+    return buildHostSpawnArgs(this.currentHostSpawnConfig());
   }
 
   private async send<T>(command: HostCommand): Promise<T> {
@@ -191,17 +268,16 @@ export class DartBridge {
   }
 
   private async ensurePersistentHost(): Promise<ChildProcessWithoutNullStreams> {
-    const entrypoint = this.hostDiscovery.resolveHostEntrypoint();
-    this.ensureHostConfigCurrent(entrypoint);
+    this.ensureHostConfigCurrent();
     if (this.child && !this.child.killed) {
       return this.child;
     }
     this.stdoutBuffer = '';
     this.stderrBuffer = '';
-    const dart = this.config.dartPath;
-    const spawnArgs = this.buildSpawnArgs(entrypoint);
+    
+    const { command, args } = this.getSpawnCommand();
     return new Promise<ChildProcessWithoutNullStreams>((resolve, reject) => {
-      const child = spawn(dart, spawnArgs, {
+      const child = spawn(command, args, {
         cwd: this.workspaceRoot,
       });
 
@@ -292,15 +368,13 @@ export class DartBridge {
   }
 
   private sendOneShot<T>(command: HostCommand): Promise<T> {
-    const entrypoint = this.hostDiscovery.resolveHostEntrypoint();
-    const dart = this.config.dartPath;
-    const spawnArgs = this.buildSpawnArgs(entrypoint);
+    const { command: cmd, args: spawnArgs } = this.getSpawnCommand();
     const payload = JSON.stringify(command);
     const inputBytes = Buffer.byteLength(payload, 'utf8');
     const start = process.hrtime.bigint();
 
     return new Promise<T>((resolve, reject) => {
-      const child = spawn(dart, spawnArgs, {
+      const child = spawn(cmd, spawnArgs, {
         cwd: this.workspaceRoot,
       });
       let stdout = '';

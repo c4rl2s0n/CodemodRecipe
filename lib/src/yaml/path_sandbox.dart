@@ -36,9 +36,15 @@ class PathSandbox {
     return resolved;
   }
 
-  /// Resolves a template or script path under [config.templatesRoot].
+  /// Resolves a template or script path under [config.codemodRoot].
   String resolveTemplateRelative(String relativePath) {
-    final combined = '${config.templatesRoot}/$relativePath';
+    final combined = '${config.codemodRoot}/$relativePath';
+    return resolveWorkspaceRelative(combined);
+  }
+
+  /// Resolves a path relative to the codemod root directory.
+  String resolveCodemodRelative(String relativePath) {
+    final combined = '${config.codemodRoot}/$relativePath';
     return resolveWorkspaceRelative(combined);
   }
 

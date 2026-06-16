@@ -2,9 +2,7 @@ import { ExtensionConfig } from '../config/extensionConfig';
 
 export type HostSpawnConfig = {
   workspaceRoot: string;
-  entrypoint: string;
-  recipesDirectory: string;
-  templatesRoot: string;
+  codemodRoot: string;
   emptyConstructorStyle: 'named' | 'positional';
 };
 
@@ -17,14 +15,12 @@ export function hostSpawnConfigSignature(config: HostSpawnConfig): string {
 export function buildHostSpawnArgs(config: HostSpawnConfig): string[] {
   return [
     'run',
-    config.entrypoint,
+    'bin/codemod_host.dart',
     '--stdio-server',
     '--workspace-root',
     config.workspaceRoot,
-    '--recipes-dir',
-    config.recipesDirectory,
-    '--templates-root',
-    config.templatesRoot,
+    '--codemod-root',
+    config.codemodRoot,
     '--empty-constructor-style',
     config.emptyConstructorStyle,
   ];
@@ -32,14 +28,11 @@ export function buildHostSpawnArgs(config: HostSpawnConfig): string[] {
 
 export function hostSpawnConfigFromExtension(
   workspaceRoot: string,
-  entrypoint: string,
   extensionConfig: ExtensionConfig
 ): HostSpawnConfig {
   return {
     workspaceRoot,
-    entrypoint,
-    recipesDirectory: extensionConfig.recipesDirectory,
-    templatesRoot: extensionConfig.templatesRoot,
+    codemodRoot: extensionConfig.codemodRoot,
     emptyConstructorStyle: extensionConfig.emptyConstructorStyle,
   };
 }

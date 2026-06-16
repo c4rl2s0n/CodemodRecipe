@@ -1,31 +1,23 @@
-import * as fs from 'fs';
 import * as path from 'path';
-import { DEFAULT_HOST_CANDIDATES } from '../constants';
 import { ExtensionConfig } from '../config/extensionConfig';
 
+/// Host discovery for the new codemodRoot-based approach.
+/// We always use the bundled bin/codemod_host.dart, so no discovery is needed.
 export class HostDiscovery {
   constructor(
     private readonly workspaceRoot: string,
     private readonly config: ExtensionConfig
   ) {}
 
+  /// Returns the entrypoint path for the bundled host.
+  /// In the new architecture, we always use bin/codemod_host.dart from the package.
   resolveHostEntrypoint(): string {
-    const configured = this.config.hostEntrypoint.trim();
-    if (configured.length > 0) {
-      return path.isAbsolute(configured)
-        ? configured
-        : path.join(this.workspaceRoot, configured);
-    }
+    // We always use the standard entrypoint from codemod_recipe package
+    return path.join(this.workspaceRoot, 'bin', 'codemod_host.dart');
+  }
 
-    for (const candidate of DEFAULT_HOST_CANDIDATES) {
-      const full = path.join(this.workspaceRoot, candidate);
-      if (fs.existsSync(full)) {
-        return full;
-      }
-    }
-
-    throw new Error(
-      'No codemod host entry point found. Set "codemodRecipe.hostEntrypoint" in settings.'
-    );
+  /// Returns the codemod root directory path.
+  getCodemodRootPath(): string {
+    return path.join(this.workspaceRoot, this.config.codemodRoot);
   }
 }

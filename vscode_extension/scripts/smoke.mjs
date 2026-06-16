@@ -2,7 +2,9 @@
 //
 // Mirrors the spawn + marker-extraction logic in src/host/dartBridge.ts
 // (without the vscode dependency) so the TypeScript <-> Dart contract can be verified from
-// the command line. Run with: node scripts/smoke.mjs <hostEntrypoint>
+// the command line. Run with: node scripts/smoke.mjs
+//
+// Uses bin/codemod_host.dart from the codemod_recipe package with --codemod-root flag.
 import { spawn } from 'child_process';
 import * as path from 'path';
 
@@ -16,11 +18,16 @@ function extractResult(output) {
   return output.slice(begin + RESULT_BEGIN.length, end).trim();
 }
 
-function send(entrypoint, command) {
-  // Workspace root is the package that owns the recipes' target files.
-  const cwd = path.resolve(path.dirname(entrypoint), '..');
+function send(codemodRoot, command) {
+  // Workspace root is the current directory
+  const cwd = process.cwd();
   return new Promise((resolve, reject) => {
-    const child = spawn('dart', ['run', entrypoint], { cwd });
+    const child = spawn('dart', [
+      'run', 
+      'bin/codemod_host.dart',
+      '--workspace-root', cwd,
+      '--codemod-root', codemodRoot
+    ], { cwd });
     let stdout = '';
     let stderr = '';
     child.stdout.on('data', (c) => (stdout += c.toString()));
@@ -39,8 +46,8 @@ function send(entrypoint, command) {
   });
 }
 
-const entrypoint =
-  process.argv[2] ?? '../example/vscode_host_example/bin/codemod_host.dart';
+// Default codemod root - can be overridden via command line argument
+const codemodRoot = process.argv[2] ?? '.codemod';
 
 const assert = (cond, msg) => {
   if (!cond) {
@@ -50,11 +57,11 @@ const assert = (cond, msg) => {
   console.log('ok -', msg);
 };
 
-const list = await send(entrypoint, { command: 'list' });
+const list = await send(codemodRoot, { command: 'list' });
 assert(list.ok === true, 'list returns ok');
 assert(Array.isArray(list.recipes) && list.recipes.length >= 1, 'list has recipes');
 
-const preview = await send(entrypoint, {
+const preview = await send(codemodRoot, {
   command: 'preview',
   recipe: 'add_method',
   args: { file: 'lib/counter.dart', class: 'Counter', method: 'reset' },
@@ -64,7 +71,7 @@ assert(preview.files.length === 1, 'preview returns one file');
 assert(preview.files[0].modified.includes('void reset()'), 'preview shows new method');
 assert(preview.files[0].patches.length === 1, 'preview has one patch');
 
-const missing = await send(entrypoint, {
+const missing = await send(codemodRoot, {
   command: 'preview',
   recipe: 'add_method',
   args: { file: 'lib/counter.dart' },

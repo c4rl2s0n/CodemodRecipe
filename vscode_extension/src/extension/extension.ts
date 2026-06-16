@@ -18,7 +18,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const config = new ExtensionConfig();
   const hostDiscovery = new HostDiscovery(workspaceRoot, config);
-  const bridge = new DartBridge(workspaceRoot, config, hostDiscovery);
+  const bridge = new DartBridge(workspaceRoot, config, hostDiscovery, context.extensionUri);
   const diffProvider = new DiffContentProvider();
   const repository = new RecipeRepository(bridge);
   const runner = new RecipeRunnerViewProvider(
@@ -30,7 +30,7 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   let recipeReloadTimer: NodeJS.Timeout | undefined;
-  let recipeWatcher: vscode.FileSystemWatcher | undefined;
+  let codemodWatcher: vscode.FileSystemWatcher | undefined;
 
   const syncRunnerFromRepository = async (): Promise<void> => {
     await runner.refreshRecipes(
@@ -88,26 +88,31 @@ export function activate(context: vscode.ExtensionContext): void {
     }, 300);
   };
 
-  const disposeRecipeWatcher = (): void => {
-    recipeWatcher?.dispose();
-    recipeWatcher = undefined;
+  const disposeCodemodWatcher = (): void => {
+    codemodWatcher?.dispose();
+    codemodWatcher = undefined;
   };
 
-  const createRecipeWatcher = (): void => {
-    disposeRecipeWatcher();
-    const recipesDir = path.join(workspaceRoot, config.recipesDirectory);
-    recipeWatcher = vscode.workspace.createFileSystemWatcher(
-      new vscode.RelativePattern(recipesDir, '**/*.{yaml,yml}')
+  const createCodemodWatcher = (): void => {
+    disposeCodemodWatcher();
+    const codemodRootDir = path.join(workspaceRoot, config.codemodRoot);
+    
+    // Watch for YAML files (recipes and maps) and .template files
+    codemodWatcher = vscode.workspace.createFileSystemWatcher(
+      new vscode.RelativePattern(
+        codemodRootDir,
+        '**/*.{yaml,yml,template}'
+      )
     );
-    recipeWatcher.onDidChange(scheduleRecipeReload);
-    recipeWatcher.onDidCreate(scheduleRecipeReload);
-    recipeWatcher.onDidDelete(scheduleRecipeReload);
+    codemodWatcher.onDidChange(scheduleRecipeReload);
+    codemodWatcher.onDidCreate(scheduleRecipeReload);
+    codemodWatcher.onDidDelete(scheduleRecipeReload);
   };
 
   const bootstrap = async (showError = false): Promise<void> => {
     runner.setBootstrap({ inFlight: true, phase: 'startingHost' });
     try {
-      createRecipeWatcher();
+      createCodemodWatcher();
       runner.setBootstrap({ inFlight: true, phase: 'loadingRecipes' });
       await restartHostAndRefresh(showError);
       runner.setBootstrap({ inFlight: false, phase: 'ready' });
@@ -119,12 +124,10 @@ export function activate(context: vscode.ExtensionContext): void {
 
   context.subscriptions.push(
     { dispose: () => bridge.dispose() },
-    { dispose: () => disposeRecipeWatcher() },
+    { dispose: () => disposeCodemodWatcher() },
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (
-        event.affectsConfiguration('codemodRecipe.hostEntrypoint') ||
-        event.affectsConfiguration('codemodRecipe.recipesDirectory') ||
-        event.affectsConfiguration('codemodRecipe.templatesRoot') ||
+        event.affectsConfiguration('codemodRecipe.codemodRoot') ||
         event.affectsConfiguration('codemodRecipe.emptyConstructorStyle') ||
         event.affectsConfiguration('codemodRecipe.dartPath')
       ) {
@@ -201,15 +204,15 @@ export function activate(context: vscode.ExtensionContext): void {
       }
     ),
     vscode.commands.registerCommand(
-      COMMANDS.configureHost,
+      COMMANDS.configureCodemodRoot,
       async () => {
         const value = await vscode.window.showInputBox({
           prompt:
-            'Path (relative to workspace) of the Dart host entry point registering recipes',
-          placeHolder: 'bin/codemod_host.dart',
+            'Path (relative to workspace) of the codemod root directory',
+          placeHolder: '.codemod',
         });
         if (value !== undefined) {
-          await config.updateHostEntrypoint(value);
+          await config.updateCodemodRoot(value);
           bridge.dispose();
           await bootstrap(true);
         }

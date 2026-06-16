@@ -7,7 +7,7 @@ export const COMMANDS = {
   bootstrap: 'codemodRecipe.bootstrap',
   runRecipe: 'codemodRecipe.runRecipe',
   runFromCursorContext: 'codemodRecipe.runFromCursorContext',
-  configureHost: 'codemodRecipe.configureHost',
+  configureCodemodRoot: 'codemodRecipe.configureHost',
 } as const;
 
 export const VIEWS = {
@@ -16,10 +16,9 @@ export const VIEWS = {
 
 export const CONFIG = {
   section: 'codemodRecipe',
-  hostEntrypoint: 'hostEntrypoint',
+  codemodRoot: 'codemodRoot',
   dartPath: 'dartPath',
-  recipesDirectory: 'recipesDirectory',
-  templatesRoot: 'templatesRoot',
+  useDartRun: 'useDartRun',
   emptyConstructorStyle: 'emptyConstructorStyle',
   performanceLogging: 'performanceLogging',
   autoPreviewDebounceMs: 'autoPreviewDebounceMs',

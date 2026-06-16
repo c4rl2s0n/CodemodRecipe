@@ -25,52 +25,37 @@ entrypoint) and talks JSON over stdio.
 
 ## Setup
 
-### Option A — YAML recipes (recommended)
+### YAML recipes (recommended)
 
-1. Add `codemod_recipe` as a dependency and copy or symlink
-   [`bin/codemod_host.dart`](bin/codemod_host.dart) into your project.
-2. Create `.codemod/recipes/*.yaml` (see [root README](../README.md#yaml-recipes)).
-3. Build and install the extension from `vscode_extension/` (`npm run compile`,
+1. Add `codemod_recipe` as a dependency to your project.
+2. Create a `.codemod/` directory in your workspace root.
+3. Add YAML recipe files (`.yaml` or `.yml`) in `.codemod/` or any subdirectory.
+   Each recipe must have an `id:` and `steps:` field.
+4. Add template files (`.template`) for use with `templateFile:` in create steps.
+   Templates can be anywhere in the `.codemod/` tree.
+5. Build and install the extension from `vscode_extension/` (`npm run compile`,
    then package/install the VSIX).
-4. Open your project in VS Code and configure settings if needed:
+6. Open your project in VS Code and configure settings if needed:
 
 ```jsonc
 // .vscode/settings.json
 {
-  "codemodRecipe.hostEntrypoint": "bin/codemod_host.dart",
+  "codemodRecipe.codemodRoot": ".codemod",
   "codemodRecipe.dartPath": "dart", // absolute path if dart is not on PATH
-  "codemodRecipe.recipesDirectory": ".codemod/recipes",
-  "codemodRecipe.templatesRoot": ".codemod/templates",
   "codemodRecipe.emptyConstructorStyle": "named",
   "codemodRecipe.autoPreviewDebounceMs": 400,
   "codemodRecipe.previewSnippetLines": 5
 }
 ```
 
-The extension auto-detects `bin/codemod_host.dart` when `hostEntrypoint` is empty.
-YAML files are reloaded automatically when saved; recipe load errors (e.g.
-duplicate ids) appear in the Recipes tab.
+The extension uses `bin/codemod_host.dart` from the codemod_recipe package.
+All YAML and .template files in the codemod root are automatically discovered and reloaded
+when changed; recipe load errors (e.g. duplicate ids) appear in the Recipes tab.
 
-### Option B — Dart-registered recipes
+### Advanced: Custom Codemod Root
 
-For recipes defined in Dart, use `CodemodHost.fromList` in a custom host entry
-point. A complete example lives in
-[`example/vscode_host_example`](../example/vscode_host_example).
-
-```dart
-// tool/codemod_host.dart
-import 'package:codemod_recipe/codemod_recipe_vscode.dart';
-
-Future<void> main(List<String> args) {
-  return CodemodHost.fromList([addMethodRecipe, scaffoldFeatureRecipe]).run(args);
-}
-```
-
-### Host entry point
-
-The extension auto-detects, in order: `bin/codemod_host.dart`,
-`tool/codemod_host.dart`, `tool/codemods/codemod_host.dart`. Override with
-`codemodRecipe.hostEntrypoint` or **Codemod Recipe: Set Host Entry Point**.
+To use a different directory than `.codemod`, set `codemodRecipe.codemodRoot` in settings
+or use **Codemod Recipe: Set Codemod Root Directory** command.
 
 ## Usage
 
@@ -176,8 +161,9 @@ The files in `media/` (`recipeView.html`, `recipeView.js`, `recipeView.css`) are
 as static extension resources at runtime (not generated when you open the view).
 
 ```bash
-# Integration smoke test against the example host:
-node scripts/smoke.mjs "$(cd ../example/vscode_host_example/bin && pwd)/codemod_host.dart"
+# Integration smoke test (requires Dart):
+# First ensure you have codemod_recipe as a dependency with bin/codemod_host.dart
+node scripts/smoke.mjs
 ```
 
 Press `F5` in VS Code (with this folder open) to launch an Extension

@@ -2,11 +2,11 @@ import * as vscode from 'vscode';
 import { CONFIG } from '../constants';
 
 export class ExtensionConfig {
-  get hostEntrypoint(): string {
+  get codemodRoot(): string {
     return (
       vscode.workspace
         .getConfiguration(CONFIG.section)
-        .get<string>(CONFIG.hostEntrypoint) ?? ''
+        .get<string>(CONFIG.codemodRoot) ?? '.codemod'
     );
   }
 
@@ -18,19 +18,11 @@ export class ExtensionConfig {
     );
   }
 
-  get recipesDirectory(): string {
+  get useDartRun(): boolean {
     return (
       vscode.workspace
         .getConfiguration(CONFIG.section)
-        .get<string>(CONFIG.recipesDirectory) ?? '.codemod/recipes'
-    );
-  }
-
-  get templatesRoot(): string {
-    return (
-      vscode.workspace
-        .getConfiguration(CONFIG.section)
-        .get<string>(CONFIG.templatesRoot) ?? '.codemod/templates'
+        .get<boolean>(CONFIG.useDartRun) ?? false
     );
   }
 
@@ -66,9 +58,9 @@ export class ExtensionConfig {
     return Math.min(20, Math.max(1, value));
   }
 
-  async updateHostEntrypoint(value: string): Promise<void> {
+  async updateCodemodRoot(value: string): Promise<void> {
     await vscode.workspace
       .getConfiguration(CONFIG.section)
-      .update(CONFIG.hostEntrypoint, value, vscode.ConfigurationTarget.Workspace);
+      .update(CONFIG.codemodRoot, value, vscode.ConfigurationTarget.Workspace);
   }
 }
