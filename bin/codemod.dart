@@ -7,6 +7,8 @@ import 'package:yaml/yaml.dart';
 
 import 'package:codemod_recipe/codemod_recipe.dart';
 import 'package:codemod_recipe/codemod_recipe_vscode.dart';
+import 'package:codemod_recipe/src/args.dart';
+import 'package:codemod_recipe/src/utils/file_utils.dart';
 
 /// CLI entry point for direct recipe execution.
 ///
@@ -17,7 +19,7 @@ import 'package:codemod_recipe/codemod_recipe_vscode.dart';
 ///   dart run bin/codemod.dart add_log_line.yaml --file lib/main.dart --className MyClass --methodName myMethod --apply
 Future<void> main(List<String> arguments) async {
   // Separate host flags from recipe arguments
-  final separation = _separateHostAndRecipeArgs(arguments);
+  final separation = HostArgsParser.separateHostAndRecipeArgs(arguments);
   final hostArgs = separation.hostArgs;
   final recipeArgs = separation.recipeArgs;
 
@@ -74,7 +76,7 @@ Future<void> main(List<String> arguments) async {
 
     // Run the recipe
     final config = HostConfig(
-      workspaceRoot: Directory.current.absolute.path,
+      workspaceRoot: FileUtils.getCurrentDirectory(),
       codemodRoot: results['map-root'] as String,
     );
 
@@ -97,48 +99,7 @@ Future<void> main(List<String> arguments) async {
   }
 }
 
-/// Separates host-level flags from recipe-specific arguments.
-/// Host flags are: --help, -h, --map-root, -m, --apply, -a
-/// All other arguments are treated as recipe-specific and passed through.
-_SeparatedArgs _separateHostAndRecipeArgs(List<String> arguments) {
-  final hostArgs = <String>[];
-  final recipeArgs = <String>[];
-
-  var i = 0;
-  while (i < arguments.length) {
-    final arg = arguments[i];
-
-    // Check if it's a host flag
-    if (arg == '--help' || arg == '-h') {
-      hostArgs.add(arg);
-      i++;
-    } else if (arg == '--map-root' || arg == '-m') {
-      hostArgs.add(arg);
-      if (i + 1 < arguments.length) {
-        hostArgs.add(arguments[i + 1]);
-        i += 2;
-      } else {
-        i++;
-      }
-    } else if (arg == '--apply' || arg == '-a') {
-      hostArgs.add(arg);
-      i++;
-    } else {
-      // This is a recipe argument (recipe path or recipe-specific flag)
-      recipeArgs.add(arg);
-      i++;
-    }
-  }
-
-  return _SeparatedArgs(hostArgs, recipeArgs);
-}
-
-class _SeparatedArgs {
-  final List<String> hostArgs;
-  final List<String> recipeArgs;
-
-  _SeparatedArgs(this.hostArgs, this.recipeArgs);
-}
+// The SeparatedArgs class is now provided by HostArgsParser in lib/src/args.dart
 
 /// Loads a single YAML recipe from a file path.
 Future<CodemodRecipe?> _loadRecipe(String path, String mapRoot) async {
@@ -158,8 +119,8 @@ Future<CodemodRecipe?> _loadRecipe(String path, String mapRoot) async {
     }
 
     final filePath = file.absolute.path;
-    final workspaceRoot = Directory.current.absolute.path;
-    final relativePath = _relativePath(workspaceRoot, filePath);
+    final workspaceRoot = FileUtils.getCurrentDirectory();
+    final relativePath = FileUtils.relativePath(workspaceRoot, filePath);
 
     // Parse the recipe definition
     final definition = parseYamlRecipeFile(relativePath, content);
@@ -208,10 +169,10 @@ Future<Map<String, Map<String, String>>> _loadMaps(String mapRoot) async {
     await for (final entity in mapDir.list(recursive: false)) {
       if (entity is! File) continue;
       
-      final path = entity.path;
-      if (!path.endsWith('.yaml') && !path.endsWith('.yml')) continue;
+      final filePath = entity.path;
+      if (!FileUtils.hasExtension(filePath, ['.yaml', '.yml'])) continue;
 
-      final content = await File(path).readAsString();
+      final content = await File(filePath).readAsString();
       final yaml = loadYaml(content);
       
       if (yaml is! YamlMap) continue;
@@ -233,16 +194,6 @@ Future<Map<String, Map<String, String>>> _loadMaps(String mapRoot) async {
   }
 
   return mapsById;
-}
-
-/// Computes the relative path from workspace root to file.
-String _relativePath(String workspaceRoot, String absolutePath) {
-  final root = Directory(workspaceRoot).absolute.path.replaceAll('\\', '/');
-  final file = File(absolutePath).absolute.path.replaceAll('\\', '/');
-  if (file.startsWith('$root/')) {
-    return file.substring(root.length + 1);
-  }
-  return file;
 }
 
 /// Prints usage information for the CLI.

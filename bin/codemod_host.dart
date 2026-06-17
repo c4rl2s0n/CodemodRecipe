@@ -3,6 +3,7 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:codemod_recipe/codemod_recipe_vscode.dart';
+import 'package:codemod_recipe/src/args.dart';
 
 /// VS Code extension host entrypoint for YAML recipes.
 ///
@@ -14,7 +15,7 @@ import 'package:codemod_recipe/codemod_recipe_vscode.dart';
 ///
 /// For CLI usage, use: dart run bin/codemod.dart <recipe.yaml> [args]
 Future<void> main(List<String> arguments) async {
-  final parser = HostConfig.buildArgParser()
+  final parser = HostArgsParser.buildArgParser()
     ..addFlag('help', abbr: 'h', negatable: false);
 
   late ArgResults results;
@@ -55,7 +56,7 @@ Future<void> main(List<String> arguments) async {
     );
   }
 
-  if (results['stdio-server'] == true || _looksLikeJsonCommand(arguments)) {
+  if (results['stdio-server'] == true || HostArgsParser.looksLikeJsonCommand(arguments)) {
     await CodemodHost.fromConfig(config).run(arguments);
     return;
   }
@@ -66,21 +67,6 @@ Future<void> main(List<String> arguments) async {
   exit(1);
 }
 
-bool _looksLikeJsonCommand(List<String> rest) {
-  if (rest.isEmpty) return false;
-  final first = rest.first.trim();
-  return first.startsWith('{') && first.contains('"command"');
-}
-
 void _printUsage(ArgParser parser) {
-  stderr.writeln(
-    'Usage: codemod_host [host options]',
-  );
-  stderr.writeln('');
-  stderr.writeln('VS Code extension host options:');
-  stderr.writeln(parser.usage);
-  stderr.writeln('');
-  stderr.writeln(
-    'For CLI usage, use: dart run bin/codemod.dart <recipe.yaml> [args]',
-  );
+  HostArgsParser.printUsage(parser, programName: 'codemod_host');
 }
