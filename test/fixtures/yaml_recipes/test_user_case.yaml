@@ -1,0 +1,24 @@
+dslVersion: 1
+id: test_user_case
+name: test_user_case
+description: Tests the user's use case - inserting at end of main function
+
+args:
+  - name: file
+    required: true
+    inputKind: file
+  - name: type
+    required: true
+    inputKind: symbol
+
+steps:
+  - edit:
+      path: "{{file}}"
+      steps:
+        - insert:
+            at: function:main @ stmt:last
+            text: |
+              final int value;
+
+postExecution:
+  - dartFormat

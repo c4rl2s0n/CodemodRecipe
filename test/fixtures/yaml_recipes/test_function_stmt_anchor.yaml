@@ -1,0 +1,23 @@
+dslVersion: 1
+id: test_function_stmt_anchor
+name: test_function_stmt_anchor
+description: Tests function navigation with stmt:last anchor (similar to user's use case)
+
+args:
+  - name: file
+    required: true
+    inputKind: file
+
+steps:
+  - edit:
+      path: "{{file}}"
+      steps:
+        - insert:
+            at:
+              - function: build
+            anchor: stmt:last
+            text: |
+              final test value;
+
+postExecution:
+  - dartFormat

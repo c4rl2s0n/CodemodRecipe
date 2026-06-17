@@ -1,0 +1,22 @@
+dslVersion: 1
+id: test_call_anchor
+name: test_call_anchor
+description: Tests call navigation with arg:last anchor
+
+args:
+  - name: file
+    required: true
+    inputKind: file
+
+steps:
+  - edit:
+      path: "{{file}}"
+      steps:
+        - insert:
+            at:
+              - call: MaterialApp
+            anchor: arg:last
+            text: ", title: 'Test'"
+
+postExecution:
+  - dartFormat

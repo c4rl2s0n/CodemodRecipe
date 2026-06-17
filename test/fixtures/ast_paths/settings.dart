@@ -24,6 +24,12 @@ class DerivedSettings extends BaseSettings {
   final int id = 0;
 }
 
+void main() {
+  print('main function');
+}
+
 void build() {
   return MaterialApp(home: Container());
 }
+
+class BaseSettings {}

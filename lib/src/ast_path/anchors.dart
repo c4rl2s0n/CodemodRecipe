@@ -60,12 +60,12 @@ AnchorSpan resolveAnchorSpan({
 bool isAnchorValidFor(AstNode node, Anchor anchor) {
   return switch (anchor.kind) {
     AnchorKind.bodyStart ||
-    AnchorKind.bodyEnd ||
+    AnchorKind.bodyEnd => node is ClassDeclaration || node is FunctionDeclaration,
     AnchorKind.memberLast => node is ClassDeclaration,
-    AnchorKind.stmtLast => node is MethodDeclaration,
+    AnchorKind.stmtLast => node is MethodDeclaration || node is FunctionDeclaration,
     AnchorKind.paramLast ||
     AnchorKind.paramName ||
-    AnchorKind.paramIndex => node is ConstructorDeclaration,
+    AnchorKind.paramIndex => node is ConstructorDeclaration || node is FunctionDeclaration,
     AnchorKind.argLast ||
     AnchorKind.argName ||
     AnchorKind.argIndex => _isCallLike(node),
@@ -73,7 +73,8 @@ bool isAnchorValidFor(AstNode node, Anchor anchor) {
       node is ClassDeclaration ||
           node is MethodDeclaration ||
           node is ConstructorDeclaration ||
-          node is FieldDeclaration,
+          node is FieldDeclaration ||
+          node is FunctionDeclaration,
     AnchorKind.initializerReplace => node is FieldDeclaration,
     AnchorKind.initializerLast ||
     AnchorKind.initializerName => node is ConstructorDeclaration,
@@ -83,30 +84,65 @@ bool isAnchorValidFor(AstNode node, Anchor anchor) {
 }
 
 int _bodyStart(AstNode node) {
-  if (node is! ClassDeclaration) {
-    throw StateError(
-      'Anchor body:start requires a class, got ${node.runtimeType}',
-    );
+  if (node is ClassDeclaration) {
+    return findClassBodyStartOffset(node);
   }
-  return findClassBodyStartOffset(node);
+  if (node is FunctionDeclaration) {
+    return _findFunctionBodyStartOffset(node);
+  }
+  throw StateError(
+    'Anchor body:start requires a class or function, got ${node.runtimeType}',
+  );
 }
 
 int _bodyEnd(AstNode node) {
-  if (node is! ClassDeclaration) {
-    throw StateError(
-      'Anchor body:end requires a class, got ${node.runtimeType}',
-    );
+  if (node is ClassDeclaration) {
+    return findClassEndOffset(node);
   }
-  return findClassEndOffset(node);
+  if (node is FunctionDeclaration) {
+    return _findFunctionBodyEndOffset(node);
+  }
+  throw StateError(
+    'Anchor body:end requires a class or function, got ${node.runtimeType}',
+  );
+}
+
+int _findFunctionBodyStartOffset(FunctionDeclaration function) {
+  final body = function.functionExpression.body;
+  if (body is! BlockFunctionBody) {
+    throw StateError('Expected block body for function');
+  }
+  return body.block.leftBracket.end;
+}
+
+int _findFunctionBodyEndOffset(FunctionDeclaration function) {
+  final body = function.functionExpression.body;
+  if (body is! BlockFunctionBody) {
+    throw StateError('Expected block body for function');
+  }
+  return body.block.rightBracket.offset;
 }
 
 int _stmtLast(AstNode node) {
-  if (node is! MethodDeclaration) {
-    throw StateError(
-      'Anchor stmt:last requires a method, got ${node.runtimeType}',
-    );
+  if (node is MethodDeclaration) {
+    return findLastStatementInsertOffset(node);
   }
-  return findLastStatementInsertOffset(node);
+  if (node is FunctionDeclaration) {
+    return _findLastStatementInsertOffsetForFunction(node);
+  }
+  throw StateError(
+    'Anchor stmt:last requires a method or function, got ${node.runtimeType}',
+  );
+}
+
+int _findLastStatementInsertOffsetForFunction(FunctionDeclaration function) {
+  final body = function.functionExpression.body;
+  if (body is! BlockFunctionBody) {
+    throw StateError('Expected block body for function');
+  }
+  final statements = body.block.statements;
+  if (statements.isEmpty) return body.block.leftBracket.end;
+  return statements.last.end;
 }
 
 int _memberLast(AstNode node) {
@@ -119,12 +155,23 @@ int _memberLast(AstNode node) {
 }
 
 int _paramLast(AstNode node) {
-  if (node is! ConstructorDeclaration) {
-    throw StateError(
-      'Anchor param:last requires a constructor, got ${node.runtimeType}',
-    );
+  if (node is ConstructorDeclaration) {
+    return findLastParameterOffset(node);
   }
-  return findLastParameterOffset(node);
+  if (node is FunctionDeclaration) {
+    return _findLastParameterOffsetForFunction(node);
+  }
+  throw StateError(
+    'Anchor param:last requires a constructor or function, got ${node.runtimeType}',
+  );
+}
+
+int _findLastParameterOffsetForFunction(FunctionDeclaration function) {
+  final parameters = function.functionExpression.parameters?.parameters;
+  if (parameters == null || parameters.isEmpty) {
+    return function.functionExpression.parameters!.end;
+  }
+  return parameters.last.end;
 }
 
 int _argLast(String source, AstNode node) {
@@ -137,18 +184,39 @@ int _argLast(String source, AstNode node) {
 }
 
 int _namedParamEnd(String source, AstNode node, String name) {
-  if (node is! ConstructorDeclaration) {
-    throw StateError(
-      'Anchor param:name:$name requires a constructor, got ${node.runtimeType}',
-    );
+  if (node is ConstructorDeclaration) {
+    final parameter = _findNamedFormalParameter(node.parameters, name);
+    if (parameter == null) {
+      throw StateError('Parameter "$name" not found in constructor');
+    }
+    return parameter.end;
   }
-
-  final parameter = _findNamedFormalParameter(node.parameters, name);
-  if (parameter == null) {
-    throw StateError('Parameter "$name" not found in constructor');
+  if (node is FunctionDeclaration) {
+    final parameter = _findNamedFormalParameterForFunction(node, name);
+    if (parameter == null) {
+      throw StateError('Parameter "$name" not found in function');
+    }
+    return parameter.end;
   }
+  throw StateError(
+    'Anchor param:name:$name requires a constructor or function, got ${node.runtimeType}',
+  );
+}
 
-  return parameter.end;
+FormalParameter? _findNamedFormalParameterForFunction(
+  FunctionDeclaration function,
+  String name,
+) {
+  final parameters = function.functionExpression.parameters?.parameters;
+  if (parameters == null) return null;
+  
+  for (final parameter in parameters) {
+    final parameterName = parameter.name?.lexeme;
+    if (parameterName == name) {
+      return parameter;
+    }
+  }
+  return null;
 }
 
 int _namedArgEnd(String source, AstNode node, String name) {
@@ -167,18 +235,23 @@ int _namedArgEnd(String source, AstNode node, String name) {
 }
 
 int _paramIndexEnd(AstNode node, int index) {
-  if (node is! ConstructorDeclaration) {
-    throw StateError(
-      'Anchor param:$index requires a constructor, got ${node.runtimeType}',
-    );
+  if (node is ConstructorDeclaration) {
+    final parameters = node.parameters.parameters;
+    if (index < 0 || index >= parameters.length) {
+      throw StateError('Parameter index $index out of range');
+    }
+    return parameters[index].end;
   }
-
-  final parameters = node.parameters.parameters;
-  if (index < 0 || index >= parameters.length) {
-    throw StateError('Parameter index $index out of range');
+  if (node is FunctionDeclaration) {
+    final parameters = node.functionExpression.parameters?.parameters;
+    if (parameters == null || index < 0 || index >= parameters.length) {
+      throw StateError('Parameter index $index out of range');
+    }
+    return parameters[index].end;
   }
-
-  return parameters[index].end;
+  throw StateError(
+    'Anchor param:$index requires a constructor or function, got ${node.runtimeType}',
+  );
 }
 
 int _argIndexEnd(String source, AstNode node, int index) {

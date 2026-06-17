@@ -1,0 +1,24 @@
+dslVersion: 1
+id: test_match_filter
+name: test_match_filter
+description: Tests match filter for class disambiguation
+
+args:
+  - name: file
+    required: true
+    inputKind: file
+
+steps:
+  - edit:
+      path: "{{file}}"
+      steps:
+        - insert:
+            at:
+              - class: DerivedSettings
+                match: extends BaseSettings
+            anchor: member:last
+            text: |
+              final int testField = 0;
+
+postExecution:
+  - dartFormat

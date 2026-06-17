@@ -139,12 +139,12 @@ Position anchors target specific positions within a node:
 
 | Anchor | Description | Valid For | Example |
 |--------|-------------|-----------|---------|
-| `body:start` | Beginning of class body (after `{`) | Class | `body:start` |
-| `body:end` | End of class body (before `}`) | Class | `body:end` |
-| `stmt:last` | After the last statement in a method | Method | `stmt:last` |
-| `stmt:$` | Alias for `stmt:last` | Method | `stmt:$` |
+| `body:start` | Beginning of body (after `{`) | Class, Function | `body:start` |
+| `body:end` | End of body (before `}`) | Class, Function | `body:end` |
+| `stmt:last` | After the last statement in a block | Method, Function | `stmt:last` |
+| `stmt:$` | Alias for `stmt:last` | Method, Function | `stmt:$` |
 | `member:last` | After the last member in a class | Class | `member:last` |
-| `param:last` | After the last parameter in a constructor | Constructor | `param:last` |
+| `param:last` | After the last parameter | Constructor, Function | `param:last` |
 | `arg:last` | After the last argument in a call | Constructor call | `arg:last` |
 
 ### Named Anchors
@@ -153,7 +153,7 @@ Named anchors target specific named elements:
 
 | Anchor Format | Description | Valid For | Example |
 |---------------|-------------|-----------|---------|
-| `param:name:NAME` | At the end of a named parameter | Constructor | `param:name:key` |
+| `param:name:NAME` | At the end of a named parameter | Constructor, Function | `param:name:key` |
 | `arg:name:NAME` | At the end of a named argument | Constructor call | `arg:name:home` |
 | `initializer:name:NAME` | At a specific field initializer | Constructor | `initializer:name:count` |
 | `redirection:arg:name:NAME` | At a named argument in redirection | Constructor | `redirection:arg:name:key` |
@@ -164,7 +164,7 @@ Indexed anchors target elements by their zero-based position:
 
 | Anchor Format | Description | Valid For | Example |
 |---------------|-------------|-----------|---------|
-| `param:N` | At the end of the Nth parameter (0-based) | Constructor | `param:0` |
+| `param:N` | At the end of the Nth parameter (0-based) | Constructor, Function | `param:0` |
 | `arg:N` | At the end of the Nth argument (0-based) | Constructor call | `arg:1` |
 
 ### Metadata Anchors
@@ -173,9 +173,9 @@ Metadata anchors target documentation and annotations:
 
 | Anchor | Description | Valid For | Example |
 |--------|-------------|-----------|---------|
-| `meta:before` | Before the first metadata/annotation | Class, Method, Constructor, Field | `meta:before` |
-| `doc:before` | Before the documentation comment | Class, Method, Constructor, Field | `doc:before` |
-| `doc:after` | After the documentation comment (before declaration) | Class, Method, Constructor, Field | `doc:after` |
+| `meta:before` | Before the first metadata/annotation | Class, Method, Constructor, Field, Function | `meta:before` |
+| `doc:before` | Before the documentation comment | Class, Method, Constructor, Field, Function | `doc:before` |
+| `doc:after` | After the documentation comment (before declaration) | Class, Method, Constructor, Field, Function | `doc:after` |
 
 ### Initializer Anchors
 
@@ -409,6 +409,21 @@ steps:
             text: |
               Widget build(BuildContext context) {}
 ```
+
+#### 9. Insert at end of a function
+
+```yaml
+steps:
+  - edit:
+      path: "{{file}}"
+      steps:
+        - insert:
+            at: function:main @ stmt:last
+            text: |
+              final int value;
+```
+
+**Note:** Use `function:` for top-level functions and `method:` for class methods. The `stmt:last` anchor now works for both functions and methods.
 
 ---
 

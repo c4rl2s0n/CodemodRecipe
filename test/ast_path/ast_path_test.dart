@@ -243,5 +243,102 @@ void main() {
 
       expect(settingsSource.substring(offset - 4, offset), '= 0;');
     });
+
+    test('resolves stmt:last in function', () {
+      final path = parsePathString('function:build @ stmt:last');
+      final offset = interpreter.resolveOffset(settingsSource, path);
+
+      expect(settingsSource.substring(offset - 1, offset), ';');
+    });
+
+    test('resolves body:end in function', () {
+      final path = parsePathString('function:build @ body:end');
+      final offset = interpreter.resolveOffset(settingsSource, path);
+
+      expect(settingsSource.substring(offset, offset + 1), '}');
+    });
+
+    test('resolves arg:last in call', () {
+      final path = parsePathString('call:MaterialApp @ arg:last');
+      final offset = interpreter.resolveOffset(settingsSource, path);
+
+      final patched = applyPatches(settingsSource, [
+        SourcePatch(offset, 0, ', title: "test"'),
+      ]);
+      expect(patched, contains('MaterialApp(home: Container(), title: "test")'));
+    });
+
+    test('resolves doc:before on main function', () {
+      final path = parsePathString('function:main @ doc:before');
+      final offset = interpreter.resolveOffset(settingsSource, path);
+
+      expect(settingsSource.substring(offset, offset + 6), 'void m');
+    });
+
+    test('resolves type-inferred navigation to class', () {
+      final path = parsePathString('Settings @ member:last');
+      final offset = interpreter.resolveOffset(settingsSource, path);
+
+      expect(settingsSource.substring(offset - 1, offset + 1), '}\n');
+    });
+
+    test('resolves type-inferred navigation to method', () {
+      final path = parseStructuredPath({
+        'at': ['Settings', 'update'],
+        'anchor': 'stmt:last',
+      });
+      final offset = interpreter.resolveOffset(settingsSource, path);
+
+      expect(settingsSource.substring(offset - 1, offset), ';');
+    });
+
+    test('parses string path with full navigation and anchor', () {
+      final path = parsePathString('class:Settings > method:update @ stmt:last');
+      
+      expect(path.navigate.length, 2);
+      expect(path.navigate[0].kind, NavigateKind.classDecl);
+      expect(path.navigate[0].name, 'Settings');
+      expect(path.navigate[1].kind, NavigateKind.method);
+      expect(path.navigate[1].name, 'update');
+      expect(path.anchor.kind, AnchorKind.stmtLast);
+    });
+
+    test('parses string path with type-inferred steps', () {
+      final path = parsePathString('Settings > update @ stmt:last');
+      
+      expect(path.navigate.length, 2);
+      expect(path.navigate[0].kind, isNull);
+      expect(path.navigate[0].name, 'Settings');
+      expect(path.navigate[1].kind, isNull);
+      expect(path.navigate[1].name, 'update');
+      expect(path.anchor.kind, AnchorKind.stmtLast);
+    });
+
+    test('resolves stmt:last in main function', () {
+      final path = parsePathString('function:main @ stmt:last');
+      final offset = interpreter.resolveOffset(settingsSource, path);
+
+      expect(settingsSource.substring(offset - 1, offset + 1), ';\n');
+    });
+
+    test('throws E_NODE_NOT_FOUND for missing function', () {
+      final path = parsePathString('function:nonExistent @ stmt:last');
+
+      expect(
+        () => interpreter.resolveOffset(settingsSource, path),
+        throwsA(
+          predicate<AstPathResolutionException>(
+            (error) => error.code == 'E_NODE_NOT_FOUND',
+          ),
+        ),
+      );
+    });
+
+    test('resolves body:end in main function', () {
+      final path = parsePathString('function:main @ body:end');
+      final offset = interpreter.resolveOffset(settingsSource, path);
+
+      expect(settingsSource.substring(offset, offset + 1), '}');
+    });
   });
 }

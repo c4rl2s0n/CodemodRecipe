@@ -1,0 +1,26 @@
+dslVersion: 1
+id: test_param_anchor
+name: test_param_anchor
+description: Tests param:last anchor on constructor
+
+args:
+  - name: file
+    required: true
+    inputKind: file
+  - name: className
+    required: true
+    inputKind: symbol
+
+steps:
+  - edit:
+      path: "{{file}}"
+      steps:
+        - insert:
+            at:
+              - class: "{{className}}"
+              - ctor: null
+            anchor: param:last
+            text: ", String newParam"
+
+postExecution:
+  - dartFormat
