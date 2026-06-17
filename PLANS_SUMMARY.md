@@ -6,15 +6,20 @@ This document summarizes the two plans created for the codemod_recipe project an
 
 ## 📋 Available Plans
 
-### 1. **Option A Implementation Plan** (Todo List)
+### 1. **Option A Implementation Plan** (Todo List + File)
 - **Purpose:** Split binaries into CLI and VS Code entry points
-- **Format:** Interactive todo list (persists across sessions)
-- **Location:** Built into the system via `todo` tool
+- **Format:** Interactive todo list + Markdown file (persists across sessions)
+- **Todo Location:** Built into the system via `todo` tool
+- **File Location:** `doc/OPTION_A_PLAN.md`
 - **Status:** 18 tasks defined, all pending
 
 **How to access:**
 ```bash
+# Via todo tool (interactive)
 todo read
+
+# Or via file
+read file_path="doc/OPTION_A_PLAN.md"
 ```
 
 **Task IDs:** `option-a-1.1` through `option-a-4.2`
