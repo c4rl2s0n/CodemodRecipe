@@ -4,6 +4,7 @@ import '../dart_codegen/ast_helpers/invocations.dart';
 import '../dart_codegen/ast_helpers/localizers.dart';
 import '../dart_codegen/ast_helpers/offsets.dart';
 import 'model.dart';
+import 'anchor_validators.dart';
 
 /// Resolves [anchor] to a byte offset for [node] within [source].
 int resolveAnchorOffset({
@@ -57,30 +58,11 @@ AnchorSpan resolveAnchorSpan({
 }
 
 /// Returns whether [anchor] is valid for a focused [node] of the given type.
+/// 
+/// This function delegates to the strategy pattern implementation in [AnchorValidatorRegistry]
+/// for extensible and maintainable validation logic.
 bool isAnchorValidFor(AstNode node, Anchor anchor) {
-  return switch (anchor.kind) {
-    AnchorKind.bodyStart ||
-    AnchorKind.bodyEnd => node is ClassDeclaration || node is FunctionDeclaration,
-    AnchorKind.memberLast => node is ClassDeclaration,
-    AnchorKind.stmtLast => node is MethodDeclaration || node is FunctionDeclaration,
-    AnchorKind.paramLast ||
-    AnchorKind.paramName ||
-    AnchorKind.paramIndex => node is ConstructorDeclaration || node is FunctionDeclaration,
-    AnchorKind.argLast ||
-    AnchorKind.argName ||
-    AnchorKind.argIndex => _isCallLike(node),
-    AnchorKind.metaBefore || AnchorKind.docBefore || AnchorKind.docAfter =>
-      node is ClassDeclaration ||
-          node is MethodDeclaration ||
-          node is ConstructorDeclaration ||
-          node is FieldDeclaration ||
-          node is FunctionDeclaration,
-    AnchorKind.initializerReplace => node is FieldDeclaration,
-    AnchorKind.initializerLast ||
-    AnchorKind.initializerName => node is ConstructorDeclaration,
-    AnchorKind.redirectionArgLast ||
-    AnchorKind.redirectionArgName => node is ConstructorDeclaration,
-  };
+  return AnchorValidatorRegistry.isValidFor(node, anchor);
 }
 
 int _bodyStart(AstNode node) {

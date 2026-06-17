@@ -13,6 +13,7 @@ import 'diagnostics.dart';
 import 'host_config.dart';
 import 'insert_transform.dart';
 import 'path_sandbox.dart';
+import 'schema_validator.dart';
 import '../ast_path/ast_path.dart';
 
 /// Raw parse result for one YAML recipe file before registry linking.
@@ -597,13 +598,9 @@ class YamlRecipeCompiler {
     return null;
   }
 
+  /// Uses the centralized schema validator for creating schema error diagnostics.
   RecipeDiagnostic _schemaError(String message, String filePath) {
-    return RecipeDiagnostic(
-      severity: DiagnosticSeverity.error,
-      code: 'E_YAML_SCHEMA',
-      message: message,
-      sources: [DiagnosticSource(file: filePath)],
-    );
+    return YamlSchemaValidator.createError(message, filePath);
   }
 }
 
