@@ -212,10 +212,10 @@ class YamlRecipeRegistry {
     if (normalizedPath.startsWith('$normalizedRoot/')) {
       final withoutRoot = normalizedPath.substring(normalizedRoot.length + 1);
       // Remove .template extension
-      return withoutRoot.replaceFirst('.template$', '');
+      return withoutRoot.replaceFirst('.template', '');
     }
     // Fallback: just use filename without extension
-    return normalizedPath.split('/').last.replaceFirst('.template$', '');
+    return normalizedPath.split('/').last.replaceFirst('.template', '');
   }
 
   static bool _isYaml(String path) {

@@ -4,9 +4,11 @@ class NavigateStep {
   const NavigateStep(this.kind, {this.name, this.match});
 
   /// Step kind (for example `class`, `method`, `ctor`).
-  final NavigateKind kind;
+  /// 
+  /// When null, the step uses type inference to find the best matching node by [name].
+  final NavigateKind? kind;
 
-  /// Optional name or URI depending on [kind].
+  /// Name for the step. Required when [kind] is null (type-inferred navigation).
   final String? name;
 
   /// Optional source substring filter when multiple candidates match [name].
@@ -14,7 +16,8 @@ class NavigateStep {
 
   @override
   String toString() {
-    final label = name == null ? kind.name : '${kind.name}:$name';
+    final kindName = kind?.name ?? 'inferred';
+    final label = name == null ? kindName : '$kindName:$name';
     if (match == null) return label;
     return '$label (match: $match)';
   }
@@ -31,7 +34,7 @@ class NavigateStep {
   int get hashCode => Object.hash(kind, name, match);
 }
 
-/// Supported navigation step kinds (v1).
+/// Supported navigation step kinds (v2).
 enum NavigateKind {
   /// Compilation unit root.
   root,
@@ -53,6 +56,18 @@ enum NavigateKind {
 
   /// Field declaration by variable name in the focused class.
   field,
+
+  /// Top-level function declaration by name.
+  function,
+
+  /// Top-level variable declaration by name.
+  variable,
+
+  /// Constructor's initializer list (e.g., `: x = 1, y = 2`).
+  initializer,
+
+  /// Constructor's redirection target (e.g., `: this(x)` or `: super(x)`).
+  redirection,
 }
 
 /// A resolved insertion anchor within the focused node (v1).
@@ -76,6 +91,8 @@ class Anchor {
       AnchorKind.argName => 'arg:name:$name',
       AnchorKind.paramIndex => 'param:$index',
       AnchorKind.argIndex => 'arg:$index',
+      AnchorKind.initializerName => 'initializer:name:$name',
+      AnchorKind.redirectionArgName => 'redirection:arg:name:$name',
       _ => kind.name,
     };
   }
@@ -92,7 +109,7 @@ class Anchor {
   int get hashCode => Object.hash(kind, name, index);
 }
 
-/// Supported anchor tokens (v1).
+/// Supported anchor tokens (v2).
 enum AnchorKind {
   bodyStart,
   bodyEnd,
@@ -108,6 +125,18 @@ enum AnchorKind {
   docBefore,
   docAfter,
   initializerReplace,
+
+  /// Last initializer in a constructor's initializer list.
+  initializerLast,
+
+  /// Initializer for a specific field in a constructor's initializer list.
+  initializerName,
+
+  /// Last argument in a constructor's redirection.
+  redirectionArgLast,
+
+  /// Named argument in a constructor's redirection.
+  redirectionArgName,
 }
 
 /// Byte range resolved from an anchor (length 0 for pure insertion).

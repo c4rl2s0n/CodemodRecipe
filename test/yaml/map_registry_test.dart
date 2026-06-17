@@ -92,8 +92,7 @@ steps:
     final result = YamlRecipeRegistry.load(
       HostConfig(
         workspaceRoot: workspace.path,
-        recipesDirectory: '.codemod/recipes',
-        mapsDirectory: '.codemod/maps',
+        codemodRoot: '.codemod',
       ),
     );
 

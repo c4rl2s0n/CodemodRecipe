@@ -91,7 +91,13 @@ class AstPathInterpreter {
   }
 
   AstFocus _applyStep(AstFocus focus, NavigateStep step) {
-    return switch (step.kind) {
+    // Handle type-inferred navigation (kind is null)
+    if (step.kind == null) {
+      return _findByName(focus, step.name!, step.match);
+    }
+
+    final kind = step.kind!;
+    return switch (kind) {
       NavigateKind.root => focus,
       NavigateKind.classDecl => _classNamed(focus, step.name!, step.match),
       NavigateKind.method => _methodNamed(focus, step.name!, step.match),
@@ -99,6 +105,10 @@ class AstPathInterpreter {
       NavigateKind.call => _call(focus, step.name!, step.match),
       NavigateKind.import => _import(focus, step.name!),
       NavigateKind.field => _fieldNamed(focus, step.name!, step.match),
+      NavigateKind.function => _functionNamed(focus, step.name!, step.match),
+      NavigateKind.variable => _variableNamed(focus, step.name!, step.match),
+      NavigateKind.initializer => _initializer(focus, step.match),
+      NavigateKind.redirection => _redirection(focus, step.match),
     };
   }
 
@@ -239,6 +249,158 @@ class AstPathInterpreter {
       'Import "$uri" not found',
       code: 'E_NODE_NOT_FOUND',
     );
+  }
+
+  /// Finds a node by name using type inference.
+  /// Searches in order of priority: class > constructor > method > field > variable > function
+  AstFocus _findByName(AstFocus focus, String name, String? match) {
+    final node = focus.node;
+    
+    // If we're inside a class, search class members first
+    if (node is ClassDeclaration) {
+      // Check constructors
+      final constructors = node.members
+          .whereType<ConstructorDeclaration>()
+          .where((ctor) => ctor.name?.lexeme == name)
+          .toList();
+      if (constructors.isNotEmpty) {
+        final ctor = _selectMatch(constructors, focus.source, match, label: 'constructor "$name"');
+        return AstFocus(focus.source, focus.unit, ctor);
+      }
+      
+      // Check methods
+      final methods = node.members
+          .whereType<MethodDeclaration>()
+          .where((method) => method.name.lexeme == name)
+          .toList();
+      if (methods.isNotEmpty) {
+        final method = _selectMatch(methods, focus.source, match, label: 'method "$name"');
+        return AstFocus(focus.source, focus.unit, method);
+      }
+      
+      // Check fields
+      final fields = getFields(node)
+          .where((field) => field.fields.variables.any(
+                (variable) => variable.name.lexeme == name,
+              ))
+          .toList();
+      if (fields.isNotEmpty) {
+        final field = _selectMatch(fields, focus.source, match, label: 'field "$name"');
+        return AstFocus(focus.source, focus.unit, field);
+      }
+    }
+    
+    // Search at compilation unit level
+    if (node is CompilationUnit || node == focus.unit) {
+      final unit = focus.unit;
+      
+      // Check classes
+      final classes = findClassesByName(unit, name);
+      if (classes.isNotEmpty) {
+        final classDecl = _selectMatch(classes, focus.source, match, label: 'class "$name"');
+        return AstFocus(focus.source, focus.unit, classDecl);
+      }
+      
+      // Check top-level functions
+      final functions = unit.declarations
+          .whereType<FunctionDeclaration>()
+          .where((func) => func.name.lexeme == name)
+          .toList();
+      if (functions.isNotEmpty) {
+        final func = _selectMatch(functions, focus.source, match, label: 'function "$name"');
+        return AstFocus(focus.source, focus.unit, func);
+      }
+      
+      // Check top-level variables
+      final variables = unit.declarations
+          .whereType<TopLevelVariableDeclaration>()
+          .where((decl) => decl.variables.variables.any(
+                (variable) => variable.name.lexeme == name,
+              ))
+          .toList();
+      if (variables.isNotEmpty) {
+        final varDecl = _selectMatch(variables, focus.source, match, label: 'variable "$name"');
+        return AstFocus(focus.source, focus.unit, varDecl);
+      }
+    }
+    
+    throw AstPathResolutionException(
+      'Node with name "$name" not found',
+      code: 'E_NODE_NOT_FOUND',
+    );
+  }
+
+  AstFocus _functionNamed(AstFocus focus, String name, String? match) {
+    try {
+      final functions = focus.unit.declarations
+          .whereType<FunctionDeclaration>()
+          .where((func) => func.name.lexeme == name)
+          .toList();
+      
+      if (functions.isEmpty) {
+        throw StateError('Function "$name" not found in source');
+      }
+      
+      final func = _selectMatch(functions, focus.source, match, label: 'function "$name"');
+      return AstFocus(focus.source, focus.unit, func);
+    } on StateError catch (error) {
+      throw AstPathResolutionException(error.message, code: 'E_NODE_NOT_FOUND');
+    }
+  }
+
+  AstFocus _variableNamed(AstFocus focus, String name, String? match) {
+    try {
+      final variables = focus.unit.declarations
+          .whereType<TopLevelVariableDeclaration>()
+          .where((decl) => decl.variables.variables.any(
+                (variable) => variable.name.lexeme == name,
+              ))
+          .toList();
+      
+      if (variables.isEmpty) {
+        throw StateError('Variable "$name" not found in source');
+      }
+      
+      final varDecl = _selectMatch(variables, focus.source, match, label: 'variable "$name"');
+      return AstFocus(focus.source, focus.unit, varDecl);
+    } on StateError catch (error) {
+      throw AstPathResolutionException(error.message, code: 'E_NODE_NOT_FOUND');
+    }
+  }
+
+  AstFocus _initializer(AstFocus focus, String? match) {
+    try {
+      final constructor = focus.node;
+      if (constructor is! ConstructorDeclaration) {
+        throw StateError('initializer navigation requires a constructor');
+      }
+      
+      // For now, just return the constructor itself
+      // The anchor resolution will handle finding the initializer list
+      return focus;
+    } on StateError catch (error) {
+      throw AstPathResolutionException(error.message, code: 'E_NAVIGATION_INVALID');
+    }
+  }
+
+  AstFocus _redirection(AstFocus focus, String? match) {
+    try {
+      final constructor = focus.node;
+      if (constructor is! ConstructorDeclaration) {
+        throw StateError('redirection navigation requires a constructor');
+      }
+      
+      // Check if this is a redirecting factory constructor
+      if (constructor.redirectedConstructor != null) {
+        return AstFocus(focus.source, focus.unit, constructor.redirectedConstructor!);
+      }
+      
+      // For now, just return the constructor itself
+      // The anchor resolution will handle finding the redirection
+      return focus;
+    } on StateError catch (error) {
+      throw AstPathResolutionException(error.message, code: 'E_NAVIGATION_INVALID');
+    }
   }
 
   T _selectMatch<T extends AstNode>(

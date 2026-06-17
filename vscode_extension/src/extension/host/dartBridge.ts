@@ -4,7 +4,6 @@ import * as path from 'path';
 import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
 import * as vscode from 'vscode';
 import { ExtensionConfig } from '../config/extensionConfig';
-import { HostDiscovery } from './hostDiscovery';
 import {
   buildHostSpawnArgs,
   hostSpawnConfigFromExtension,
@@ -47,7 +46,6 @@ export class DartBridge {
   constructor(
     private readonly workspaceRoot: string,
     private readonly config: ExtensionConfig,
-    private readonly hostDiscovery: HostDiscovery,
     private readonly extensionUri: vscode.Uri
   ) {}
 

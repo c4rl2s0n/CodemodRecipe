@@ -94,6 +94,26 @@ Anchor parseAnchor(String token) {
     return Anchor(AnchorKind.argName, name: name);
   }
 
+  if (normalized.startsWith('initializer:name:')) {
+    final name = normalized.substring('initializer:name:'.length).trim();
+    if (name.isEmpty) {
+      throw AstPathParseException(
+        'Anchor "initializer:name:" requires a field name',
+      );
+    }
+    return Anchor(AnchorKind.initializerName, name: name);
+  }
+
+  if (normalized.startsWith('redirection:arg:name:')) {
+    final name = normalized.substring('redirection:arg:name:'.length).trim();
+    if (name.isEmpty) {
+      throw AstPathParseException(
+        'Anchor "redirection:arg:name:" requires an argument name',
+      );
+    }
+    return Anchor(AnchorKind.redirectionArgName, name: name);
+  }
+
   final colonIndex = normalized.indexOf(':');
   if (colonIndex > 0) {
     final prefix = normalized.substring(0, colonIndex);
@@ -123,6 +143,8 @@ Anchor _parseSimpleAnchor(String normalized) {
     'doc:before' => AnchorKind.docBefore,
     'doc:after' => AnchorKind.docAfter,
     'initializer:replace' => AnchorKind.initializerReplace,
+    'initializer:last' => AnchorKind.initializerLast,
+    'redirection:arg:last' => AnchorKind.redirectionArgLast,
     _ => throw AstPathParseException('Unknown anchor token "$normalized"'),
   };
 
@@ -187,8 +209,8 @@ NavigateStep _parseNavigateToken(String token) {
 
   final colonIndex = trimmed.indexOf(':');
   if (colonIndex < 0) {
-    // Shorthand: bare identifier is treated as a class name at root context.
-    return NavigateStep(NavigateKind.classDecl, name: trimmed);
+    // Type-inferred navigation: bare identifier, kind is null
+    return NavigateStep(null, name: trimmed);
   }
 
   final key = trimmed.substring(0, colonIndex);
@@ -214,6 +236,22 @@ NavigateStep _navigateStepForKey(String key, String? name) {
       name: _requireName(name, key),
     ),
     'field' => NavigateStep(NavigateKind.field, name: _requireName(name, key)),
+    'function' => NavigateStep(
+      NavigateKind.function,
+      name: _requireName(name, key),
+    ),
+    'var' || 'variable' => NavigateStep(
+      NavigateKind.variable,
+      name: _requireName(name, key),
+    ),
+    'initializer' => NavigateStep(
+      NavigateKind.initializer,
+      name: name,
+    ),
+    'redirection' => NavigateStep(
+      NavigateKind.redirection,
+      name: name,
+    ),
     _ => throw AstPathParseException('Unknown navigate step "$key"'),
   };
 }

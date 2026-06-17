@@ -107,7 +107,7 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
         await vscode.commands.executeCommand(COMMANDS.refresh);
         break;
       case WEBVIEW_TO_EXTENSION.configureHost:
-        await vscode.commands.executeCommand(COMMANDS.configureHost);
+        await vscode.commands.executeCommand(COMMANDS.configureCodemodRoot);
         break;
       case WEBVIEW_TO_EXTENSION.pickFile:
         await this.pickPath(message.arg, false);

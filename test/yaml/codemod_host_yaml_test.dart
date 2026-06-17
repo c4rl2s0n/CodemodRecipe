@@ -15,7 +15,7 @@ void main() {
 
     final config = HostConfig(
       workspaceRoot: workspace.path,
-      recipesDirectory: '.codemod/recipes',
+      codemodRoot: '.codemod',
     );
     final host = CodemodHost.fromConfig(config);
 
@@ -25,7 +25,7 @@ void main() {
     final diagnostics = response['diagnostics'] as List;
     expect(
       diagnostics.any(
-        (item) => (item as Map)['code'] == 'E_DUPLICATE_RECIPE_ID',
+        (item) => (item as Map)['code'] == 'E_DUPLICATE_ID',
       ),
       isTrue,
     );
@@ -45,7 +45,7 @@ void main() {
     final host = CodemodHost.fromConfig(
       HostConfig(
         workspaceRoot: workspace.path,
-        recipesDirectory: '.codemod/recipes',
+        codemodRoot: '.codemod',
       ),
     );
 
@@ -61,7 +61,7 @@ void main() {
     expect(reloaded['ok'], isTrue);
     expect(
       (reloaded['diagnostics'] as List).any(
-        (item) => (item as Map)['code'] == 'E_DUPLICATE_RECIPE_ID',
+        (item) => (item as Map)['code'] == 'E_DUPLICATE_ID',
       ),
       isTrue,
     );

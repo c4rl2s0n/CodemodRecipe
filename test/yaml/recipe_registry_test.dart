@@ -16,7 +16,7 @@ void main() {
     final result = YamlRecipeRegistry.load(
       HostConfig(
         workspaceRoot: workspace.path,
-        recipesDirectory: '.codemod/recipes',
+        codemodRoot: '.codemod',
       ),
     );
 
@@ -42,7 +42,7 @@ void main() {
     final result = YamlRecipeRegistry.load(
       HostConfig(
         workspaceRoot: workspace.path,
-        recipesDirectory: '.codemod/recipes',
+        codemodRoot: '.codemod',
       ),
     );
 
@@ -69,7 +69,7 @@ void main() {
     final result = YamlRecipeRegistry.load(
       HostConfig(
         workspaceRoot: workspace.path,
-        recipesDirectory: '.codemod/recipes',
+        codemodRoot: '.codemod',
       ),
     );
 
@@ -95,7 +95,7 @@ void main() {
     final result = YamlRecipeRegistry.load(
       HostConfig(
         workspaceRoot: workspace.path,
-        recipesDirectory: '.codemod/recipes',
+        codemodRoot: '.codemod',
       ),
     );
 
@@ -125,13 +125,13 @@ void main() {
     final result = YamlRecipeRegistry.load(
       HostConfig(
         workspaceRoot: workspace.path,
-        recipesDirectory: '.codemod/recipes',
+        codemodRoot: '.codemod',
       ),
     );
 
     expect(result.recipes.containsKey('add_log_line'), isFalse);
     expect(
-      result.diagnostics.any((item) => item.code == 'E_DUPLICATE_RECIPE_ID'),
+      result.diagnostics.any((item) => item.code == 'E_DUPLICATE_ID'),
       isTrue,
     );
   });

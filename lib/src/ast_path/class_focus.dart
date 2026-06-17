@@ -110,7 +110,8 @@ NavigateStep _parseNavigateToken(String token) {
 
   final colonIndex = trimmed.indexOf(':');
   if (colonIndex < 0) {
-    return NavigateStep(NavigateKind.classDecl, name: trimmed);
+    // Type-inferred navigation: bare identifier, kind is null
+    return NavigateStep(null, name: trimmed);
   }
 
   final key = trimmed.substring(0, colonIndex);
@@ -135,6 +136,16 @@ NavigateStep _navigateStepForKey(String key, String? name) {
       name: _requireName(name, key),
     ),
     'field' => NavigateStep(NavigateKind.field, name: _requireName(name, key)),
+    'function' => NavigateStep(
+      NavigateKind.function,
+      name: _requireName(name, key),
+    ),
+    'var' || 'variable' => NavigateStep(
+      NavigateKind.variable,
+      name: _requireName(name, key),
+    ),
+    'initializer' => NavigateStep(NavigateKind.initializer, name: name),
+    'redirection' => NavigateStep(NavigateKind.redirection, name: name),
     _ => throw FormatException('Unknown navigate step "$key"'),
   };
 }

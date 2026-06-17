@@ -4,7 +4,6 @@ import { COMMANDS, VIEWS } from './constants';
 import { ExtensionConfig } from './config/extensionConfig';
 import { DiffContentProvider } from './diff/diffContentProvider';
 import { DartBridge } from './host/dartBridge';
-import { HostDiscovery } from './host/hostDiscovery';
 import { prefillArgs, resolveEditorContext } from './recipes/recipeContext';
 import { RecipeRepository } from './recipes/recipeRepository';
 import type { RecipeSchema } from '../shared';
@@ -17,8 +16,7 @@ export function activate(context: vscode.ExtensionContext): void {
   }
 
   const config = new ExtensionConfig();
-  const hostDiscovery = new HostDiscovery(workspaceRoot, config);
-  const bridge = new DartBridge(workspaceRoot, config, hostDiscovery, context.extensionUri);
+  const bridge = new DartBridge(workspaceRoot, config, context.extensionUri);
   const diffProvider = new DiffContentProvider();
   const repository = new RecipeRepository(bridge);
   const runner = new RecipeRunnerViewProvider(
