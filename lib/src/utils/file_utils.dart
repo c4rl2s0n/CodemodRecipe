@@ -3,6 +3,7 @@
 // a BSD-style license that can be found in the LICENSE file.
 
 import 'dart:io';
+import 'package:path/path.dart' as path;
 
 /// Utility functions for file and directory operations.
 ///
@@ -19,13 +20,10 @@ class FileUtils {
   ///
   /// Both paths are normalized to use forward slashes for cross-platform consistency.
   static String relativePath(String workspaceRoot, String absolutePath) {
-    final root = Directory(workspaceRoot).absolute.path.replaceAll('\\', '/');
-    final file = File(absolutePath).absolute.path.replaceAll('\\', '/');
+    final root = Directory(workspaceRoot).absolute.path;
+    final file = File(absolutePath).absolute.path;
     
-    if (file.startsWith('$root/')) {
-      return file.substring(root.length + 1);
-    }
-    return file;
+    return path.relative(file, from: root);
   }
 
   /// Checks if a file exists at the given [path].
@@ -98,7 +96,7 @@ class FileUtils {
         if (entity is! File) continue;
         
         final filePath = entity.path;
-        final extension = _getExtension(filePath).toLowerCase();
+        final extension = path.extension(filePath).toLowerCase();
         
         if (extensions.contains(extension)) {
           try {
@@ -130,33 +128,23 @@ class FileUtils {
   }
 
   /// Gets the directory name from a file path.
-  static String dirname(String path) {
-    return path.isEmpty ? '.' : path.split('/').take(path.split('/').length - 1).join('/');
+  static String dirname(String filePath) {
+    return path.dirname(filePath);
   }
 
   /// Gets the base name (filename without extension) from a file path.
-  static String basenameWithoutExtension(String path) {
-    return path.isEmpty ? path : path.split('/').last.split('.').first;
+  static String basenameWithoutExtension(String filePath) {
+    return path.basenameWithoutExtension(filePath);
   }
 
   /// Gets the file extension from a path.
-  static String extension(String path) {
-    return path.isEmpty ? '' : path.split('/').last.split('.').last;
+  static String extension(String filePath) {
+    return path.extension(filePath);
   }
 
   /// Normalizes a path to use forward slashes and removes any trailing slashes.
-  static String normalizePath(String path) {
-    if (path.isEmpty) return path;
-    
-    // Replace all backslashes with forward slashes
-    var normalized = path.replaceAll('\\', '/');
-    
-    // Remove trailing slash (but preserve root '/')
-    if (normalized.length > 1 && normalized.endsWith('/')) {
-      normalized = normalized.substring(0, normalized.length - 1);
-    }
-    
-    return normalized;
+  static String normalizePath(String inputPath) {
+    return path.normalize(inputPath);
   }
 
   /// Checks if a path is absolute.
@@ -168,8 +156,7 @@ class FileUtils {
 
   /// Joins multiple path segments into a single path.
   static String joinPaths(List<String> segments) {
-    final filtered = segments.where((s) => s.isNotEmpty).toList();
-    return Uri(pathSegments: filtered).path;
+    return path.joinAll(segments.where((s) => s.isNotEmpty).toList());
   }
 
   /// Gets the current working directory path.
@@ -181,19 +168,7 @@ class FileUtils {
   static bool hasExtension(String filePath, List<String> extensions) {
     if (filePath.isEmpty) return false;
     
-    final fileName = filePath.split('/').last;
-    final lastDot = fileName.lastIndexOf('.');
-    if (lastDot < 0) return false;
-    
-    final fileExtension = fileName.substring(lastDot).toLowerCase();
+    final fileExtension = path.extension(filePath).toLowerCase();
     return extensions.any((ext) => fileExtension == ext.toLowerCase());
-  }
-
-  /// Extracts the extension from a file path.
-  static String _getExtension(String filePath) {
-    final fileName = filePath.split('/').last;
-    final lastDot = fileName.lastIndexOf('.');
-    if (lastDot < 0) return '';
-    return fileName.substring(lastDot);
   }
 }
