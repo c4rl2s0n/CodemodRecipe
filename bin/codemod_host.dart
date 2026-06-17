@@ -4,7 +4,7 @@ import 'dart:io';
 import 'package:args/args.dart';
 import 'package:codemod_recipe/codemod_recipe_vscode.dart';
 
-/// Generic codemod host entrypoint for YAML recipes.
+/// VS Code extension host entrypoint for YAML recipes.
 ///
 /// Stdio server (used by the VS Code extension):
 ///   dart run bin/codemod_host.dart --stdio-server
@@ -12,13 +12,15 @@ import 'package:codemod_recipe/codemod_recipe_vscode.dart';
 /// Validate recipes:
 ///   dart run bin/codemod_host.dart --validate
 ///
-/// Run a recipe from CLI:
-///   dart run bin/codemod_host.dart add_log_line --file lib/foo.dart --className Settings --methodName update
+/// For CLI usage, use: dart run bin/codemod.dart <recipe.yaml> [args]
 Future<void> main(List<String> arguments) async {
-  final parser = HostConfig.buildArgParser()..addFlag('help', abbr: 'h', negatable: false);
+  final parser = HostConfig.buildArgParser()
+    ..addFlag('help', abbr: 'h', negatable: false);
 
   late ArgResults results;
+
   try {
+    // Parse all arguments as host arguments
     results = parser.parse(arguments);
   } on FormatException catch (error) {
     stderr.writeln('Error: ${error.message}');
@@ -53,39 +55,15 @@ Future<void> main(List<String> arguments) async {
     );
   }
 
-  if (results['stdio-server'] == true || _looksLikeJsonCommand(results.rest)) {
+  if (results['stdio-server'] == true || _looksLikeJsonCommand(arguments)) {
     await CodemodHost.fromConfig(config).run(arguments);
     return;
   }
 
-  final rest = results.rest;
-  if (rest.isEmpty) {
-    stderr.writeln('Error: recipe id is required');
-    _printUsage(parser);
-    exit(1);
-  }
-
-  final recipeId = rest.first;
-  final loadResult = YamlRecipeRegistry.load(config);
-  if (loadResult.diagnostics.any(
-    (item) => item.severity == DiagnosticSeverity.error,
-  )) {
-    stderr.writeln('Recipe load failed:');
-    for (final diagnostic in loadResult.diagnostics) {
-      stderr.writeln('  [${diagnostic.code}] ${diagnostic.message}');
-    }
-    exit(1);
-  }
-
-  final recipe = loadResult.recipes[recipeId];
-  if (recipe == null) {
-    stderr.writeln('Unknown recipe: $recipeId');
-    exit(1);
-  }
-
-  await CodemodRunner(recipe, preferences: config.preferences).run(
-    rest.skip(1).toList(),
-  );
+  // No CLI mode - direct users to codemod.dart
+  stderr.writeln('For CLI usage, use: dart run bin/codemod.dart <recipe.yaml> [args]');
+  stderr.writeln('For VS Code extension, use: dart run bin/codemod_host.dart --stdio-server');
+  exit(1);
 }
 
 bool _looksLikeJsonCommand(List<String> rest) {
@@ -95,7 +73,14 @@ bool _looksLikeJsonCommand(List<String> rest) {
 }
 
 void _printUsage(ArgParser parser) {
-  stderr.writeln('Usage: codemod_host [host options] <recipe-id> [recipe args]');
+  stderr.writeln(
+    'Usage: codemod_host [host options]',
+  );
   stderr.writeln('');
+  stderr.writeln('VS Code extension host options:');
   stderr.writeln(parser.usage);
+  stderr.writeln('');
+  stderr.writeln(
+    'For CLI usage, use: dart run bin/codemod.dart <recipe.yaml> [args]',
+  );
 }
