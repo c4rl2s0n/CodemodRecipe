@@ -3,7 +3,7 @@ import 'dart:io';
 import 'package:stubble/stubble.dart';
 
 import 'context.dart';
-import 'dart_codegen/naming.dart';
+import '../dart_codegen/naming.dart';
 
 /// Renders inline or file-backed templates with codemod context values.
 ///

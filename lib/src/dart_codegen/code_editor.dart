@@ -5,8 +5,8 @@
 
 import 'package:analyzer/dart/ast/ast.dart';
 
-import '../context.dart';
-import '../patch_helpers.dart';
+import '../core/context.dart';
+import '../core/patch_helpers.dart';
 import 'ast_helpers/ast_helpers.dart';
 import 'field_spec.dart';
 

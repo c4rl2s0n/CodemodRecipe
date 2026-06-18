@@ -2,7 +2,7 @@ import 'dart:io';
 
 import 'package:yaml/yaml.dart';
 
-import '../recipe.dart';
+import '../core/recipe.dart';
 import 'diagnostics.dart';
 import 'host_config.dart';
 import 'recipe_compiler.dart';

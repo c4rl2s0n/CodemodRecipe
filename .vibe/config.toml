@@ -1,0 +1,19 @@
+agent_paths = [
+    ".vibe/agents",
+]
+enabled_agents = [
+    "default",
+    "plan",
+    "codestral-coder",
+    "code-reviewer",
+    "test-writer",
+    "doc-writer",
+]
+default_agent = "default"
+active_model = "devstral-small"
+
+[tools.write_file]
+permission = "ask"
+
+[tools.edit]
+permission = "ask"

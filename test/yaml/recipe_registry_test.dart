@@ -106,7 +106,7 @@ void main() {
     final recipe = result.recipes['with_build_runner'];
     expect(recipe, isNotNull);
     expect(
-      recipe!.postExecution.any((action) => action is BuildRunnerPostExecution),
+      recipe!.postExecution.any((action) => action is ProcessPostExecution),
       isTrue,
     );
   });

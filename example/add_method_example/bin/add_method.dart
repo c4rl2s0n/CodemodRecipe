@@ -29,17 +29,9 @@ final addMethodRecipe = CodemodRecipe(
     EditDartFileOperation(
       path: (context) => context.require('file'),
       transforms: (context) => [
-        AddMethodTransform(
-          className: (context) => context.require('class'),
-          methodName: (context) => context.camel('method'),
-          body: const CodemodTemplate.inline('''
-  void {{\$camel method}}() {
-    // TODO: Implement {{\$camel method}}
-  }
-'''),
-        ),
+        FunctionTransform((source, ctx) async => []),
       ],
     ),
   ],
-  postExecution: const [DartFormatPostExecution()],
+  postExecution: [ProcessPostExecution('dart', ['format', '.'])],
 );

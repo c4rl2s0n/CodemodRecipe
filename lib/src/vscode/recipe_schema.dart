@@ -1,5 +1,5 @@
-import '../operation.dart';
-import '../recipe.dart';
+import '../core/operation.dart';
+import '../core/recipe.dart';
 
 /// Serializes recipe metadata into JSON-friendly maps for the VS Code host.
 class RecipeSchema {

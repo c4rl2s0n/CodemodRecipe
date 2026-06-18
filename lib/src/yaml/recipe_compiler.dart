@@ -1,14 +1,12 @@
 import 'package:yaml/yaml.dart';
 
-import '../context.dart';
-import '../generic/post_execution/build_runner_post_execution.dart';
-import '../generic/post_execution/dart_format_post_execution.dart';
-import '../operation.dart';
-import '../generic/post_execution/process_post_execution.dart';
-import '../post_execution.dart';
-import '../transform.dart';
-import '../recipe.dart';
-import '../template.dart';
+import '../core/context.dart';
+import '../core/errors.dart';
+import '../core/operation.dart';
+import '../core/post_execution.dart';
+import '../core/recipe.dart';
+import '../core/template.dart';
+import '../core/transform.dart';
 import 'diagnostics.dart';
 import 'host_config.dart';
 import 'insert_transform.dart';
@@ -528,15 +526,9 @@ class YamlRecipeCompiler {
     final actions = <PostExecution>[];
     for (final entry in value) {
       if (entry is! YamlMap) {
-        final name = entry.toString();
-        final builtin = _builtinPostExecution(name);
-        if (builtin != null) {
-          actions.add(builtin);
-        } else {
-          diagnostics.add(
-            _schemaError('Unknown postExecution "$name"', filePath),
-          );
-        }
+        diagnostics.add(
+          _schemaError('postExecution entries must be maps', filePath),
+        );
         continue;
       }
 
@@ -556,6 +548,10 @@ class YamlRecipeCompiler {
         } on PathSandboxException catch (error) {
           diagnostics.add(diagnosticFromSandbox(error, filePath));
         }
+      } else {
+        diagnostics.add(
+          _schemaError('postExecution entries must have "run" or "runScript"', filePath),
+        );
       }
     }
 
@@ -602,6 +598,13 @@ class YamlRecipeCompiler {
   RecipeDiagnostic _schemaError(String message, String filePath) {
     return YamlSchemaValidator.createError(message, filePath);
   }
+
+  PostExecution _shellPostExecution(String command) {
+    if (command.contains(' ')) {
+      return ProcessPostExecution('bash', ['-lc', command]);
+    }
+    return ProcessPostExecution(command, const []);
+  }
 }
 
 /// Result of compiling one YAML recipe.
@@ -614,21 +617,6 @@ class CompileResult {
 
   /// Diagnostics from compilation.
   final List<RecipeDiagnostic> diagnostics;
-}
-
-PostExecution? _builtinPostExecution(String name) {
-  return switch (name) {
-    'dartFormat' => const DartFormatPostExecution(),
-    'buildRunner' => BuildRunnerPostExecution(),
-    _ => null,
-  };
-}
-
-PostExecution _shellPostExecution(String command) {
-  if (command.contains(' ')) {
-    return ProcessPostExecution('bash', ['-lc', command]);
-  }
-  return ProcessPostExecution(command, const []);
 }
 
 FileExistsStrategy _parseIfExists(String? value) {

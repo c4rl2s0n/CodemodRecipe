@@ -251,13 +251,13 @@ void main() {
     });
 
     test('compose preserves post-execution order from steps', () {
-      final format = DartFormatPostExecution();
+      final format = ProcessPostExecution('dart', ['format']);
       final recipeWithFormat = CodemodRecipe(
         name: 'recipe',
         operations: const [],
         postExecution: [format],
       );
-      final buildRunner = BuildRunnerPostExecution();
+      final buildRunner = ProcessPostExecution('dart', ['run', 'build_runner']);
 
       final composed = CodemodRecipe.compose(
         name: 'composed',
@@ -268,13 +268,13 @@ void main() {
     });
 
     test('compose accepts inline post-execution between recipe steps', () {
-      final format = DartFormatPostExecution();
+      final format = ProcessPostExecution('dart', ['format']);
       final first = CodemodRecipe(
         name: 'first',
         operations: const [],
         postExecution: [format],
       );
-      final buildRunner = BuildRunnerPostExecution();
+      final buildRunner = ProcessPostExecution('dart', ['run', 'build_runner']);
       final second = CodemodRecipe(name: 'second', operations: const []);
 
       final composed = CodemodRecipe.compose(
@@ -756,94 +756,6 @@ class Counter {
             .patches,
         isEmpty,
       );
-    });
-  });
-
-  group('generic transforms', () {
-    test('adds an import once', () async {
-      final transform = AddImportTransform.uri((_) => 'package:app/app.dart');
-
-      final patches = await transform.apply(_source, CodemodContext());
-      final result = applyPatches(_source, patches);
-      final secondRunPatches = await transform.apply(result, CodemodContext());
-
-      expect(result, startsWith("import 'package:app/app.dart';"));
-      expect(secondRunPatches, isEmpty);
-    });
-
-    test('adds a rendered method once', () async {
-      final transform = AddMethodTransform(
-        className: (_) => 'Counter',
-        methodName: (context) => context.camel('method'),
-        body: const CodemodTemplate.inline('''
-  void {{\$camel method}}() {}
-'''),
-      );
-      final context = CodemodContext({'method': 'Increment'});
-
-      final patches = await transform.apply(_source, context);
-      final result = applyPatches(_source, patches);
-      final secondRunPatches = await transform.apply(result, context);
-
-      expect(result, contains('void increment() {}'));
-      expect(secondRunPatches, isEmpty);
-    });
-
-    test('adds a constructor parameter once', () async {
-      const source = '''
-class Counter {
-  const Counter();
-}
-''';
-      final transform = AddConstructorParamTransform(
-        className: (_) => 'Counter',
-        paramName: (_) => 'value',
-        paramType: (_) => 'int',
-      );
-
-      final patches = await transform.apply(source, CodemodContext());
-      final result = applyPatches(source, patches);
-      final secondRunPatches = await transform.apply(result, CodemodContext());
-
-      expect(result, contains('required this.value'));
-      expect(secondRunPatches, isEmpty);
-    });
-
-    test('adds a nullable field once', () async {
-      const source = 'class Counter {}';
-      final transform = AddFieldTransform(
-        className: (_) => 'Counter',
-        fieldName: (_) => 'name',
-        fieldType: (_) => 'String',
-        isNullable: true,
-      );
-
-      final patches = await transform.apply(source, CodemodContext());
-      final result = applyPatches(source, patches);
-
-      expect(result, contains('final String? name;'));
-    });
-
-    test('adds a static field once', () async {
-      const source = '''
-class Counter {
-  Counter();
-}
-''';
-      final transform = AddFieldTransform(
-        className: (_) => 'Counter',
-        fieldName: (_) => 'count',
-        fieldType: (_) => 'int',
-        isStatic: true,
-      );
-
-      final patches = await transform.apply(source, CodemodContext());
-      final result = applyPatches(source, patches);
-      final secondRunPatches = await transform.apply(result, CodemodContext());
-
-      expect(result, contains('static final int count;'));
-      expect(result, isNot(contains('this.count')));
-      expect(secondRunPatches, isEmpty);
     });
   });
 }

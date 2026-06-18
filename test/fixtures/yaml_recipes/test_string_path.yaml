@@ -18,4 +18,4 @@ steps:
               print('string path test');
 
 postExecution:
-  - dartFormat
+  - run: dart format .

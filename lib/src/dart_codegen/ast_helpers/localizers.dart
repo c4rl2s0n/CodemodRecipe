@@ -1,6 +1,11 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 
+export 'offsets.dart' show
+  findClassEndOffset,
+  findClassBodyStartOffset,
+  findOptimalInsertionOffset;
+
 /// Returns the first class declaration named [className] in [unit].
 ClassDeclaration? findClassByName(CompilationUnit unit, String className) {
   ClassDeclaration? found;
@@ -60,11 +65,6 @@ ConstructorDeclaration? findConstructor(
   return null;
 }
 
-/// Returns the source offset of [classNode]'s closing brace token.
-int findClassEndOffset(ClassDeclaration classNode) {
-  return classNode.endToken.offset;
-}
-
 /// Returns abstract methods directly declared in [classNode].
 List<MethodDeclaration> getAbstractMethods(ClassDeclaration classNode) {
   return classNode.members
@@ -119,11 +119,6 @@ List<MethodDeclaration> getMethods(ClassDeclaration classNode) {
   return classNode.members.whereType<MethodDeclaration>().toList();
 }
 
-/// Returns the insertion offset immediately after the class opening brace.
-int findClassBodyStartOffset(ClassDeclaration classNode) {
-  return classNode.leftBracket.end;
-}
-
 /// Recursive visitor that invokes [onClass] for each class declaration.
 class ClassVisitor extends RecursiveAstVisitor<void> {
   /// Callback invoked for each visited class declaration.
@@ -144,19 +139,4 @@ List<ClassDeclaration> findAllClasses(CompilationUnit unit) {
   final classes = <ClassDeclaration>[];
   unit.accept(ClassVisitor(classes.add));
   return classes;
-}
-
-/// Returns a stable insertion offset for adding a new class member.
-int findOptimalInsertionOffset(ClassDeclaration classNode) {
-  final methods = getMethods(classNode);
-  if (methods.isNotEmpty) {
-    return methods.last.end;
-  }
-
-  final fields = getFields(classNode);
-  if (fields.isNotEmpty) {
-    return fields.last.end;
-  }
-
-  return findClassBodyStartOffset(classNode);
 }

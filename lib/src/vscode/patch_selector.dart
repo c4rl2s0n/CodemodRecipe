@@ -1,4 +1,4 @@
-import '../operation.dart';
+import '../core/operation.dart';
 
 /// Filters planned changes down to a user-selected subset.
 ///

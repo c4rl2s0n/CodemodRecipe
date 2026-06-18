@@ -26,4 +26,4 @@ steps:
               final int {{$camel field}};
 
 postExecution:
-  - dartFormat
+  - run: dart format .

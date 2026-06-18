@@ -27,4 +27,4 @@ steps:
               , String {{$camel param}}
 
 postExecution:
-  - dartFormat
+  - run: dart format .

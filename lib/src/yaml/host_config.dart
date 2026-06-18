@@ -2,9 +2,9 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 
-import '../context.dart';
+import '../core/context.dart';
 import '../dart_codegen/field_spec.dart';
-import '../recipe.dart';
+import '../core/recipe.dart';
 
 /// Shared configuration for the generic host and CLI entrypoint.
 class HostConfig {

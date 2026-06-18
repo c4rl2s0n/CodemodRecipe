@@ -3,7 +3,6 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 import 'package:codemod_recipe/codemod_recipe_vscode.dart';
-import 'package:codemod_recipe/src/args.dart';
 
 /// VS Code extension host entrypoint for YAML recipes.
 ///
@@ -15,6 +14,8 @@ import 'package:codemod_recipe/src/args.dart';
 ///
 /// For CLI usage, use: dart run bin/codemod.dart <recipe.yaml> [args]
 Future<void> main(List<String> arguments) async {
+  // Initialize logging
+  logger.runnerInfo('Starting codemod host with arguments: ${arguments.join(' ')}');
   final parser = HostArgsParser.buildArgParser()
     ..addFlag('help', abbr: 'h', negatable: false);
 
@@ -24,6 +25,7 @@ Future<void> main(List<String> arguments) async {
     // Parse all arguments as host arguments
     results = parser.parse(arguments);
   } on FormatException catch (error) {
+    logger.runnerError('Argument parsing failed: ${error.message}');
     stderr.writeln('Error: ${error.message}');
     _printUsage(parser);
     exit(1);

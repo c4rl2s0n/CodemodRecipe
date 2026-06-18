@@ -1,26 +1,18 @@
 import 'dart:convert';
 import 'dart:io';
 
-import '../context.dart';
-import '../operation.dart';
-import '../post_execution.dart';
-import '../recipe.dart';
-import '../runner.dart';
+import '../core/context.dart';
+import '../core/operation.dart';
+import '../core/post_execution.dart';
+import '../core/recipe.dart';
+import '../core/runner.dart';
+import '../core/constants.dart';
 import '../yaml/diagnostics.dart';
 import '../yaml/host_config.dart';
 import '../yaml/recipe_registry.dart';
 import 'diff_service.dart';
 import 'patch_selector.dart';
 import 'recipe_schema.dart';
-
-/// Marks the start of the JSON response block on stdout.
-///
-/// Post-execution actions (for example `dart format`) may print to stdout, so
-/// the response is wrapped in unambiguous markers the extension can scan for.
-const String kResultBegin = '__CODEMOD_RESULT_BEGIN__';
-
-/// Marks the end of the JSON response block on stdout.
-const String kResultEnd = '__CODEMOD_RESULT_END__';
 
 /// Headless entry point that bridges recipes to the VS Code extension.
 ///

@@ -1,8 +1,8 @@
 import '../ast_path/ast_path.dart';
-import '../context.dart';
-import '../patch_helpers.dart';
-import '../template.dart';
-import '../transform.dart';
+import '../core/context.dart';
+import '../core/patch_helpers.dart';
+import '../core/template.dart';
+import '../core/transform.dart';
 
 /// Inserts rendered template text at an [AstPath] location.
 class AstPathInsertTransform implements CodeTransform {

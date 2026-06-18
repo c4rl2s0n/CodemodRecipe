@@ -6,7 +6,7 @@ import 'dart:io';
 
 import 'package:args/args.dart';
 
-import 'yaml/host_config.dart';
+import '../yaml/host_config.dart';
 
 // Local constants for argument parsing
 const String _kHelpFlag = 'help';

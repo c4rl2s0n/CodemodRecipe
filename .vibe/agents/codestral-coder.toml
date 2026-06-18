@@ -1,0 +1,46 @@
+name = "codestral-coder"
+model = "devstral-small"
+
+[model]
+temperature = 0.2
+thinking = "off"
+
+enabled_tools = ["read", "grep", "edit", "write_file", "bash", "todo"]
+disabled_tools = ["task", "ask_user_question", "web_fetch", "web_search"]
+
+[tools.read]
+permission = "always"
+
+[tools.grep]
+permission = "always"
+
+[tools.edit]
+permission = "ask"
+
+[tools.write_file]
+permission = "ask"
+
+[tools.bash]
+permission = "ask"
+allowlist = [
+    "git status",
+    "git log",
+    "git diff",
+    "git show",
+    "git branch",
+    "git checkout",
+    "ls",
+    "cat",
+    "head",
+    "tail",
+    "wc",
+    "grep",
+    "find",
+    "mkdir",
+    "rm",
+    "cp",
+    "mv",
+]
+
+[tools.todo]
+permission = "always"

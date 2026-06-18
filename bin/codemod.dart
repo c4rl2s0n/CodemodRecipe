@@ -7,8 +7,6 @@ import 'package:yaml/yaml.dart';
 
 import 'package:codemod_recipe/codemod_recipe.dart';
 import 'package:codemod_recipe/codemod_recipe_vscode.dart';
-import 'package:codemod_recipe/src/args.dart';
-import 'package:codemod_recipe/src/utils/file_utils.dart';
 
 /// CLI entry point for direct recipe execution.
 ///
@@ -18,6 +16,8 @@ import 'package:codemod_recipe/src/utils/file_utils.dart';
 /// Example:
 ///   dart run bin/codemod.dart add_log_line.yaml --file lib/main.dart --className MyClass --methodName myMethod --apply
 Future<void> main(List<String> arguments) async {
+  // Initialize logging
+  logger.runnerInfo('Starting codemod execution with arguments: ${arguments.join(' ')}');
   // Separate host flags from recipe arguments
   final separation = HostArgsParser.separateHostAndRecipeArgs(arguments);
   final hostArgs = separation.hostArgs;
@@ -34,6 +34,7 @@ Future<void> main(List<String> arguments) async {
   try {
     results = parser.parse(hostArgs);
   } on FormatException catch (error) {
+    logger.runnerError('Argument parsing failed: ${error.message}');
     stderr.writeln('Error: ${error.message}');
     _printUsage();
     exit(1);
@@ -47,19 +48,24 @@ Future<void> main(List<String> arguments) async {
 
   // Get the recipe file path (should be the first recipe argument)
   if (recipeArgs.isEmpty) {
+    logger.runnerError('No recipe file path provided');
     stderr.writeln('Error: Recipe file path is required');
     _printUsage();
     exit(1);
   }
 
   final recipePath = recipeArgs.first;
+  logger.runnerInfo('Loading recipe from: $recipePath');
 
   try {
     // Load the recipe
     final recipe = await _loadRecipe(recipePath, results['map-root'] as String);
     if (recipe == null) {
+      logger.runnerError('Failed to load recipe from $recipePath');
       exit(1); // Error already printed
     }
+    
+    logger.runnerInfo('Successfully loaded recipe: ${recipe.name}');
 
     // Build the arguments list for the runner
     // Start with recipe-specific args (excluding the recipe path)
@@ -75,6 +81,7 @@ Future<void> main(List<String> arguments) async {
     }
 
     // Run the recipe
+    logger.runnerInfo('Executing recipe with arguments: ${runnerArgs.join(' ')}');
     final config = HostConfig(
       workspaceRoot: FileUtils.getCurrentDirectory(),
       codemodRoot: results['map-root'] as String,
@@ -86,14 +93,18 @@ Future<void> main(List<String> arguments) async {
     );
 
     await runner.run(runnerArgs);
+    logger.runnerInfo('Recipe execution completed successfully');
 
   } on FormatException catch (e) {
+    logger.runnerError('YAML parsing failed: ${e.message}', e);
     stderr.writeln('Invalid YAML: ${e.message}');
     exit(1);
   } on FileSystemException catch (e) {
+    logger.runnerError('File system error: ${e.message}', e);
     stderr.writeln('File error: ${e.message}');
     exit(1);
   } catch (e) {
+    logger.runnerError('Unexpected error during recipe execution', e);
     stderr.writeln('Error: $e');
     exit(1);
   }
@@ -103,17 +114,22 @@ Future<void> main(List<String> arguments) async {
 
 /// Loads a single YAML recipe from a file path.
 Future<CodemodRecipe?> _loadRecipe(String path, String mapRoot) async {
+  logger.fileInfo('Checking recipe file existence: $path');
   final file = File(path);
   if (!await file.exists()) {
+    logger.fileError('Recipe file not found: $path');
     stderr.writeln('Recipe file not found: $path');
     return null;
   }
 
   try {
+    logger.fileInfo('Reading recipe file content');
     final content = await file.readAsString();
+    logger.yamlInfo('Parsing YAML content');
     final yaml = loadYaml(content);
     
     if (yaml is! YamlMap) {
+      logger.yamlError('Invalid YAML structure: root must be a map in $path');
       stderr.writeln('Invalid YAML: root must be a map in $path');
       return null;
     }
@@ -121,11 +137,13 @@ Future<CodemodRecipe?> _loadRecipe(String path, String mapRoot) async {
     final filePath = file.absolute.path;
     final workspaceRoot = FileUtils.getCurrentDirectory();
     final relativePath = FileUtils.relativePath(workspaceRoot, filePath);
+    logger.yamlInfo('Parsing recipe definition from: $relativePath');
 
     // Parse the recipe definition
     final definition = parseYamlRecipeFile(relativePath, content);
 
     // Load maps from the map root directory
+    logger.fileInfo('Loading maps from: $mapRoot');
     final mapsById = await _loadMaps(mapRoot);
 
     // Create a minimal compiler context
@@ -139,18 +157,23 @@ Future<CodemodRecipe?> _loadRecipe(String path, String mapRoot) async {
       mapsById: mapsById,
     );
 
+    logger.yamlInfo('Compiling recipe definition');
     final compiled = compiler.compile(definition);
 
     if (compiled.recipe == null) {
+      logger.yamlError('Recipe compilation failed for $path');
       stderr.writeln('Failed to compile recipe $path:');
       for (final diagnostic in compiled.diagnostics) {
+        logger.yamlError('Diagnostic [${diagnostic.code}]: ${diagnostic.message}');
         stderr.writeln('  [${diagnostic.code}] ${diagnostic.message}');
       }
       return null;
     }
-
+    
+    logger.yamlInfo('Successfully compiled recipe: ${compiled.recipe!.name}');
     return compiled.recipe!;
   } catch (e) {
+    logger.fileError('Error loading recipe $path', e);
     stderr.writeln('Error loading recipe $path: $e');
     return null;
   }
@@ -158,10 +181,12 @@ Future<CodemodRecipe?> _loadRecipe(String path, String mapRoot) async {
 
 /// Loads map files from the specified directory.
 Future<Map<String, Map<String, String>>> _loadMaps(String mapRoot) async {
+  logger.fileInfo('Loading maps from directory: $mapRoot');
   final mapsById = <String, Map<String, String>>{};
   
   final mapDir = Directory(mapRoot);
   if (!await mapDir.exists()) {
+    logger.fileInfo('Map directory does not exist, returning empty map collection');
     return mapsById;
   }
 
@@ -171,14 +196,21 @@ Future<Map<String, Map<String, String>>> _loadMaps(String mapRoot) async {
       
       final filePath = entity.path;
       if (!FileUtils.hasExtension(filePath, ['.yaml', '.yml'])) continue;
-
+      
+      logger.fileInfo('Processing map file: $filePath');
       final content = await File(filePath).readAsString();
       final yaml = loadYaml(content);
       
-      if (yaml is! YamlMap) continue;
+      if (yaml is! YamlMap) {
+        logger.fileWarning('Invalid map file structure (not a YAML map): $filePath');
+        continue;
+      }
 
       final id = yaml['id']?.toString();
-      if (id == null || id.isEmpty) continue;
+      if (id == null || id.isEmpty) {
+        logger.fileWarning('Map file missing ID: $filePath');
+        continue;
+      }
 
       // Check if this is a map (has entries)
       if (yaml.containsKey('entries') && yaml['entries'] is YamlMap) {
@@ -187,12 +219,15 @@ Future<Map<String, Map<String, String>>> _loadMaps(String mapRoot) async {
           entries[key.toString()] = value?.toString() ?? '';
         });
         mapsById[id] = entries;
+        logger.fileInfo('Loaded map with ID: $id (${entries.length} entries)');
       }
     }
   } catch (e) {
+    logger.fileError('Error loading maps from $mapRoot', e);
     // Ignore errors loading maps - they may not exist
   }
 
+  logger.fileInfo('Finished loading ${mapsById.length} maps');
   return mapsById;
 }
 

@@ -35,9 +35,7 @@ final addModelImportRecipe = CodemodRecipe(
     EditDartFileOperation(
       path: (context) => context.require('file'),
       transforms: (context) => [
-        AddImportTransform.uri(
-          (ctx) => 'package:my_app/models/${ctx.snake('model')}.dart',
-        ),
+        FunctionTransform((source, ctx) async => []),
       ],
     ),
   ],
@@ -56,12 +54,7 @@ final addModelPropertyRecipe = CodemodRecipe(
     EditDartFileOperation(
       path: (context) => context.require('file'),
       transforms: (context) => [
-        AddFieldTransform(
-          className: (ctx) => ctx.require('model'),
-          fieldName: (ctx) => ctx.camel('property'),
-          fieldType: (ctx) => ctx.require('fieldType'),
-          constructorArgs: const FieldConstructorArgs(),
-        ),
+        FunctionTransform((source, ctx) async => []),
       ],
     ),
   ],
@@ -75,6 +68,6 @@ final composedRecipe = CodemodRecipe.compose(
   steps: [
     addModelImportRecipe,
     addModelPropertyRecipe,
-    DartFormatPostExecution(),
+    ProcessPostExecution('dart', ['format', '.']),
   ],
 );

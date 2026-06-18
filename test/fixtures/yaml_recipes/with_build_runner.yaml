@@ -27,5 +27,5 @@ steps:
               // codemod
 
 postExecution:
-  - dartFormat
-  - buildRunner
+  - run: dart format .
+  - run: dart run build_runner build

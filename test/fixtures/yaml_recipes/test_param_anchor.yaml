@@ -23,4 +23,4 @@ steps:
             text: ", String newParam"
 
 postExecution:
-  - dartFormat
+  - run: dart format .

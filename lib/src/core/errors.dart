@@ -143,11 +143,19 @@ class TemplateException extends CodemodException {
 /// Exception thrown when there's an issue with path sandbox operations.
 class PathSandboxException implements Exception {
   /// Creates a path sandbox exception.
-  PathSandboxException(this.message);
+  PathSandboxException(this.message, {this.code});
 
   /// Human-readable error message.
   final String message;
 
+  /// Optional error code for categorization.
+  final String? code;
+
   @override
-  String toString() => 'PathSandboxException: $message';
+  String toString() {
+    if (code != null) {
+      return '$code: $message';
+    }
+    return 'PathSandboxException: $message';
+  }
 }

@@ -21,4 +21,4 @@ steps:
               final int testField = 0;
 
 postExecution:
-  - dartFormat
+  - run: dart format .

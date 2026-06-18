@@ -20,4 +20,4 @@ steps:
               final test value;
 
 postExecution:
-  - dartFormat
+  - run: dart format .

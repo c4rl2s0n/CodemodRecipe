@@ -90,26 +90,38 @@ class AstPathInterpreter {
     return focus;
   }
 
+  /// Map of step handlers for polymorphic dispatch.
+  /// This replaces the switch statement with a more maintainable lookup.
+  /// Each handler has a signature that matches the specific step type requirements.
+  late final _stepHandlers = <NavigateKind, AstFocus Function(AstFocus, NavigateStep)>{
+    NavigateKind.root: (focus, step) => focus,
+    NavigateKind.classDecl: (focus, step) => _classNamed(focus, step.name!, step.match),
+    NavigateKind.method: (focus, step) => _methodNamed(focus, step.name!, step.match),
+    NavigateKind.constructor: (focus, step) => _constructor(focus, step.name, step.match),
+    NavigateKind.call: (focus, step) => _call(focus, step.name!, step.match),
+    NavigateKind.import: (focus, step) => _import(focus, step.name!),
+    NavigateKind.field: (focus, step) => _fieldNamed(focus, step.name!, step.match),
+    NavigateKind.function: (focus, step) => _functionNamed(focus, step.name!, step.match),
+    NavigateKind.variable: (focus, step) => _variableNamed(focus, step.name!, step.match),
+    NavigateKind.initializer: (focus, step) => _initializer(focus, step.match),
+    NavigateKind.redirection: (focus, step) => _redirection(focus, step.match),
+  };
+
   AstFocus _applyStep(AstFocus focus, NavigateStep step) {
     // Handle type-inferred navigation (kind is null)
     if (step.kind == null) {
       return _findByName(focus, step.name!, step.match);
     }
 
-    final kind = step.kind!;
-    return switch (kind) {
-      NavigateKind.root => focus,
-      NavigateKind.classDecl => _classNamed(focus, step.name!, step.match),
-      NavigateKind.method => _methodNamed(focus, step.name!, step.match),
-      NavigateKind.constructor => _constructor(focus, step.name, step.match),
-      NavigateKind.call => _call(focus, step.name!, step.match),
-      NavigateKind.import => _import(focus, step.name!),
-      NavigateKind.field => _fieldNamed(focus, step.name!, step.match),
-      NavigateKind.function => _functionNamed(focus, step.name!, step.match),
-      NavigateKind.variable => _variableNamed(focus, step.name!, step.match),
-      NavigateKind.initializer => _initializer(focus, step.match),
-      NavigateKind.redirection => _redirection(focus, step.match),
-    };
+    final handler = _stepHandlers[step.kind!];
+    if (handler != null) {
+      return handler(focus, step);
+    }
+    
+    throw AstPathResolutionException(
+      'No handler for navigation step kind: ${step.kind}',
+      code: 'E_NAVIGATION_UNKNOWN',
+    );
   }
 
   AstFocus _classNamed(AstFocus focus, String name, String? match) {

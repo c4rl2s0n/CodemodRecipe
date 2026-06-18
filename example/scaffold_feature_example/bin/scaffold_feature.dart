@@ -59,5 +59,5 @@ class {{\$pascal feature}}View extends StatelessWidget {
 '''),
     ),
   ],
-  postExecution: const [DartFormatPostExecution()],
+  postExecution: [ProcessPostExecution('dart', ['format', '.'])],
 );

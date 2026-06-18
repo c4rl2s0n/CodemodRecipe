@@ -1,0 +1,15 @@
+name = "code-reviewer"
+model = "devstral-small"
+
+[model]
+temperature = 0.1
+thinking = "off"
+
+enabled_tools = ["read", "grep"]
+disabled_tools = ["edit", "write_file", "bash", "task", "ask_user_question", "web_fetch", "web_search"]
+
+[tools.read]
+permission = "always"
+
+[tools.grep]
+permission = "always"

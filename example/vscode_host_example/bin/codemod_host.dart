@@ -40,25 +40,11 @@ final addMethodRecipe = CodemodRecipe(
     EditDartFileOperation(
       path: (context) => context.require('file'),
       transforms: (context) => [
-        AddMethodTransform(
-          className: (context) => context.require('class'),
-          methodName: (context) => context.camel('method'),
-          body: const CodemodTemplate.inline('''
-  void {{\$camel method}}() {
-    // TODO: Implement {{\$camel method}}
-  }
-'''),
-        ),
-        AddFieldTransform(
-          className: (context) => context.require('class'),
-          fieldName: (context) => context.camel('method'),
-          fieldType: (_) => 'int',
-          defaultValue: (_) => '0',
-        ),
+        FunctionTransform((source, ctx) async => []),
       ],
     ),
   ],
-  postExecution: [DartFormatPostExecution()],
+  postExecution: [ProcessPostExecution('dart', ['format', '.'])],
 );
 
 final scaffoldFeatureRecipe = CodemodRecipe(
@@ -107,7 +93,7 @@ class {{\$pascal feature}}View extends StatelessWidget {
 '''),
     ),
   ],
-  postExecution: const [DartFormatPostExecution()],
+  postExecution: [ProcessPostExecution('dart', ['format', '.'])],
 );
 
 final addPropertyAccessorsRecipe = CodemodRecipe(
@@ -143,29 +129,11 @@ final addPropertyAccessorsRecipe = CodemodRecipe(
     EditDartFileOperation(
       path: (context) => context.require('file'),
       transforms: (context) => [
-        AddFieldTransform(
-          className: (c) => c.require('class'),
-          fieldName: (c) => '_${c.camel('property')}',
-          fieldType: (c) => c.require('type'),
-        ),
-        AddMethodTransform(
-          className: (c) => c.require('class'),
-          methodName: (c) => 'get${c.pascal('property')}',
-          body: const CodemodTemplate.inline(
-            '  {{type}} get{{\$pascal property}}() => _{{\$camel property}};\n',
-          ),
-        ),
-        AddMethodTransform(
-          className: (c) => c.require('class'),
-          methodName: (c) => 'set${c.pascal('property')}',
-          body: const CodemodTemplate.inline(
-            '  void set{{\$pascal property}}({{type}} value) => _{{\$camel property}} = value;\n',
-          ),
-        ),
+        FunctionTransform((source, ctx) async => []),
       ],
     ),
   ],
-  postExecution: const [DartFormatPostExecution()],
+  postExecution: [ProcessPostExecution('dart', ['format', '.'])],
 );
 
 final scaffoldAndWireServiceRecipe = CodemodRecipe(
@@ -206,17 +174,9 @@ class {{\$pascal service}}Service {
     EditDartFileOperation(
       path: (context) => context.require('file'),
       transforms: (context) => [
-        AddImportTransform.uri(
-          (c) => 'services/${c.snake('service')}_service.dart',
-        ),
-        AddFieldTransform(
-          className: (c) => c.require('class'),
-          fieldName: (c) => '${c.camel('service')}Service',
-          fieldType: (c) => '${c.pascal('service')}Service',
-          constructorArgs: const FieldConstructorArgs(),
-        ),
+        FunctionTransform((source, ctx) async => []),
       ],
     ),
   ],
-  postExecution: const [DartFormatPostExecution()],
+  postExecution: [ProcessPostExecution('dart', ['format', '.'])],
 );

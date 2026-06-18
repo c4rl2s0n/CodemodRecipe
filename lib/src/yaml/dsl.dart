@@ -412,7 +412,7 @@ class YamlEditStepNode extends YamlRecipeNode {
 /// Represents an insert operation.
 class YamlInsertNode extends YamlRecipeNode {
   /// AST path string or structured path.
-  final dynamic at;
+  final Object? at;
 
   /// Anchor position.
   final String? anchor;
@@ -623,7 +623,7 @@ class YamlPostExecutionNode extends YamlRecipeNode {
   }) : super(filePath);
 
   /// Creates a YAML post-execution node from a dynamic value.
-  factory YamlPostExecutionNode.fromDynamic(dynamic value, String filePath) {
+  factory YamlPostExecutionNode.fromDynamic(Object? value, String filePath) {
     if (value is String) {
       return YamlPostExecutionNode(
         filePath: filePath,

@@ -449,9 +449,6 @@ int _redirectionArgLast(String source, AstNode node) {
   if (node.redirectedConstructor != null) {
     // The redirection is : this(...) or : super(...)
     // We need to find the argument list in the redirection
-    final redirect = node.redirectedConstructor!;
-    
-    // Find the offset of the redirected constructor call
     // For now, return the end of the constructor's parameter list
     return node.parameters.end;
   }

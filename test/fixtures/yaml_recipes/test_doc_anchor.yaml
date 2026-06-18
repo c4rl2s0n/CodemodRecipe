@@ -20,4 +20,4 @@ steps:
               /// Auto-generated documentation
 
 postExecution:
-  - dartFormat
+  - run: dart format .

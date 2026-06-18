@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import '../core/errors.dart';
 import 'diagnostics.dart';
 import 'host_config.dart';
 
@@ -68,21 +69,6 @@ class PathSandbox {
   static String _canonical(String path) {
     return File(path).absolute.path.replaceAll('\\', '/');
   }
-}
-
-/// Thrown when a path escapes the configured workspace sandbox.
-class PathSandboxException implements Exception {
-  /// Creates a sandbox exception.
-  PathSandboxException(this.message, {this.code});
-
-  /// Human-readable failure description.
-  final String message;
-
-  /// Optional stable error code.
-  final String? code;
-
-  @override
-  String toString() => 'PathSandboxException: $message';
 }
 
 /// Converts a [PathSandboxException] to a [RecipeDiagnostic].

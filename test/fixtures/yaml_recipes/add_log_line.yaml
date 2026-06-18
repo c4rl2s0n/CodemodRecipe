@@ -27,4 +27,4 @@ steps:
               print('codemod');
 
 postExecution:
-  - dartFormat
+  - run: dart format .

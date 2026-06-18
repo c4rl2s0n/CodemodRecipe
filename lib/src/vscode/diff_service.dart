@@ -1,7 +1,7 @@
 import 'dart:io';
 
-import '../operation.dart';
-import '../patch_helpers.dart';
+import '../core/operation.dart';
+import '../core/patch_helpers.dart';
 
 /// Builds structured, JSON-serializable previews of planned file changes.
 ///

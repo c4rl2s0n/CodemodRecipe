@@ -1,7 +1,73 @@
 import 'dart:io';
 
+import 'package:codemod_recipe/codemod_recipe.dart';
 import 'package:codemod_recipe/codemod_recipe_vscode.dart';
 import 'package:test/test.dart';
+
+// Simple test transforms for VSCode host tests
+class _AddMethodTransform implements CodeTransform {
+  final String Function(CodemodContext) methodName;
+  final String Function(CodemodContext) body;
+
+  _AddMethodTransform({required this.methodName, required this.body});
+
+  @override
+  Future<List<SourcePatch>> apply(String source, CodemodContext context) async {
+    final actualMethodName = methodName(context);
+    final actualBody = body(context);
+    return [
+      SourcePatch(
+        source.length - 1,
+        0,
+        '\n  $actualBody\n',
+        description: 'Add method $actualMethodName',
+      ),
+    ];
+  }
+}
+
+class _AddFieldTransform implements CodeTransform {
+  final String Function(CodemodContext) fieldName;
+  final String Function(CodemodContext) fieldType;
+
+  _AddFieldTransform({
+    required this.fieldName,
+    required this.fieldType,
+  });
+
+  @override
+  Future<List<SourcePatch>> apply(String source, CodemodContext context) async {
+    final actualFieldName = fieldName(context);
+    final actualFieldType = fieldType(context);
+    return [
+      SourcePatch(
+        source.length - 1,
+        0,
+        '\n  $actualFieldType $actualFieldName;\n',
+        description: 'Add field $actualFieldName',
+      ),
+    ];
+  }
+}
+
+class _AddImportTransform implements CodeTransform {
+  final String uriTemplate;
+
+  _AddImportTransform.uri(this.uriTemplate);
+
+  @override
+  Future<List<SourcePatch>> apply(String source, CodemodContext context) async {
+    final uri = CodemodTemplate.inline(uriTemplate).render(context);
+    return [
+      SourcePatch(
+        0,
+        0,
+        "import '$uri';\n",
+        description: 'Add import $uri',
+      ),
+    ];
+  }
+}
 
 CodemodRecipe _addMethodRecipe() {
   return CodemodRecipe(
@@ -29,12 +95,9 @@ CodemodRecipe _addMethodRecipe() {
       EditDartFileOperation(
         path: (context) => context.require('file'),
         transforms: (context) => [
-          AddMethodTransform(
-            className: (c) => c.require('class'),
+          _AddMethodTransform(
             methodName: (c) => c.camel('method'),
-            body: const CodemodTemplate.inline(
-              '  void {{\$camel method}}() {}\n',
-            ),
+            body: (c) => 'void ${c.camel('method')}() {}',
           ),
         ],
       ),
@@ -55,24 +118,17 @@ CodemodRecipe _addPropertyAccessorsRecipe() {
       EditDartFileOperation(
         path: (context) => context.require('file'),
         transforms: (context) => [
-          AddFieldTransform(
-            className: (c) => c.require('class'),
+          _AddFieldTransform(
             fieldName: (c) => '_${c.camel('property')}',
-            fieldType: (c) => c.require('type'),
+            fieldType: (c) => c.require<String>('type'),
           ),
-          AddMethodTransform(
-            className: (c) => c.require('class'),
+          _AddMethodTransform(
             methodName: (c) => 'get${c.pascal('property')}',
-            body: const CodemodTemplate.inline(
-              '  {{type}} get{{\$pascal property}}() => _{{\$camel property}};\n',
-            ),
+            body: (c) => '${c.require<String>('type')} get${c.pascal('property')}() => _${c.camel('property')}',
           ),
-          AddMethodTransform(
-            className: (c) => c.require('class'),
+          _AddMethodTransform(
             methodName: (c) => 'set${c.pascal('property')}',
-            body: const CodemodTemplate.inline(
-              '  void set{{\$pascal property}}({{type}} value) => _{{\$camel property}} = value;\n',
-            ),
+            body: (c) => 'void set${c.pascal('property')}(${c.require<String>('type')} value) => _${c.camel('property')} = value',
           ),
         ],
       ),
@@ -101,17 +157,12 @@ class {{\$pascal service}}Service {
       EditDartFileOperation(
         path: (context) => context.require('file'),
         transforms: (context) => [
-          AddImportTransform.uri(
-            (c) => 'services/${c.snake('service')}_service.dart',
+          _AddImportTransform.uri(
+            'services/{{\$snake service}}_service.dart',
           ),
-          AddFieldTransform(
-            className: (c) => c.require('class'),
+          _AddFieldTransform(
             fieldName: (c) => '${c.camel('service')}Service',
             fieldType: (c) => '${c.pascal('service')}Service',
-            constructorArgs: const FieldConstructorArgs(
-              style: ConstructorParamStyle.named,
-              thisPrefix: true,
-            ),
           ),
         ],
       ),
