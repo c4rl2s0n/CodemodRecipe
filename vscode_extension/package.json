@@ -83,6 +83,11 @@
     "configuration": {
       "title": "Codemod Recipe",
       "properties": {
+        "codemodRecipe.workspaceRoot": {
+          "type": "string",
+          "default": "",
+          "description": "Absolute path to the workspace root directory. If empty, uses the currently open VSCode workspace folder."
+        },
         "codemodRecipe.codemodRoot": {
           "type": "string",
           "default": ".codemod",

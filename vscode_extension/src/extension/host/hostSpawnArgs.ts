@@ -27,11 +27,10 @@ export function buildHostSpawnArgs(config: HostSpawnConfig): string[] {
 }
 
 export function hostSpawnConfigFromExtension(
-  workspaceRoot: string,
   extensionConfig: ExtensionConfig
 ): HostSpawnConfig {
   return {
-    workspaceRoot,
+    workspaceRoot: extensionConfig.workspaceRoot,
     codemodRoot: extensionConfig.codemodRoot,
     emptyConstructorStyle: extensionConfig.emptyConstructorStyle,
   };

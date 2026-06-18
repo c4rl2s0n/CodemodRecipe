@@ -200,7 +200,6 @@ export class DartBridge {
 
   private currentHostSpawnConfig(): HostSpawnConfig {
     return hostSpawnConfigFromExtension(
-      this.workspaceRoot,
       this.config
     );
   }

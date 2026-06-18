@@ -16,6 +16,7 @@ export const VIEWS = {
 
 export const CONFIG = {
   section: 'codemodRecipe',
+  workspaceRoot: 'workspaceRoot',
   codemodRoot: 'codemodRoot',
   dartPath: 'dartPath',
   useDartRun: 'useDartRun',

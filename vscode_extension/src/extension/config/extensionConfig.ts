@@ -1,7 +1,23 @@
 import * as vscode from 'vscode';
 import { CONFIG } from '../constants';
+import * as path from 'path';
 
 export class ExtensionConfig {
+  get workspaceRoot(): string {
+    const configuredRoot = vscode.workspace
+      .getConfiguration(CONFIG.section)
+      .get<string>(CONFIG.workspaceRoot) || '';
+    
+    // If workspaceRoot is configured, use it (must be absolute path)
+    if (configuredRoot && path.isAbsolute(configuredRoot)) {
+      return configuredRoot;
+    }
+    
+    // Otherwise, use the currently open VSCode workspace folder
+    return vscode.workspace.workspaceFolders?.[0]?.uri?.fsPath || '.';
+  }
+
+  
   get codemodRoot(): string {
     return (
       vscode.workspace
