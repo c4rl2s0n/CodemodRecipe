@@ -1,7 +1,3 @@
-# Project-specific Vibe configuration for codemod_recipe
-# This overrides user-level ~/.vibe/config.toml settings for this project
-
-# Enable project-level agents
 agent_paths = [
     ".vibe/agents",
 ]
@@ -13,14 +9,16 @@ enabled_agents = [
     "test-writer",
     "doc-writer",
 ]
-
-# Enable project-level skills
-skill_paths = [".vibe/skills"]
-enabled_skills = ["vibe", "agent-coordinator", "yaml-dsl"]
-
-# Keep default agent as the coordinator (mistral-medium-3.5)
+skill_paths = [
+    ".vibe/skills",
+]
+enabled_skills = [
+    "vibe",
+    "agent-coordinator",
+    "yaml-dsl",
+]
 default_agent = "default"
-# Note: active_model is set in user config to mistral-medium-3.5
+active_model = "devstral-small"
 
 [tools.write_file]
 permission = "ask"
