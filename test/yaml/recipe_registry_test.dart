@@ -146,6 +146,100 @@ void main() {
       throwsA(isA<PathSandboxException>()),
     );
   });
+
+  test('allows maps and recipes to share the same ID', () async {
+    final workspace = await Directory.systemTemp.createTemp(
+      'codemod_map_recipe_same_id_',
+    );
+    addTearDown(() => workspace.deleteSync(recursive: true));
+
+    // Create a map with ID 'shared_id'
+    await Directory('${workspace.path}/.codemod/maps').create(recursive: true);
+    await File('${workspace.path}/.codemod/maps/shared_id.yaml').writeAsString('''
+id: shared_id
+entries:
+  key1: value1
+  key2: value2
+''');
+
+    // Create a recipe with the same ID 'shared_id'
+    await Directory('${workspace.path}/.codemod/recipes').create(recursive: true);
+    await File('${workspace.path}/.codemod/recipes/shared_id.yaml').writeAsString('''
+dslVersion: 1
+id: shared_id
+name: Shared ID Recipe
+args:
+  - name: file
+    required: true
+    inputKind: file
+steps:
+  - edit:
+      path: "{{file}}"
+      steps:
+        - insert:
+            at: function:main @ body:end
+            text: "// Shared ID recipe"
+''');
+
+    final result = YamlRecipeRegistry.load(
+      HostConfig(
+        workspaceRoot: workspace.path,
+        codemodRoot: '.codemod',
+      ),
+    );
+
+    // Should have no duplicate ID errors
+    expect(
+      result.diagnostics.any((item) => item.code == 'E_DUPLICATE_ID'),
+      isFalse,
+      reason: 'Maps and recipes should not conflict when sharing the same ID',
+    );
+
+    // Should have no duplicate map ID errors
+    expect(
+      result.diagnostics.any((item) => item.code == 'E_DUPLICATE_MAP_ID'),
+      isFalse,
+      reason: 'Should not have duplicate map IDs',
+    );
+
+    // Recipe should be loaded successfully
+    expect(result.recipes.containsKey('shared_id'), isTrue);
+    expect(result.recipes['shared_id']!.name, 'Shared ID Recipe');
+  });
+
+  test('reports duplicate map ids', () async {
+    final workspace = await Directory.systemTemp.createTemp(
+      'codemod_dup_map_',
+    );
+    addTearDown(() => workspace.deleteSync(recursive: true));
+
+    // Create two maps with the same ID
+    await Directory('${workspace.path}/.codemod/maps').create(recursive: true);
+    await File('${workspace.path}/.codemod/maps/dup_map.yaml').writeAsString('''
+id: duplicate_map
+entries:
+  key1: value1
+''');
+    await File('${workspace.path}/.codemod/maps/dup_map2.yaml').writeAsString('''
+id: duplicate_map
+entries:
+  key2: value2
+''');
+
+    final result = YamlRecipeRegistry.load(
+      HostConfig(
+        workspaceRoot: workspace.path,
+        codemodRoot: '.codemod',
+      ),
+    );
+
+    // Should report duplicate map ID error
+    expect(
+      result.diagnostics.any((item) => item.code == 'E_DUPLICATE_MAP_ID'),
+      isTrue,
+      reason: 'Should detect duplicate map IDs',
+    );
+  });
 }
 
 Future<void> _copyFile(String source, String destination) async {

@@ -40,6 +40,8 @@ class YamlRecipeRegistry {
     final idSources = <String, List<DiagnosticSource>>{};
 
     final codemodDir = Directory(config.codemodRootPath);
+    final mapIdSources = <String, List<DiagnosticSource>>{};
+    
     if (codemodDir.existsSync()) {
       for (final entity in codemodDir.listSync(recursive: true)) {
         if (entity is! File) continue;
@@ -55,6 +57,7 @@ class YamlRecipeRegistry {
             recipeDefinitionsById: recipeDefinitionsById,
             mapDefinitionsById: mapDefinitionsById,
             idSources: idSources,
+            mapIdSources: mapIdSources,
             diagnostics: diagnostics,
           );
         } else if (_isTemplate(path)) {
@@ -70,23 +73,30 @@ class YamlRecipeRegistry {
           .add(DiagnosticSource(file: '<dart:${entry.key}>'));
     }
 
-    // Check for duplicate IDs across recipes and maps
-    final allIdSources = <String, List<DiagnosticSource>>{...idSources};
-    for (final entry in mapDefinitionsById.entries) {
-      allIdSources
-          .putIfAbsent(entry.key, () => [])
-          .add(DiagnosticSource(file: '<map:${entry.key}>'));
-    }
-
+    // Check for duplicate IDs within recipes only
     final rejectedIds = <String>{};
-    for (final entry in allIdSources.entries) {
+    for (final entry in idSources.entries) {
       if (entry.value.length < 2) continue;
       rejectedIds.add(entry.key);
       diagnostics.add(
         RecipeDiagnostic(
           severity: DiagnosticSeverity.error,
           code: 'E_DUPLICATE_ID',
-          message: "Duplicate id '${entry.key}'",
+          message: "Duplicate recipe id '${entry.key}'",
+          sources: entry.value,
+        ),
+      );
+    }
+
+    // Check for duplicate IDs within maps only
+    for (final entry in mapIdSources.entries) {
+      if (entry.value.length < 2) continue;
+      rejectedIds.add(entry.key);
+      diagnostics.add(
+        RecipeDiagnostic(
+          severity: DiagnosticSeverity.error,
+          code: 'E_DUPLICATE_MAP_ID',
+          message: "Duplicate map id '${entry.key}'",
           sources: entry.value,
         ),
       );
@@ -134,6 +144,7 @@ class YamlRecipeRegistry {
     required Map<String, YamlRecipeDefinition> recipeDefinitionsById,
     required Map<String, Map<String, String>> mapDefinitionsById,
     required Map<String, List<DiagnosticSource>> idSources,
+    required Map<String, List<DiagnosticSource>> mapIdSources,
     required List<RecipeDiagnostic> diagnostics,
   }) {
     try {
@@ -178,7 +189,9 @@ class YamlRecipeRegistry {
           entries[key.toString()] = value?.toString() ?? '';
         });
         mapDefinitionsById[id] = entries;
-        idSources.putIfAbsent(id, () => []).add(DiagnosticSource(file: relativePath));
+        // Track map sources for duplicate detection
+        mapIdSources.putIfAbsent(id, () => []).add(DiagnosticSource(file: relativePath));
+        // Maps are tracked separately, not in recipe idSources
       } else {
         // YAML has an id but no steps or entries - error
         diagnostics.add(

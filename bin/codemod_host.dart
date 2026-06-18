@@ -16,7 +16,7 @@ import 'package:codemod_recipe/codemod_recipe_vscode.dart';
 Future<void> main(List<String> arguments) async {
   // Initialize logging
   logger.runnerInfo('Starting codemod host with arguments: ${arguments.join(' ')}');
-  final parser = HostArgsParser.buildArgParser()
+  final parser = HostConfig.buildArgParser()
     ..addFlag('help', abbr: 'h', negatable: false);
 
   late ArgResults results;
@@ -70,5 +70,10 @@ Future<void> main(List<String> arguments) async {
 }
 
 void _printUsage(ArgParser parser) {
-  HostArgsParser.printUsage(parser, programName: 'codemod_host');
+  stderr.writeln('Usage: codemod_host [host options]');
+  stderr.writeln('');
+  stderr.writeln('VS Code extension host options:');
+  stderr.writeln(parser.usage);
+  stderr.writeln('');
+  stderr.writeln('For CLI usage, use: dart run bin/codemod.dart <recipe.yaml> [args]');
 }
