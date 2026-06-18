@@ -5,6 +5,12 @@ import 'post_execution.dart';
 import 'step.dart';
 import 'template.dart';
 
+/// Function signature for argument validation.
+///
+/// Takes a value and context, returns an error message string if validation fails,
+/// or null if validation passes.
+typedef ArgValidator<T> = String? Function(T? value, CodemodContext context);
+
 /// Preferred UI control for a recipe argument.
 enum CodemodArgInputKind {
   /// Plain text input.
@@ -193,7 +199,7 @@ class CodemodArg<T extends Object> implements CodemodArgDescriptor {
   ///   },
   /// )
   /// ```
-  final String? Function(T? value, CodemodContext context)? validate;
+  final ArgValidator<T>? validate;
 
   @override
   CodemodArgInputKind get resolvedInputKind =>

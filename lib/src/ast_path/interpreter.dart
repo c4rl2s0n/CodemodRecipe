@@ -6,6 +6,11 @@ import '../dart_codegen/ast_helpers/planners.dart';
 import 'anchors.dart';
 import 'model.dart';
 
+/// Function signature for AST navigation step handlers.
+///
+/// Takes the current focus and a navigation step, returns a new focus.
+typedef NavigateStepHandler = AstFocus Function(AstFocus focus, NavigateStep step);
+
 /// Thrown when navigation or anchor resolution fails at runtime.
 class AstPathResolutionException implements Exception {
   /// Creates a resolution exception.

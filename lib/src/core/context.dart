@@ -1,7 +1,7 @@
 import 'arg_codec.dart';
 import '../dart_codegen/field_spec.dart';
-import '../dart_codegen/naming.dart';
 import 'template.dart';
+import 'utils/string_utils.dart';
 
 /// Stores recipe arguments and generic naming helpers for a codemod run.
 ///
@@ -161,7 +161,7 @@ class CodemodContext {
   /// context.set('name', 'URLParser');
   /// context.snake('name'); // 'url_parser'
   /// ```
-  String snake(String name) => toSnakeCase(require<String>(name));
+  String snake(String name) => StringUtils.toSnakeCase(require<String>(name));
 
   /// Returns the named value converted from PascalCase to camelCase.
   ///
@@ -173,7 +173,7 @@ class CodemodContext {
   /// context.set('name', 'UserProfile');
   /// context.camel('name'); // 'userProfile'
   /// ```
-  String camel(String name) => toCamelCase(require<String>(name));
+  String camel(String name) => StringUtils.toCamelCase(require<String>(name));
 
   /// Returns the named value converted from camelCase to PascalCase.
   ///
@@ -185,7 +185,7 @@ class CodemodContext {
   /// context.set('name', 'userProfile');
   /// context.pascal('name'); // 'UserProfile'
   /// ```
-  String pascal(String name) => toPascalCase(require<String>(name));
+  String pascal(String name) => StringUtils.toPascalCase(require<String>(name));
 
   /// Renders an inline codemod template with this context.
   ///

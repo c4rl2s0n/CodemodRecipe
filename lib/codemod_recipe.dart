@@ -11,6 +11,7 @@ export 'src/core/constants.dart';
 export 'src/core/context.dart';
 export 'src/core/errors.dart';
 export 'src/core/logging.dart';
+export 'src/core/utils/string_utils.dart';
 export 'src/core/operation.dart';
 export 'src/core/patch_helpers.dart';
 export 'src/core/post_execution.dart';
