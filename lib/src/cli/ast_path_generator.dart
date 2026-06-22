@@ -72,6 +72,16 @@ class AstPathGenerator {
           }
         });
         break;
+      case 'compact':
+        // Compact localization string
+        final compact = AstPathYamlGenerator.generateCompactLocalization(path);
+        print(compact);
+        break;
+      case 'path-only':
+        // Just the AST path in YAML format
+        final pathYaml = AstPathYamlGenerator.generateAstPathYaml(path);
+        print(pathYaml);
+        break;
       case 'text':
       default:
         print('🎯 AST Path for offset $offset in $filePath:');
@@ -82,6 +92,9 @@ class AstPathGenerator {
         }
         print('');
         print('Anchor: ${path.anchor}');
+        print('');
+        print('📋 Compact localization:');
+        print(AstPathYamlGenerator.generateCompactLocalization(path));
         print('');
         print('📋 YAML DSL snippet:');
         print('at:');
@@ -141,7 +154,12 @@ Arguments:
   <offset>    Byte offset in the file (0-indexed)
 
 Options:
-  --format    Output format: text, yaml, or json (default: text)
+  --format    Output format: text, yaml, json, compact, or path-only (default: text)
+              text      - Detailed text output with all formats
+              yaml      - Complete YAML recipe
+              json      - JSON representation
+              compact   - Compact localization string (e.g., "class:Name > method:methodName @ anchor")
+              path-only - Just the AST path in YAML format
   --recipe-id  ID to use for generated YAML recipe (default: generated_recipe)
   --help, -h   Show this help message
 
@@ -151,6 +169,12 @@ Examples:
   
   # Generate YAML recipe
   dart run ast_path_generator.dart lib/my_file.dart 123 --format yaml
+  
+  # Generate compact localization string
+  dart run ast_path_generator.dart lib/my_file.dart 123 --format compact
+  
+  # Generate just the AST path
+  dart run ast_path_generator.dart lib/my_file.dart 123 --format path-only
   
   # Generate JSON output
   dart run ast_path_generator.dart lib/my_file.dart 123 --format json --recipe-id my_recipe

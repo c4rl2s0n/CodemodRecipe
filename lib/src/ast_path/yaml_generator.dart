@@ -99,6 +99,28 @@ ${_generateStepsYaml(path.navigate)}
 ''';
   }
   
+  /// Generates a compact localization string for easy embedding.
+  /// 
+  /// Format: "class:Name > method:methodName @ anchorType"
+  static String generateCompactLocalization(AstPath path) {
+    final steps = path.navigate.map((step) {
+      if (step.kind != null) {
+        return '${step.kind!.name}:${step.name}';
+      } else {
+        return 'inferred:${step.name}';
+      }
+    }).join(' > ');
+    
+    return '$steps @ ${path.anchor}';
+  }
+  
+  /// Generates just the AST path portion in YAML format.
+  static String generateAstPathYaml(AstPath path) {
+    return '''at:
+${_generateStepsYaml(path.navigate)}
+anchor: ${path.anchor}''';
+  }
+  
   static String _generateStepsYaml(List<NavigateStep> steps) {
     final buffer = StringBuffer();
     for (final step in steps) {
