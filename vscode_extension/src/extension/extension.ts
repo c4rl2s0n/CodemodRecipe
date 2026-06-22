@@ -234,7 +234,7 @@ export function activate(context: vscode.ExtensionContext): void {
         }
         
         try {
-          const result = await bridge.generateAstPath(filePath, offset);
+          const result: AstPathResult = await bridge.generateAstPath(filePath, offset);
           if (!result.ok) {
             throw new Error(result.error || 'Unknown error');
           }
@@ -262,8 +262,8 @@ export function deactivate(): void {
   // No-op: child processes are short-lived and exit on their own.
 }
 
-function _generateYamlFromAstPath(path: any, filePath: string): string {
-  const stepsYaml = path.navigate.map((step: any) => {
+function _generateYamlFromAstPath(astPath: any, filePath: string): string {
+  const stepsYaml = astPath.navigate.map((step: any) => {
     const parts = [];
     if (step.kind) {
       parts.push(`${step.kind}: "${step.name}"`);
@@ -279,7 +279,7 @@ function _generateYamlFromAstPath(path: any, filePath: string): string {
   return `dslVersion: 1
 id: generated_${_sanitizeFileName(path.basename(filePath))}_${Date.now()}
 name: "Generated Recipe from ${path.basename(filePath)}"
-description: "Recipe generated from AST path at offset ${path.offset}"
+description: "Recipe generated from AST path at offset ${astPath.offset}"
 
 args:
   - name: file
@@ -294,7 +294,7 @@ steps:
         - insert:
             at:
 ${stepsYaml}
-            anchor: ${path.anchor}
+            anchor: ${astPath.anchor}
             text: "// TODO: Add your code here"
 
 postExecution:
