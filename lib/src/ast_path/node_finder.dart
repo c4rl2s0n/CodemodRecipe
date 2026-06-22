@@ -194,11 +194,46 @@ class AstNodeFinder {
     } else if (node is FieldDeclaration) {
       return const Anchor(AnchorKind.memberLast);
     } else if (node is InstanceCreationExpression || node is MethodInvocation) {
-      return const Anchor(AnchorKind.argLast);
+      // For method/constructor calls, try to find more specific anchors
+      return _determineCallAnchor(node);
     }
     
     // Fallback for other node types
     return const Anchor(AnchorKind.bodyEnd);
+  }
+  
+  /// Determines the most specific anchor for method/constructor calls.
+  static Anchor _determineCallAnchor(AstNode node) {
+    if (node is MethodInvocation) {
+      final argList = node.argumentList;
+      if (argList != null && argList.arguments.isNotEmpty) {
+        // Check if we have named arguments
+        for (int i = 0; i < argList.arguments.length; i++) {
+          final arg = argList.arguments[i];
+          if (arg is NamedExpression) {
+            // Return anchor for this specific named argument
+            return Anchor(AnchorKind.argName, name: arg.name.label.name);
+          }
+        }
+        // Return anchor for last argument position
+        return Anchor(AnchorKind.argIndex, index: argList.arguments.length - 1);
+      }
+    } else if (node is InstanceCreationExpression) {
+      final argList = node.argumentList;
+      if (argList != null && argList.arguments.isNotEmpty) {
+        // Check for named arguments in constructor calls
+        for (int i = 0; i < argList.arguments.length; i++) {
+          final arg = argList.arguments[i];
+          if (arg is NamedExpression) {
+            return Anchor(AnchorKind.argName, name: arg.name.label.name);
+          }
+        }
+        return Anchor(AnchorKind.argIndex, index: argList.arguments.length - 1);
+      }
+    }
+    
+    // Fallback to argLast for any call
+    return const Anchor(AnchorKind.argLast);
   }
   
   /// Gets the parent node of the given node by traversing the AST.

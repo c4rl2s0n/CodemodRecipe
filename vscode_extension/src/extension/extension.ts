@@ -239,14 +239,50 @@ export function activate(context: vscode.ExtensionContext): void {
             throw new Error(result.error || 'Unknown error');
           }
           
-          const yaml = _generateYamlFromAstPath(result.path, filePath);
-          
-          // Create a new document with the YAML content
-          const doc = await vscode.workspace.openTextDocument({
-            content: yaml,
-            language: 'yaml'
+          // Show quick pick to choose output format
+          const formatChoice = await vscode.window.showQuickPick([
+            { label: '📋 Compact Localization', description: 'Show compact format (e.g., "class:Name > method:name @ anchor")' },
+            { label: '📄 Full YAML Recipe', description: 'Generate complete YAML recipe' },
+            { label: '📝 Copy to Clipboard', description: 'Copy compact format to clipboard' }
+          ], {
+            placeHolder: 'Choose output format for AST path'
           });
-          await vscode.window.showTextDocument(doc);
+          
+          if (!formatChoice) return;
+          
+          if (formatChoice.label.includes('Copy to Clipboard')) {
+            const compact = _generateCompactLocalization(result.path);
+            await vscode.env.clipboard.writeText(compact);
+            vscode.window.showInformationMessage('📋 Compact localization copied to clipboard!');
+          } else if (formatChoice.label.includes('Full YAML Recipe')) {
+            const yaml = _generateYamlFromAstPath(result.path, filePath);
+            const doc = await vscode.workspace.openTextDocument({
+              content: yaml,
+              language: 'yaml'
+            });
+            await vscode.window.showTextDocument(doc);
+          } else {
+            // Show compact format in a nice information message
+            const compact = _generateCompactLocalization(result.path);
+            
+            // Show as information message with copy option
+            const action = await vscode.window.showInformationMessage(
+              `🎯 AST Path: ${compact}`,
+              'Copy', 'Open Full Recipe'
+            );
+            
+            if (action === 'Copy') {
+              await vscode.env.clipboard.writeText(compact);
+              vscode.window.showInformationMessage('📋 Copied to clipboard!');
+            } else if (action === 'Open Full Recipe') {
+              const yaml = _generateYamlFromAstPath(result.path, filePath);
+              const doc = await vscode.workspace.openTextDocument({
+                content: yaml,
+                language: 'yaml'
+              });
+              await vscode.window.showTextDocument(doc);
+            }
+          }
           
         } catch (error) {
           vscode.window.showErrorMessage(`Failed to generate AST path: ${error}`);
@@ -303,4 +339,16 @@ postExecution:
 
 function _sanitizeFileName(filename: string): string {
   return filename.replace(/[^a-zA-Z0-9_]/g, '_');
+}
+
+function _generateCompactLocalization(astPath: any): string {
+  const steps = astPath.navigate.map((step: any) => {
+    if (step.kind) {
+      return `${step.kind}:${step.name}`;
+    } else {
+      return `inferred:${step.name}`;
+    }
+  }).join(' > ');
+  
+  return `${steps} @ ${astPath.anchor}`;
 }
