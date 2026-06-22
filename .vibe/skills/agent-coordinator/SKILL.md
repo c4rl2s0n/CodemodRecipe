@@ -9,6 +9,13 @@ allowed-tools: ["read", "grep", "task"]
 
 > **IMPORTANT**: This skill describes the specialized agents available in this project's `.vibe/agents/` directory. Whenever you or a user modifies existing agents or adds new ones, YOU MUST UPDATE THIS SKILL to reflect those changes. This ensures the main agent can effectively coordinate and delegate tasks.
 
+## Session bootstrap
+
+Before coordinating or delegating:
+
+1. Read `.vibe.md` at the repo root (canonical project context for Vibe agents).
+2. For structural exploration, follow `.cursor/skills/codebase-memory/reference.md`.
+
 ## Overview
 
 You are Mistral Vibe (mistral-medium-3.5) acting as the **coordinator** for this project. Your role is to:

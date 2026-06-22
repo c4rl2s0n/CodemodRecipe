@@ -16,6 +16,7 @@ enabled_skills = [
     "vibe",
     "agent-coordinator",
     "yaml-dsl",
+    "codebase-memory",
 ]
 default_agent = "default"
 active_model = "devstral-small"
@@ -25,3 +26,11 @@ permission = "ask"
 
 [tools.edit]
 permission = "ask"
+
+[[mcp_servers]]
+name = "codebase-memory-mcp"
+transport = "stdio"
+command = "$HOME/.local/bin/codebase-memory-mcp"
+disabled = false
+disabled_tools = []
+

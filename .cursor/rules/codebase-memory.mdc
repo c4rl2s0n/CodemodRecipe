@@ -1,0 +1,24 @@
+---
+description: Prefer codebase-memory MCP over manual grep/read for structural exploration
+alwaysApply: true
+---
+
+# Code intelligence (first step)
+
+For structural questions — where is X defined, who calls Y, architecture, impact — **use `codebase-memory-mcp` MCP tools before grep, glob, or manual file reads.**
+
+**Indexed project:** `home-ikusa-workspace-Android-codemod_recipe` (pass as `project=` when ambiguous; confirm with `list_projects`).
+
+## Mini-workflow
+
+1. `index_status` / `list_projects`
+2. `get_architecture`
+3. `search_graph` (`query=` or `name_pattern=`)
+4. `trace_path` for call chains
+5. `get_code_snippet` for source
+6. Then `read` / `grep` only for edit sites
+
+Full playbook: `.cursor/skills/codebase-memory/reference.md`  
+Invoke skill: `codebase-memory`
+
+MCP setup (humans): https://github.com/DeusData/codebase-memory-mcp

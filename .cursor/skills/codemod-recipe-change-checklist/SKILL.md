@@ -25,11 +25,16 @@ If your change affects behavior, conventions, configuration, or how developers s
 
 2. **Modular skills library**
    - `.cursor/skills/*/SKILL.md` for any subsystem you changed
+   - `.cursor/skills/codebase-memory/reference.md` when subsystems or exploration entry points change
    - If you created/changed a new subsystem or workflow, add a new skill file rather than only editing existing ones.
 
 3. **Cursor rules / rules-like guidance (if present)**
    - If your repo uses `.cursor/rules/*` (or similar guidance files), update those when conventions or workflows changed.
    - If the repo does not currently have rules, include this checklist as the primary “where to document changes” guidance.
+
+4. **Vibe agent docs**
+   - `.vibe.md` Agent tooling section when exploration entry points change
+   - `.vibe/prompts/cli.md` when upgrading `mistral-vibe` (re-diff bundled `cli.md`)
 
 ## What to update (protocol & types)
 

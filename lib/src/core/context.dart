@@ -215,7 +215,4 @@ class CodemodPreferences {
   });
 }
 
-/// Backwards-compatible name for older codemod examples.
-///
-/// @deprecated Use [CodemodContext] instead.
-typedef TemplateContext = CodemodContext;
+

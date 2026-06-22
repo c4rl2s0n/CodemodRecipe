@@ -82,4 +82,7 @@ When a code change affects usage, protocol, configuration, or conventions, updat
 - `README.md` and/or `vscode_extension/README.md`
 - relevant `.cursor/skills/*`
 - relevant `.cursor/rules/*` (if present)
+- `.cursor/skills/codebase-memory/reference.md` when subsystems or primary entry points change materially
+- `.vibe.md` Agent tooling examples when exploration entry points change
+- `.vibe/prompts/cli.md` when upgrading `mistral-vibe` (re-diff bundled `cli.md`)
 
