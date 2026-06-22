@@ -20,7 +20,7 @@ import {
   RecipeCatalogResponse,
   parseHostResponse,
 } from './hostProtocol';
-import type { RecipeSchema, SelectionPayload } from '../../shared';
+import type { RecipeSchema, SelectionPayload, AstPathResult } from '../../shared';
 import type { RecipeLoadResult } from '../recipes/recipeRepository';
 
 type PendingRequest = {
@@ -145,6 +145,15 @@ export class DartBridge {
       throw new Error(response.error ?? `Failed to describe recipe: ${recipe}`);
     }
     return response.recipe;
+  }
+
+  async generateAstPath(filePath: string, offset: number): Promise<AstPathResult> {
+    const response = await this.send<AstPathResult>({
+      command: 'generateAstPath',
+      path: filePath,
+      offset: offset,
+    });
+    return response;
   }
 
   preview(

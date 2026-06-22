@@ -55,6 +55,11 @@
       {
         "command": "codemodRecipe.configureHost",
         "title": "Codemod Recipe: Set Codemod Root Directory"
+      },
+      {
+        "command": "codemodRecipe.generateAstPath",
+        "title": "Codemod Recipe: Generate AST Path at Cursor",
+        "icon": "$(symbol-keyword)"
       }
     ],
     "keybindings": [
@@ -63,6 +68,12 @@
         "key": "ctrl+alt+r",
         "mac": "cmd+alt+r",
         "when": "editorTextFocus"
+      },
+      {
+        "command": "codemodRecipe.generateAstPath",
+        "key": "ctrl+alt+a",
+        "mac": "cmd+alt+a",
+        "when": "editorTextFocus && resourceLangId == dart"
       }
     ],
     "menus": {
@@ -77,6 +88,11 @@
         {
           "command": "codemodRecipe.runFromCursorContext",
           "group": "navigation"
+        },
+        {
+          "command": "codemodRecipe.generateAstPath",
+          "group": "navigation",
+          "when": "resourceLangId == dart"
         }
       ]
     },

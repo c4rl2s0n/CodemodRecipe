@@ -8,6 +8,7 @@ export const COMMANDS = {
   runRecipe: 'codemodRecipe.runRecipe',
   runFromCursorContext: 'codemodRecipe.runFromCursorContext',
   configureCodemodRoot: 'codemodRecipe.configureHost',
+  generateAstPath: 'codemodRecipe.generateAstPath',
 } as const;
 
 export const VIEWS = {

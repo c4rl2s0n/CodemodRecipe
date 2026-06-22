@@ -33,4 +33,3 @@ transport = "stdio"
 command = "$HOME/.local/bin/codebase-memory-mcp"
 disabled = false
 disabled_tools = []
-

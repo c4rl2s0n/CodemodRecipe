@@ -6,7 +6,7 @@ import { DiffContentProvider } from './diff/diffContentProvider';
 import { DartBridge } from './host/dartBridge';
 import { prefillArgs, resolveEditorContext } from './recipes/recipeContext';
 import { RecipeRepository } from './recipes/recipeRepository';
-import type { RecipeSchema } from '../shared';
+import type { RecipeSchema, AstPathResult } from '../shared';
 import { RecipeRunnerViewProvider } from './views/recipeRunnerViewProvider';
 
 export function activate(context: vscode.ExtensionContext): void {
@@ -215,6 +215,43 @@ export function activate(context: vscode.ExtensionContext): void {
           await bootstrap(true);
         }
       }
+    ),
+    vscode.commands.registerCommand(
+      COMMANDS.generateAstPath,
+      async () => {
+        const editor = vscode.window.activeTextEditor;
+        if (!editor) {
+          vscode.window.showWarningMessage('No active editor');
+          return;
+        }
+        
+        const offset = editor.document.offsetAt(editor.selection.active);
+        const filePath = editor.document.uri.fsPath;
+        
+        if (!filePath.endsWith('.dart')) {
+          vscode.window.showWarningMessage('AST path generation only works for Dart files');
+          return;
+        }
+        
+        try {
+          const result = await bridge.generateAstPath(filePath, offset);
+          if (!result.ok) {
+            throw new Error(result.error || 'Unknown error');
+          }
+          
+          const yaml = _generateYamlFromAstPath(result.path, filePath);
+          
+          // Create a new document with the YAML content
+          const doc = await vscode.workspace.openTextDocument({
+            content: yaml,
+            language: 'yaml'
+          });
+          await vscode.window.showTextDocument(doc);
+          
+        } catch (error) {
+          vscode.window.showErrorMessage(`Failed to generate AST path: ${error}`);
+        }
+      }
     )
   );
 
@@ -223,4 +260,47 @@ export function activate(context: vscode.ExtensionContext): void {
 
 export function deactivate(): void {
   // No-op: child processes are short-lived and exit on their own.
+}
+
+function _generateYamlFromAstPath(path: any, filePath: string): string {
+  const stepsYaml = path.navigate.map((step: any) => {
+    const parts = [];
+    if (step.kind) {
+      parts.push(`${step.kind}: "${step.name}"`);
+    } else {
+      parts.push(`inferred: "${step.name}"`);
+    }
+    if (step.match) {
+      parts.push(`# match: "${step.match}"`);
+    }
+    return `              - ${parts.join(' ')}`;
+  }).join('\n');
+
+  return `dslVersion: 1
+id: generated_${_sanitizeFileName(path.basename(filePath))}_${Date.now()}
+name: "Generated Recipe from ${path.basename(filePath)}"
+description: "Recipe generated from AST path at offset ${path.offset}"
+
+args:
+  - name: file
+    required: true
+    inputKind: file
+    help: "The file to modify"
+
+steps:
+  - edit:
+      path: "{{file}}"
+      steps:
+        - insert:
+            at:
+${stepsYaml}
+            anchor: ${path.anchor}
+            text: "// TODO: Add your code here"
+
+postExecution:
+  - run: dart format .`;
+}
+
+function _sanitizeFileName(filename: string): string {
+  return filename.replace(/[^a-zA-Z0-9_]/g, '_');
 }

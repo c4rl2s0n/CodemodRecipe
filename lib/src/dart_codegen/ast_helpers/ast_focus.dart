@@ -1,6 +1,8 @@
 import 'package:analyzer/dart/ast/ast.dart';
 
 import '../field_spec.dart';
+import '../../ast_path/node_finder.dart';
+import '../../ast_path/model.dart';
 import 'checkers.dart';
 import 'invocations.dart';
 import 'localizers.dart';
@@ -144,5 +146,32 @@ class AstFocus {
       throw StateError('Expected $label, got ${focused.runtimeType}');
     }
     return focused;
+  }
+}
+
+/// Extension methods for offset-based AST navigation.
+extension OffsetNavigation on AstFocus {
+  /// Finds the AST node at the given [offset] within this focus.
+  /// 
+  /// Returns a new [AstFocus] on the found node, or null if no node contains
+  /// the offset or if the offset is invalid.
+  AstFocus? focusAtOffset(int offset) {
+    final node = AstNodeFinder.findNodeAtOffset(unit, offset);
+    if (node != null) {
+      return AstFocus(source, unit, node);
+    }
+    return null;
+  }
+  
+  /// Generates an AST path for the node at the given [offset].
+  /// 
+  /// Returns the [AstPath] that can be used to navigate to the node,
+  /// or null if no node contains the offset or if the offset is invalid.
+  AstPath? generatePathAtOffset(int offset) {
+    final focus = focusAtOffset(offset);
+    if (focus != null) {
+      return AstNodeFinder.createPathFromNode(focus.node, unit);
+    }
+    return null;
   }
 }

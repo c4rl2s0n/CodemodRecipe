@@ -1,6 +1,8 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'dart:io';
+
 import '../core/context.dart';
 import '../core/operation.dart';
 import '../core/post_execution.dart';
@@ -10,6 +12,8 @@ import '../core/constants.dart';
 import '../yaml/diagnostics.dart';
 import '../yaml/host_config.dart';
 import '../yaml/recipe_registry.dart';
+import '../dart_codegen/ast_helpers/ast_focus.dart';
+import '../ast_path/node_finder.dart';
 import 'diff_service.dart';
 import 'patch_selector.dart';
 import 'recipe_schema.dart';
@@ -251,6 +255,9 @@ class CodemodHost {
       case 'apply':
         response = await _apply(request);
         break;
+      case 'generateAstPath':
+        response = await _generateAstPath(request);
+        break;
       default:
         response = {'ok': false, 'error': 'Unknown command: $command'};
         break;
@@ -424,6 +431,49 @@ class CodemodHost {
         'reusedPreviewCache': collected.reusedCache ? 1 : 0,
       },
     };
+  }
+
+  Future<Map<String, Object?>> _generateAstPath(Map<String, Object?> request) async {
+    final path = request['path'] as String?;
+    final offset = request['offset'] as int?;
+    
+    if (path == null || offset == null) {
+      return {
+        'ok': false,
+        'error': 'Missing path or offset',
+      };
+    }
+    
+    try {
+      final source = await File(path).readAsString();
+      final focus = AstFocus.parse(source, path: path);
+      final astPath = focus.generatePathAtOffset(offset);
+      
+      if (astPath != null) {
+        return {
+          'ok': true,
+          'path': {
+            'navigate': astPath.navigate.map((step) => {
+              'kind': step.kind?.name,
+              'name': step.name,
+              'match': step.match,
+            }).toList(),
+            'anchor': astPath.anchor.toString(),
+            'offset': offset,
+          },
+        };
+      } else {
+        return {
+          'ok': false,
+          'error': 'No AST node found at offset $offset',
+        };
+      }
+    } catch (error) {
+      return {
+        'ok': false,
+        'error': error.toString(),
+      };
+    }
   }
 
   _ResolvedRecipe _resolveRecipe(Map<String, Object?> request) {
