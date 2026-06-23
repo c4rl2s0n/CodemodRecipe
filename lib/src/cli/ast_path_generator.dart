@@ -1,9 +1,14 @@
 import 'dart:io';
+import 'dart:convert';
 
 import '../dart_codegen/ast_helpers/ast_focus.dart';
 import '../ast_path/node_finder.dart';
 import '../ast_path/yaml_generator.dart';
 import '../ast_path/model.dart';
+
+// Aliases for global stdout/stderr to avoid naming conflicts with parameters
+final dartStdout = stdout;
+final dartStderr = stderr;
 
 /// CLI command for generating AST paths from source files at specific offsets.
 class AstPathGenerator {
@@ -14,11 +19,15 @@ class AstPathGenerator {
   ///   offset: Byte offset in the file (0-indexed)
   ///   outputFormat: Format for output ('text', 'yaml', or 'json')
   ///   recipeId: ID to use for generated YAML recipe
+  ///   stdout: Optional output stream for testing (defaults to global stdout)
+  ///   stderr: Optional error stream for testing (defaults to global stderr)
   static Future<void> generateFromFile(
     String filePath, 
     int offset, {
     String outputFormat = 'text',
     String recipeId = 'generated_recipe',
+    IOSink? stdout,
+    IOSink? stderr,
   }) async {
     try {
       // Read source file
@@ -29,16 +38,19 @@ class AstPathGenerator {
       final path = focus.generatePathAtOffset(offset);
       
       if (path != null) {
-        _outputResult(path, offset, outputFormat, recipeId, filePath);
+        _outputResult(path, offset, outputFormat, recipeId, filePath, 
+          stdout: stdout ?? dartStdout,
+          stderr: stderr ?? dartStderr
+        );
       } else {
-        stderr.writeln('❌ No AST node found at offset $offset in $filePath');
+        (stderr ?? dartStderr).writeln('❌ No AST node found at offset $offset in $filePath');
         exit(1);
       }
     } on FileSystemException catch (e) {
-      stderr.writeln('❌ Error reading file: ${e.message}');
+      (stderr ?? dartStderr).writeln('❌ Error reading file: ${e.message}');
       exit(1);
     } catch (e) {
-      stderr.writeln('❌ Error generating AST path: $e');
+      (stderr ?? dartStderr).writeln('❌ Error generating AST path: $e');
       exit(1);
     }
   }
@@ -48,12 +60,16 @@ class AstPathGenerator {
     int offset, 
     String format, 
     String recipeId, 
-    String filePath,
-  ) {
+    String filePath, {
+    required IOSink stdout,
+    required IOSink stderr,
+  }) {
+    final output = stdout;
+    final error = stderr;
     switch (format.toLowerCase()) {
       case 'yaml':
         final yaml = AstPathYamlGenerator.generateYaml(path, recipeId: recipeId);
-        print(yaml);
+        output.writeln(yaml);
         break;
       case 'json':
         // Simple JSON representation
@@ -63,7 +79,7 @@ class AstPathGenerator {
           'match': step.match,
         }).toList();
         
-        print({
+        final jsonOutput = jsonEncode({
           'file': filePath,
           'offset': offset,
           'path': {
@@ -71,38 +87,39 @@ class AstPathGenerator {
             'anchor': path.anchor.toString(),
           }
         });
+        output.writeln(jsonOutput);
         break;
       case 'compact':
         // Compact localization string
         final compact = AstPathYamlGenerator.generateCompactLocalization(path);
-        print(compact);
+        output.writeln(compact);
         break;
       case 'path-only':
         // Just the AST path in YAML format
         final pathYaml = AstPathYamlGenerator.generateAstPathYaml(path);
-        print(pathYaml);
+        output.writeln(pathYaml);
         break;
       case 'text':
       default:
-        print('🎯 AST Path for offset $offset in $filePath:');
-        print('');
-        print('Navigate steps:');
+        output.writeln('🎯 AST Path for offset $offset in $filePath:');
+        output.writeln('');
+        output.writeln('Navigate steps:');
         for (final step in path.navigate) {
-          print('  • ${step.kind?.name ?? 'inferred'}: ${step.name}${step.match != null ? ' (match: ${step.match})' : ''}');
+          output.writeln('  • ${step.kind?.name ?? 'inferred'}: ${step.name}${step.match != null ? ' (match: ${step.match})' : ''}');
         }
-        print('');
-        print('Anchor: ${path.anchor}');
-        print('');
-        print('📋 Compact localization:');
-        print(AstPathYamlGenerator.generateCompactLocalization(path));
-        print('');
-        print('📋 YAML DSL snippet:');
-        print('at:');
+        output.writeln('');
+        output.writeln('Anchor: ${path.anchor}');
+        output.writeln('');
+        output.writeln('📋 Compact localization:');
+        output.writeln(AstPathYamlGenerator.generateCompactLocalization(path));
+        output.writeln('');
+        output.writeln('📋 YAML DSL snippet:');
+        output.writeln('at:');
         for (final step in path.navigate) {
           final kind = step.kind?.name ?? 'inferred';
-          print('  - $kind: "${step.name}"${step.match != null ? ' (match: "${step.match}")' : ''}');
+          output.writeln('  - $kind: "${step.name}"${step.match != null ? ' (match: "${step.match}")' : ''}');
         }
-        print('anchor: ${path.anchor}');
+        output.writeln('anchor: ${path.anchor}');
     }
   }
   

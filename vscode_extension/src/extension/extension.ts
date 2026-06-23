@@ -250,6 +250,9 @@ export function activate(context: vscode.ExtensionContext): void {
           
           if (!formatChoice) return;
           
+          // Show anchor preview visualization
+          _showAnchorPreview(editor, offset, result.path.anchor);
+          
           if (formatChoice.label.includes('Copy to Clipboard')) {
             const compact = _generateCompactLocalization(result.path);
             await vscode.env.clipboard.writeText(compact);
@@ -339,6 +342,54 @@ postExecution:
 
 function _sanitizeFileName(filename: string): string {
   return filename.replace(/[^a-zA-Z0-9_]/g, '_');
+}
+
+// Decoration for showing anchor preview
+let anchorPreviewDecoration: vscode.TextEditorDecorationType;
+
+function _showAnchorPreview(editor: vscode.TextEditor, offset: number, anchorType: string) {
+  // Create decoration type if it doesn't exist
+  if (!anchorPreviewDecoration) {
+    anchorPreviewDecoration = vscode.window.createTextEditorDecorationType({
+      backgroundColor: 'rgba(255, 200, 0, 0.2)',
+      border: '1px solid rgba(255, 165, 0, 0.5)',
+      borderRadius: '2px',
+      isWholeLine: true,
+      overviewRulerLane: vscode.OverviewRulerLane.Right,
+      overviewRulerColor: 'rgba(255, 165, 0, 0.5)'
+    });
+  }
+  
+  // Calculate the position to highlight based on anchor type
+  const document = editor.document;
+  const position = document.positionAt(offset);
+  
+  // Determine what to highlight based on anchor type
+  let range: vscode.Range;
+  
+  if (anchorType.includes('stmtLast') || anchorType.includes('bodyEnd')) {
+    // Highlight the line where new code would be inserted after
+    const line = document.lineAt(position.line);
+    range = new vscode.Range(line.range.end, line.range.end);
+  } else if (anchorType.includes('argLast') || anchorType.includes('paramLast')) {
+    // Highlight the argument list
+    const line = document.lineAt(position.line);
+    range = new vscode.Range(line.range.start, line.range.end);
+  } else if (anchorType.includes('memberLast')) {
+    // Highlight the last member
+    range = document.lineAt(position.line).range;
+  } else {
+    // Default: highlight the current line
+    range = document.lineAt(position.line).range;
+  }
+  
+  // Apply the decoration
+  editor.setDecorations(anchorPreviewDecoration, [range]);
+  
+  // Show a temporary message
+  setTimeout(() => {
+    editor.setDecorations(anchorPreviewDecoration, []);
+  }, 5000);
 }
 
 function _generateCompactLocalization(astPath: any): string {
