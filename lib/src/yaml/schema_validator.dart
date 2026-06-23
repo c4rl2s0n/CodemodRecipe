@@ -24,28 +24,38 @@ class YamlSchemaValidator {
   ///
   /// This method checks the structure and fields of the YAML document without
   /// attempting to compile or resolve references.
-  static List<RecipeDiagnostic> validateRecipeDocument(YamlMap document, String filePath) {
+  static List<RecipeDiagnostic> validateRecipeDocument(
+    YamlMap document,
+    String filePath,
+  ) {
     final diagnostics = <RecipeDiagnostic>[];
-    
+
     // Validate root structure
     if (document.isEmpty) {
       diagnostics.add(createError('Recipe document is empty', filePath));
       return diagnostics;
     }
-    
+
     // Validate required fields
     final id = document['id']?.toString() ?? document['name']?.toString();
     if (id == null || id.isEmpty) {
-      diagnostics.add(createError('Recipe must declare "id" or "name"', filePath));
+      diagnostics.add(
+        createError('Recipe must declare "id" or "name"', filePath),
+      );
     }
-    
+
     // Validate optional fields
-    _validateOptionalStringField(document, 'description', filePath, diagnostics);
+    _validateOptionalStringField(
+      document,
+      'description',
+      filePath,
+      diagnostics,
+    );
     _validateArgsField(document, filePath, diagnostics);
     _validateStepsField(document, filePath, diagnostics);
     _validateMapsField(document, filePath, diagnostics);
     _validatePostExecutionField(document, filePath, diagnostics);
-    
+
     return diagnostics;
   }
 
@@ -57,18 +67,18 @@ class YamlSchemaValidator {
   ) {
     final argsValue = document['args'];
     if (argsValue == null) return;
-    
+
     if (argsValue is! YamlList) {
       diagnostics.add(createError('Field "args" must be a list', filePath));
       return;
     }
-    
+
     for (final entry in argsValue) {
       if (entry is! YamlMap) {
         diagnostics.add(createError('Each args entry must be a map', filePath));
         continue;
       }
-      
+
       _validateArgEntry(entry, filePath, diagnostics);
     }
   }
@@ -81,26 +91,33 @@ class YamlSchemaValidator {
   ) {
     final name = entry['name']?.toString();
     if (name == null || name.isEmpty) {
-      diagnostics.add(createError('Arg entry missing required field "name"', filePath));
+      diagnostics.add(
+        createError('Arg entry missing required field "name"', filePath),
+      );
       return;
     }
-    
+
     // Validate known fields
     _validateOptionalStringField(entry, 'help', filePath, diagnostics);
     _validateOptionalStringField(entry, 'abbr', filePath, diagnostics);
     _validateOptionalStringField(entry, 'contextKey', filePath, diagnostics);
     _validateOptionalStringField(entry, 'defaultsTo', filePath, diagnostics);
     _validateOptionalStringField(entry, 'inputKind', filePath, diagnostics);
-    
+
     // Validate options if present
     final options = entry['options'];
     if (options != null && options is! YamlList) {
       diagnostics.add(createError('Field "options" must be a list', filePath));
     }
-    
+
     // Validate boolean fields
     _validateOptionalBooleanField(entry, 'required', filePath, diagnostics);
-    _validateOptionalBooleanField(entry, 'allowCustomValue', filePath, diagnostics);
+    _validateOptionalBooleanField(
+      entry,
+      'allowCustomValue',
+      filePath,
+      diagnostics,
+    );
   }
 
   /// Validates the steps field structure.
@@ -111,18 +128,18 @@ class YamlSchemaValidator {
   ) {
     final stepsValue = document['steps'];
     if (stepsValue == null) return;
-    
+
     if (stepsValue is! YamlList) {
       diagnostics.add(createError('Field "steps" must be a list', filePath));
       return;
     }
-    
+
     for (final entry in stepsValue) {
       if (entry is! YamlMap) {
         diagnostics.add(createError('Each step must be a map', filePath));
         continue;
       }
-      
+
       _validateStepEntry(entry, filePath, diagnostics);
     }
   }
@@ -137,13 +154,16 @@ class YamlSchemaValidator {
     final hasRecipe = entry.containsKey('recipe');
     final hasEdit = entry.containsKey('edit');
     final hasCreate = entry.containsKey('create');
-    
-    final operationCount = (hasRecipe ? 1 : 0) + (hasEdit ? 1 : 0) + (hasCreate ? 1 : 0);
+
+    final operationCount =
+        (hasRecipe ? 1 : 0) + (hasEdit ? 1 : 0) + (hasCreate ? 1 : 0);
     if (operationCount > 1) {
-      diagnostics.add(createError('Step cannot have multiple operation types', filePath));
+      diagnostics.add(
+        createError('Step cannot have multiple operation types', filePath),
+      );
       return;
     }
-    
+
     if (hasRecipe) {
       _validateRecipeStep(entry, filePath, diagnostics);
     } else if (hasEdit) {
@@ -151,7 +171,9 @@ class YamlSchemaValidator {
     } else if (hasCreate) {
       _validateCreateStep(entry, filePath, diagnostics);
     } else {
-      diagnostics.add(createError('Step must have one of: recipe, edit, or create', filePath));
+      diagnostics.add(
+        createError('Step must have one of: recipe, edit, or create', filePath),
+      );
     }
   }
 
@@ -163,7 +185,9 @@ class YamlSchemaValidator {
   ) {
     final recipeId = entry['recipe']?.toString();
     if (recipeId == null || recipeId.isEmpty) {
-      diagnostics.add(createError('Recipe step missing required field "recipe"', filePath));
+      diagnostics.add(
+        createError('Recipe step missing required field "recipe"', filePath),
+      );
     }
   }
 
@@ -175,28 +199,34 @@ class YamlSchemaValidator {
   ) {
     final editValue = entry['edit'];
     if (editValue == null || editValue is! YamlMap) {
-      diagnostics.add(createError('Edit step must have a "edit" map', filePath));
+      diagnostics.add(
+        createError('Edit step must have a "edit" map', filePath),
+      );
       return;
     }
-    
+
     final path = editValue['path']?.toString();
     if (path == null || path.isEmpty) {
-      diagnostics.add(createError('Edit step missing required field "path"', filePath));
+      diagnostics.add(
+        createError('Edit step missing required field "path"', filePath),
+      );
       return;
     }
-    
+
     // Validate steps within edit
     final editSteps = editValue['steps'];
     if (editSteps != null && editSteps is! YamlList) {
       diagnostics.add(createError('Edit "steps" must be a list', filePath));
       return;
     }
-    
+
     // Validate each edit step
     if (editSteps is YamlList) {
       for (final editStep in editSteps) {
         if (editStep is! YamlMap) {
-          diagnostics.add(createError('Each edit step must be a map', filePath));
+          diagnostics.add(
+            createError('Each edit step must be a map', filePath),
+          );
           continue;
         }
         _validateEditSubStep(editStep, filePath, diagnostics);
@@ -212,11 +242,13 @@ class YamlSchemaValidator {
   ) {
     final hasInsert = entry.containsKey('insert');
     // Add other edit step types as needed
-    
+
     if (hasInsert) {
       _validateInsertStep(entry, filePath, diagnostics);
     } else {
-      diagnostics.add(createError('Edit step must have an operation type', filePath));
+      diagnostics.add(
+        createError('Edit step must have an operation type', filePath),
+      );
     }
   }
 
@@ -228,16 +260,20 @@ class YamlSchemaValidator {
   ) {
     final insertValue = entry['insert'];
     if (insertValue == null || insertValue is! YamlMap) {
-      diagnostics.add(createError('Insert step must have an "insert" map', filePath));
+      diagnostics.add(
+        createError('Insert step must have an "insert" map', filePath),
+      );
       return;
     }
-    
+
     // Insert requires "at" field
     if (!insertValue.containsKey('at')) {
-      diagnostics.add(createError('Insert step missing required field "at"', filePath));
+      diagnostics.add(
+        createError('Insert step missing required field "at"', filePath),
+      );
       return;
     }
-    
+
     // Anchor is optional - it might be parsed from the path string
   }
 
@@ -249,28 +285,47 @@ class YamlSchemaValidator {
   ) {
     final createValue = entry['create'];
     if (createValue == null || createValue is! YamlMap) {
-      diagnostics.add(createError('Create step must have a "create" map', filePath));
+      diagnostics.add(
+        createError('Create step must have a "create" map', filePath),
+      );
       return;
     }
-    
+
     final path = createValue['path']?.toString();
     if (path == null || path.isEmpty) {
-      diagnostics.add(createError('Create step missing required field "path"', filePath));
+      diagnostics.add(
+        createError('Create step missing required field "path"', filePath),
+      );
       return;
     }
-    
+
     // Validate that either template or templateFile is provided
     final hasTemplate = createValue.containsKey('template');
     final hasTemplateFile = createValue.containsKey('templateFile');
-    
+
     if (!hasTemplate && !hasTemplateFile) {
-      diagnostics.add(createError('Create step requires "template" or "templateFile"', filePath));
+      diagnostics.add(
+        createError(
+          'Create step requires "template" or "templateFile"',
+          filePath,
+        ),
+      );
     } else if (hasTemplate && hasTemplateFile) {
-      diagnostics.add(createError('Create step cannot have both "template" and "templateFile"', filePath));
+      diagnostics.add(
+        createError(
+          'Create step cannot have both "template" and "templateFile"',
+          filePath,
+        ),
+      );
     }
-    
+
     // Validate optional fields
-    _validateOptionalStringField(createValue, 'ifExists', filePath, diagnostics);
+    _validateOptionalStringField(
+      createValue,
+      'ifExists',
+      filePath,
+      diagnostics,
+    );
     _validateOptionalBooleanField(createValue, 'format', filePath, diagnostics);
   }
 
@@ -282,30 +337,37 @@ class YamlSchemaValidator {
   ) {
     final mapsValue = document['maps'];
     if (mapsValue == null) return;
-    
+
     if (mapsValue is! YamlMap) {
       diagnostics.add(createError('Field "maps" must be a map', filePath));
       return;
     }
-    
+
     for (final entry in mapsValue.entries) {
       final mapId = entry.key.toString();
       final mapContent = entry.value;
-      
+
       if (mapContent is! YamlMap) {
         diagnostics.add(createError('Map "$mapId" must be a map', filePath));
         continue;
       }
-      
+
       // Validate that the map has entries
       if (!mapContent.containsKey('entries')) {
-        diagnostics.add(createError('Map "$mapId" missing required field "entries"', filePath));
+        diagnostics.add(
+          createError(
+            'Map "$mapId" missing required field "entries"',
+            filePath,
+          ),
+        );
         continue;
       }
-      
+
       final entries = mapContent['entries'];
       if (entries is! YamlMap) {
-        diagnostics.add(createError('Map "$mapId" entries must be a map', filePath));
+        diagnostics.add(
+          createError('Map "$mapId" entries must be a map', filePath),
+        );
       }
     }
   }
@@ -318,12 +380,14 @@ class YamlSchemaValidator {
   ) {
     final postExecutionValue = document['postExecution'];
     if (postExecutionValue == null) return;
-    
+
     if (postExecutionValue is! YamlList) {
-      diagnostics.add(createError('Field "postExecution" must be a list', filePath));
+      diagnostics.add(
+        createError('Field "postExecution" must be a list', filePath),
+      );
       return;
     }
-    
+
     for (final entry in postExecutionValue) {
       if (entry is String) {
         // Simple string command
@@ -332,7 +396,9 @@ class YamlSchemaValidator {
         // Map with command configuration
         _validatePostExecutionEntry(entry, filePath, diagnostics);
       } else {
-        diagnostics.add(createError('Post execution entry must be a string or map', filePath));
+        diagnostics.add(
+          createError('Post execution entry must be a string or map', filePath),
+        );
       }
     }
   }
@@ -345,11 +411,21 @@ class YamlSchemaValidator {
   ) {
     final hasRun = entry.containsKey('run');
     final hasRunScript = entry.containsKey('runScript');
-    
+
     if (!hasRun && !hasRunScript) {
-      diagnostics.add(createError('Post execution entry must have "run" or "runScript"', filePath));
+      diagnostics.add(
+        createError(
+          'Post execution entry must have "run" or "runScript"',
+          filePath,
+        ),
+      );
     } else if (hasRun && hasRunScript) {
-      diagnostics.add(createError('Post execution entry cannot have both "run" and "runScript"', filePath));
+      diagnostics.add(
+        createError(
+          'Post execution entry cannot have both "run" and "runScript"',
+          filePath,
+        ),
+      );
     }
   }
 
@@ -362,7 +438,9 @@ class YamlSchemaValidator {
   ) {
     final value = map[fieldName];
     if (value != null && value is! String) {
-      diagnostics.add(createError('Field "$fieldName" must be a string', filePath));
+      diagnostics.add(
+        createError('Field "$fieldName" must be a string', filePath),
+      );
     }
   }
 
@@ -375,7 +453,9 @@ class YamlSchemaValidator {
   ) {
     final value = map[fieldName];
     if (value != null && value is! bool) {
-      diagnostics.add(createError('Field "$fieldName" must be a boolean', filePath));
+      diagnostics.add(
+        createError('Field "$fieldName" must be a boolean', filePath),
+      );
     }
   }
 
@@ -410,7 +490,10 @@ class YamlSchemaValidator {
   }
 
   /// Creates a diagnostic for recipe reference not found errors.
-  static RecipeDiagnostic recipeRefNotFoundError(String message, String filePath) {
+  static RecipeDiagnostic recipeRefNotFoundError(
+    String message,
+    String filePath,
+  ) {
     return RecipeDiagnostic(
       severity: DiagnosticSeverity.error,
       code: SchemaErrorCodes.recipeRefNotFound,

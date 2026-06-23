@@ -214,5 +214,3 @@ class CodemodPreferences {
     this.emptyConstructorStyle = ConstructorParamStyle.named,
   });
 }
-
-

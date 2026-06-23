@@ -39,7 +39,7 @@ class CodemodException implements Exception {
 class FileSystemException extends CodemodException {
   /// Creates a file system exception.
   FileSystemException(String message, {this.path, String? code})
-      : super(message, code: code ?? 'E_FILE_SYSTEM');
+    : super(message, code: code ?? 'E_FILE_SYSTEM');
 
   /// Path involved in the error, if available.
   final String? path;
@@ -49,7 +49,7 @@ class FileSystemException extends CodemodException {
 class YamlProcessingException extends CodemodException {
   /// Creates a YAML processing exception.
   YamlProcessingException(String message, {this.filePath, String? code})
-      : super(message, code: code ?? 'E_YAML_COMPILE');
+    : super(message, code: code ?? 'E_YAML_COMPILE');
 
   /// File path where the error occurred, if available.
   final String? filePath;
@@ -71,7 +71,7 @@ class AstPathParseException implements Exception {
 class RecipeReferenceException extends CodemodException {
   /// Creates a recipe reference exception.
   RecipeReferenceException(String message, {this.recipeId, this.filePath})
-      : super(message, code: 'E_RECIPE_REF_NOT_FOUND');
+    : super(message, code: 'E_RECIPE_REF_NOT_FOUND');
 
   /// The recipe ID that could not be found.
   final String? recipeId;
@@ -84,7 +84,7 @@ class RecipeReferenceException extends CodemodException {
 class MissingArgumentException extends CodemodException {
   /// Creates a missing argument exception.
   MissingArgumentException(this.argumentName, {String? code})
-      : super('Missing required argument: $argumentName', code: code);
+    : super('Missing required argument: $argumentName', code: code);
 
   /// Name of the missing argument.
   final String argumentName;
@@ -94,14 +94,14 @@ class MissingArgumentException extends CodemodException {
 class ValidationException extends CodemodException {
   /// Creates a validation exception.
   ValidationException(String message, {String? code})
-      : super(message, code: code ?? 'E_YAML_SCHEMA');
+    : super(message, code: code ?? 'E_YAML_SCHEMA');
 }
 
 /// Exception thrown when a resource is not found.
 class ResourceNotFoundException extends CodemodException {
   /// Creates a resource not found exception.
   ResourceNotFoundException(this.resourceType, this.resourceId, {String? code})
-      : super('$resourceType "$resourceId" not found', code: code);
+    : super('$resourceType "$resourceId" not found', code: code);
 
   /// Type of resource that was not found.
   final String resourceType;
@@ -113,8 +113,12 @@ class ResourceNotFoundException extends CodemodException {
 /// Exception thrown when there's a schema validation error.
 class SchemaValidationException extends ValidationException {
   /// Creates a schema validation exception.
-  SchemaValidationException(String message, {this.field, this.filePath, String? code})
-      : super(message, code: code ?? 'E_YAML_SCHEMA');
+  SchemaValidationException(
+    String message, {
+    this.field,
+    this.filePath,
+    String? code,
+  }) : super(message, code: code ?? 'E_YAML_SCHEMA');
 
   /// Field that failed validation.
   final String? field;
@@ -127,14 +131,14 @@ class SchemaValidationException extends ValidationException {
 class HostConfigurationException extends CodemodException {
   /// Creates a host configuration exception.
   HostConfigurationException(String message, {String? code})
-      : super(message, code: code ?? 'E_HOST_CONFIG');
+    : super(message, code: code ?? 'E_HOST_CONFIG');
 }
 
 /// Exception thrown when there's an issue with template processing.
 class TemplateException extends CodemodException {
   /// Creates a template exception.
   TemplateException(String message, {this.template, String? code})
-      : super(message, code: code);
+    : super(message, code: code);
 
   /// Template that caused the error.
   final String? template;

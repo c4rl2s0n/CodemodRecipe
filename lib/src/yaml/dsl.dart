@@ -92,15 +92,20 @@ class YamlRecipeNodeRoot extends YamlRecipeNode {
     return Map.fromEntries(
       value.entries
           .where((entry) => entry.value is YamlMap)
-          .map((entry) => MapEntry(
-                entry.key.toString(),
-                YamlMapNode.fromYamlMap(entry.value as YamlMap, filePath),
-              ))
+          .map(
+            (entry) => MapEntry(
+              entry.key.toString(),
+              YamlMapNode.fromYamlMap(entry.value as YamlMap, filePath),
+            ),
+          )
           .toList(),
     );
   }
 
-  static List<YamlPostExecutionNode> _parsePostExecution(Object? value, String filePath) {
+  static List<YamlPostExecutionNode> _parsePostExecution(
+    Object? value,
+    String filePath,
+  ) {
     if (value is! YamlList) return const [];
     return value
         .map((item) => YamlPostExecutionNode.fromDynamic(item, filePath))
@@ -110,31 +115,31 @@ class YamlRecipeNodeRoot extends YamlRecipeNode {
   /// Validates this recipe definition and returns any diagnostics.
   List<String> validate() {
     final errors = <String>[];
-    
+
     if (id == null && name == null) {
       errors.add('Recipe must have an id or name');
     }
-    
+
     // Validate args
     for (final arg in args) {
       errors.addAll(arg.validate());
     }
-    
+
     // Validate steps
     for (final step in steps) {
       errors.addAll(step.validate());
     }
-    
+
     // Validate maps
     for (final map in maps.values) {
       errors.addAll(map.validate());
     }
-    
+
     // Validate post execution
     for (final postExec in postExecution) {
       errors.addAll(postExec.validate());
     }
-    
+
     return errors;
   }
 }
@@ -206,11 +211,11 @@ class YamlArgNode extends YamlRecipeNode {
   /// Validates this argument definition.
   List<String> validate() {
     final errors = <String>[];
-    
+
     if (name == null || name!.isEmpty) {
       errors.add('Argument name is required');
     }
-    
+
     return errors;
   }
 }
@@ -227,12 +232,8 @@ class YamlStepNode extends YamlRecipeNode {
   final YamlCreateNode? create;
 
   /// Creates a YAML step node.
-  YamlStepNode({
-    required String filePath,
-    this.recipe,
-    this.edit,
-    this.create,
-  }) : super(filePath);
+  YamlStepNode({required String filePath, this.recipe, this.edit, this.create})
+    : super(filePath);
 
   /// Creates a YAML step node from a parsed YamlMap.
   factory YamlStepNode.fromYamlMap(YamlMap map, String filePath) {
@@ -259,18 +260,18 @@ class YamlStepNode extends YamlRecipeNode {
   /// Validates this step definition.
   List<String> validate() {
     final errors = <String>[];
-    
-    final operationCount = 
-        (recipe != null ? 1 : 0) + 
-        (edit != null ? 1 : 0) + 
+
+    final operationCount =
+        (recipe != null ? 1 : 0) +
+        (edit != null ? 1 : 0) +
         (create != null ? 1 : 0);
-    
+
     if (operationCount == 0) {
       errors.add('Step must have one of: recipe, edit, or create');
     } else if (operationCount > 1) {
       errors.add('Step can only have one operation type');
     }
-    
+
     if (recipe != null) {
       errors.addAll(recipe!.validate());
     }
@@ -280,7 +281,7 @@ class YamlStepNode extends YamlRecipeNode {
     if (create != null) {
       errors.addAll(create!.validate());
     }
-    
+
     return errors;
   }
 }
@@ -291,10 +292,8 @@ class YamlRecipeReferenceNode extends YamlRecipeNode {
   final String? recipeId;
 
   /// Creates a YAML recipe reference node.
-  YamlRecipeReferenceNode({
-    required String filePath,
-    this.recipeId,
-  }) : super(filePath);
+  YamlRecipeReferenceNode({required String filePath, this.recipeId})
+    : super(filePath);
 
   /// Creates a YAML recipe reference node from a parsed YamlMap.
   factory YamlRecipeReferenceNode.fromYamlMap(YamlMap map, String filePath) {
@@ -307,11 +306,11 @@ class YamlRecipeReferenceNode extends YamlRecipeNode {
   /// Validates this recipe reference.
   List<String> validate() {
     final errors = <String>[];
-    
+
     if (recipeId == null || recipeId!.isEmpty) {
       errors.add('Recipe reference requires a recipe ID');
     }
-    
+
     return errors;
   }
 }
@@ -325,16 +324,13 @@ class YamlEditNode extends YamlRecipeNode {
   final List<YamlEditStepNode> steps;
 
   /// Creates a YAML edit node.
-  YamlEditNode({
-    required String filePath,
-    this.path,
-    this.steps = const [],
-  }) : super(filePath);
+  YamlEditNode({required String filePath, this.path, this.steps = const []})
+    : super(filePath);
 
   /// Creates a YAML edit node from a parsed YamlMap.
   factory YamlEditNode.fromYamlMap(YamlMap map, String filePath) {
     final editValue = map['edit'];
-    
+
     if (editValue is! YamlMap) {
       return YamlEditNode(filePath: filePath);
     }
@@ -346,7 +342,10 @@ class YamlEditNode extends YamlRecipeNode {
     );
   }
 
-  static List<YamlEditStepNode> _parseEditSteps(Object? value, String filePath) {
+  static List<YamlEditStepNode> _parseEditSteps(
+    Object? value,
+    String filePath,
+  ) {
     if (value is! YamlList) return const [];
     return value
         .whereType<YamlMap>()
@@ -357,15 +356,15 @@ class YamlEditNode extends YamlRecipeNode {
   /// Validates this edit operation.
   List<String> validate() {
     final errors = <String>[];
-    
+
     if (path == null || path!.isEmpty) {
       errors.add('Edit operation requires a path');
     }
-    
+
     for (final step in steps) {
       errors.addAll(step.validate());
     }
-    
+
     return errors;
   }
 }
@@ -376,10 +375,7 @@ class YamlEditStepNode extends YamlRecipeNode {
   final YamlInsertNode? insert;
 
   /// Creates a YAML edit step node.
-  YamlEditStepNode({
-    required String filePath,
-    this.insert,
-  }) : super(filePath);
+  YamlEditStepNode({required String filePath, this.insert}) : super(filePath);
 
   /// Creates a YAML edit step node from a parsed YamlMap.
   factory YamlEditStepNode.fromYamlMap(YamlMap map, String filePath) {
@@ -389,22 +385,19 @@ class YamlEditStepNode extends YamlRecipeNode {
       insert = YamlInsertNode.fromYamlMap(map, filePath);
     }
 
-    return YamlEditStepNode(
-      filePath: filePath,
-      insert: insert,
-    );
+    return YamlEditStepNode(filePath: filePath, insert: insert);
   }
 
   /// Validates this edit step.
   List<String> validate() {
     final errors = <String>[];
-    
+
     if (insert == null) {
       errors.add('Edit step must have an operation');
     } else {
       errors.addAll(insert!.validate());
     }
-    
+
     return errors;
   }
 }
@@ -421,12 +414,8 @@ class YamlInsertNode extends YamlRecipeNode {
   final String? text;
 
   /// Creates a YAML insert node.
-  YamlInsertNode({
-    required String filePath,
-    this.at,
-    this.anchor,
-    this.text,
-  }) : super(filePath);
+  YamlInsertNode({required String filePath, this.at, this.anchor, this.text})
+    : super(filePath);
 
   /// Creates a YAML insert node from a parsed YamlMap.
   factory YamlInsertNode.fromYamlMap(YamlMap map, String filePath) {
@@ -441,15 +430,15 @@ class YamlInsertNode extends YamlRecipeNode {
   /// Validates this insert operation.
   List<String> validate() {
     final errors = <String>[];
-    
+
     if (at == null) {
       errors.add('Insert operation requires "at" field');
     }
-    
+
     if (text == null || text!.isEmpty) {
       errors.add('Insert operation requires "text" field');
     }
-    
+
     return errors;
   }
 }
@@ -484,7 +473,7 @@ class YamlCreateNode extends YamlRecipeNode {
   /// Creates a YAML create node from a parsed YamlMap.
   factory YamlCreateNode.fromYamlMap(YamlMap map, String filePath) {
     YamlTemplateNode? templateNode;
-    
+
     final templateValue = map['template']?.toString();
     if (templateValue != null) {
       templateNode = YamlTemplateNode.inline(templateValue, filePath);
@@ -503,15 +492,15 @@ class YamlCreateNode extends YamlRecipeNode {
   /// Validates this create operation.
   List<String> validate() {
     final errors = <String>[];
-    
+
     if (path == null || path!.isEmpty) {
       errors.add('Create operation requires "path" field');
     }
-    
+
     if (template == null && (templateFile == null || templateFile!.isEmpty)) {
       errors.add('Create operation requires "template" or "templateFile"');
     }
-    
+
     return errors;
   }
 }
@@ -528,22 +517,22 @@ class YamlTemplateNode extends YamlRecipeNode {
   final bool isInline;
 
   /// Creates a YAML template node.
-  YamlTemplateNode.inline(String content, String sourceFilePath) 
-      : this(
-          content: content,
-          templateFilePath: null,
-          isInline: true,
-          sourceFilePath: sourceFilePath,
-        );
+  YamlTemplateNode.inline(String content, String sourceFilePath)
+    : this(
+        content: content,
+        templateFilePath: null,
+        isInline: true,
+        sourceFilePath: sourceFilePath,
+      );
 
   /// Creates a YAML template node.
-  YamlTemplateNode.file(String templateFilePath, String sourceFilePath) 
-      : this(
-          content: null,
-          templateFilePath: templateFilePath,
-          isInline: false,
-          sourceFilePath: sourceFilePath,
-        );
+  YamlTemplateNode.file(String templateFilePath, String sourceFilePath)
+    : this(
+        content: null,
+        templateFilePath: templateFilePath,
+        isInline: false,
+        sourceFilePath: sourceFilePath,
+      );
 
   /// Creates a YAML template node.
   YamlTemplateNode({
@@ -556,15 +545,15 @@ class YamlTemplateNode extends YamlRecipeNode {
   /// Validates this template node.
   List<String> validate() {
     final errors = <String>[];
-    
+
     if (isInline && (content == null || content!.isEmpty)) {
       errors.add('Inline template requires content');
     }
-    
+
     if (!isInline && (filePath.isEmpty)) {
       errors.add('File template requires file path');
     }
-    
+
     return errors;
   }
 }
@@ -575,26 +564,21 @@ class YamlMapNode extends YamlRecipeNode {
   final Map<String, String> entries;
 
   /// Creates a YAML map node.
-  YamlMapNode({
-    required String filePath,
-    this.entries = const {},
-  }) : super(filePath);
+  YamlMapNode({required String filePath, this.entries = const {}})
+    : super(filePath);
 
   /// Creates a YAML map node from a parsed YamlMap.
   factory YamlMapNode.fromYamlMap(YamlMap map, String filePath) {
     final entries = <String, String>{};
     final entriesValue = map['entries'];
-    
+
     if (entriesValue is YamlMap) {
       for (final entry in entriesValue.entries) {
         entries[entry.key.toString()] = entry.value?.toString() ?? '';
       }
     }
 
-    return YamlMapNode(
-      filePath: filePath,
-      entries: entries,
-    );
+    return YamlMapNode(filePath: filePath, entries: entries);
   }
 
   /// Validates this map definition.
@@ -625,10 +609,7 @@ class YamlPostExecutionNode extends YamlRecipeNode {
   /// Creates a YAML post-execution node from a dynamic value.
   factory YamlPostExecutionNode.fromDynamic(Object? value, String filePath) {
     if (value is String) {
-      return YamlPostExecutionNode(
-        filePath: filePath,
-        command: value,
-      );
+      return YamlPostExecutionNode(filePath: filePath, command: value);
     } else if (value is YamlMap) {
       return YamlPostExecutionNode(
         filePath: filePath,
@@ -636,25 +617,27 @@ class YamlPostExecutionNode extends YamlRecipeNode {
         runScript: value['runScript']?.toString(),
       );
     }
-    
+
     return YamlPostExecutionNode(filePath: filePath);
   }
 
   /// Validates this post-execution action.
   List<String> validate() {
     final errors = <String>[];
-    
-    final operationCount = 
-        (run != null ? 1 : 0) + 
-        (runScript != null ? 1 : 0) + 
+
+    final operationCount =
+        (run != null ? 1 : 0) +
+        (runScript != null ? 1 : 0) +
         (command != null ? 1 : 0);
-    
+
     if (operationCount == 0) {
-      errors.add('Post-execution action must have a command, run, or runScript');
+      errors.add(
+        'Post-execution action must have a command, run, or runScript',
+      );
     } else if (operationCount > 1) {
       errors.add('Post-execution action can only have one operation type');
     }
-    
+
     return errors;
   }
 }
@@ -675,7 +658,9 @@ class YamlDslFactory {
   }
 
   /// Creates a YamlRecipeNodeRoot from a file.
-  static Future<YamlRecipeNodeRoot?> parseRecipeFromFile(String filePath) async {
+  static Future<YamlRecipeNodeRoot?> parseRecipeFromFile(
+    String filePath,
+  ) async {
     try {
       final content = await File(filePath).readAsString();
       return parseRecipe(content, filePath);

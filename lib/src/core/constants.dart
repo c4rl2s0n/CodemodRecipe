@@ -11,6 +11,7 @@
 /// {
 const String kResultBegin = '__CODEMOD_RESULT_BEGIN__';
 const String kResultEnd = '__CODEMOD_RESULT_END__';
+
 /// }
 
 /// CLI Argument Constants
@@ -23,6 +24,7 @@ const String kMapRootFlag = 'map-root';
 const String kMapRootAbbr = 'm';
 const String kValidateFlag = 'validate';
 const String kStdioServerFlag = 'stdio-server';
+
 /// }
 
 /// File System Constants
@@ -31,6 +33,7 @@ const String kDefaultMapRoot = '.codemod/maps';
 const String kYamlExtension = '.yaml';
 const String kYmlExtension = '.yml';
 const String kDartExtension = '.dart';
+
 /// }
 
 /// YAML Schema Constants
@@ -59,6 +62,7 @@ const String kAtField = 'at';
 const String kAnchorField = 'anchor';
 const String kNavigateField = 'navigate';
 const String kMatchField = 'match';
+
 /// }
 
 /// Anchor String Constants
@@ -85,6 +89,7 @@ const String kParamIndexPrefix = 'param:';
 const String kArgIndexPrefix = 'arg:';
 const String kInitializerNamePrefix = 'initializer:name:';
 const String kRedirectionArgNamePrefix = 'redirection:arg:name:';
+
 /// }
 
 /// Navigation Step Constants
@@ -103,6 +108,7 @@ const String kVarNav = 'var';
 const String kVariableNav = 'variable';
 const String kInitializerNav = 'initializer';
 const String kRedirectionNav = 'redirection';
+
 /// }
 
 /// Input Kind Constants
@@ -115,6 +121,7 @@ const String kDartTypeInputKind = 'dartType';
 const String kSymbolInputKind = 'symbol';
 const String kBoolInputKind = 'bool';
 const String kBooleanInputKind = 'boolean';
+
 /// }
 
 /// IfExists Strategy Constants
@@ -122,12 +129,14 @@ const String kBooleanInputKind = 'boolean';
 const String kSkipIfExists = 'skip';
 const String kOverwriteIfExists = 'overwrite';
 const String kFailIfExists = 'fail';
+
 /// }
 
 /// Post Execution Constants
 /// {
 const String kDartFormatPostExecution = 'dartFormat';
 const String kBuildRunnerPostExecution = 'buildRunner';
+
 /// }
 
 /// Diagnostic Constants
@@ -143,6 +152,7 @@ const String kYamlCompileError = 'E_YAML_COMPILE';
 const String kAstPathParseError = 'E_AST_PATH_PARSE';
 const String kRecipeRefNotFoundError = 'E_RECIPE_REF_NOT_FOUND';
 const String kMapIdNotFoundWarning = 'W_MAP_ID_NOT_FOUND';
+
 /// }
 
 /// Command Constants
@@ -154,6 +164,7 @@ const String kDiffCommand = 'diff';
 const String kApplyCommand = 'apply';
 const String kReloadCommand = 'reload';
 const String kValidateCommand = 'validate';
+
 /// }
 
 /// Response Field Constants
@@ -170,4 +181,5 @@ const String kAppliedField = 'applied';
 const String kTimingsField = '_timingsMs';
 const String kHostMetricsField = '_hostMetrics';
 const String kCommandField = 'command';
+
 /// }

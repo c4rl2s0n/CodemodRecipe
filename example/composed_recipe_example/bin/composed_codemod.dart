@@ -34,9 +34,7 @@ final addModelImportRecipe = CodemodRecipe(
   operations: [
     EditDartFileOperation(
       path: (context) => context.require('file'),
-      transforms: (context) => [
-        FunctionTransform((source, ctx) async => []),
-      ],
+      transforms: (context) => [FunctionTransform((source, ctx) async => [])],
     ),
   ],
 );
@@ -53,9 +51,7 @@ final addModelPropertyRecipe = CodemodRecipe(
   operations: [
     EditDartFileOperation(
       path: (context) => context.require('file'),
-      transforms: (context) => [
-        FunctionTransform((source, ctx) async => []),
-      ],
+      transforms: (context) => [FunctionTransform((source, ctx) async => [])],
     ),
   ],
 );

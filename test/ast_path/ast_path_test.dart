@@ -265,7 +265,10 @@ void main() {
       final patched = applyPatches(settingsSource, [
         SourcePatch(offset, 0, ', title: "test"'),
       ]);
-      expect(patched, contains('MaterialApp(home: Container(), title: "test")'));
+      expect(
+        patched,
+        contains('MaterialApp(home: Container(), title: "test")'),
+      );
     });
 
     test('resolves doc:before on main function', () {
@@ -293,8 +296,10 @@ void main() {
     });
 
     test('parses string path with full navigation and anchor', () {
-      final path = parsePathString('class:Settings > method:update @ stmt:last');
-      
+      final path = parsePathString(
+        'class:Settings > method:update @ stmt:last',
+      );
+
       expect(path.navigate.length, 2);
       expect(path.navigate[0].kind, NavigateKind.classDecl);
       expect(path.navigate[0].name, 'Settings');
@@ -305,7 +310,7 @@ void main() {
 
     test('parses string path with type-inferred steps', () {
       final path = parsePathString('Settings > update @ stmt:last');
-      
+
       expect(path.navigate.length, 2);
       expect(path.navigate[0].kind, isNull);
       expect(path.navigate[0].name, 'Settings');

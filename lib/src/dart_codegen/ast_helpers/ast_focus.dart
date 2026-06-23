@@ -152,7 +152,7 @@ class AstFocus {
 /// Extension methods for offset-based AST navigation.
 extension OffsetNavigation on AstFocus {
   /// Finds the AST node at the given [offset] within this focus.
-  /// 
+  ///
   /// Returns a new [AstFocus] on the found node, or null if no node contains
   /// the offset or if the offset is invalid.
   AstFocus? focusAtOffset(int offset) {
@@ -162,9 +162,9 @@ extension OffsetNavigation on AstFocus {
     }
     return null;
   }
-  
+
   /// Generates an AST path for the node at the given [offset].
-  /// 
+  ///
   /// Returns the [AstPath] that can be used to navigate to the node,
   /// or null if no node contains the offset or if the offset is invalid.
   AstPath? generatePathAtOffset(int offset) {

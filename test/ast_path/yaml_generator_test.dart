@@ -5,7 +5,6 @@ import '../../lib/src/ast_path/model.dart';
 
 void main() {
   group('AstPathYamlGenerator', () {
-    
     final testPath = AstPath(
       navigate: [
         NavigateStep(NavigateKind.classDecl, name: 'MyClass'),
@@ -13,11 +12,11 @@ void main() {
       ],
       anchor: const Anchor(AnchorKind.stmtLast),
     );
-    
+
     group('generateYaml', () {
       test('generates valid YAML structure', () {
         final yaml = AstPathYamlGenerator.generateYaml(testPath);
-        
+
         expect(yaml, contains('dslVersion: 1'));
         expect(yaml, contains('id: generated_recipe'));
         expect(yaml, contains('name: "Generated Recipe"'));
@@ -41,7 +40,7 @@ void main() {
           recipeName: 'My Custom Recipe',
           description: 'Custom description',
         );
-        
+
         expect(yaml, contains('id: my_custom_recipe'));
         expect(yaml, contains('name: "My Custom Recipe"'));
         expect(yaml, contains('description: "Custom description"'));
@@ -51,7 +50,7 @@ void main() {
     group('generatePathSnippet', () {
       test('generates just the path portion', () {
         final snippet = AstPathYamlGenerator.generatePathSnippet(testPath);
-        
+
         expect(snippet, contains('at:'));
         expect(snippet, contains('classDecl: "MyClass"'));
         expect(snippet, contains('method: "myMethod"'));
@@ -65,9 +64,9 @@ void main() {
       test('generates minimal recipe structure', () {
         final yaml = AstPathYamlGenerator.generateMinimalYaml(
           testPath,
-          'minimal_recipe'
+          'minimal_recipe',
         );
-        
+
         expect(yaml, contains('dslVersion: 1'));
         expect(yaml, contains('id: minimal_recipe'));
         expect(yaml, contains('edit:'));
@@ -89,7 +88,7 @@ void main() {
           ],
           anchor: const Anchor(AnchorKind.bodyEnd),
         );
-        
+
         final yaml = AstPathYamlGenerator.generateYaml(pathWithInferred);
         expect(yaml, contains('inferred: "someNode"'));
       });
@@ -97,11 +96,15 @@ void main() {
       test('handles steps with match filters', () {
         final pathWithMatch = AstPath(
           navigate: [
-            NavigateStep(NavigateKind.classDecl, name: 'MyClass', match: 'specific'),
+            NavigateStep(
+              NavigateKind.classDecl,
+              name: 'MyClass',
+              match: 'specific',
+            ),
           ],
           anchor: const Anchor(AnchorKind.memberLast),
         );
-        
+
         final yaml = AstPathYamlGenerator.generateYaml(pathWithMatch);
         expect(yaml, contains('classDecl: "MyClass"'));
         expect(yaml, contains('# match: "specific"'));
@@ -116,13 +119,10 @@ void main() {
           AnchorKind.paramLast,
           AnchorKind.argLast,
         ];
-        
+
         for (final anchorKind in anchors) {
-          final path = AstPath(
-            navigate: [],
-            anchor: Anchor(anchorKind),
-          );
-          
+          final path = AstPath(navigate: [], anchor: Anchor(anchorKind));
+
           final yaml = AstPathYamlGenerator.generateYaml(path);
           expect(yaml, contains('anchor: ${anchorKind.name}'));
         }

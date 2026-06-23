@@ -78,14 +78,21 @@ class StringUtils {
   /// ```
   static String toTitleCase(String input) {
     return input
-      .replaceAllMapped(RegExp(r'[A-Z][a-z]'), (match) => ' ${match.group(0)}')
-      .replaceAllMapped(RegExp(r'[A-Z]+'), (match) => ' ${match.group(0)}')
-      .replaceAll('_', ' ')
-      .replaceAll('-', ' ')
-      .split(' ')
-      .map((word) => word.isNotEmpty ? '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}' : '')
-      .join(' ')
-      .trim();
+        .replaceAllMapped(
+          RegExp(r'[A-Z][a-z]'),
+          (match) => ' ${match.group(0)}',
+        )
+        .replaceAllMapped(RegExp(r'[A-Z]+'), (match) => ' ${match.group(0)}')
+        .replaceAll('_', ' ')
+        .replaceAll('-', ' ')
+        .split(' ')
+        .map(
+          (word) => word.isNotEmpty
+              ? '${word[0].toUpperCase()}${word.substring(1).toLowerCase()}'
+              : '',
+        )
+        .join(' ')
+        .trim();
   }
 
   /// Converts a string to a safe filename.
@@ -100,9 +107,9 @@ class StringUtils {
   /// ```
   static String toSafeFilename(String input) {
     return input
-      .replaceAll(RegExp(r'[<>:"|?*\/]'), '_')
-      .replaceAll(RegExp(r'\s+'), '_')
-      .trim();
+        .replaceAll(RegExp(r'[<>:"|?*\/]'), '_')
+        .replaceAll(RegExp(r'\s+'), '_')
+        .trim();
   }
 
   /// Capitalizes the first letter of a string.

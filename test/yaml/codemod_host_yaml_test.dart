@@ -24,9 +24,7 @@ void main() {
     expect(response['diagnostics'], isA<List>());
     final diagnostics = response['diagnostics'] as List;
     expect(
-      diagnostics.any(
-        (item) => (item as Map)['code'] == 'E_DUPLICATE_ID',
-      ),
+      diagnostics.any((item) => (item as Map)['code'] == 'E_DUPLICATE_ID'),
       isTrue,
     );
   });
@@ -43,10 +41,7 @@ void main() {
     );
 
     final host = CodemodHost.fromConfig(
-      HostConfig(
-        workspaceRoot: workspace.path,
-        codemodRoot: '.codemod',
-      ),
+      HostConfig(workspaceRoot: workspace.path, codemodRoot: '.codemod'),
     );
 
     final initial = await host.dispatch({'command': 'list'});

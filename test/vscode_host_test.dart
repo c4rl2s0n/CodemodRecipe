@@ -30,10 +30,7 @@ class _AddFieldTransform implements CodeTransform {
   final String Function(CodemodContext) fieldName;
   final String Function(CodemodContext) fieldType;
 
-  _AddFieldTransform({
-    required this.fieldName,
-    required this.fieldType,
-  });
+  _AddFieldTransform({required this.fieldName, required this.fieldType});
 
   @override
   Future<List<SourcePatch>> apply(String source, CodemodContext context) async {
@@ -59,12 +56,7 @@ class _AddImportTransform implements CodeTransform {
   Future<List<SourcePatch>> apply(String source, CodemodContext context) async {
     final uri = CodemodTemplate.inline(uriTemplate).render(context);
     return [
-      SourcePatch(
-        0,
-        0,
-        "import '$uri';\n",
-        description: 'Add import $uri',
-      ),
+      SourcePatch(0, 0, "import '$uri';\n", description: 'Add import $uri'),
     ];
   }
 }
@@ -124,11 +116,13 @@ CodemodRecipe _addPropertyAccessorsRecipe() {
           ),
           _AddMethodTransform(
             methodName: (c) => 'get${c.pascal('property')}',
-            body: (c) => '${c.require<String>('type')} get${c.pascal('property')}() => _${c.camel('property')}',
+            body: (c) =>
+                '${c.require<String>('type')} get${c.pascal('property')}() => _${c.camel('property')}',
           ),
           _AddMethodTransform(
             methodName: (c) => 'set${c.pascal('property')}',
-            body: (c) => 'void set${c.pascal('property')}(${c.require<String>('type')} value) => _${c.camel('property')} = value',
+            body: (c) =>
+                'void set${c.pascal('property')}(${c.require<String>('type')} value) => _${c.camel('property')} = value',
           ),
         ],
       ),
@@ -157,9 +151,7 @@ class {{\$pascal service}}Service {
       EditDartFileOperation(
         path: (context) => context.require('file'),
         transforms: (context) => [
-          _AddImportTransform.uri(
-            'services/{{\$snake service}}_service.dart',
-          ),
+          _AddImportTransform.uri('services/{{\$snake service}}_service.dart'),
           _AddFieldTransform(
             fieldName: (c) => '${c.camel('service')}Service',
             fieldType: (c) => '${c.pascal('service')}Service',

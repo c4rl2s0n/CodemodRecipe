@@ -41,7 +41,7 @@ class YamlRecipeRegistry {
 
     final codemodDir = Directory(config.codemodRootPath);
     final mapIdSources = <String, List<DiagnosticSource>>{};
-    
+
     if (codemodDir.existsSync()) {
       for (final entity in codemodDir.listSync(recursive: true)) {
         if (entity is! File) continue;
@@ -61,7 +61,10 @@ class YamlRecipeRegistry {
             diagnostics: diagnostics,
           );
         } else if (_isTemplate(path)) {
-          final templateName = _deriveTemplateName(relativePath, config.codemodRoot);
+          final templateName = _deriveTemplateName(
+            relativePath,
+            config.codemodRoot,
+          );
           templatePaths[templateName] = path;
         }
       }
@@ -181,7 +184,9 @@ class YamlRecipeRegistry {
         // This is a recipe
         final definition = parseYamlRecipeFile(relativePath, content);
         recipeDefinitionsById[id] = definition;
-        idSources.putIfAbsent(id, () => []).add(DiagnosticSource(file: relativePath));
+        idSources
+            .putIfAbsent(id, () => [])
+            .add(DiagnosticSource(file: relativePath));
       } else if (doc.containsKey('entries') && doc['entries'] is YamlMap) {
         // This is a map
         final entries = <String, String>{};
@@ -190,7 +195,9 @@ class YamlRecipeRegistry {
         });
         mapDefinitionsById[id] = entries;
         // Track map sources for duplicate detection
-        mapIdSources.putIfAbsent(id, () => []).add(DiagnosticSource(file: relativePath));
+        mapIdSources
+            .putIfAbsent(id, () => [])
+            .add(DiagnosticSource(file: relativePath));
         // Maps are tracked separately, not in recipe idSources
       } else {
         // YAML has an id but no steps or entries - error
@@ -198,7 +205,8 @@ class YamlRecipeRegistry {
           RecipeDiagnostic(
             severity: DiagnosticSeverity.error,
             code: 'E_UNKNOWN_YAML_TYPE',
-            message: 'YAML file has "id" but no "steps" (recipe) or "entries" (map)',
+            message:
+                'YAML file has "id" but no "steps" (recipe) or "entries" (map)',
             sources: [DiagnosticSource(file: relativePath)],
           ),
         );
@@ -221,7 +229,7 @@ class YamlRecipeRegistry {
     // Remove codemodRoot prefix
     final normalizedRoot = codemodRoot.replaceAll('\\', '/');
     final normalizedPath = relativePath.replaceAll('\\', '/');
-    
+
     if (normalizedPath.startsWith('$normalizedRoot/')) {
       final withoutRoot = normalizedPath.substring(normalizedRoot.length + 1);
       // Remove .template extension

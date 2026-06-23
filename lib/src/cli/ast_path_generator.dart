@@ -22,7 +22,7 @@ class AstPathGenerator {
   ///   stdout: Optional output stream for testing (defaults to global stdout)
   ///   stderr: Optional error stream for testing (defaults to global stderr)
   static Future<void> generateFromFile(
-    String filePath, 
+    String filePath,
     int offset, {
     String outputFormat = 'text',
     String recipeId = 'generated_recipe',
@@ -32,18 +32,25 @@ class AstPathGenerator {
     try {
       // Read source file
       final source = await File(filePath).readAsString();
-      
+
       // Parse and find node at offset
       final focus = AstFocus.parse(source, path: filePath);
       final path = focus.generatePathAtOffset(offset);
-      
+
       if (path != null) {
-        _outputResult(path, offset, outputFormat, recipeId, filePath, 
+        _outputResult(
+          path,
+          offset,
+          outputFormat,
+          recipeId,
+          filePath,
           stdout: stdout ?? dartStdout,
-          stderr: stderr ?? dartStderr
+          stderr: stderr ?? dartStderr,
         );
       } else {
-        (stderr ?? dartStderr).writeln('❌ No AST node found at offset $offset in $filePath');
+        (stderr ?? dartStderr).writeln(
+          '❌ No AST node found at offset $offset in $filePath',
+        );
         exit(1);
       }
     } on FileSystemException catch (e) {
@@ -54,12 +61,12 @@ class AstPathGenerator {
       exit(1);
     }
   }
-  
+
   static void _outputResult(
-    AstPath path, 
-    int offset, 
-    String format, 
-    String recipeId, 
+    AstPath path,
+    int offset,
+    String format,
+    String recipeId,
     String filePath, {
     required IOSink stdout,
     required IOSink stderr,
@@ -68,24 +75,28 @@ class AstPathGenerator {
     final error = stderr;
     switch (format.toLowerCase()) {
       case 'yaml':
-        final yaml = AstPathYamlGenerator.generateYaml(path, recipeId: recipeId);
+        final yaml = AstPathYamlGenerator.generateYaml(
+          path,
+          recipeId: recipeId,
+        );
         output.writeln(yaml);
         break;
       case 'json':
         // Simple JSON representation
-        final stepsJson = path.navigate.map((step) => {
-          'kind': step.kind?.name,
-          'name': step.name,
-          'match': step.match,
-        }).toList();
-        
+        final stepsJson = path.navigate
+            .map(
+              (step) => {
+                'kind': step.kind?.name,
+                'name': step.name,
+                'match': step.match,
+              },
+            )
+            .toList();
+
         final jsonOutput = jsonEncode({
           'file': filePath,
           'offset': offset,
-          'path': {
-            'navigate': stepsJson,
-            'anchor': path.anchor.toString(),
-          }
+          'path': {'navigate': stepsJson, 'anchor': path.anchor.toString()},
         });
         output.writeln(jsonOutput);
         break;
@@ -105,7 +116,9 @@ class AstPathGenerator {
         output.writeln('');
         output.writeln('Navigate steps:');
         for (final step in path.navigate) {
-          output.writeln('  • ${step.kind?.name ?? 'inferred'}: ${step.name}${step.match != null ? ' (match: ${step.match})' : ''}');
+          output.writeln(
+            '  • ${step.kind?.name ?? 'inferred'}: ${step.name}${step.match != null ? ' (match: ${step.match})' : ''}',
+          );
         }
         output.writeln('');
         output.writeln('Anchor: ${path.anchor}');
@@ -117,32 +130,34 @@ class AstPathGenerator {
         output.writeln('at:');
         for (final step in path.navigate) {
           final kind = step.kind?.name ?? 'inferred';
-          output.writeln('  - $kind: "${step.name}"${step.match != null ? ' (match: "${step.match}")' : ''}');
+          output.writeln(
+            '  - $kind: "${step.name}"${step.match != null ? ' (match: "${step.match}")' : ''}',
+          );
         }
         output.writeln('anchor: ${path.anchor}');
     }
   }
-  
+
   /// Entry point for CLI usage.
   static Future<void> main(List<String> args) async {
     if (args.length < 2) {
       _printUsage();
       exit(1);
     }
-    
+
     final filePath = args[0];
     final offset = int.tryParse(args[1]);
-    
+
     if (offset == null) {
       stderr.writeln('❌ Invalid offset: ${args[1]}');
       _printUsage();
       exit(1);
     }
-    
+
     // Parse optional arguments
     String format = 'text';
     String recipeId = 'generated_recipe';
-    
+
     for (int i = 2; i < args.length; i++) {
       if (args[i] == '--format' && i + 1 < args.length) {
         format = args[++i];
@@ -153,13 +168,15 @@ class AstPathGenerator {
         exit(0);
       }
     }
-    
-    await generateFromFile(filePath, offset, 
-      outputFormat: format, 
-      recipeId: recipeId
+
+    await generateFromFile(
+      filePath,
+      offset,
+      outputFormat: format,
+      recipeId: recipeId,
     );
   }
-  
+
   static void _printUsage() {
     print('''
 🚀 AST Path Generator - Generate AST localization DSL code from source offsets

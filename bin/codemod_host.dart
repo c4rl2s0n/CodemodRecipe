@@ -15,7 +15,9 @@ import 'package:codemod_recipe/codemod_recipe_vscode.dart';
 /// For CLI usage, use: dart run bin/codemod.dart <recipe.yaml> [args]
 Future<void> main(List<String> arguments) async {
   // Initialize logging
-  logger.runnerInfo('Starting codemod host with arguments: ${arguments.join(' ')}');
+  logger.runnerInfo(
+    'Starting codemod host with arguments: ${arguments.join(' ')}',
+  );
   final parser = HostConfig.buildArgParser()
     ..addFlag('help', abbr: 'h', negatable: false);
 
@@ -58,14 +60,19 @@ Future<void> main(List<String> arguments) async {
     );
   }
 
-  if (results['stdio-server'] == true || HostArgsParser.looksLikeJsonCommand(arguments)) {
+  if (results['stdio-server'] == true ||
+      HostArgsParser.looksLikeJsonCommand(arguments)) {
     await CodemodHost.fromConfig(config).run(arguments);
     return;
   }
 
   // No CLI mode - direct users to codemod.dart
-  stderr.writeln('For CLI usage, use: dart run bin/codemod.dart <recipe.yaml> [args]');
-  stderr.writeln('For VS Code extension, use: dart run bin/codemod_host.dart --stdio-server');
+  stderr.writeln(
+    'For CLI usage, use: dart run bin/codemod.dart <recipe.yaml> [args]',
+  );
+  stderr.writeln(
+    'For VS Code extension, use: dart run bin/codemod_host.dart --stdio-server',
+  );
   exit(1);
 }
 
@@ -75,5 +82,7 @@ void _printUsage(ArgParser parser) {
   stderr.writeln('VS Code extension host options:');
   stderr.writeln(parser.usage);
   stderr.writeln('');
-  stderr.writeln('For CLI usage, use: dart run bin/codemod.dart <recipe.yaml> [args]');
+  stderr.writeln(
+    'For CLI usage, use: dart run bin/codemod.dart <recipe.yaml> [args]',
+  );
 }

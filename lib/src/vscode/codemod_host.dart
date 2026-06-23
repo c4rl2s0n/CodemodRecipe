@@ -433,46 +433,43 @@ class CodemodHost {
     };
   }
 
-  Future<Map<String, Object?>> _generateAstPath(Map<String, Object?> request) async {
+  Future<Map<String, Object?>> _generateAstPath(
+    Map<String, Object?> request,
+  ) async {
     final path = request['path'] as String?;
     final offset = request['offset'] as int?;
-    
+
     if (path == null || offset == null) {
-      return {
-        'ok': false,
-        'error': 'Missing path or offset',
-      };
+      return {'ok': false, 'error': 'Missing path or offset'};
     }
-    
+
     try {
       final source = await File(path).readAsString();
       final focus = AstFocus.parse(source, path: path);
       final astPath = focus.generatePathAtOffset(offset);
-      
+
       if (astPath != null) {
         return {
           'ok': true,
           'path': {
-            'navigate': astPath.navigate.map((step) => {
-              'kind': step.kind?.name,
-              'name': step.name,
-              'match': step.match,
-            }).toList(),
+            'navigate': astPath.navigate
+                .map(
+                  (step) => {
+                    'kind': step.kind?.name,
+                    'name': step.name,
+                    'match': step.match,
+                  },
+                )
+                .toList(),
             'anchor': astPath.anchor.toString(),
             'offset': offset,
           },
         };
       } else {
-        return {
-          'ok': false,
-          'error': 'No AST node found at offset $offset',
-        };
+        return {'ok': false, 'error': 'No AST node found at offset $offset'};
       }
     } catch (error) {
-      return {
-        'ok': false,
-        'error': error.toString(),
-      };
+      return {'ok': false, 'error': error.toString()};
     }
   }
 

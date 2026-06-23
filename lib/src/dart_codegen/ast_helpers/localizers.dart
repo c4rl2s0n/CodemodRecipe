@@ -1,10 +1,11 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 
-export 'offsets.dart' show
-  findClassEndOffset,
-  findClassBodyStartOffset,
-  findOptimalInsertionOffset;
+export 'offsets.dart'
+    show
+        findClassEndOffset,
+        findClassBodyStartOffset,
+        findOptimalInsertionOffset;
 
 /// Returns the first class declaration named [className] in [unit].
 ClassDeclaration? findClassByName(CompilationUnit unit, String className) {

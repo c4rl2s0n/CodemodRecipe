@@ -55,12 +55,13 @@ class HostArgsParser {
     String? codemodRoot,
   }) {
     final parser = buildArgParser();
-    
+
     try {
       final results = parser.parse(arguments);
       final config = HostConfig(
         workspaceRoot: workspaceRoot ?? Directory.current.absolute.path,
-        codemodRoot: codemodRoot ?? results['map-root'] as String? ?? '.codemod/maps',
+        codemodRoot:
+            codemodRoot ?? results['map-root'] as String? ?? '.codemod/maps',
       );
       return (results: results, config: config);
     } on FormatException catch (error) {
@@ -127,7 +128,9 @@ class HostArgsParser {
     stderr.writeln('VS Code extension host options:');
     stderr.writeln(parser.usage);
     stderr.writeln('');
-    stderr.writeln('For CLI usage, use: dart run bin/codemod.dart <recipe.yaml> [args]');
+    stderr.writeln(
+      'For CLI usage, use: dart run bin/codemod.dart <recipe.yaml> [args]',
+    );
   }
 }
 

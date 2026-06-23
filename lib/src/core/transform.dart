@@ -2,10 +2,8 @@ import 'context.dart';
 import 'patch_helpers.dart';
 
 /// Function signature for transform operations that convert source code to patches.
-typedef TransformFunction = Future<List<SourcePatch>> Function(
-  String source,
-  CodemodContext context,
-);
+typedef TransformFunction =
+    Future<List<SourcePatch>> Function(String source, CodemodContext context);
 
 /// A deterministic source-to-patches operation.
 abstract interface class CodeTransform {

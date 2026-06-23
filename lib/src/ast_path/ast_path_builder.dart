@@ -1,10 +1,10 @@
 import 'model.dart';
 
 /// A fluent builder for constructing [AstPath] instances.
-/// 
+///
 /// This class provides a more readable and type-safe way to build AST paths
 /// compared to manually constructing [NavigateStep] lists and [Anchor] objects.
-/// 
+///
 /// Example usage:
 /// ```dart
 /// final path = AstPathBuilder()
@@ -25,112 +25,81 @@ class AstPathBuilder {
 
   /// Navigates to a class declaration by name.
   AstPathBuilder navigateToClass(String name, {String? match}) {
-    _navigate.add(NavigateStep(
-      NavigateKind.classDecl,
-      name: name,
-      match: match,
-    ));
+    _navigate.add(
+      NavigateStep(NavigateKind.classDecl, name: name, match: match),
+    );
     return this;
   }
 
   /// Navigates to a method declaration by name.
   AstPathBuilder navigateToMethod(String name, {String? match}) {
-    _navigate.add(NavigateStep(
-      NavigateKind.method,
-      name: name,
-      match: match,
-    ));
+    _navigate.add(NavigateStep(NavigateKind.method, name: name, match: match));
     return this;
   }
 
   /// Navigates to a constructor.
-  /// 
+  ///
   /// If [name] is null, navigates to the unnamed constructor.
   AstPathBuilder navigateToConstructor({String? name, String? match}) {
-    _navigate.add(NavigateStep(
-      NavigateKind.constructor,
-      name: name,
-      match: match,
-    ));
+    _navigate.add(
+      NavigateStep(NavigateKind.constructor, name: name, match: match),
+    );
     return this;
   }
 
   /// Navigates to a function call by type name.
   AstPathBuilder navigateToCall(String typeName, {String? match}) {
-    _navigate.add(NavigateStep(
-      NavigateKind.call,
-      name: typeName,
-      match: match,
-    ));
+    _navigate.add(
+      NavigateStep(NavigateKind.call, name: typeName, match: match),
+    );
     return this;
   }
 
   /// Navigates to an import directive by URI.
   AstPathBuilder navigateToImport(String uri) {
-    _navigate.add(NavigateStep(
-      NavigateKind.import,
-      name: uri,
-    ));
+    _navigate.add(NavigateStep(NavigateKind.import, name: uri));
     return this;
   }
 
   /// Navigates to a field declaration by name.
   AstPathBuilder navigateToField(String name, {String? match}) {
-    _navigate.add(NavigateStep(
-      NavigateKind.field,
-      name: name,
-      match: match,
-    ));
+    _navigate.add(NavigateStep(NavigateKind.field, name: name, match: match));
     return this;
   }
 
   /// Navigates to a function declaration by name.
   AstPathBuilder navigateToFunction(String name, {String? match}) {
-    _navigate.add(NavigateStep(
-      NavigateKind.function,
-      name: name,
-      match: match,
-    ));
+    _navigate.add(
+      NavigateStep(NavigateKind.function, name: name, match: match),
+    );
     return this;
   }
 
   /// Navigates to a variable declaration by name.
   AstPathBuilder navigateToVariable(String name, {String? match}) {
-    _navigate.add(NavigateStep(
-      NavigateKind.variable,
-      name: name,
-      match: match,
-    ));
+    _navigate.add(
+      NavigateStep(NavigateKind.variable, name: name, match: match),
+    );
     return this;
   }
 
   /// Navigates using type inference (kind is null).
-  /// 
+  ///
   /// This will search for the best matching node by name.
   AstPathBuilder navigateToInferred(String name, {String? match}) {
-    _navigate.add(NavigateStep(
-      null,
-      name: name,
-      match: match,
-    ));
+    _navigate.add(NavigateStep(null, name: name, match: match));
     return this;
   }
 
   /// Navigates to a constructor's initializer list.
   AstPathBuilder navigateToInitializer({String? match}) {
-    _navigate.add(NavigateStep(
-      NavigateKind.initializer,
-      match: match,
-    ));
+    _navigate.add(NavigateStep(NavigateKind.initializer, match: match));
     return this;
   }
 
   /// Navigates to a constructor's redirection target.
   AstPathBuilder navigateToRedirection({String? match}) {
-    _navigate.add(NavigateStep(
-      NavigateKind.redirection,
-      match: match,
-    ));
+    _navigate.add(NavigateStep(NavigateKind.redirection, match: match));
     return this;
   }
 
@@ -219,7 +188,7 @@ class AstPathBuilder {
   }
 
   /// Builds the [AstPath] from the configured navigation and anchor.
-  /// 
+  ///
   /// Throws a [StateError] if no anchor has been set.
   AstPath build() {
     if (_anchor == null) {

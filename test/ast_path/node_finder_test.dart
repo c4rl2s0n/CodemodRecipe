@@ -16,11 +16,11 @@ class MyClass {
 ''';
         final focus = AstFocus.parse(source);
         final unit = focus.unit;
-        
+
         // Find offset within "MyClass"
         final classOffset = source.indexOf('MyClass');
         final node = AstNodeFinder.findNodeAtOffset(unit, classOffset);
-        
+
         expect(node, isA<ClassDeclaration>());
         expect((node as ClassDeclaration).name.lexeme, 'MyClass');
       });
@@ -35,11 +35,11 @@ class MyClass {
 ''';
         final focus = AstFocus.parse(source);
         final unit = focus.unit;
-        
+
         // Find offset within "myMethod"
         final methodOffset = source.indexOf('myMethod');
         final node = AstNodeFinder.findNodeAtOffset(unit, methodOffset);
-        
+
         expect(node, isA<MethodDeclaration>());
         expect((node as MethodDeclaration).name.lexeme, 'myMethod');
       });
@@ -52,20 +52,20 @@ class MyClass {
 ''';
         final focus = AstFocus.parse(source);
         final unit = focus.unit;
-        
+
         // Find offset within "myField"
         final fieldOffset = source.indexOf('myField');
         final node = AstNodeFinder.findNodeAtOffset(unit, fieldOffset);
-        
+
         // The most specific node is VariableDeclaration (the variable declaration)
         expect(node, isA<VariableDeclaration>());
         final varDecl = node as VariableDeclaration;
         expect(varDecl.name.lexeme, 'myField');
-        
+
         // The parent should be VariableDeclarationList
         final parent = AstNodeFinder.getParentNode(node, unit);
         expect(parent, isA<VariableDeclarationList>());
-        
+
         // The grandparent should be FieldDeclaration
         final grandparent = AstNodeFinder.getParentNode(parent!, unit);
         expect(grandparent, isA<FieldDeclaration>());
@@ -79,11 +79,11 @@ class MyClass {
 ''';
         final focus = AstFocus.parse(source);
         final unit = focus.unit;
-        
+
         // Offset within method name should find method, not class
         final methodOffset = source.indexOf('method');
         final node = AstNodeFinder.findNodeAtOffset(unit, methodOffset);
-        
+
         expect(node, isA<MethodDeclaration>());
         expect((node as MethodDeclaration).name.lexeme, 'method');
       });
@@ -92,10 +92,10 @@ class MyClass {
         const source = 'class Test {}';
         final focus = AstFocus.parse(source);
         final unit = focus.unit;
-        
+
         final node = AstNodeFinder.findNodeAtOffset(unit, -1);
         expect(node, isNull);
-        
+
         final node2 = AstNodeFinder.findNodeAtOffset(unit, 1000);
         expect(node2, isNull);
       });
@@ -110,14 +110,14 @@ class MyClass {
 ''';
         final focus = AstFocus.parse(source);
         final unit = focus.unit;
-        
+
         // Find the class node
-        final classNode = unit.declarations.firstWhere(
-          (decl) => decl is ClassDeclaration
-        ) as ClassDeclaration;
-        
+        final classNode =
+            unit.declarations.firstWhere((decl) => decl is ClassDeclaration)
+                as ClassDeclaration;
+
         final path = AstNodeFinder.createPathFromNode(classNode, unit);
-        
+
         expect(path.navigate, hasLength(1));
         expect(path.navigate.first.kind, NavigateKind.classDecl);
         expect(path.navigate.first.name, 'MyClass');
@@ -132,18 +132,20 @@ class MyClass {
 ''';
         final focus = AstFocus.parse(source);
         final unit = focus.unit;
-        
+
         // Find the method node
-        final classNode = unit.declarations.firstWhere(
-          (decl) => decl is ClassDeclaration
-        ) as ClassDeclaration;
-        
-        final methodNode = classNode.members.firstWhere(
-          (member) => member is MethodDeclaration
-        ) as MethodDeclaration;
-        
+        final classNode =
+            unit.declarations.firstWhere((decl) => decl is ClassDeclaration)
+                as ClassDeclaration;
+
+        final methodNode =
+            classNode.members.firstWhere(
+                  (member) => member is MethodDeclaration,
+                )
+                as MethodDeclaration;
+
         final path = AstNodeFinder.createPathFromNode(methodNode, unit);
-        
+
         expect(path.navigate, hasLength(2));
         expect(path.navigate[0].kind, NavigateKind.classDecl);
         expect(path.navigate[0].name, 'MyClass');
@@ -160,18 +162,18 @@ class MyClass {
 ''';
         final focus = AstFocus.parse(source);
         final unit = focus.unit;
-        
+
         // Find the field node
-        final classNode = unit.declarations.firstWhere(
-          (decl) => decl is ClassDeclaration
-        ) as ClassDeclaration;
-        
-        final fieldNode = classNode.members.firstWhere(
-          (member) => member is FieldDeclaration
-        ) as FieldDeclaration;
-        
+        final classNode =
+            unit.declarations.firstWhere((decl) => decl is ClassDeclaration)
+                as ClassDeclaration;
+
+        final fieldNode =
+            classNode.members.firstWhere((member) => member is FieldDeclaration)
+                as FieldDeclaration;
+
         final path = AstNodeFinder.createPathFromNode(fieldNode, unit);
-        
+
         expect(path.navigate, hasLength(2));
         expect(path.navigate[0].kind, NavigateKind.classDecl);
         expect(path.navigate[0].name, 'MyClass');
@@ -191,11 +193,11 @@ class TestClass {
 }
 ''';
         final focus = AstFocus.parse(source);
-        
+
         // Find offset within method name
         final methodOffset = source.indexOf('testMethod');
         final result = focus.focusAtOffset(methodOffset);
-        
+
         expect(result, isNotNull);
         expect(result!.node, isA<MethodDeclaration>());
         expect((result.node as MethodDeclaration).name.lexeme, 'testMethod');
@@ -208,11 +210,11 @@ class TestClass {
 }
 ''';
         final focus = AstFocus.parse(source);
-        
+
         // Find offset within method name
         final methodOffset = source.indexOf('testMethod');
         final path = focus.generatePathAtOffset(methodOffset);
-        
+
         expect(path, isNotNull);
         expect(path!.navigate, hasLength(2));
         expect(path.navigate[0].kind, NavigateKind.classDecl);
@@ -222,10 +224,10 @@ class TestClass {
       test('returns null for invalid offset', () async {
         const source = 'class Test {}';
         final focus = AstFocus.parse(source);
-        
+
         final result = focus.focusAtOffset(-1);
         expect(result, isNull);
-        
+
         final path = focus.generatePathAtOffset(1000);
         expect(path, isNull);
       });

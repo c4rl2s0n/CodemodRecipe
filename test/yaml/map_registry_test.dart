@@ -90,10 +90,7 @@ steps:
 ''');
 
     final result = YamlRecipeRegistry.load(
-      HostConfig(
-        workspaceRoot: workspace.path,
-        codemodRoot: '.codemod',
-      ),
+      HostConfig(workspaceRoot: workspace.path, codemodRoot: '.codemod'),
     );
 
     expect(

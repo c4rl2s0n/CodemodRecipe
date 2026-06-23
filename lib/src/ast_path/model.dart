@@ -4,7 +4,7 @@ class NavigateStep {
   const NavigateStep(this.kind, {this.name, this.match});
 
   /// Step kind (for example `class`, `method`, `ctor`).
-  /// 
+  ///
   /// When null, the step uses type inference to find the best matching node by [name].
   final NavigateKind? kind;
 

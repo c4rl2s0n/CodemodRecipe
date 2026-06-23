@@ -54,7 +54,8 @@ abstract class AnchorResolver {
 class BodyAnchorValidator implements AnchorValidator {
   @override
   bool canValidate(AnchorKind anchorKind) {
-    return anchorKind == AnchorKind.bodyStart || anchorKind == AnchorKind.bodyEnd;
+    return anchorKind == AnchorKind.bodyStart ||
+        anchorKind == AnchorKind.bodyEnd;
   }
 
   @override
@@ -94,8 +95,8 @@ class ParameterAnchorValidator implements AnchorValidator {
   @override
   bool canValidate(AnchorKind anchorKind) {
     return anchorKind == AnchorKind.paramLast ||
-           anchorKind == AnchorKind.paramName ||
-           anchorKind == AnchorKind.paramIndex;
+        anchorKind == AnchorKind.paramName ||
+        anchorKind == AnchorKind.paramIndex;
   }
 
   @override
@@ -109,8 +110,8 @@ class ArgumentAnchorValidator implements AnchorValidator {
   @override
   bool canValidate(AnchorKind anchorKind) {
     return anchorKind == AnchorKind.argLast ||
-           anchorKind == AnchorKind.argName ||
-           anchorKind == AnchorKind.argIndex;
+        anchorKind == AnchorKind.argName ||
+        anchorKind == AnchorKind.argIndex;
   }
 
   @override
@@ -130,17 +131,17 @@ class MetaAnchorValidator implements AnchorValidator {
   @override
   bool canValidate(AnchorKind anchorKind) {
     return anchorKind == AnchorKind.metaBefore ||
-           anchorKind == AnchorKind.docBefore ||
-           anchorKind == AnchorKind.docAfter;
+        anchorKind == AnchorKind.docBefore ||
+        anchorKind == AnchorKind.docAfter;
   }
 
   @override
   bool isValidFor(AstNode node, Anchor anchor) {
     return node is ClassDeclaration ||
-           node is MethodDeclaration ||
-           node is ConstructorDeclaration ||
-           node is FieldDeclaration ||
-           node is FunctionDeclaration;
+        node is MethodDeclaration ||
+        node is ConstructorDeclaration ||
+        node is FieldDeclaration ||
+        node is FunctionDeclaration;
   }
 }
 
@@ -149,8 +150,8 @@ class InitializerAnchorValidator implements AnchorValidator {
   @override
   bool canValidate(AnchorKind anchorKind) {
     return anchorKind == AnchorKind.initializerReplace ||
-           anchorKind == AnchorKind.initializerLast ||
-           anchorKind == AnchorKind.initializerName;
+        anchorKind == AnchorKind.initializerLast ||
+        anchorKind == AnchorKind.initializerName;
   }
 
   @override
@@ -167,7 +168,7 @@ class RedirectionAnchorValidator implements AnchorValidator {
   @override
   bool canValidate(AnchorKind anchorKind) {
     return anchorKind == AnchorKind.redirectionArgLast ||
-           anchorKind == AnchorKind.redirectionArgName;
+        anchorKind == AnchorKind.redirectionArgName;
   }
 
   @override

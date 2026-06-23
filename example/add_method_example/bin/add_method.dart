@@ -28,10 +28,10 @@ final addMethodRecipe = CodemodRecipe(
   operations: [
     EditDartFileOperation(
       path: (context) => context.require('file'),
-      transforms: (context) => [
-        FunctionTransform((source, ctx) async => []),
-      ],
+      transforms: (context) => [FunctionTransform((source, ctx) async => [])],
     ),
   ],
-  postExecution: [ProcessPostExecution('dart', ['format', '.'])],
+  postExecution: [
+    ProcessPostExecution('dart', ['format', '.']),
+  ],
 );

@@ -14,10 +14,7 @@ void main() {
     );
 
     final result = YamlRecipeRegistry.load(
-      HostConfig(
-        workspaceRoot: workspace.path,
-        codemodRoot: '.codemod',
-      ),
+      HostConfig(workspaceRoot: workspace.path, codemodRoot: '.codemod'),
     );
 
     expect(
@@ -40,10 +37,7 @@ void main() {
     );
 
     final result = YamlRecipeRegistry.load(
-      HostConfig(
-        workspaceRoot: workspace.path,
-        codemodRoot: '.codemod',
-      ),
+      HostConfig(workspaceRoot: workspace.path, codemodRoot: '.codemod'),
     );
 
     expect(
@@ -67,10 +61,7 @@ void main() {
     );
 
     final result = YamlRecipeRegistry.load(
-      HostConfig(
-        workspaceRoot: workspace.path,
-        codemodRoot: '.codemod',
-      ),
+      HostConfig(workspaceRoot: workspace.path, codemodRoot: '.codemod'),
     );
 
     expect(
@@ -93,10 +84,7 @@ void main() {
     );
 
     final result = YamlRecipeRegistry.load(
-      HostConfig(
-        workspaceRoot: workspace.path,
-        codemodRoot: '.codemod',
-      ),
+      HostConfig(workspaceRoot: workspace.path, codemodRoot: '.codemod'),
     );
 
     expect(
@@ -123,10 +111,7 @@ void main() {
     );
 
     final result = YamlRecipeRegistry.load(
-      HostConfig(
-        workspaceRoot: workspace.path,
-        codemodRoot: '.codemod',
-      ),
+      HostConfig(workspaceRoot: workspace.path, codemodRoot: '.codemod'),
     );
 
     expect(result.recipes.containsKey('add_log_line'), isFalse);
@@ -155,16 +140,22 @@ void main() {
 
     // Create a map with ID 'shared_id'
     await Directory('${workspace.path}/.codemod/maps').create(recursive: true);
-    await File('${workspace.path}/.codemod/maps/shared_id.yaml').writeAsString('''
+    await File('${workspace.path}/.codemod/maps/shared_id.yaml').writeAsString(
+      '''
 id: shared_id
 entries:
   key1: value1
   key2: value2
-''');
+''',
+    );
 
     // Create a recipe with the same ID 'shared_id'
-    await Directory('${workspace.path}/.codemod/recipes').create(recursive: true);
-    await File('${workspace.path}/.codemod/recipes/shared_id.yaml').writeAsString('''
+    await Directory(
+      '${workspace.path}/.codemod/recipes',
+    ).create(recursive: true);
+    await File(
+      '${workspace.path}/.codemod/recipes/shared_id.yaml',
+    ).writeAsString('''
 dslVersion: 1
 id: shared_id
 name: Shared ID Recipe
@@ -182,10 +173,7 @@ steps:
 ''');
 
     final result = YamlRecipeRegistry.load(
-      HostConfig(
-        workspaceRoot: workspace.path,
-        codemodRoot: '.codemod',
-      ),
+      HostConfig(workspaceRoot: workspace.path, codemodRoot: '.codemod'),
     );
 
     // Should have no duplicate ID errors
@@ -208,9 +196,7 @@ steps:
   });
 
   test('reports duplicate map ids', () async {
-    final workspace = await Directory.systemTemp.createTemp(
-      'codemod_dup_map_',
-    );
+    final workspace = await Directory.systemTemp.createTemp('codemod_dup_map_');
     addTearDown(() => workspace.deleteSync(recursive: true));
 
     // Create two maps with the same ID
@@ -220,17 +206,16 @@ id: duplicate_map
 entries:
   key1: value1
 ''');
-    await File('${workspace.path}/.codemod/maps/dup_map2.yaml').writeAsString('''
+    await File('${workspace.path}/.codemod/maps/dup_map2.yaml').writeAsString(
+      '''
 id: duplicate_map
 entries:
   key2: value2
-''');
+''',
+    );
 
     final result = YamlRecipeRegistry.load(
-      HostConfig(
-        workspaceRoot: workspace.path,
-        codemodRoot: '.codemod',
-      ),
+      HostConfig(workspaceRoot: workspace.path, codemodRoot: '.codemod'),
     );
 
     // Should report duplicate map ID error

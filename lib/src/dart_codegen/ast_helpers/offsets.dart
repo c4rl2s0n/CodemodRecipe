@@ -53,7 +53,7 @@ int findClassBodyStartOffset(ClassDeclaration classNode) {
 }
 
 /// Returns a stable insertion offset for adding a new class member.
-/// 
+///
 /// Prefers inserting after the last method, then after the last field,
 /// then at the beginning of the class body.
 int findOptimalInsertionOffset(ClassDeclaration classNode) {

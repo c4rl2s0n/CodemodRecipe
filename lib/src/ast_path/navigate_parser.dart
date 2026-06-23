@@ -1,12 +1,12 @@
 import 'model.dart';
 
 /// Parses navigation step tokens and creates [NavigateStep] instances.
-/// 
+///
 /// This class consolidates duplicate parsing logic that was previously
 /// duplicated in both [AstPathParser] and [ClassFocusResolver].
 class NavigateParser {
   /// Parses a navigation step from a key-value pair.
-  /// 
+  ///
   /// Examples:
   /// - `class:MyClass` -> ClassDeclaration navigation
   /// - `method:update` -> MethodDeclaration navigation
@@ -27,7 +27,10 @@ class NavigateParser {
         NavigateKind.import,
         name: _requireName(name, key),
       ),
-      'field' => NavigateStep(NavigateKind.field, name: _requireName(name, key)),
+      'field' => NavigateStep(
+        NavigateKind.field,
+        name: _requireName(name, key),
+      ),
       'function' => NavigateStep(
         NavigateKind.function,
         name: _requireName(name, key),
@@ -43,7 +46,7 @@ class NavigateParser {
   }
 
   /// Parses a navigation token string into a [NavigateStep].
-  /// 
+  ///
   /// Examples:
   /// - `class:Settings` -> ClassDeclaration navigation for "Settings"
   /// - `method:update` -> MethodDeclaration navigation for "update"
@@ -72,7 +75,7 @@ class NavigateParser {
   }
 
   /// Parses a navigation entry (either a string or a map) into a [NavigateStep].
-  /// 
+  ///
   /// For maps, supports a "match" key for filtering and one navigation key.
   /// Example: `{class: MyClass, match: "final"}`
   static NavigateStep parseEntry(Object? entry) {

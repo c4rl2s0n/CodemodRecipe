@@ -30,6 +30,11 @@ permission = "ask"
 [[mcp_servers]]
 name = "codebase-memory-mcp"
 transport = "stdio"
-command = "$HOME/.local/bin/codebase-memory-mcp"
+command = "/home/ikusa/.local/bin/codebase-memory-mcp"
 disabled = false
 disabled_tools = []
+
+[[mcp_servers]]
+name = "dart-mcp"
+transport = "stdio"
+command = "dart mcp-server"

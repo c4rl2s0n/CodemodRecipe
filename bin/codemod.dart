@@ -17,7 +17,9 @@ import 'package:codemod_recipe/codemod_recipe_vscode.dart';
 ///   dart run bin/codemod.dart add_log_line.yaml --file lib/main.dart --className MyClass --methodName myMethod --apply
 Future<void> main(List<String> arguments) async {
   // Initialize logging
-  logger.runnerInfo('Starting codemod execution with arguments: ${arguments.join(' ')}');
+  logger.runnerInfo(
+    'Starting codemod execution with arguments: ${arguments.join(' ')}',
+  );
   // Separate host flags from recipe arguments
   final separation = HostArgsParser.separateHostAndRecipeArgs(arguments);
   final hostArgs = separation.hostArgs;
@@ -25,9 +27,24 @@ Future<void> main(List<String> arguments) async {
 
   // Parse only host arguments
   final parser = ArgParser()
-    ..addOption('map-root', abbr: 'm', help: 'Directory containing map files (default: .codemod/maps)', defaultsTo: '.codemod/maps')
-    ..addFlag('apply', abbr: 'a', negatable: false, help: 'Apply changes (default is dry-run)')
-    ..addFlag('help', abbr: 'h', negatable: false, help: 'Show usage information');
+    ..addOption(
+      'map-root',
+      abbr: 'm',
+      help: 'Directory containing map files (default: .codemod/maps)',
+      defaultsTo: '.codemod/maps',
+    )
+    ..addFlag(
+      'apply',
+      abbr: 'a',
+      negatable: false,
+      help: 'Apply changes (default is dry-run)',
+    )
+    ..addFlag(
+      'help',
+      abbr: 'h',
+      negatable: false,
+      help: 'Show usage information',
+    );
 
   late ArgResults results;
 
@@ -64,7 +81,7 @@ Future<void> main(List<String> arguments) async {
       logger.runnerError('Failed to load recipe from $recipePath');
       exit(1); // Error already printed
     }
-    
+
     logger.runnerInfo('Successfully loaded recipe: ${recipe.name}');
 
     // Build the arguments list for the runner
@@ -81,20 +98,18 @@ Future<void> main(List<String> arguments) async {
     }
 
     // Run the recipe
-    logger.runnerInfo('Executing recipe with arguments: ${runnerArgs.join(' ')}');
+    logger.runnerInfo(
+      'Executing recipe with arguments: ${runnerArgs.join(' ')}',
+    );
     final config = HostConfig(
       workspaceRoot: FileUtils.getCurrentDirectory(),
       codemodRoot: results['map-root'] as String,
     );
 
-    final runner = CodemodRunner(
-      recipe,
-      preferences: config.preferences,
-    );
+    final runner = CodemodRunner(recipe, preferences: config.preferences);
 
     await runner.run(runnerArgs);
     logger.runnerInfo('Recipe execution completed successfully');
-
   } on FormatException catch (e) {
     logger.runnerError('YAML parsing failed: ${e.message}', e);
     stderr.writeln('Invalid YAML: ${e.message}');
@@ -127,7 +142,7 @@ Future<CodemodRecipe?> _loadRecipe(String path, String mapRoot) async {
     final content = await file.readAsString();
     logger.yamlInfo('Parsing YAML content');
     final yaml = loadYaml(content);
-    
+
     if (yaml is! YamlMap) {
       logger.yamlError('Invalid YAML structure: root must be a map in $path');
       stderr.writeln('Invalid YAML: root must be a map in $path');
@@ -148,10 +163,7 @@ Future<CodemodRecipe?> _loadRecipe(String path, String mapRoot) async {
 
     // Create a minimal compiler context
     final compiler = YamlRecipeCompiler(
-      config: HostConfig(
-        workspaceRoot: workspaceRoot,
-        codemodRoot: mapRoot,
-      ),
+      config: HostConfig(workspaceRoot: workspaceRoot, codemodRoot: mapRoot),
       definitionsById: {definition.id: definition},
       dartRecipes: const {},
       mapsById: mapsById,
@@ -164,12 +176,14 @@ Future<CodemodRecipe?> _loadRecipe(String path, String mapRoot) async {
       logger.yamlError('Recipe compilation failed for $path');
       stderr.writeln('Failed to compile recipe $path:');
       for (final diagnostic in compiled.diagnostics) {
-        logger.yamlError('Diagnostic [${diagnostic.code}]: ${diagnostic.message}');
+        logger.yamlError(
+          'Diagnostic [${diagnostic.code}]: ${diagnostic.message}',
+        );
         stderr.writeln('  [${diagnostic.code}] ${diagnostic.message}');
       }
       return null;
     }
-    
+
     logger.yamlInfo('Successfully compiled recipe: ${compiled.recipe!.name}');
     return compiled.recipe!;
   } catch (e) {
@@ -183,26 +197,30 @@ Future<CodemodRecipe?> _loadRecipe(String path, String mapRoot) async {
 Future<Map<String, Map<String, String>>> _loadMaps(String mapRoot) async {
   logger.fileInfo('Loading maps from directory: $mapRoot');
   final mapsById = <String, Map<String, String>>{};
-  
+
   final mapDir = Directory(mapRoot);
   if (!await mapDir.exists()) {
-    logger.fileInfo('Map directory does not exist, returning empty map collection');
+    logger.fileInfo(
+      'Map directory does not exist, returning empty map collection',
+    );
     return mapsById;
   }
 
   try {
     await for (final entity in mapDir.list(recursive: false)) {
       if (entity is! File) continue;
-      
+
       final filePath = entity.path;
       if (!FileUtils.hasExtension(filePath, ['.yaml', '.yml'])) continue;
-      
+
       logger.fileInfo('Processing map file: $filePath');
       final content = await File(filePath).readAsString();
       final yaml = loadYaml(content);
-      
+
       if (yaml is! YamlMap) {
-        logger.fileWarning('Invalid map file structure (not a YAML map): $filePath');
+        logger.fileWarning(
+          'Invalid map file structure (not a YAML map): $filePath',
+        );
         continue;
       }
 

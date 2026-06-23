@@ -44,7 +44,9 @@ AnchorSpan resolveAnchorSpan({
     AnchorKind.docBefore => AnchorSpan(offset: _docBefore(source, node)),
     AnchorKind.docAfter => AnchorSpan(offset: _docAfter(node)),
     AnchorKind.initializerReplace => _initializerReplace(source, node),
-    AnchorKind.initializerLast => AnchorSpan(offset: _initializerLast(source, node)),
+    AnchorKind.initializerLast => AnchorSpan(
+      offset: _initializerLast(source, node),
+    ),
     AnchorKind.initializerName => AnchorSpan(
       offset: _initializerNameEnd(source, node, anchor.name!),
     ),
@@ -58,7 +60,7 @@ AnchorSpan resolveAnchorSpan({
 }
 
 /// Returns whether [anchor] is valid for a focused [node] of the given type.
-/// 
+///
 /// This function delegates to the strategy pattern implementation in [AnchorValidatorRegistry]
 /// for extensible and maintainable validation logic.
 bool isAnchorValidFor(AstNode node, Anchor anchor) {
@@ -191,7 +193,7 @@ FormalParameter? _findNamedFormalParameterForFunction(
 ) {
   final parameters = function.functionExpression.parameters?.parameters;
   if (parameters == null) return null;
-  
+
   for (final parameter in parameters) {
     final parameterName = parameter.name?.lexeme;
     if (parameterName == name) {
@@ -365,37 +367,37 @@ int _initializerLast(String source, AstNode node) {
       'Anchor initializer:last requires a constructor, got ${node.runtimeType}',
     );
   }
-  
+
   // Find the initializer list in the constructor
   // The initializer list is between the parameter list and the body
   // For constructors with initializers: ConstructorDecl(params) : initializerList { body }
   // For constructors with redirection: ConstructorDecl(params) : this(...) { body }
-  
+
   // Get the end of the parameter list
   final paramEnd = node.parameters.end;
-  
+
   // Check if there's a colon after the parameters (indicating initializers or redirection)
   final afterParams = source.substring(paramEnd);
   if (!afterParams.trim().startsWith(':')) {
     // No initializer list, return paramEnd
     return paramEnd;
   }
-  
+
   // Find the start of the initializer list
   final colonIndex = source.indexOf(':', paramEnd);
   if (colonIndex < 0) {
     throw StateError('No initializer list found in constructor');
   }
-  
+
   // Find the end of the initializer list (either { or ,)
-  // The initializer list ends at the opening brace or at a comma followed by { 
+  // The initializer list ends at the opening brace or at a comma followed by {
   var scan = colonIndex + 1;
   var braceDepth = 0;
   var inInitializer = true;
-  
+
   while (scan < source.length && inInitializer) {
     final char = source[scan];
-    
+
     if (char == '{') {
       if (braceDepth == 0) {
         // Found the opening brace of the body
@@ -411,17 +413,17 @@ int _initializerLast(String source, AstNode node) {
       scan++;
       continue;
     }
-    
+
     scan++;
   }
-  
+
   // Return the position after the last initializer
   // We need to find the actual end of the initializer list
   // For now, return the position before the opening brace
   if (scan < source.length && source[scan] == '{') {
     return scan;
   }
-  
+
   return paramEnd;
 }
 
@@ -431,7 +433,7 @@ int _initializerNameEnd(String source, AstNode node, String name) {
       'Anchor initializer:name:$name requires a constructor, got ${node.runtimeType}',
     );
   }
-  
+
   // Find the initializer that matches the field name
   // For now, return the end of the parameter list as a placeholder
   // Full implementation would require parsing the initializer list
@@ -444,7 +446,7 @@ int _redirectionArgLast(String source, AstNode node) {
       'Anchor redirection:arg:last requires a constructor, got ${node.runtimeType}',
     );
   }
-  
+
   // Check if this is a redirecting factory constructor
   if (node.redirectedConstructor != null) {
     // The redirection is : this(...) or : super(...)
@@ -452,7 +454,7 @@ int _redirectionArgLast(String source, AstNode node) {
     // For now, return the end of the constructor's parameter list
     return node.parameters.end;
   }
-  
+
   throw StateError('No redirection found in constructor');
 }
 
@@ -462,12 +464,12 @@ int _redirectionArgNameEnd(String source, AstNode node, String name) {
       'Anchor redirection:arg:name:$name requires a constructor, got ${node.runtimeType}',
     );
   }
-  
+
   // Check if this is a redirecting factory constructor
   if (node.redirectedConstructor != null) {
     // For now, return the end of the constructor's parameter list
     return node.parameters.end;
   }
-  
+
   throw StateError('No redirection found in constructor');
 }

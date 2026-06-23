@@ -550,7 +550,10 @@ class YamlRecipeCompiler {
         }
       } else {
         diagnostics.add(
-          _schemaError('postExecution entries must have "run" or "runScript"', filePath),
+          _schemaError(
+            'postExecution entries must have "run" or "runScript"',
+            filePath,
+          ),
         );
       }
     }

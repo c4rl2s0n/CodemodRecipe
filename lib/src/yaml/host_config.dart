@@ -70,7 +70,8 @@ class HostConfig {
       )
       ..addOption(
         'codemod-root',
-        help: 'Root directory for codemod files (recipes, maps, templates) (workspace-relative)',
+        help:
+            'Root directory for codemod files (recipes, maps, templates) (workspace-relative)',
         defaultsTo: '.codemod',
       )
       ..addOption(

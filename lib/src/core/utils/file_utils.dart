@@ -22,7 +22,7 @@ class FileUtils {
   static String relativePath(String workspaceRoot, String absolutePath) {
     final root = Directory(workspaceRoot).absolute.path;
     final file = File(absolutePath).absolute.path;
-    
+
     return path.relative(file, from: root);
   }
 
@@ -65,11 +65,11 @@ class FileUtils {
     try {
       final file = File(path);
       final parent = file.parent;
-      
+
       if (!await parent.exists()) {
         await parent.create(recursive: true);
       }
-      
+
       await file.writeAsString(content);
       return true;
     } catch (_) {
@@ -85,7 +85,7 @@ class FileUtils {
     List<String> extensions,
   ) async {
     final result = <String, String>{};
-    
+
     final dir = Directory(directoryPath);
     if (!await dir.exists()) {
       return result;
@@ -94,10 +94,10 @@ class FileUtils {
     try {
       await for (final entity in dir.list(recursive: false)) {
         if (entity is! File) continue;
-        
+
         final filePath = entity.path;
         final extension = path.extension(filePath).toLowerCase();
-        
+
         if (extensions.contains(extension)) {
           try {
             final content = await entity.readAsString();
@@ -111,7 +111,7 @@ class FileUtils {
     } catch (_) {
       // Ignore errors listing directory
     }
-    
+
     return result;
   }
 
@@ -119,7 +119,10 @@ class FileUtils {
   ///
   /// Returns a map of file paths to their YAML content.
   static Future<Map<String, String>> loadYamlFiles(String directoryPath) async {
-    return await loadFilesWithExtensions(directoryPath, [yamlExtension, ymlExtension]);
+    return await loadFilesWithExtensions(directoryPath, [
+      yamlExtension,
+      ymlExtension,
+    ]);
   }
 
   /// Gets the absolute path of a file or directory.
@@ -150,8 +153,8 @@ class FileUtils {
   /// Checks if a path is absolute.
   static bool isAbsolute(String path) {
     if (path.isEmpty) return false;
-    return path.startsWith('/') || 
-           (Platform.isWindows && path.length >= 2 && path[1] == ':');
+    return path.startsWith('/') ||
+        (Platform.isWindows && path.length >= 2 && path[1] == ':');
   }
 
   /// Joins multiple path segments into a single path.
@@ -167,7 +170,7 @@ class FileUtils {
   /// Checks if a file path ends with any of the given extensions.
   static bool hasExtension(String filePath, List<String> extensions) {
     if (filePath.isEmpty) return false;
-    
+
     final fileExtension = path.extension(filePath).toLowerCase();
     return extensions.any((ext) => fileExtension == ext.toLowerCase());
   }

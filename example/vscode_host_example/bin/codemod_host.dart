@@ -39,12 +39,12 @@ final addMethodRecipe = CodemodRecipe(
   operations: [
     EditDartFileOperation(
       path: (context) => context.require('file'),
-      transforms: (context) => [
-        FunctionTransform((source, ctx) async => []),
-      ],
+      transforms: (context) => [FunctionTransform((source, ctx) async => [])],
     ),
   ],
-  postExecution: [ProcessPostExecution('dart', ['format', '.'])],
+  postExecution: [
+    ProcessPostExecution('dart', ['format', '.']),
+  ],
 );
 
 final scaffoldFeatureRecipe = CodemodRecipe(
@@ -93,7 +93,9 @@ class {{\$pascal feature}}View extends StatelessWidget {
 '''),
     ),
   ],
-  postExecution: [ProcessPostExecution('dart', ['format', '.'])],
+  postExecution: [
+    ProcessPostExecution('dart', ['format', '.']),
+  ],
 );
 
 final addPropertyAccessorsRecipe = CodemodRecipe(
@@ -128,12 +130,12 @@ final addPropertyAccessorsRecipe = CodemodRecipe(
   operations: [
     EditDartFileOperation(
       path: (context) => context.require('file'),
-      transforms: (context) => [
-        FunctionTransform((source, ctx) async => []),
-      ],
+      transforms: (context) => [FunctionTransform((source, ctx) async => [])],
     ),
   ],
-  postExecution: [ProcessPostExecution('dart', ['format', '.'])],
+  postExecution: [
+    ProcessPostExecution('dart', ['format', '.']),
+  ],
 );
 
 final scaffoldAndWireServiceRecipe = CodemodRecipe(
@@ -173,10 +175,10 @@ class {{\$pascal service}}Service {
     ),
     EditDartFileOperation(
       path: (context) => context.require('file'),
-      transforms: (context) => [
-        FunctionTransform((source, ctx) async => []),
-      ],
+      transforms: (context) => [FunctionTransform((source, ctx) async => [])],
     ),
   ],
-  postExecution: [ProcessPostExecution('dart', ['format', '.'])],
+  postExecution: [
+    ProcessPostExecution('dart', ['format', '.']),
+  ],
 );
