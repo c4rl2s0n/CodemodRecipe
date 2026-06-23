@@ -2,7 +2,6 @@ import 'dart:io';
 import 'dart:convert';
 
 import '../dart_codegen/ast_helpers/ast_focus.dart';
-import '../ast_path/node_finder.dart';
 import '../ast_path/yaml_generator.dart';
 import '../ast_path/model.dart';
 
@@ -72,7 +71,6 @@ class AstPathGenerator {
     required IOSink stderr,
   }) {
     final output = stdout;
-    final error = stderr;
     switch (format.toLowerCase()) {
       case 'yaml':
         final yaml = AstPathYamlGenerator.generateYaml(

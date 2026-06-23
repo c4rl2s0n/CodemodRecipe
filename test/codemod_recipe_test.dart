@@ -475,12 +475,6 @@ class Repo {
   });
 }
 
-const _source = '''
-class Counter {
-  int value = 0;
-}
-''';
-
 const _settingsGetterSource = '''
 class SettingsRepository {
   @override

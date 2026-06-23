@@ -436,12 +436,14 @@ class CodemodRecipe with CodemodStep {
   /// Command-line options accepted by this recipe.
   ///
   /// These define the arguments users can pass to configure the codemod.
+  @override
   final List<CodemodArgDescriptor> args;
 
   /// Ordered file operations this recipe applies.
   ///
   /// Operations are executed in the order they appear in this list. Each
   /// operation can read the current state of files and plan changes.
+  @override
   final List<CodemodOperation> operations;
 
   /// Actions to run after changes are successfully applied.
@@ -449,9 +451,11 @@ class CodemodRecipe with CodemodStep {
   /// These only run when the codemod is executed with `--apply`. Common
   /// actions include formatting code (`DartFormatPostExecution`) or
   /// running code generation (`BuildRunnerPostExecution`).
+  @override
   final List<PostExecution> postExecution;
 
   /// Optional templates shown by editor integrations before preview/apply.
+  @override
   final List<RecipeTemplatePreview> previewTemplates;
 
   /// Creates a recipe from explicit arguments and target file edits.

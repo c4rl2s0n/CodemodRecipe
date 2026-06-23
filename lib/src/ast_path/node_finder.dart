@@ -1,7 +1,6 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 
-import '../dart_codegen/ast_helpers/ast_focus.dart';
 import 'model.dart';
 import 'ast_path_builder.dart';
 
@@ -170,10 +169,8 @@ class AstNodeFinder {
       return NavigateStep(NavigateKind.variable, name: node.name.lexeme);
     } else if (node is InstanceCreationExpression) {
       // Constructor call
-      final typeName = node.constructorName.type.name?.lexeme;
-      if (typeName != null) {
-        return NavigateStep(NavigateKind.call, name: typeName);
-      }
+      final typeName = node.constructorName.type.name.lexeme;
+      return NavigateStep(NavigateKind.call, name: typeName);
     } else if (node is MethodInvocation) {
       // Method call
       final methodName = node.methodName.name;
@@ -208,7 +205,7 @@ class AstNodeFinder {
   static Anchor _determineCallAnchor(AstNode node) {
     if (node is MethodInvocation) {
       final argList = node.argumentList;
-      if (argList != null && argList.arguments.isNotEmpty) {
+      if (argList.arguments.isNotEmpty) {
         // Check if we have named arguments
         for (int i = 0; i < argList.arguments.length; i++) {
           final arg = argList.arguments[i];
@@ -222,7 +219,7 @@ class AstNodeFinder {
       }
     } else if (node is InstanceCreationExpression) {
       final argList = node.argumentList;
-      if (argList != null && argList.arguments.isNotEmpty) {
+      if (argList.arguments.isNotEmpty) {
         // Check for named arguments in constructor calls
         for (int i = 0; i < argList.arguments.length; i++) {
           final arg = argList.arguments[i];

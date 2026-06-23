@@ -1,8 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'dart:io';
-
 import '../core/context.dart';
 import '../core/operation.dart';
 import '../core/post_execution.dart';
@@ -13,7 +11,6 @@ import '../yaml/diagnostics.dart';
 import '../yaml/host_config.dart';
 import '../yaml/recipe_registry.dart';
 import '../dart_codegen/ast_helpers/ast_focus.dart';
-import '../ast_path/node_finder.dart';
 import 'diff_service.dart';
 import 'patch_selector.dart';
 import 'recipe_schema.dart';
