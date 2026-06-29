@@ -1,5 +1,6 @@
 use std::path::Path;
 
+use crate::adapter::LanguageAdapter;
 use codemod_recipe_core::patch::{apply_patches, SourcePatch};
 use codemod_recipe_yaml::model::{EditOp, InsertAnchor, Recipe, Step};
 use thiserror::Error;
@@ -39,6 +40,7 @@ pub enum EngineError {
 
 pub struct Engine {
     parser: Parser,
+    adapter: crate::adapter::DartAdapter,
 }
 
 pub struct ApplyResult {
@@ -59,7 +61,10 @@ impl Engine {
         parser
             .set_language(&crate::dart::language())
             .map_err(|e| EngineError::Query(format!("set_language failed: {e:?}")))?;
-        Ok(Self { parser })
+        Ok(Self {
+            parser,
+            adapter: crate::adapter::DartAdapter,
+        })
     }
 
     pub fn collect_patches_for_source(
@@ -94,14 +99,12 @@ impl Engine {
                         };
                         let offset = match insert.anchor {
                             InsertAnchor::Start => span.start,
-                            InsertAnchor::End => {
-                                if span.is_block && span.end > 0 {
-                                    let brace_pos = span.end - 1;
-                                    start_of_line(source.as_bytes(), brace_pos)
-                                } else {
-                                    span.end
-                                }
-                            }
+                            InsertAnchor::End => crate::span::insert_offset_at_anchor_end(
+                                source,
+                                span.start,
+                                span.end,
+                                span.is_block,
+                            ),
                         };
                         patches.push(SourcePatch::new(offset, offset, insert.text.clone()));
                     }
@@ -116,11 +119,17 @@ impl Engine {
                         let Some(span) = span else {
                             continue;
                         };
-                        let current = &source[span.start..span.end];
+                        let (start, end) = self.adapter.expand_remove_span(
+                            source,
+                            span.start,
+                            span.end,
+                            replace.include_leading_trivia,
+                        );
+                        let current = &source[start..end];
                         if whitespace_normalized(current) == whitespace_normalized(&replace.text) {
                             continue;
                         }
-                        patches.push(SourcePatch::new(span.start, span.end, replace.text.clone()));
+                        patches.push(SourcePatch::new(start, end, replace.text.clone()));
                     }
                     EditOp::Remove(remove) => {
                         let span = self.resolve_single_capture(
@@ -133,7 +142,13 @@ impl Engine {
                         let Some(span) = span else {
                             continue;
                         };
-                        patches.push(SourcePatch::new(span.start, span.end, ""));
+                        let (start, end) = self.adapter.expand_remove_span(
+                            source,
+                            span.start,
+                            span.end,
+                            remove.include_leading_trivia,
+                        );
+                        patches.push(SourcePatch::new(start, end, ""));
                     }
                     EditOp::Unknown(_, _) => {}
                 }
@@ -182,7 +197,7 @@ impl Engine {
             });
         }
 
-        let language = crate::dart::language();
+        let language = self.adapter.language();
         let query =
             Query::new(&language, &query_source).map_err(|e| EngineError::Query(e.to_string()))?;
 
@@ -225,21 +240,6 @@ impl Engine {
 
 fn whitespace_normalized(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
-}
-
-fn start_of_line(bytes: &[u8], pos: usize) -> usize {
-    if pos == 0 || pos > bytes.len() {
-        return 0;
-    }
-    // Find the last '\n' strictly before pos.
-    let mut i = pos;
-    while i > 0 {
-        if bytes[i - 1] == b'\n' {
-            return i;
-        }
-        i -= 1;
-    }
-    0
 }
 
 pub fn parse_recipe_yaml(yaml_text: &str) -> Result<Recipe, EngineError> {
