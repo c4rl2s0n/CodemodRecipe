@@ -1,0 +1,19 @@
+[package]
+name = "codemod_recipe_engine"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+codemod_recipe_core = { path = "../core" }
+codemod_recipe_yaml = { path = "../yaml" }
+thiserror = "2"
+tree-sitter = "0.26"
+tree-sitter-dart = "0.1"
+serde_yaml = "0.9"
+
+[dev-dependencies]
+pretty_assertions = "1"
+
+[lints]
+workspace = true
+

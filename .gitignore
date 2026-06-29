@@ -27,3 +27,6 @@ pubspec.lock
 # OS
 .DS_Store
 Thumbs.db
+
+# Rust
+rust/target/

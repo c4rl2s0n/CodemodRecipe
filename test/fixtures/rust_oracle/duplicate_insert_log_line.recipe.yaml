@@ -1,0 +1,21 @@
+dslVersion: 2
+id: insert_log_line
+name: duplicate_insert_log_line
+description: Duplicate id for registry tests
+
+args:
+  - name: file
+    required: true
+    inputKind: file
+
+steps:
+  - edit:
+      path: "{{file}}"
+      ops:
+        - insert:
+            query: "(identifier) @x"
+            capture: x
+            anchor: start
+            text: ""
+
+postExecution: []
