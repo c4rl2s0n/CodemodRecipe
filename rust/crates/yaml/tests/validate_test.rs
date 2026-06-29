@@ -1,3 +1,4 @@
+use std::collections::BTreeMap;
 use codemod_recipe_yaml::model::{EditOp, EditStep, Recipe, Step};
 use codemod_recipe_yaml::validate::{validate_recipe, ValidationError};
 use serde_yaml::Value;
@@ -9,6 +10,7 @@ fn rejects_insert_missing_capture() {
         name: None,
         description: None,
         args: vec![],
+        maps: BTreeMap::new(),
         steps: vec![Step::Edit(EditStep {
             path: "a.dart".to_string(),
             language: None,
@@ -39,6 +41,7 @@ fn rejects_unknown_edit_op_kind() {
         name: None,
         description: None,
         args: vec![],
+        maps: BTreeMap::new(),
         steps: vec![Step::Edit(EditStep {
             path: "a.dart".to_string(),
             language: None,

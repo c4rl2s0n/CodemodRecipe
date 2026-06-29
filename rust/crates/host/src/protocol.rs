@@ -83,6 +83,8 @@ pub struct RecipeCatalogResponse {
     pub recipes: Option<Vec<RecipeSchema>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub diagnostics: Option<Vec<RecipeDiagnostic>>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "mapsLoaded")]
+    pub maps_loaded: Option<usize>,
 }
 
 #[derive(Debug, Serialize, Clone)]

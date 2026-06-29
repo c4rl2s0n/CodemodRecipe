@@ -1,3 +1,4 @@
+pub mod map_registry;
 pub mod naming;
 pub mod config;
 pub mod diff;

@@ -1,6 +1,8 @@
 use codemod_recipe_engine::engine::{Engine, QueryContext};
 use codemod_recipe_yaml::model::{EditOp, EditStep, Recipe, RemoveOp, Step};
 
+use std::collections::BTreeMap;
+
 const SOURCE_WITH_DOC_FIELD: &str = "class Settings {\n  /// Count of items.\n  final int count = 0;\n  final int other = 1;\n}\n";
 
 #[test]
@@ -17,6 +19,7 @@ fn remove_with_leading_trivia_strips_doc_comment() {
         name: None,
         description: None,
         args: vec![],
+        maps: BTreeMap::new(),
         steps: vec![Step::Edit(EditStep {
             path: "test.dart".to_string(),
             language: None,

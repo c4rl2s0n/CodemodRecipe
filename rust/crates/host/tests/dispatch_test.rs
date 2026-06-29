@@ -29,6 +29,17 @@ fn setup_workspace_with_insert_recipe(name: &str) -> PathBuf {
 }
 
 #[test]
+fn list_reports_loaded_maps_from_repo() {
+    let repo = repo_root();
+    let mut registry = RecipeRegistry::new(repo.clone(), repo.join(".codemod"));
+    registry.reload();
+
+    let response = dispatch::handle_command(&mut registry, HostCommand::List);
+    assert_eq!(response["ok"], true);
+    assert!(response["mapsLoaded"].as_u64().unwrap_or(0) >= 1);
+}
+
+#[test]
 fn list_returns_registered_recipes() {
     let workspace = setup_workspace_with_insert_recipe("list");
     let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));

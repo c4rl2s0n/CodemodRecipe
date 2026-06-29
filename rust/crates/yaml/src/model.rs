@@ -2,6 +2,8 @@ use serde::de::{self, MapAccess, Visitor};
 use serde::{Deserialize, Deserializer};
 use std::fmt;
 
+use std::collections::BTreeMap;
+
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct Recipe {
     pub id: String,
@@ -11,6 +13,8 @@ pub struct Recipe {
     pub description: Option<String>,
     #[serde(default)]
     pub args: Vec<Arg>,
+    #[serde(default)]
+    pub maps: BTreeMap<String, BTreeMap<String, String>>,
     pub steps: Vec<Step>,
     #[serde(default, rename = "postExecution")]
     pub post_execution: Vec<PostExecution>,

@@ -1,5 +1,6 @@
 use codemod_recipe_engine::engine::{parse_recipe_yaml, Engine, QueryContext};
 use codemod_recipe_yaml::model::{EditOp, EditStep, Recipe, RemoveOp, ReplaceOp, Step};
+use std::collections::BTreeMap;
 
 const SETTINGS: &str = "class Settings {\n  final int count = 0;\n}\n";
 
@@ -30,6 +31,7 @@ fn remove_count_recipe() -> Recipe {
         name: None,
         description: None,
         args: vec![],
+        maps: BTreeMap::new(),
         steps: vec![Step::Edit(EditStep {
             path: "test.dart".to_string(),
             language: None,
@@ -49,6 +51,7 @@ fn replace_count_recipe(text: &str) -> Recipe {
         name: None,
         description: None,
         args: vec![],
+        maps: BTreeMap::new(),
         steps: vec![Step::Edit(EditStep {
             path: "test.dart".to_string(),
             language: None,

@@ -1,0 +1,26 @@
+dslVersion: 1
+id: remove_counter_field
+name: remove_counter_field
+description: Removes a field from a class
+
+args:
+  - name: file
+    required: true
+    inputKind: file
+  - name: className
+    required: true
+    inputKind: symbol
+  - name: field
+    required: true
+    inputKind: symbol
+
+steps:
+  - edit:
+      path: "{{file}}"
+      steps:
+        - remove:
+            at:
+              - class: "{{className}}"
+              - field: "{{field}}"
+
+postExecution: []

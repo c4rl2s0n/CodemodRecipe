@@ -24,6 +24,7 @@ fn catalog_response(registry: &RecipeRegistry) -> serde_json::Value {
         } else {
             Some(diagnostics)
         },
+        maps_loaded: Some(registry.maps_count()),
     })
 }
 

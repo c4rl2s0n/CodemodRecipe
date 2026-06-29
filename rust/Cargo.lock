@@ -40,6 +40,7 @@ name = "codemod_recipe_engine"
 version = "0.1.0"
 dependencies = [
  "codemod_recipe_core",
+ "codemod_recipe_host",
  "codemod_recipe_yaml",
  "pretty_assertions",
  "serde_yaml",
@@ -60,6 +61,7 @@ dependencies = [
  "pretty_assertions",
  "serde",
  "serde_json",
+ "serde_yaml",
  "thiserror",
 ]
 

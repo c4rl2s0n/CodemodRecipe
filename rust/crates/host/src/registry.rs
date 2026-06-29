@@ -1,5 +1,6 @@
+use crate::map_registry::{load_maps, merge_maps, warn_on_missing_map_ids};
 use crate::protocol::{DiagnosticSource, RecipeArg, RecipeDiagnostic, RecipeSchema};
-use crate::template::render_string;
+use crate::template::render_template;
 use codemod_recipe_engine::engine::parse_recipe_yaml;
 use codemod_recipe_yaml::model::{Arg, EditOp, Recipe, Step};
 use std::collections::BTreeMap;
@@ -8,6 +9,7 @@ use std::path::{Path, PathBuf};
 pub struct RecipeRegistry {
     pub workspace_root: PathBuf,
     codemod_root: PathBuf,
+    maps_by_id: BTreeMap<String, BTreeMap<String, String>>,
     recipes_by_id: BTreeMap<String, (PathBuf, RecipeSchema)>,
     diagnostics: Vec<RecipeDiagnostic>,
 }
@@ -17,6 +19,7 @@ impl RecipeRegistry {
         Self {
             workspace_root,
             codemod_root,
+            maps_by_id: BTreeMap::new(),
             recipes_by_id: BTreeMap::new(),
             diagnostics: Vec::new(),
         }
@@ -24,7 +27,14 @@ impl RecipeRegistry {
 
     pub fn reload(&mut self) {
         self.recipes_by_id.clear();
+        self.maps_by_id.clear();
         self.diagnostics.clear();
+
+        let maps_dir = self.codemod_root.join("maps");
+        let map_result = load_maps(&self.workspace_root, &maps_dir);
+        self.maps_by_id = map_result.maps_by_id;
+        self.diagnostics.extend(map_result.diagnostics);
+
         let recipes_dir = self.codemod_root.join("recipes");
         let Ok(entries) = std::fs::read_dir(recipes_dir) else {
             return;
@@ -34,15 +44,35 @@ impl RecipeRegistry {
 
         for entry in entries.flatten() {
             let path = entry.path();
-            if path.extension().is_none_or(|ext| ext != "yaml") {
+            if path.extension().is_none_or(|ext| ext != "yaml" && ext != "yml") {
                 continue;
             }
+            let relative = relative_path(&self.workspace_root, &path);
             let Ok(text) = std::fs::read_to_string(&path) else {
                 continue;
             };
+
+            if looks_like_map_file(&text) {
+                continue;
+            }
+
             let Ok(recipe) = parse_recipe_yaml(&text) else {
+                self.diagnostics.push(RecipeDiagnostic {
+                    severity: "error",
+                    code: "E_RECIPE_PARSE",
+                    message: format!("Failed to parse recipe: {}", path.display()),
+                    sources: vec![DiagnosticSource {
+                        file: relative.clone(),
+                        line: None,
+                        column: None,
+                    }],
+                });
                 continue;
             };
+
+            let merged_maps = self.merged_maps_for(&recipe);
+            collect_map_warnings(&recipe, &relative, &merged_maps, &mut self.diagnostics);
+
             let schema = recipe_to_schema(&recipe);
             if seen_ids.contains_key(&schema.id) {
                 self.diagnostics.push(RecipeDiagnostic {
@@ -50,7 +80,7 @@ impl RecipeRegistry {
                     code: "E_DUPLICATE_ID",
                     message: format!("Duplicate recipe id: {}", schema.id),
                     sources: vec![DiagnosticSource {
-                        file: path_to_string(&path),
+                        file: relative,
                         line: None,
                         column: None,
                     }],
@@ -75,6 +105,10 @@ impl RecipeRegistry {
         self.recipes_by_id.keys().cloned().collect()
     }
 
+    pub fn maps_count(&self) -> usize {
+        self.maps_by_id.len()
+    }
+
     pub fn get(&self, id: &str) -> Option<RecipeSchema> {
         self.recipes_by_id.get(id).map(|(_, s)| s.clone())
     }
@@ -89,6 +123,15 @@ impl RecipeRegistry {
         Ok((recipe, path.clone()))
     }
 
+    pub fn merged_maps_for(&self, recipe: &Recipe) -> BTreeMap<String, BTreeMap<String, String>> {
+        merge_maps(&self.maps_by_id, &recipe.maps)
+    }
+
+    pub fn merged_maps_for_id(&self, id: &str) -> Result<BTreeMap<String, BTreeMap<String, String>>, String> {
+        let (recipe, _) = self.load_recipe_ast(id)?;
+        Ok(self.merged_maps_for(&recipe))
+    }
+
     pub fn resolve_file_path(&self, relative: &str) -> PathBuf {
         self.workspace_root.join(relative)
     }
@@ -98,8 +141,59 @@ impl RecipeRegistry {
     }
 }
 
-fn path_to_string(path: &Path) -> String {
-    path.to_string_lossy().to_string()
+fn looks_like_map_file(text: &str) -> bool {
+    let Ok(value) = serde_yaml::from_str::<serde_yaml::Value>(text) else {
+        return false;
+    };
+    let serde_yaml::Value::Mapping(map) = value else {
+        return false;
+    };
+    map.contains_key("entries") && !map.contains_key("steps")
+}
+
+fn collect_map_warnings(
+    recipe: &Recipe,
+    file_path: &str,
+    maps: &BTreeMap<String, BTreeMap<String, String>>,
+    diagnostics: &mut Vec<RecipeDiagnostic>,
+) {
+    for step in &recipe.steps {
+        let Step::Edit(edit) = step else { continue };
+        warn_on_missing_map_ids(&edit.path, file_path, maps, diagnostics);
+        for op in &edit.ops {
+            match op {
+                EditOp::Insert(insert) => {
+                    warn_on_missing_map_ids(&insert.query, file_path, maps, diagnostics);
+                    warn_on_missing_map_ids(&insert.capture, file_path, maps, diagnostics);
+                    warn_on_missing_map_ids(&insert.text, file_path, maps, diagnostics);
+                }
+                EditOp::Replace(replace) => {
+                    warn_on_missing_map_ids(&replace.query, file_path, maps, diagnostics);
+                    warn_on_missing_map_ids(&replace.capture, file_path, maps, diagnostics);
+                    warn_on_missing_map_ids(&replace.text, file_path, maps, diagnostics);
+                }
+                EditOp::Remove(remove) => {
+                    warn_on_missing_map_ids(&remove.query, file_path, maps, diagnostics);
+                    warn_on_missing_map_ids(&remove.capture, file_path, maps, diagnostics);
+                }
+                EditOp::Unknown(_, _) => {}
+            }
+        }
+    }
+}
+
+fn relative_path(workspace_root: &Path, absolute: &Path) -> String {
+    let root = workspace_root
+        .canonicalize()
+        .unwrap_or_else(|_| workspace_root.to_path_buf());
+    let file = absolute
+        .canonicalize()
+        .unwrap_or_else(|_| absolute.to_path_buf());
+    if let Ok(rel) = file.strip_prefix(&root) {
+        rel.to_string_lossy().to_string()
+    } else {
+        absolute.to_string_lossy().to_string()
+    }
 }
 
 pub fn recipe_to_schema(recipe: &Recipe) -> RecipeSchema {
@@ -125,31 +219,36 @@ fn arg_to_schema(arg: &Arg) -> RecipeArg {
     }
 }
 
-pub fn render_recipe_templates(recipe: &Recipe, args: &BTreeMap<String, String>) -> Recipe {
+pub fn render_recipe_templates(
+    recipe: &Recipe,
+    args: &BTreeMap<String, String>,
+    maps: &BTreeMap<String, BTreeMap<String, String>>,
+) -> Recipe {
+    let render = |text: &str| render_template(text, args, maps);
     let mut out = recipe.clone();
     for step in &mut out.steps {
         let Step::Edit(edit) = step else {
             continue;
         };
-        edit.path = render_string(&edit.path, args);
+        edit.path = render(&edit.path);
         if let Some(lang) = &edit.language {
-            edit.language = Some(render_string(lang, args));
+            edit.language = Some(render(lang));
         }
         for op in &mut edit.ops {
             match op {
                 EditOp::Insert(insert) => {
-                    insert.query = render_string(&insert.query, args);
-                    insert.capture = render_string(&insert.capture, args);
-                    insert.text = render_string(&insert.text, args);
+                    insert.query = render(&insert.query);
+                    insert.capture = render(&insert.capture);
+                    insert.text = render(&insert.text);
                 }
                 EditOp::Replace(replace) => {
-                    replace.query = render_string(&replace.query, args);
-                    replace.capture = render_string(&replace.capture, args);
-                    replace.text = render_string(&replace.text, args);
+                    replace.query = render(&replace.query);
+                    replace.capture = render(&replace.capture);
+                    replace.text = render(&replace.text);
                 }
                 EditOp::Remove(remove) => {
-                    remove.query = render_string(&remove.query, args);
-                    remove.capture = render_string(&remove.capture, args);
+                    remove.query = render(&remove.query);
+                    remove.capture = render(&remove.capture);
                 }
                 EditOp::Unknown(_, _) => {}
             }
@@ -178,6 +277,7 @@ mod tests {
             .expect("insert_log_line recipe should load");
         assert_eq!(schema.id, "insert_log_line");
         assert!(schema.args.iter().any(|a| a.name == "file"));
+        assert!(registry.maps_count() >= 1);
     }
 
     #[test]
@@ -205,6 +305,43 @@ mod tests {
         assert!(registry.get("insert_log_line").is_some());
         let (_, diagnostics) = registry.list();
         assert!(diagnostics.iter().any(|d| d.code == "E_DUPLICATE_ID"));
+
+        let _ = std::fs::remove_dir_all(workspace);
+    }
+
+    #[test]
+    fn warns_when_recipe_references_missing_map() {
+        let workspace =
+            std::env::temp_dir().join(format!("codemod_registry_map_warn_{}", std::process::id()));
+        let recipes_dir = workspace.join(".codemod/recipes");
+        std::fs::create_dir_all(&recipes_dir).unwrap();
+        std::fs::write(
+            recipes_dir.join("uses_map.yaml"),
+            r#"dslVersion: 2
+id: uses_map
+args:
+  - name: file
+    required: true
+steps:
+  - edit:
+      path: "{{file}}"
+      ops:
+        - insert:
+            query: "(identifier) @x"
+            capture: x
+            anchor: start
+            text: "{{$map 'missing_map' type}}"
+"#,
+        )
+        .unwrap();
+
+        let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+        registry.reload();
+
+        let (_, diagnostics) = registry.list();
+        assert!(diagnostics
+            .iter()
+            .any(|d| d.code == "W_MAP_ID_NOT_FOUND"));
 
         let _ = std::fs::remove_dir_all(workspace);
     }

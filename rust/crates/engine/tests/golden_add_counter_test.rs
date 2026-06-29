@@ -23,7 +23,7 @@ fn golden_add_counter_field() {
     args.insert("className".to_string(), "Settings".to_string());
     args.insert("field".to_string(), "counter".to_string());
 
-    let rendered = render_recipe_templates(&recipe, &args);
+    let rendered = render_recipe_templates(&recipe, &args, &BTreeMap::new());
     let mut engine = Engine::new_dart().unwrap();
     let codemod = repo_root.join(".codemod");
     let ctx = QueryContext {
@@ -58,7 +58,7 @@ fn template_renders_camel_field_name_in_recipe_text() {
     args.insert("field".to_string(), "MyCounter".to_string());
     args.insert("file".to_string(), "a.dart".to_string());
 
-    let rendered = render_recipe_templates(&recipe, &args);
+    let rendered = render_recipe_templates(&recipe, &args, &BTreeMap::new());
     let codemod_recipe_yaml::model::Step::Edit(edit) = &rendered.steps[0] else {
         panic!("expected edit");
     };

@@ -41,7 +41,7 @@ pub fn run_recipe_on_source(
     ctx: &QueryContext<'_>,
 ) -> Result<RunResult, EngineError> {
     let mut engine = Engine::new_dart()?;
-    let rendered = render_recipe_templates(recipe, &BTreeMap::new());
+    let rendered = render_recipe_templates(recipe, &BTreeMap::new(), &BTreeMap::new());
     let result = engine.apply_recipe_to_source(ctx, &rendered, file_arg, source)?;
     Ok(RunResult {
         modified: result.modified,
@@ -62,11 +62,12 @@ pub fn run_recipe_on_file(
         .ok_or_else(|| "Missing required arg: file".to_string())?;
 
     let (recipe_ast, recipe_path) = registry.load_recipe_ast(recipe_id)?;
+    let merged_maps = registry.merged_maps_for(&recipe_ast);
     let file_path = registry.resolve_file_path(&file);
     let before =
         std::fs::read_to_string(&file_path).map_err(|e| format!("Failed to read {file}: {e}"))?;
 
-    let rendered = render_recipe_templates(&recipe_ast, args);
+    let rendered = render_recipe_templates(&recipe_ast, args, &merged_maps);
     let ctx = QueryContext {
         recipe_file: Some(recipe_path.as_path()),
         codemod_root: registry.codemod_root(),
