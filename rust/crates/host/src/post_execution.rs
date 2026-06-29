@@ -36,6 +36,8 @@ fn run_shell_command(command: &str) -> Result<(), String> {
     let status = Command::new("sh")
         .arg("-c")
         .arg(command)
+        .stdout(std::process::Stdio::null())
+        .stderr(std::process::Stdio::null())
         .status()
         .map_err(|e| format!("Failed to run postExecution `{command}`: {e}"))?;
     if !status.success() {

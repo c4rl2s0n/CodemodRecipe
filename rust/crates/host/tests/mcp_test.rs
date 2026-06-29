@@ -136,6 +136,49 @@ fn stdio_subprocess_lists_recipes_and_previews() {
         preview_text
     );
     assert!(!preview_json["files"].as_array().unwrap().is_empty());
+    let token = preview_json["previewToken"]
+        .as_str()
+        .expect("preview should return previewToken");
+
+    let apply = session.rpc(
+        5,
+        "tools/call",
+        serde_json::json!({
+            "name": "apply_recipe",
+            "arguments": {
+                "recipe": "insert_log_line",
+                "args": { "file": rel },
+                "previewToken": token
+            }
+        }),
+    );
+    let apply_text = apply["result"]["content"][0]["text"].as_str().unwrap();
+    let apply_json: serde_json::Value = serde_json::from_str(apply_text).unwrap();
+    assert_eq!(apply_json["ok"], true, "apply failed: {apply_text}");
+
+    let content = std::fs::read_to_string(&settings).unwrap();
+    assert!(content.contains("print('codemod')"));
+
+    let reject = session.rpc(
+        6,
+        "tools/call",
+        serde_json::json!({
+            "name": "apply_recipe",
+            "arguments": {
+                "recipe": "insert_log_line",
+                "args": { "file": rel }
+            }
+        }),
+    );
+    let reject_text = reject["result"]["content"][0]["text"].as_str().unwrap();
+    let reject_json: serde_json::Value = serde_json::from_str(reject_text).unwrap();
+    assert_eq!(reject_json["ok"], false);
+    assert!(
+        reject_json["error"]
+            .as_str()
+            .unwrap()
+            .contains("previewToken")
+    );
 
     let _ = std::fs::remove_dir_all(workspace);
 }

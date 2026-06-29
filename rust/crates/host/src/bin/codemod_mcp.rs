@@ -1,4 +1,6 @@
-use codemod_recipe_host::{config::HostConfig, registry::RecipeRegistry, runner};
+use codemod_recipe_host::dispatch::handle_command;
+use codemod_recipe_host::protocol::HostCommand;
+use codemod_recipe_host::{config::HostConfig, registry::RecipeRegistry};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::BTreeMap;
@@ -83,8 +85,8 @@ fn handle_request(
             result: Some(json!({
               "tools": [
                 { "name": "list_recipes", "description": "List registered recipes", "inputSchema": { "type": "object" } },
-                { "name": "preview_recipe", "description": "Preview a recipe against args", "inputSchema": { "type": "object", "properties": { "recipe": { "type": "string" }, "args": { "type": "object" } }, "required": ["recipe","args"] } },
-                { "name": "apply_recipe", "description": "Apply a recipe (unsafe: writes files)", "inputSchema": { "type": "object", "properties": { "recipe": { "type": "string" }, "args": { "type": "object" } }, "required": ["recipe","args"] } }
+                { "name": "preview_recipe", "description": "Preview a recipe against args (returns previewToken)", "inputSchema": { "type": "object", "properties": { "recipe": { "type": "string" }, "args": { "type": "object" }, "snippetLines": { "type": "number" } }, "required": ["recipe","args"] } },
+                { "name": "apply_recipe", "description": "Apply a previewed recipe atomically", "inputSchema": { "type": "object", "properties": { "recipe": { "type": "string" }, "args": { "type": "object" }, "previewToken": { "type": "string" } }, "required": ["recipe","args","previewToken"] } }
               ]
             })),
             error: None,
@@ -109,7 +111,7 @@ fn handle_request(
                         .and_then(|v| v.as_str())
                         .unwrap_or("");
                     let args = json_args_to_btreemap(&arguments);
-                    preview_or_apply(registry, recipe_id, &args, false)
+                    preview_or_apply(registry, recipe_id, &args, false, &arguments)
                 }
                 "apply_recipe" => {
                     let recipe_id = arguments
@@ -117,7 +119,7 @@ fn handle_request(
                         .and_then(|v| v.as_str())
                         .unwrap_or("");
                     let args = json_args_to_btreemap(&arguments);
-                    preview_or_apply(registry, recipe_id, &args, true)
+                    preview_or_apply(registry, recipe_id, &args, true, &arguments)
                 }
                 _ => json!({ "ok": false, "error": format!("Unknown tool: {tool}") }),
             };
@@ -156,26 +158,47 @@ fn json_args_to_btreemap(arguments: &serde_json::Value) -> BTreeMap<String, Stri
 }
 
 fn preview_or_apply(
-    registry: &RecipeRegistry,
+    registry: &mut RecipeRegistry,
     recipe_id: &str,
     args: &BTreeMap<String, String>,
     do_apply: bool,
+    arguments: &serde_json::Value,
 ) -> serde_json::Value {
-    match runner::run_recipe_on_file(registry, recipe_id, args) {
-        Ok((file, before, result)) => {
-            if do_apply {
-                let file_path = registry.resolve_file_path(&file);
-                if let Err(error) = runner::write_file(&file_path, &result.modified) {
-                    return json!({ "ok": false, "error": error });
-                }
-                json!({ "ok": true, "applied": [file] })
-            } else {
-                json!({
-                    "ok": true,
-                    "files": [{ "path": file, "original": before, "modified": result.modified }]
-                })
-            }
-        }
-        Err(error) => json!({ "ok": false, "error": error }),
+    if recipe_id.is_empty() {
+        return json!({ "ok": false, "error": "Missing recipe id" });
+    }
+
+    if do_apply {
+        let preview_token = arguments
+            .get("previewToken")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .to_string();
+        let selection = arguments
+            .get("selection")
+            .cloned()
+            .unwrap_or(serde_json::Value::Null);
+        handle_command(
+            registry,
+            HostCommand::Apply {
+                recipe: recipe_id.to_string(),
+                args: args.clone(),
+                preview_token,
+                selection,
+            },
+        )
+    } else {
+        let snippet_lines = arguments
+            .get("snippetLines")
+            .and_then(|v| v.as_u64())
+            .map(|n| n as u32);
+        handle_command(
+            registry,
+            HostCommand::Preview {
+                recipe: recipe_id.to_string(),
+                args: args.clone(),
+                snippet_lines,
+            },
+        )
     }
 }
