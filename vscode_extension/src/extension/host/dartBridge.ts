@@ -98,11 +98,31 @@ export class DartBridge {
         args: this.buildBinaryArgs(),
       };
     }
-    
-    // Fallback to dart run if binary doesn't exist
+
+    // Fallback: run the Rust host via cargo (dev mode).
+    // This avoids requiring a prebuilt binary during development.
+    const hostConfig = this.currentHostSpawnConfig();
+    const manifestPath = path.join(this.workspaceRoot, 'rust', 'Cargo.toml');
     return {
-      command: this.config.dartPath,
-      args: this.buildSpawnArgs(),
+      command: 'cargo',
+      args: [
+        'run',
+        '-q',
+        '--manifest-path',
+        manifestPath,
+        '-p',
+        'codemod_recipe_host',
+        '--bin',
+        'codemod_host',
+        '--',
+        '--stdio-server',
+        '--workspace-root',
+        hostConfig.workspaceRoot,
+        '--codemod-root',
+        hostConfig.codemodRoot,
+        '--empty-constructor-style',
+        hostConfig.emptyConstructorStyle,
+      ],
     };
   }
 
@@ -180,13 +200,15 @@ export class DartBridge {
   apply(
     recipe: string,
     args: Record<string, string>,
-    selection: SelectionPayload
+    selection: SelectionPayload,
+    previewToken: string
   ): Promise<ApplyResponse> {
     return this.send<ApplyResponse>({
       command: 'apply',
       recipe,
       args,
       selection,
+      previewToken,
     });
   }
 

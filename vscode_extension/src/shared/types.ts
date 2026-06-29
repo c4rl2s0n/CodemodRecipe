@@ -55,6 +55,8 @@ export interface RecipeCatalogResponse {
   error?: string;
   recipes?: RecipeSchema[];
   diagnostics?: RecipeDiagnostic[];
+  /** Number of YAML maps loaded from `.codemod/maps/`. */
+  mapsLoaded?: number;
 }
 
 /** @deprecated Use {@link RecipeCatalogResponse} */
@@ -67,6 +69,7 @@ export interface PreviewResponse {
   ok: boolean;
   error?: string;
   recipe?: string;
+  previewToken?: string;
   files?: FilePreview[];
 }
 
@@ -105,6 +108,7 @@ export type HostCommand =
       command: 'apply';
       recipe: string;
       args: Record<string, string>;
+      previewToken: string;
       selection: SelectionPayload;
     }
   | { command: 'generateAstPath'; path: string; offset: number };

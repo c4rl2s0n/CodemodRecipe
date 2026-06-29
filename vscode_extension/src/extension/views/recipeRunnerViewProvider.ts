@@ -207,6 +207,7 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
       }
 
       this.state.lastFiles = response.files ?? [];
+      this.state.lastPreviewToken = response.previewToken;
       this.postMessage({
         type: EXTENSION_TO_WEBVIEW.previewResult,
         files: this.state.lastFiles,
@@ -227,10 +228,20 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
     const recipe = this.state.currentRecipe;
     if (!recipe) return;
 
+    const previewToken = this.state.lastPreviewToken;
+    if (!previewToken) {
+      this.postMessage({
+        type: EXTENSION_TO_WEBVIEW.error,
+        message: 'Preview is out of date. Re-run preview before applying.',
+      });
+      return;
+    }
+
     const response = await this.bridge.apply(
       recipe.id,
       this.state.lastArgs,
-      selection
+      selection,
+      previewToken
     );
     if (!response.ok) {
       this.postMessage({

@@ -6,22 +6,23 @@ exactly which edits to keep before applying.
 
 ## How it works
 
-The extension does not parse Dart. Instead it launches a small Dart **host**
-entry point you provide, and talks to it over a JSON-over-stdio protocol.
+The extension does not parse Dart. It launches the **Rust `codemod_host`**
+binary (tree-sitter engine) and talks to it over a JSON-over-stdio protocol.
 
 ```mermaid
 flowchart LR
     RecipesTab["Recipes tab"] -->|list/reload| Host
     Form["Argument form"] -->|preview| Host
     Review["Review + checkboxes"] -->|apply| Host
-    Host["bin/codemod_host.dart"] -->|JSON| RecipesTab
+    Host["Rust codemod_host"] -->|JSON| RecipesTab
     Host -->|preview| Form
     Review --> Diff["vscode.diff"]
 ```
 
-The extension does **not** bundle Dart or the host. It spawns `dart run
-bin/codemod_host.dart --stdio-server` from your workspace (or a configured
-entrypoint) and talks JSON over stdio.
+**Default:** bundled `codemod_host` from `vscode_extension/bin/` (built via
+`build.sh` from `rust/`). **Dev fallback:** `cargo run -p codemod_recipe_host
+--bin codemod_host` when no binary is present. Set `codemodRecipe.useDartRun`
+to use the legacy Dart host for debugging only.
 
 ## Setup
 
@@ -48,7 +49,10 @@ entrypoint) and talks JSON over stdio.
 }
 ```
 
-The extension uses `bin/codemod_host.dart` from the codemod_recipe package.
+The extension uses a host process that speaks the codemod host protocol over stdio.
+
+- **Default (production):** bundled `codemod_host` binary built from the Rust workspace under `rust/`.
+- **Dev fallback:** if no bundled binary is present, the extension can spawn `cargo run ... --bin codemod_host`.
 All YAML and .template files in the codemod root are automatically discovered and reloaded
 when changed; recipe load errors (e.g. duplicate ids) appear in the Recipes tab.
 

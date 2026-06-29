@@ -117,7 +117,7 @@
         "codemodRecipe.useDartRun": {
           "type": "boolean",
           "default": false,
-          "description": "Use 'dart run' mode instead of bundled binary (for debugging only)."
+          "description": "Use the legacy Dart host via 'dart run' instead of the bundled Rust codemod_host binary (debugging only)."
         },
         "codemodRecipe.emptyConstructorStyle": {
           "type": "string",

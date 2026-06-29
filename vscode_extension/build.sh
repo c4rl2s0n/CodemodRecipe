@@ -69,8 +69,10 @@ echo "Using Dart: $DART_CMD"
 mkdir -p "$ROOT/bin"
 
 # Compile for current platform
-echo "Compiling codemod_host for current platform..."
-"$DART_CMD" compile exe "$REPO_ROOT/bin/codemod_host.dart" -o "$ROOT/bin/codemod_host"
+echo "Building Rust codemod_host for current platform..."
+mkdir -p "$ROOT/bin"
+cargo build --quiet --manifest-path "$REPO_ROOT/rust/Cargo.toml" -p codemod_recipe_host --bin codemod_host --release
+cp "$REPO_ROOT/rust/target/release/codemod_host" "$ROOT/bin/codemod_host"
 
 # Note: For cross-platform builds, you would need to run this on each platform
 # or use a build farm. For development, compiling on the current platform is sufficient.

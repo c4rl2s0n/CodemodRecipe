@@ -18,6 +18,7 @@ export class RecipeRunnerState {
   currentRecipe: RecipeSchema | undefined;
   initialArgs: Record<string, string> = {};
   lastArgs: Record<string, string> = {};
+  lastPreviewToken: string | undefined;
   lastFiles: FilePreview[] = [];
   activeTab: RunnerTab = RUNNER_TABS.recipes;
 
@@ -67,6 +68,7 @@ export class RecipeRunnerState {
     this.currentRecipe = recipe;
     this.initialArgs = initialArgs;
     this.lastArgs = {};
+    this.lastPreviewToken = undefined;
     this.lastFiles = [];
     this.activeTab = RUNNER_TABS.runner;
   }
