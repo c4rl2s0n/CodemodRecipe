@@ -1,0 +1,34 @@
+dslVersion: 2
+id: insert_log_line
+name: insert_log_line
+description: Insert a log line at end of Settings.update()
+
+args:
+  - name: file
+    required: true
+    inputKind: file
+
+steps:
+  - edit:
+      path: "{{file}}"
+      ops:
+        - insert:
+            query: |
+              (class_declaration
+                name: (identifier) @className
+                body: (class_body
+                  (class_member
+                    (method_signature
+                      (function_signature
+                        name: (identifier) @methodName))
+                    (function_body
+                      (block) @body)))
+                (#eq? @className "Settings")
+                (#eq? @methodName "update"))
+            capture: body
+            anchor: end
+            text: "    print('codemod');\n"
+
+postExecution:
+  - dartFormat
+
