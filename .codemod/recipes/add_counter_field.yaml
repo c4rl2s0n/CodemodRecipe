@@ -1,4 +1,4 @@
-dslVersion: 1
+dslVersion: 2
 id: add_counter_field
 name: add_counter_field
 description: Adds a field to a class
@@ -17,13 +17,21 @@ args:
 steps:
   - edit:
       path: "{{file}}"
-      steps:
+      ops:
         - insert:
-            at:
-              - class: "{{className}}"
-            anchor: member:last
-            text: |
-              final int {{$camel field}};
+            query: |
+              (class_declaration
+                name: (identifier) @className
+                body: (class_body
+                  (class_member
+                    (method_signature
+                      (function_signature
+                        name: (identifier) @methodName)))) @member
+                (#eq? @className "{{className}}")
+                (#eq? @methodName "update"))
+            capture: member
+            anchor: start
+            text: "  final int {{$camel field}};\n\n"
 
 postExecution:
   - dartFormat
