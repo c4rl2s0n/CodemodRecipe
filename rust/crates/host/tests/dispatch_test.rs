@@ -449,3 +449,29 @@ fn diff_returns_full_file_data() {
 
     let _ = std::fs::remove_dir_all(workspace);
 }
+
+#[test]
+fn preview_add_log_line_with_class_and_method_args() {
+    let repo = repo_root();
+    let mut registry = RecipeRegistry::new(repo.clone(), repo.join(".codemod"));
+    registry.reload();
+
+    let rel = "test/fixtures/ast_paths/settings.dart";
+    let mut args = BTreeMap::new();
+    args.insert("file".to_string(), rel.to_string());
+    args.insert("className".to_string(), "Settings".to_string());
+    args.insert("methodName".to_string(), "update".to_string());
+
+    let response = dispatch::handle_command(
+        &mut registry,
+        HostCommand::Preview {
+            recipe: "add_log_line".to_string(),
+            args,
+            snippet_lines: Some(2),
+        },
+    );
+    assert_eq!(response["ok"], true, "{}", response["error"]);
+    let files = response["files"].as_array().unwrap();
+    assert_eq!(files.len(), 1);
+    assert!(files[0]["snippet"].as_str().unwrap_or("").contains("print"));
+}

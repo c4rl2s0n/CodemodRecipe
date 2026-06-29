@@ -35,6 +35,64 @@ fn rejects_insert_missing_capture() {
 }
 
 #[test]
+fn rejects_empty_edit_ops() {
+    let recipe = Recipe {
+        id: "bad".to_string(),
+        name: None,
+        description: None,
+        args: vec![],
+        maps: BTreeMap::new(),
+        steps: vec![Step::Edit(EditStep {
+            path: "a.dart".to_string(),
+            language: None,
+            ops: vec![],
+        })],
+        post_execution: vec![],
+    };
+
+    let errors = validate_recipe(&recipe).unwrap_err();
+    assert!(errors.iter().any(|e| matches!(e, ValidationError::EmptyEditOps)));
+}
+
+#[test]
+fn rejects_duplicate_arg_names() {
+    let recipe = Recipe {
+        id: "bad".to_string(),
+        name: None,
+        description: None,
+        args: vec![
+            codemod_recipe_yaml::model::Arg {
+                name: "file".to_string(),
+                required: true,
+                input_kind: None,
+            },
+            codemod_recipe_yaml::model::Arg {
+                name: "file".to_string(),
+                required: false,
+                input_kind: None,
+            },
+        ],
+        maps: BTreeMap::new(),
+        steps: vec![Step::Edit(EditStep {
+            path: "a.dart".to_string(),
+            language: None,
+            ops: vec![EditOp::Insert(codemod_recipe_yaml::model::InsertOp {
+                query: "(identifier) @x".to_string(),
+                capture: "x".to_string(),
+                anchor: codemod_recipe_yaml::model::InsertAnchor::End,
+                text: "x".to_string(),
+            })],
+        })],
+        post_execution: vec![],
+    };
+
+    let errors = validate_recipe(&recipe).unwrap_err();
+    assert!(errors
+        .iter()
+        .any(|e| matches!(e, ValidationError::DuplicateArgName(name) if name == "file")));
+}
+
+#[test]
 fn rejects_unknown_edit_op_kind() {
     let recipe = Recipe {
         id: "bad".to_string(),

@@ -11,10 +11,30 @@ pub enum ValidationError {
 
     #[error("{op} op missing required field: {field}")]
     MissingRequiredField { op: &'static str, field: &'static str },
+
+    #[error("edit step has no ops")]
+    EmptyEditOps,
+
+    #[error("duplicate arg name: {0}")]
+    DuplicateArgName(String),
 }
 
 pub fn validate_recipe(recipe: &Recipe) -> Result<(), Vec<ValidationError>> {
     let mut errors = Vec::new();
+
+    let mut arg_names = std::collections::BTreeSet::new();
+    for arg in &recipe.args {
+        if !arg_names.insert(arg.name.clone()) {
+            errors.push(ValidationError::DuplicateArgName(arg.name.clone()));
+        }
+    }
+
+    if recipe.steps.is_empty() {
+        errors.push(ValidationError::MissingRequiredField {
+            op: "recipe",
+            field: "steps",
+        });
+    }
 
     for step in &recipe.steps {
         match step {
@@ -24,6 +44,9 @@ pub fn validate_recipe(recipe: &Recipe) -> Result<(), Vec<ValidationError>> {
                         op: "edit",
                         field: "path",
                     });
+                }
+                if edit.ops.is_empty() {
+                    errors.push(ValidationError::EmptyEditOps);
                 }
                 for op in &edit.ops {
                     match op {

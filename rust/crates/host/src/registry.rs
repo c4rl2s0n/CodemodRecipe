@@ -3,6 +3,7 @@ use crate::protocol::{DiagnosticSource, RecipeArg, RecipeDiagnostic, RecipeSchem
 use crate::template::render_template;
 use codemod_recipe_engine::engine::parse_recipe_yaml;
 use codemod_recipe_yaml::model::{Arg, EditOp, Recipe, Step};
+use codemod_recipe_yaml::validate::validate_recipe;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
@@ -72,6 +73,7 @@ impl RecipeRegistry {
 
             let merged_maps = self.merged_maps_for(&recipe);
             collect_map_warnings(&recipe, &relative, &merged_maps, &mut self.diagnostics);
+            collect_schema_errors(&recipe, &relative, &mut self.diagnostics);
 
             let schema = recipe_to_schema(&recipe);
             if seen_ids.contains_key(&schema.id) {
@@ -149,6 +151,27 @@ fn looks_like_map_file(text: &str) -> bool {
         return false;
     };
     map.contains_key("entries") && !map.contains_key("steps")
+}
+
+fn collect_schema_errors(
+    recipe: &Recipe,
+    file_path: &str,
+    diagnostics: &mut Vec<RecipeDiagnostic>,
+) {
+    if let Err(errors) = validate_recipe(recipe) {
+        for error in errors {
+            diagnostics.push(RecipeDiagnostic {
+                severity: "error",
+                code: "E_SCHEMA",
+                message: error.to_string(),
+                sources: vec![DiagnosticSource {
+                    file: file_path.to_string(),
+                    line: None,
+                    column: None,
+                }],
+            });
+        }
+    }
 }
 
 fn collect_map_warnings(
@@ -342,6 +365,33 @@ steps:
         assert!(diagnostics
             .iter()
             .any(|d| d.code == "W_MAP_ID_NOT_FOUND"));
+
+        let _ = std::fs::remove_dir_all(workspace);
+    }
+
+    #[test]
+    fn reports_schema_errors_for_invalid_recipe() {
+        let workspace =
+            std::env::temp_dir().join(format!("codemod_registry_schema_{}", std::process::id()));
+        let recipes_dir = workspace.join(".codemod/recipes");
+        std::fs::create_dir_all(&recipes_dir).unwrap();
+        std::fs::write(
+            recipes_dir.join("bad.yaml"),
+            r#"dslVersion: 2
+id: bad_recipe
+steps:
+  - edit:
+      path: "a.dart"
+      ops: []
+"#,
+        )
+        .unwrap();
+
+        let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+        registry.reload();
+
+        let (_, diagnostics) = registry.list();
+        assert!(diagnostics.iter().any(|d| d.code == "E_SCHEMA"));
 
         let _ = std::fs::remove_dir_all(workspace);
     }
