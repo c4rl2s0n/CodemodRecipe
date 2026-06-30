@@ -2,6 +2,7 @@ use crate::map_registry::{load_maps, merge_maps, warn_on_missing_map_ids};
 use crate::protocol::{DiagnosticSource, RecipeArg, RecipeDiagnostic, RecipeSchema};
 use crate::template::render_template;
 use codemod_recipe_engine::engine::parse_recipe_yaml;
+use codemod_recipe_yaml::compose::{expand_recipe_references, recipe_ref_id};
 use codemod_recipe_yaml::model::{Arg, EditOp, Recipe, Step};
 use codemod_recipe_yaml::validate::validate_recipe;
 use std::collections::BTreeMap;
@@ -12,6 +13,7 @@ pub struct RecipeRegistry {
     codemod_root: PathBuf,
     maps_by_id: BTreeMap<String, BTreeMap<String, String>>,
     recipes_by_id: BTreeMap<String, (PathBuf, RecipeSchema)>,
+    recipes_ast: BTreeMap<String, Recipe>,
     diagnostics: Vec<RecipeDiagnostic>,
 }
 
@@ -22,12 +24,14 @@ impl RecipeRegistry {
             codemod_root,
             maps_by_id: BTreeMap::new(),
             recipes_by_id: BTreeMap::new(),
+            recipes_ast: BTreeMap::new(),
             diagnostics: Vec::new(),
         }
     }
 
     pub fn reload(&mut self) {
         self.recipes_by_id.clear();
+        self.recipes_ast.clear();
         self.maps_by_id.clear();
         self.diagnostics.clear();
 
@@ -42,6 +46,7 @@ impl RecipeRegistry {
         };
 
         let mut seen_ids: BTreeMap<String, PathBuf> = BTreeMap::new();
+        let mut parsed_recipes: Vec<(PathBuf, String, Recipe)> = Vec::new();
 
         for entry in entries.flatten() {
             let path = entry.path();
@@ -71,10 +76,6 @@ impl RecipeRegistry {
                 continue;
             };
 
-            let merged_maps = self.merged_maps_for(&recipe);
-            collect_map_warnings(&recipe, &relative, &merged_maps, &mut self.diagnostics);
-            collect_schema_errors(&recipe, &relative, &mut self.diagnostics);
-
             let schema = recipe_to_schema(&recipe);
             if seen_ids.contains_key(&schema.id) {
                 self.diagnostics.push(RecipeDiagnostic {
@@ -90,7 +91,23 @@ impl RecipeRegistry {
                 continue;
             }
             seen_ids.insert(schema.id.clone(), path.clone());
-            self.recipes_by_id.insert(schema.id.clone(), (path, schema));
+            parsed_recipes.push((path, relative, recipe));
+        }
+
+        let known_ids: BTreeMap<String, ()> = parsed_recipes
+            .iter()
+            .map(|(_, _, r)| (r.id.clone(), ()))
+            .collect();
+
+        for (path, relative, recipe) in &parsed_recipes {
+            collect_map_warnings(recipe, relative, &self.merged_maps_for(recipe), &mut self.diagnostics);
+            collect_schema_errors(recipe, relative, &mut self.diagnostics);
+            collect_recipe_ref_errors(recipe, relative, &known_ids, &mut self.diagnostics);
+
+            let schema = recipe_to_schema(recipe);
+            self.recipes_ast.insert(recipe.id.clone(), recipe.clone());
+            self.recipes_by_id
+                .insert(schema.id.clone(), (path.clone(), schema));
         }
     }
 
@@ -120,9 +137,14 @@ impl RecipeRegistry {
             .recipes_by_id
             .get(id)
             .ok_or_else(|| format!("Recipe not found: {id}"))?;
-        let text = std::fs::read_to_string(path).map_err(|e| format!("read failed: {e}"))?;
-        let recipe = parse_recipe_yaml(&text).map_err(|e| e.to_string())?;
-        Ok((recipe, path.clone()))
+        let recipe = self
+            .recipes_ast
+            .get(id)
+            .cloned()
+            .ok_or_else(|| format!("Recipe AST not cached: {id}"))?;
+        let expanded = expand_recipe_references(&recipe, &self.recipes_ast)
+            .map_err(|e| e.to_string())?;
+        Ok((expanded, path.clone()))
     }
 
     pub fn merged_maps_for(&self, recipe: &Recipe) -> BTreeMap<String, BTreeMap<String, String>> {
@@ -151,6 +173,44 @@ fn looks_like_map_file(text: &str) -> bool {
         return false;
     };
     map.contains_key("entries") && !map.contains_key("steps")
+}
+
+fn collect_recipe_ref_errors(
+    recipe: &Recipe,
+    file_path: &str,
+    known_ids: &BTreeMap<String, ()>,
+    diagnostics: &mut Vec<RecipeDiagnostic>,
+) {
+    for step in &recipe.steps {
+        let Step::RecipeRef(value) = step else {
+            continue;
+        };
+        let Some(ref_id) = recipe_ref_id(value) else {
+            diagnostics.push(RecipeDiagnostic {
+                severity: "error",
+                code: "E_SCHEMA",
+                message: "recipe step must be a recipe id string".to_string(),
+                sources: vec![DiagnosticSource {
+                    file: file_path.to_string(),
+                    line: None,
+                    column: None,
+                }],
+            });
+            continue;
+        };
+        if !known_ids.contains_key(ref_id) {
+            diagnostics.push(RecipeDiagnostic {
+                severity: "error",
+                code: "E_RECIPE_REF",
+                message: format!("Unknown recipe reference: {ref_id}"),
+                sources: vec![DiagnosticSource {
+                    file: file_path.to_string(),
+                    line: None,
+                    column: None,
+                }],
+            });
+        }
+    }
 }
 
 fn collect_schema_errors(
@@ -365,6 +425,56 @@ steps:
         assert!(diagnostics
             .iter()
             .any(|d| d.code == "W_MAP_ID_NOT_FOUND"));
+
+        let _ = std::fs::remove_dir_all(workspace);
+    }
+
+    #[test]
+    fn expands_recipe_references_on_load() {
+        let workspace =
+            std::env::temp_dir().join(format!("codemod_registry_compose_{}", std::process::id()));
+        let recipes_dir = workspace.join(".codemod/recipes");
+        std::fs::create_dir_all(&recipes_dir).unwrap();
+
+        let oracle = repo_root().join("test/fixtures/rust_oracle");
+        std::fs::copy(
+            oracle.join("add_counter_field.recipe.yaml"),
+            recipes_dir.join("add_counter_field.yaml"),
+        )
+        .unwrap();
+        std::fs::copy(
+            oracle.join("add_log_line.recipe.yaml"),
+            recipes_dir.join("add_log_line.yaml"),
+        )
+        .unwrap();
+        std::fs::write(
+            recipes_dir.join("composed.yaml"),
+            r#"dslVersion: 2
+id: composed
+args:
+  - name: file
+    required: true
+  - name: className
+    required: true
+  - name: field
+    required: true
+  - name: methodName
+    required: true
+steps:
+  - recipe: add_counter_field
+  - recipe: add_log_line
+"#,
+        )
+        .unwrap();
+
+        let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+        registry.reload();
+
+        let (recipe, _) = registry.load_recipe_ast("composed").unwrap();
+        assert_eq!(recipe.steps.len(), 2);
+        assert!(recipe.args.iter().any(|a| a.name == "file"));
+        assert!(recipe.args.iter().any(|a| a.name == "field"));
+        assert!(recipe.args.iter().any(|a| a.name == "methodName"));
 
         let _ = std::fs::remove_dir_all(workspace);
     }
