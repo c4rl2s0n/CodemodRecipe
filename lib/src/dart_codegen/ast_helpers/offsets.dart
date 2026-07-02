@@ -1,5 +1,45 @@
 import 'package:analyzer/dart/ast/ast.dart';
 
+/// Returns the declared class name lexeme.
+String classNameLexeme(ClassDeclaration node) => node.namePart.typeName.lexeme;
+
+/// Returns members from a block class body.
+Iterable<ClassMember> classMembers(ClassDeclaration node) {
+  return switch (node.body) {
+    BlockClassBody(:final members) => members,
+    _ => const <ClassMember>[],
+  };
+}
+
+/// Returns the offset immediately after the class opening brace.
+int classBodyLeftBracketEnd(ClassDeclaration node) {
+  return switch (node.body) {
+    BlockClassBody(:final leftBracket) => leftBracket.end,
+    _ => node.offset,
+  };
+}
+
+/// Returns the method name lexeme.
+String methodNameLexeme(MethodDeclaration node) => node.name.lexeme;
+
+/// Returns the offset of the declaration keyword for [node].
+int declarationKeywordOffset(AstNode node) {
+  if (node is ClassDeclaration) {
+    return node.classKeyword.offset;
+  }
+  if (node is MethodDeclaration) {
+    return node.returnType?.offset ?? node.name.offset;
+  }
+  if (node is ConstructorDeclaration) {
+    return node.returnType.offset;
+  }
+  if (node is FieldDeclaration) {
+    return node.fields.keyword?.offset ??
+        node.fields.variables.first.name.offset;
+  }
+  return node.offset;
+}
+
 /// Skips comma characters at [offset] up to [endBound].
 int skipTrailingComma(String source, int offset, int endBound) {
   while (offset < endBound && source[offset] == ',') {
@@ -49,7 +89,7 @@ int findClassEndOffset(ClassDeclaration classNode) {
 
 /// Returns the insertion offset immediately after the class opening brace.
 int findClassBodyStartOffset(ClassDeclaration classNode) {
-  return classNode.leftBracket.end;
+  return classBodyLeftBracketEnd(classNode);
 }
 
 /// Returns a stable insertion offset for adding a new class member.
@@ -57,12 +97,12 @@ int findClassBodyStartOffset(ClassDeclaration classNode) {
 /// Prefers inserting after the last method, then after the last field,
 /// then at the beginning of the class body.
 int findOptimalInsertionOffset(ClassDeclaration classNode) {
-  final methods = classNode.members.whereType<MethodDeclaration>().toList();
+  final methods = classMembers(classNode).whereType<MethodDeclaration>().toList();
   if (methods.isNotEmpty) {
     return methods.last.end;
   }
 
-  final fields = classNode.members.whereType<FieldDeclaration>().toList();
+  final fields = classMembers(classNode).whereType<FieldDeclaration>().toList();
   if (fields.isNotEmpty) {
     return fields.last.end;
   }

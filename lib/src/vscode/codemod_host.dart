@@ -1,19 +1,24 @@
 import 'dart:convert';
 import 'dart:io';
 
+import '../core/atomic_apply.dart';
 import '../core/context.dart';
 import '../core/operation.dart';
 import '../core/post_execution.dart';
 import '../core/recipe.dart';
 import '../core/runner.dart';
 import '../core/constants.dart';
+import '../core/logging.dart';
 import '../yaml/diagnostics.dart';
 import '../yaml/host_config.dart';
+import '../yaml/recipe_compiler.dart';
 import '../yaml/recipe_registry.dart';
 import '../dart_codegen/ast_helpers/ast_focus.dart';
 import 'diff_service.dart';
 import 'patch_selector.dart';
+import 'preview_token.dart';
 import 'recipe_schema.dart';
+import 'package:yaml/yaml.dart';
 
 /// Headless entry point that bridges recipes to the VS Code extension.
 ///
@@ -38,8 +43,11 @@ import 'recipe_schema.dart';
 /// - `{"command": "list"}`
 /// - `{"command": "describe", "recipe": "id"}`
 /// - `{"command": "preview", "recipe": "id", "args": {..}}`
+/// - `{"command": "preview", "inlineRecipe": {..}, "args": {..}}`
 /// - `{"command": "diff", "recipe": "id", "path": "file", "args": {..}}`
-/// - `{"command": "apply", "recipe": "id", "args": {..}, "selection": {..}}`
+/// - `{"command": "apply", "recipe": "id", "args": {..}, "previewToken": "...", "selection": {..}}`
+/// - `{"command": "apply", "inlineRecipe": {..}, "previewToken": "...", "args": {..}}`
+/// - `{"command": "generateAstPath", "path": "file", "offset": 123}`
 /// - `{"command": "reload"}`
 /// - `{"command": "validate"}`
 /// - `--stdio-server` argument: keeps process alive and reads one JSON command
@@ -58,6 +66,8 @@ class CodemodHost {
   final HostConfig? hostConfig;
 
   List<RecipeDiagnostic> _diagnostics = [];
+  Map<String, YamlRecipeDefinition> _definitionsById = {};
+  Map<String, Map<String, String>> _mapsById = {};
 
   /// Load-time diagnostics from the most recent registry load.
   List<RecipeDiagnostic> get diagnostics => List.unmodifiable(_diagnostics);
@@ -112,6 +122,8 @@ class CodemodHost {
     final result = YamlRecipeRegistry.load(config);
     _recipes = result.recipes;
     _diagnostics = result.diagnostics;
+    _definitionsById = result.definitionsById;
+    _mapsById = result.mapsById;
     _previewCache.clear();
   }
 
@@ -160,6 +172,7 @@ class CodemodHost {
         }),
       );
     } catch (error, stack) {
+      logger.error('Host request failed: $command', error, stack);
       _writeResponse({
         'ok': false,
         'error': error.toString(),
@@ -177,6 +190,7 @@ class CodemodHost {
     try {
       request = jsonDecode(raw) as Map<String, Object?>;
     } catch (error) {
+      logger.error('Invalid JSON request', error);
       stderr.writeln('Invalid JSON request: $error');
       return null;
     }
@@ -299,10 +313,13 @@ class CodemodHost {
     );
     serializeWatch.stop();
 
+    final previewToken = await _previewTokenFor(request, collected.changes);
+
     return {
       'ok': true,
       'recipe': recipe.name,
       'files': files,
+      'previewToken': previewToken,
       '_timingsMs': {
         'collectChanges': collectWatch.elapsedMilliseconds,
         'serializeDiff': serializeWatch.elapsedMilliseconds,
@@ -385,6 +402,11 @@ class CodemodHost {
       return {'ok': false, 'error': validationError};
     }
 
+    final tokenError = await _validatePreviewToken(request, recipe, context);
+    if (tokenError != null) {
+      return {'ok': false, 'error': tokenError};
+    }
+
     final selection = _parseSelection(request['selection']);
     final collectWatch = Stopwatch()..start();
     final collected = await _collectChangesWithCache(
@@ -401,9 +423,7 @@ class CodemodHost {
     selectWatch.stop();
 
     final applyWatch = Stopwatch()..start();
-    for (final change in selected) {
-      await change.apply();
-    }
+    await applyFileChangesAtomically(selected);
     applyWatch.stop();
     _previewCache.remove(_cacheKey(request));
 
@@ -465,12 +485,18 @@ class CodemodHost {
       } else {
         return {'ok': false, 'error': 'No AST node found at offset $offset'};
       }
-    } catch (error) {
+    } catch (error, stack) {
+      logger.astError('generateAstPath failed for $path@$offset', error, stack);
       return {'ok': false, 'error': error.toString()};
     }
   }
 
   _ResolvedRecipe _resolveRecipe(Map<String, Object?> request) {
+    final inlineRecipe = request['inlineRecipe'];
+    if (inlineRecipe is Map) {
+      return _resolveInlineRecipe(request, inlineRecipe.cast<String, Object?>());
+    }
+
     final id = request['recipe'] as String?;
     if (id == null) {
       return const _ResolvedRecipe(error: 'Missing "recipe" id');
@@ -512,6 +538,129 @@ class CodemodHost {
     }
 
     return _ResolvedRecipe(recipe: recipe, context: context);
+  }
+
+  _ResolvedRecipe _resolveInlineRecipe(
+    Map<String, Object?> request,
+    Map<String, Object?> inlineRecipe,
+  ) {
+    final config = hostConfig;
+    if (config == null) {
+      return const _ResolvedRecipe(
+        error: 'inlineRecipe requires a YAML-enabled host (fromConfig)',
+      );
+    }
+
+    late final YamlMap document;
+    try {
+      document = loadYaml(jsonEncode(inlineRecipe)) as YamlMap;
+    } catch (error) {
+      logger.yamlError('Invalid inlineRecipe', error);
+      return _ResolvedRecipe(error: 'Invalid inlineRecipe: $error');
+    }
+
+    final compiled = YamlRecipeRegistry.compileInline(
+      config: config,
+      document: document,
+      definitionsById: _definitionsById,
+      dartRecipes: _recipes,
+      mapsById: _mapsById,
+    );
+
+    if (compiled.recipe == null) {
+      final message = compiled.diagnostics
+          .where((item) => item.severity == DiagnosticSeverity.error)
+          .map((item) => item.message)
+          .join('; ');
+      return _ResolvedRecipe(
+        error: message.isEmpty ? 'inlineRecipe failed to compile' : message,
+      );
+    }
+
+    final recipe = compiled.recipe!;
+    final context = CodemodContext(const {}, preferences);
+    final rawArgs = request['args'];
+    final requestValues = <String, String>{};
+    if (rawArgs is Map) {
+      rawArgs.forEach((key, value) {
+        if (value != null) {
+          requestValues[key.toString()] = value.toString();
+        }
+      });
+    }
+
+    for (final arg in recipe.args) {
+      if (arg.hidden) {
+        arg.contributeToContext(context);
+        continue;
+      }
+      final error = arg.contributeToContext(
+        context,
+        rawValue: requestValues[arg.name],
+        hiddenWins: true,
+      );
+      if (error != null && error.startsWith('--')) {
+        return _ResolvedRecipe(
+          error: 'Missing required arguments: ${arg.name}',
+        );
+      }
+      if (error != null) {
+        return _ResolvedRecipe(error: error);
+      }
+    }
+
+    return _ResolvedRecipe(recipe: recipe, context: context);
+  }
+
+  Future<String> _previewTokenFor(
+    Map<String, Object?> request,
+    List<FileChange> changes,
+  ) async {
+    final snapshots = await _captureSnapshots(changes);
+    return computePreviewToken({
+      'recipe': request['recipe'],
+      'inlineRecipe': request['inlineRecipe'],
+      'args': request['args'],
+      'snapshots': {
+        for (final entry in snapshots.entries)
+          entry.key: {
+            'exists': entry.value.exists,
+            'modifiedMs': entry.value.modifiedMs,
+            'size': entry.value.size,
+          },
+      },
+    });
+  }
+
+  Future<String?> _validatePreviewToken(
+    Map<String, Object?> request,
+    CodemodRecipe recipe,
+    CodemodContext context,
+  ) async {
+    final provided = request['previewToken'] as String?;
+    if (provided == null || provided.isEmpty) {
+      return 'Missing previewToken (run preview first)';
+    }
+
+    final collected = await _collectChangesWithCache(
+      request,
+      recipe,
+      context,
+      allowReuse: true,
+      updateCache: false,
+    );
+    final expected = await _previewTokenFor(request, collected.changes);
+    if (provided != expected) {
+      return 'Stale previewToken (files changed since preview; re-run preview)';
+    }
+
+    final key = _cacheKey(request);
+    final cached = _previewCache[key];
+    if (cached == null || !await _isCacheValid(cached)) {
+      return 'Stale previewToken (files changed since preview; re-run preview)';
+    }
+
+    return null;
   }
 
   String? _validate(CodemodRecipe recipe, CodemodContext context) {
@@ -575,18 +724,26 @@ class CodemodHost {
 
   String _cacheKey(Map<String, Object?> request) {
     final recipeId = request['recipe']?.toString() ?? '';
+    final inlineRecipe = request['inlineRecipe'];
     final rawArgs = request['args'];
-    if (rawArgs is! Map) {
-      return recipeId;
+    final normalizedArgs = <String, String>{};
+    if (rawArgs is Map) {
+      rawArgs.forEach((key, value) {
+        normalizedArgs[key.toString()] = value?.toString() ?? '';
+      });
     }
-    final normalized = <String, String>{
-      for (final entry in rawArgs.entries)
-        entry.key.toString(): entry.value?.toString() ?? '',
-    };
-    final sortedKeys = normalized.keys.toList()..sort();
+    final sortedKeys = normalizedArgs.keys.toList()..sort();
     final sortedMap = <String, String>{
-      for (final key in sortedKeys) key: normalized[key]!,
+      for (final key in sortedKeys) key: normalizedArgs[key]!,
     };
+
+    if (inlineRecipe is Map) {
+      return computePreviewToken({
+        'inlineRecipe': inlineRecipe,
+        'args': sortedMap,
+      });
+    }
+
     return '$recipeId:${jsonEncode(sortedMap)}';
   }
 

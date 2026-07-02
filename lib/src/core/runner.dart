@@ -5,6 +5,8 @@ import 'dart:io';
 import 'package:args/args.dart';
 
 import 'context.dart';
+import 'atomic_apply.dart';
+import 'logging.dart';
 import 'operation.dart';
 import 'patch_helpers.dart';
 import 'post_execution.dart';
@@ -32,6 +34,7 @@ class CodemodRunner {
     try {
       args = parser.parse(arguments);
     } on FormatException catch (error) {
+      logger.runnerError('Failed to parse CLI arguments', error);
       stderr.writeln('Error: ${error.message}');
       _printUsage(parser);
       exit(1);
@@ -57,7 +60,8 @@ class CodemodRunner {
       }
 
       await _execute(changedFiles, context: context, apply: apply);
-    } catch (error) {
+    } catch (error, stack) {
+      logger.runnerError('Recipe execution failed', error, stack);
       stderr.writeln('Error: $error');
       exit(1);
     }
@@ -145,27 +149,30 @@ class CodemodRunner {
     required CodemodContext context,
     required bool apply,
   }) async {
-    for (final change in changes) {
-      print('\n=== ${change.path} ===\n');
-
-      if (apply) {
-        await change.apply();
-        print('Applied.');
-      } else {
-        print('DRY RUN - Changes that would be applied:\n');
-        print(change.preview());
-        print('Run with --apply to apply these changes.');
-      }
-    }
-
     if (apply) {
+      for (final change in changes) {
+        print('\n=== ${change.path} ===\n');
+        print(change.preview());
+      }
+      await applyFileChangesAtomically(changes);
+      print('\nApplied ${changes.length} file(s).');
+
       final result = CodemodRunResult(changes: changes);
       for (final action in recipe.postExecution) {
         await action.run(context, result);
       }
+      print('\nDone!');
+      return;
     }
 
-    print(apply ? '\nDone!' : '\nDry run complete.');
+    for (final change in changes) {
+      print('\n=== ${change.path} ===\n');
+      print('DRY RUN - Changes that would be applied:\n');
+      print(change.preview());
+      print('Run with --apply to apply these changes.');
+    }
+
+    print('\nDry run complete.');
   }
 
   List<FileChange> _mergePatchChanges(List<FileChange> changes) {

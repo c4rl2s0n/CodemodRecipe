@@ -1,6 +1,7 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 
+import '../dart_codegen/ast_helpers/localizers.dart';
 import 'model.dart';
 import 'ast_path_builder.dart';
 
@@ -150,9 +151,9 @@ class AstNodeFinder {
   static NavigateStep? _createNavigationStep(AstNode node) {
     // Handle different node types
     if (node is ClassDeclaration) {
-      return NavigateStep(NavigateKind.classDecl, name: node.name.lexeme);
+      return NavigateStep(NavigateKind.classDecl, name: classNameLexeme(node));
     } else if (node is MethodDeclaration) {
-      return NavigateStep(NavigateKind.method, name: node.name.lexeme);
+      return NavigateStep(NavigateKind.method, name: methodNameLexeme(node));
     } else if (node is ConstructorDeclaration) {
       final name = node.name?.lexeme;
       return NavigateStep(NavigateKind.constructor, name: name);

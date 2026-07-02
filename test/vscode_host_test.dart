@@ -428,7 +428,7 @@ void main() {
         ..writeAsStringSync('class Counter {\n  int value = 0;\n}\n');
 
       final host = CodemodHost({'add': _addMethodRecipe()});
-      await host.dispatch({
+      final preview = await host.dispatch({
         'command': 'preview',
         'recipe': 'add',
         'args': {'file': file.path, 'class': 'Counter', 'method': 'reset'},
@@ -436,6 +436,7 @@ void main() {
       final response = await host.dispatch({
         'command': 'apply',
         'recipe': 'add',
+        'previewToken': preview['previewToken'],
         'args': {'file': file.path, 'class': 'Counter', 'method': 'reset'},
         'selection': {
           'files': {
@@ -456,6 +457,17 @@ void main() {
       expect(response['_hostMetrics'], isA<Map>());
     });
 
+    test('apply requires previewToken', () async {
+      final host = CodemodHost({'add': _addMethodRecipe()});
+      final response = await host.dispatch({
+        'command': 'apply',
+        'recipe': 'add',
+        'args': {'file': 'x.dart', 'class': 'Counter', 'method': 'reset'},
+      });
+      expect(response['ok'], isFalse);
+      expect(response['error'], contains('previewToken'));
+    });
+
     test('unknown command returns error', () async {
       final host = CodemodHost(const {});
       final response = await host.dispatch({'command': 'nope'});
@@ -471,9 +483,20 @@ void main() {
         ..writeAsStringSync('class Counter {}\n');
 
       final host = CodemodHost({'props': _addPropertyAccessorsRecipe()});
+      final preview = await host.dispatch({
+        'command': 'preview',
+        'recipe': 'props',
+        'args': {
+          'file': file.path,
+          'class': 'Counter',
+          'property': 'score',
+          'type': 'int',
+        },
+      });
       final response = await host.dispatch({
         'command': 'apply',
         'recipe': 'props',
+        'previewToken': preview['previewToken'],
         'args': {
           'file': file.path,
           'class': 'Counter',
@@ -500,9 +523,20 @@ void main() {
       final servicePath = '${dir.path}/services/counter_sync_service.dart';
 
       final host = CodemodHost({'wire': _scaffoldAndWireServiceRecipe()});
+      final preview = await host.dispatch({
+        'command': 'preview',
+        'recipe': 'wire',
+        'args': {
+          'root': dir.path,
+          'file': file.path,
+          'class': 'Counter',
+          'service': 'counterSync',
+        },
+      });
       final response = await host.dispatch({
         'command': 'apply',
         'recipe': 'wire',
+        'previewToken': preview['previewToken'],
         'args': {
           'root': dir.path,
           'file': file.path,

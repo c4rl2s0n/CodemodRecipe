@@ -195,6 +195,30 @@ steps:
     expect(result.recipes['shared_id']!.name, 'Shared ID Recipe');
   });
 
+  test('compiles remove-based yaml recipe', () async {
+    final workspace = await Directory.systemTemp.createTemp(
+      'codemod_yaml_remove_',
+    );
+    addTearDown(() => workspace.deleteSync(recursive: true));
+
+    await _copyFile(
+      'test/fixtures/yaml_recipes/remove_counter_field.yaml',
+      '${workspace.path}/.codemod/recipes/remove_counter_field.yaml',
+    );
+
+    final result = YamlRecipeRegistry.load(
+      HostConfig(workspaceRoot: workspace.path, codemodRoot: '.codemod'),
+    );
+
+    expect(
+      result.diagnostics.where((d) => d.severity == DiagnosticSeverity.error),
+      isEmpty,
+    );
+    expect(result.recipes['remove_counter_field'], isNotNull);
+    final operation = result.recipes['remove_counter_field']!.operations.single;
+    expect(operation, isA<EditDartFileOperation>());
+  });
+
   test('reports duplicate map ids', () async {
     final workspace = await Directory.systemTemp.createTemp('codemod_dup_map_');
     addTearDown(() => workspace.deleteSync(recursive: true));

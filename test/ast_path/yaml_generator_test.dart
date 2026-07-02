@@ -1,7 +1,7 @@
 import 'package:test/test.dart';
 
-import '../../lib/src/ast_path/yaml_generator.dart';
-import '../../lib/src/ast_path/model.dart';
+import 'package:codemod_recipe/src/ast_path/yaml_generator.dart';
+import 'package:codemod_recipe/src/ast_path/model.dart';
 
 void main() {
   group('AstPathYamlGenerator', () {

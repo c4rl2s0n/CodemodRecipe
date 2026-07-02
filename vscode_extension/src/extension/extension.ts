@@ -238,6 +238,10 @@ export function activate(context: vscode.ExtensionContext): void {
           if (!result.ok) {
             throw new Error(result.error || 'Unknown error');
           }
+          if (!result.path) {
+            throw new Error('AST path result missing path data');
+          }
+          const astPath = result.path;
           
           // Show quick pick to choose output format
           const formatChoice = await vscode.window.showQuickPick([
@@ -251,14 +255,14 @@ export function activate(context: vscode.ExtensionContext): void {
           if (!formatChoice) return;
           
           // Show anchor preview visualization
-          _showAnchorPreview(editor, offset, result.path.anchor);
+          _showAnchorPreview(editor, offset, astPath.anchor);
           
           if (formatChoice.label.includes('Copy to Clipboard')) {
-            const compact = _generateCompactLocalization(result.path);
+            const compact = _generateCompactLocalization(astPath);
             await vscode.env.clipboard.writeText(compact);
             vscode.window.showInformationMessage('📋 Compact localization copied to clipboard!');
           } else if (formatChoice.label.includes('Full YAML Recipe')) {
-            const yaml = _generateYamlFromAstPath(result.path, filePath);
+            const yaml = _generateYamlFromAstPath(astPath, filePath);
             const doc = await vscode.workspace.openTextDocument({
               content: yaml,
               language: 'yaml'
@@ -266,7 +270,7 @@ export function activate(context: vscode.ExtensionContext): void {
             await vscode.window.showTextDocument(doc);
           } else {
             // Show compact format in a nice information message
-            const compact = _generateCompactLocalization(result.path);
+            const compact = _generateCompactLocalization(astPath);
             
             // Show as information message with copy option
             const action = await vscode.window.showInformationMessage(
@@ -278,7 +282,7 @@ export function activate(context: vscode.ExtensionContext): void {
               await vscode.env.clipboard.writeText(compact);
               vscode.window.showInformationMessage('📋 Copied to clipboard!');
             } else if (action === 'Open Full Recipe') {
-              const yaml = _generateYamlFromAstPath(result.path, filePath);
+              const yaml = _generateYamlFromAstPath(astPath, filePath);
               const doc = await vscode.workspace.openTextDocument({
                 content: yaml,
                 language: 'yaml'

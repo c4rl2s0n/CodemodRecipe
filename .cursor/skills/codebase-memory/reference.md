@@ -108,6 +108,40 @@ get_architecture(aspects=["packages", "clusters"])
 → module seams across Dart core, VS Code extension, Vue webview
 ```
 
+## Structural edits (codemod + CBM)
+
+Use **codebase-memory** to locate and assess impact; use **codemod MCP** to apply deterministic AST edits.
+
+**Playbook:** `.cursor/skills/codemod-mcp/reference.md` (invoke skill: `codemod-mcp`)
+
+### Agent workflow
+
+1. **Locate** — `search_graph` / `get_code_snippet` (note file + offset)
+2. **Impact** — `trace_path` inbound before any `remove` step
+3. **Target path** — `generate_ast_path` (codemod MCP) → take `navigate` steps only (drop insertion anchor)
+4. **Preview** — `preview_recipe` with registered recipe id **or** `inlineRecipe` body
+5. **Apply** — `apply_recipe` with `previewToken` from preview
+6. **Verify** — `detect_changes` / reindex
+
+### Inline remove example
+
+```yaml
+steps:
+  - edit:
+      path: lib/settings.dart
+      steps:
+        - remove:
+            at:
+              - class: Settings
+              - field: counter
+```
+
+`remove` / `replace` are YAML edit-step siblings of `insert`. Anchor is optional for remove/replace (omitted = full declaration span). `insert` always requires an anchor.
+
+### Offset bridge (v1)
+
+CBM `get_code_snippet` offset → codemod `generate_ast_path` → `at:` navigate steps in an inline recipe.
+
 ## Maintenance
 
 Update this file when primary subsystems or example entry points change materially.

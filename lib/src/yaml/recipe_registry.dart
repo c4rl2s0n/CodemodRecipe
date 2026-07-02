@@ -3,23 +3,24 @@ import 'dart:io';
 import 'package:yaml/yaml.dart';
 
 import '../core/recipe.dart';
+import '../core/logging.dart';
 import 'diagnostics.dart';
 import 'host_config.dart';
 import 'recipe_compiler.dart';
 
 /// Result of loading YAML and Dart recipes into a registry.
 class YamlRecipeLoadResult {
-  /// Creates a load result.
   const YamlRecipeLoadResult({
     required this.recipes,
     required this.diagnostics,
+    this.definitionsById = const {},
+    this.mapsById = const {},
   });
 
-  /// Successfully loaded recipes keyed by id.
   final Map<String, CodemodRecipe> recipes;
-
-  /// Load-time diagnostics including ID collisions.
   final List<RecipeDiagnostic> diagnostics;
+  final Map<String, YamlRecipeDefinition> definitionsById;
+  final Map<String, Map<String, String>> mapsById;
 
   List<Map<String, Object?>> diagnosticsJson() => [
     for (final item in diagnostics) item.toJson(),
@@ -81,28 +82,16 @@ class YamlRecipeRegistry {
     for (final entry in idSources.entries) {
       if (entry.value.length < 2) continue;
       rejectedIds.add(entry.key);
-      diagnostics.add(
-        RecipeDiagnostic(
-          severity: DiagnosticSeverity.error,
-          code: 'E_DUPLICATE_ID',
-          message: "Duplicate recipe id '${entry.key}'",
-          sources: entry.value,
-        ),
-      );
+      logger.yamlWarning("Duplicate recipe id '${entry.key}'");
+      diagnostics.add(RecipeDiagnostics.duplicateRecipeId(entry.key, entry.value));
     }
 
     // Check for duplicate IDs within maps only
     for (final entry in mapIdSources.entries) {
       if (entry.value.length < 2) continue;
       rejectedIds.add(entry.key);
-      diagnostics.add(
-        RecipeDiagnostic(
-          severity: DiagnosticSeverity.error,
-          code: 'E_DUPLICATE_MAP_ID',
-          message: "Duplicate map id '${entry.key}'",
-          sources: entry.value,
-        ),
-      );
+      logger.yamlWarning("Duplicate map id '${entry.key}'");
+      diagnostics.add(RecipeDiagnostics.duplicateMapId(entry.key, entry.value));
     }
 
     final compiler = YamlRecipeCompiler(
@@ -137,7 +126,41 @@ class YamlRecipeRegistry {
       recipes.putIfAbsent(entry.key, () => entry.value);
     }
 
-    return YamlRecipeLoadResult(recipes: recipes, diagnostics: diagnostics);
+    return YamlRecipeLoadResult(
+      recipes: recipes,
+      diagnostics: diagnostics,
+      definitionsById: {
+        for (final entry in recipeDefinitionsById.entries)
+          if (!rejectedIds.contains(entry.key)) entry.key: entry.value,
+      },
+      mapsById: {
+        for (final entry in mapDefinitionsById.entries)
+          if (!rejectedIds.contains(entry.key)) entry.key: entry.value,
+      },
+    );
+  }
+
+  /// Compiles an inline recipe document using registry context from [load].
+  static CompileResult compileInline({
+    required HostConfig config,
+    required YamlMap document,
+    required Map<String, YamlRecipeDefinition> definitionsById,
+    required Map<String, CodemodRecipe> dartRecipes,
+    required Map<String, Map<String, String>> mapsById,
+  }) {
+    final id = document['id']?.toString() ?? '__inline__';
+    final definition = YamlRecipeDefinition(
+      id: id,
+      filePath: '<inline>',
+      document: document,
+    );
+    final compiler = YamlRecipeCompiler(
+      config: config,
+      definitionsById: definitionsById,
+      dartRecipes: dartRecipes,
+      mapsById: mapsById,
+    );
+    return compiler.compile(definition);
   }
 
   static void _processYamlFile({
@@ -156,11 +179,9 @@ class YamlRecipeRegistry {
 
       if (doc == null) {
         diagnostics.add(
-          RecipeDiagnostic(
-            severity: DiagnosticSeverity.error,
-            code: 'E_YAML_PARSE',
-            message: 'Failed to parse YAML: root must be a map',
-            sources: [DiagnosticSource(file: relativePath)],
+          RecipeDiagnostics.yamlParseError(
+            'Failed to parse YAML: root must be a map',
+            relativePath,
           ),
         );
         return;
@@ -168,14 +189,7 @@ class YamlRecipeRegistry {
 
       final id = doc['id']?.toString();
       if (id == null || id.isEmpty) {
-        diagnostics.add(
-          RecipeDiagnostic(
-            severity: DiagnosticSeverity.error,
-            code: 'E_MISSING_ID',
-            message: 'YAML file missing required "id" field',
-            sources: [DiagnosticSource(file: relativePath)],
-          ),
-        );
+        diagnostics.add(RecipeDiagnostics.missingId(relativePath));
         return;
       }
 
@@ -201,25 +215,11 @@ class YamlRecipeRegistry {
         // Maps are tracked separately, not in recipe idSources
       } else {
         // YAML has an id but no steps or entries - error
-        diagnostics.add(
-          RecipeDiagnostic(
-            severity: DiagnosticSeverity.error,
-            code: 'E_UNKNOWN_YAML_TYPE',
-            message:
-                'YAML file has "id" but no "steps" (recipe) or "entries" (map)',
-            sources: [DiagnosticSource(file: relativePath)],
-          ),
-        );
+        diagnostics.add(RecipeDiagnostics.unknownYamlType(relativePath));
       }
     } catch (error) {
-      diagnostics.add(
-        RecipeDiagnostic(
-          severity: DiagnosticSeverity.error,
-          code: 'E_YAML_PARSE',
-          message: '$error',
-          sources: [DiagnosticSource(file: relativePath)],
-        ),
-      );
+      logger.yamlError('Failed to process YAML file $relativePath', error);
+      diagnostics.add(RecipeDiagnostics.yamlParseError('$error', relativePath));
     }
   }
 

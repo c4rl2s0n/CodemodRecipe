@@ -57,8 +57,9 @@ All commands are single JSON objects sent over stdin; the host returns one JSON 
 ### `preview`
 - Input:
   - `{ "command": "preview", "recipe": "<id>", "args": {..}, "snippetLines"?: <number> }`
+  - `{ "command": "preview", "inlineRecipe": {..}, "args": {..} }` — same shape as `.codemod/recipes/*.yaml`
 - Output:
-  - `{ ok: true, recipe: "<id>", files: <FilePreview[]> }`
+  - `{ ok: true, recipe: "<id>", files: <FilePreview[]>, previewToken: "<sha256>" }`
   - plus `_timingsMs` metrics (used only for logging)
 - Preview serialization uses:
   - `lib/src/vscode/diff_service.dart` with `includeContents: false` and `includePatchReplacements: false`
@@ -75,9 +76,17 @@ All commands are single JSON objects sent over stdin; the host returns one JSON 
 
 ### `apply`
 - Input:
-  - `{ "command": "apply", "recipe": "<id>", "args": {..}, "selection": { "files": { ... } } }`
+  - `{ "command": "apply", "recipe": "<id>", "args": {..}, "previewToken": "<from preview>", "selection": { "files": { ... } } }`
+  - `{ "command": "apply", "inlineRecipe": {..}, "previewToken": "...", "args": {..} }`
 - Output:
   - `{ ok: true, recipe: "<id>", applied: [<path>, ...] }`
+- Apply is atomic (stage-then-commit with rollback). `postExecution` runs after commit.
+- `previewToken` is required; staleness is detected via file mtime/size snapshots.
+
+### `generateAstPath`
+- Input: `{ "command": "generateAstPath", "path": "<file>", "offset": <int> }`
+- Output: `{ ok: true, path: { navigate: [...], anchor: "...", offset: N } }`
+- For remove/replace inline recipes, use `navigate` only (drop insertion anchor from output).
 - Applies:
   - collects changes with cache
   - selects subset via `PatchSelector.apply`

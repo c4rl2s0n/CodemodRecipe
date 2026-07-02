@@ -17,6 +17,7 @@ enabled_skills = [
     "agent-coordinator",
     "yaml-dsl",
     "codebase-memory",
+    "codemod-mcp",
 ]
 default_agent = "default"
 active_model = "devstral-small"
@@ -38,3 +39,11 @@ disabled_tools = []
 name = "dart-mcp"
 transport = "stdio"
 command = "dart mcp-server"
+
+[[mcp_servers]]
+name = "codemod-mcp"
+transport = "stdio"
+command = "dart run bin/codemod_mcp.dart"
+args = ["--workspace-root", "."]
+disabled = false
+disabled_tools = []

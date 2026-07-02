@@ -10,6 +10,7 @@ import '../core/transform.dart';
 import 'diagnostics.dart';
 import 'host_config.dart';
 import 'insert_transform.dart';
+import 'patch_transform.dart';
 import 'path_sandbox.dart';
 import 'schema_validator.dart';
 import '../ast_path/ast_path.dart';
@@ -107,12 +108,7 @@ class YamlRecipeCompiler {
       );
     } catch (error) {
       diagnostics.add(
-        RecipeDiagnostic(
-          severity: DiagnosticSeverity.error,
-          code: 'E_YAML_COMPILE',
-          message: '$error',
-          sources: [DiagnosticSource(file: definition.filePath)],
-        ),
+        RecipeDiagnostics.compileError('$error', definition.filePath),
       );
       return CompileResult(diagnostics: diagnostics);
     }
@@ -317,6 +313,27 @@ class YamlRecipeCompiler {
         continue;
       }
 
+      if (entry.containsKey('remove')) {
+        final transform = _parseRemoveStep(
+          entry['remove'],
+          filePath,
+          diagnostics,
+        );
+        if (transform != null) transforms.add(transform);
+        continue;
+      }
+
+      if (entry.containsKey('replace')) {
+        final transform = _parseReplaceStep(
+          entry['replace'],
+          filePath,
+          diagnostics,
+          templateEnvironment,
+        );
+        if (transform != null) transforms.add(transform);
+        continue;
+      }
+
       diagnostics.add(_schemaError('Unsupported edit step', filePath));
     }
 
@@ -334,7 +351,7 @@ class YamlRecipeCompiler {
       return null;
     }
 
-    final path = _parseAstPath(insert, filePath, diagnostics);
+    final path = _parseInsertPath(insert, filePath, diagnostics);
     final text = _stringField(insert, 'text');
     if (path == null || text == null) return null;
 
@@ -351,7 +368,61 @@ class YamlRecipeCompiler {
     );
   }
 
-  // Intentionally no additional edit steps beyond `insert` in the YAML surface.
+  CodeTransform? _parseRemoveStep(
+    Object? remove,
+    String filePath,
+    List<RecipeDiagnostic> diagnostics,
+  ) {
+    if (remove is! YamlMap) {
+      diagnostics.add(_schemaError('remove must be a map', filePath));
+      return null;
+    }
+
+    final target = _parsePatchTarget(
+      remove,
+      filePath,
+      diagnostics,
+      anchorRequired: false,
+    );
+    if (target == null) return null;
+
+    return AstPathPatchTransform.remove(target: target);
+  }
+
+  CodeTransform? _parseReplaceStep(
+    Object? replace,
+    String filePath,
+    List<RecipeDiagnostic> diagnostics,
+    TemplateEnvironment templateEnvironment,
+  ) {
+    if (replace is! YamlMap) {
+      diagnostics.add(_schemaError('replace must be a map', filePath));
+      return null;
+    }
+
+    final target = _parsePatchTarget(
+      replace,
+      filePath,
+      diagnostics,
+      anchorRequired: false,
+    );
+    final text = _stringField(replace, 'text');
+    if (target == null || text == null) return null;
+
+    _warnOnMissingMapIds(
+      template: text,
+      filePath: filePath,
+      diagnostics: diagnostics,
+      mapsById: templateEnvironment.maps,
+    );
+
+    return AstPathReplaceTransform(
+      target: target,
+      template: CodemodTemplate.inline(text, environment: templateEnvironment),
+    );
+  }
+
+  // Edit steps: insert, remove, replace.
 
   static Map<String, Map<String, String>> _mergeMaps({
     required Map<String, Map<String, String>> global,
@@ -427,50 +498,136 @@ class YamlRecipeCompiler {
       index = i + 1;
 
       if (mapsById.containsKey(mapId)) continue;
-      diagnostics.add(
-        RecipeDiagnostic(
-          severity: DiagnosticSeverity.warning,
-          code: 'W_MAP_ID_NOT_FOUND',
-          message: 'Template references missing map id \"$mapId\"',
-          sources: [DiagnosticSource(file: filePath)],
-        ),
-      );
+      diagnostics.add(RecipeDiagnostics.mapIdNotFound(mapId, filePath));
     }
   }
 
-  AstPath? _parseAstPath(
-    YamlMap insert,
+  AstPath? _parseInsertPath(
+    YamlMap step,
     String filePath,
     List<RecipeDiagnostic> diagnostics,
   ) {
+    final at = step['at'];
+    if (at is String && at.contains('@')) {
+      return _parseStepPath(
+        step,
+        filePath,
+        diagnostics,
+        anchorRequired: false,
+      );
+    }
+
+    if (!step.containsKey('anchor')) {
+      diagnostics.add(
+        _schemaError('insert step requires "anchor"', filePath),
+      );
+      return null;
+    }
+    return _parseStepPath(step, filePath, diagnostics, anchorRequired: true);
+  }
+
+  AstPathPatchTarget? _parsePatchTarget(
+    YamlMap step,
+    String filePath,
+    List<RecipeDiagnostic> diagnostics, {
+    required bool anchorRequired,
+  }) {
+    final navigate = _parseNavigateSteps(step, filePath, diagnostics);
+    if (navigate == null) return null;
+
+    final anchorValue = step['anchor'];
+    if (anchorRequired && anchorValue == null) {
+      diagnostics.add(
+        _schemaError('edit step requires "anchor"', filePath),
+      );
+      return null;
+    }
+
+    Anchor? anchor;
+    if (anchorValue != null) {
+      try {
+        anchor = parseAnchor(anchorValue.toString());
+      } on AstPathParseException catch (error) {
+        diagnostics.add(
+          RecipeDiagnostics.astPathParseError(error.message, filePath),
+        );
+        return null;
+      }
+    }
+
+    return AstPathPatchTarget(navigate: navigate, anchor: anchor);
+  }
+
+  List<NavigateStep>? _parseNavigateSteps(
+    YamlMap step,
+    String filePath,
+    List<RecipeDiagnostic> diagnostics,
+  ) {
+    final at = step['at'];
+    if (at == null) {
+      diagnostics.add(_schemaError('edit step requires "at"', filePath));
+      return null;
+    }
+
     try {
-      if (insert.containsKey('at') && insert.containsKey('anchor')) {
-        final at = insert['at'];
+      if (at is String) {
+        final path = parsePathString(at);
+        return path.navigate;
+      }
+      if (at is YamlList) {
+        return [
+          for (final entry in at)
+            NavigateParser.parseEntry(entry),
+        ];
+      }
+      diagnostics.add(_schemaError('"at" must be a list or path string', filePath));
+      return null;
+    } on AstPathParseException catch (error) {
+      diagnostics.add(
+        RecipeDiagnostics.astPathParseError(error.message, filePath),
+      );
+      return null;
+    }
+  }
+
+  AstPath? _parseStepPath(
+    YamlMap step,
+    String filePath,
+    List<RecipeDiagnostic> diagnostics, {
+    required bool anchorRequired,
+  }) {
+    try {
+      if (step.containsKey('at') && step.containsKey('anchor')) {
+        final at = step['at'];
         if (at is String) {
-          return parsePathString('$at @ ${insert['anchor']}');
+          return parsePathString('$at @ ${step['anchor']}');
         }
         if (at is YamlList) {
           return parseStructuredPath({
             'at': at.toList(),
-            'anchor': insert['anchor'].toString(),
+            'anchor': step['anchor'].toString(),
           });
         }
       }
 
-      if (insert['at'] is String) {
-        return parsePathString(insert['at'].toString());
+      if (step['at'] is String) {
+        return parsePathString(step['at'].toString());
       }
 
-      diagnostics.add(_schemaError('insert requires at/anchor path', filePath));
+      if (!anchorRequired && step.containsKey('at') && step['at'] is YamlList) {
+        diagnostics.add(
+          _schemaError('insert step requires "anchor"', filePath),
+        );
+        return null;
+      }
+
+      diagnostics.add(
+        _schemaError('edit step requires at/anchor path', filePath),
+      );
       return null;
     } on AstPathParseException catch (error) {
       diagnostics.add(
-        RecipeDiagnostic(
-          severity: DiagnosticSeverity.error,
-          code: 'E_AST_PATH_PARSE',
-          message: error.message,
-          sources: [DiagnosticSource(file: filePath)],
-        ),
+        RecipeDiagnostics.astPathParseError(error.message, filePath),
       );
       return null;
     }
@@ -571,11 +728,9 @@ class YamlRecipeCompiler {
       final compiled = compile(yamlDefinition);
       if (compiled.recipe == null) {
         diagnostics.add(
-          RecipeDiagnostic(
-            severity: DiagnosticSeverity.error,
-            code: 'E_RECIPE_REF_NOT_FOUND',
-            message: 'Referenced recipe "$recipeId" failed to compile',
-            sources: [DiagnosticSource(file: filePath)],
+          RecipeDiagnostics.recipeRefNotFound(
+            'Referenced recipe "$recipeId" failed to compile',
+            filePath,
           ),
         );
         return null;
@@ -587,11 +742,9 @@ class YamlRecipeCompiler {
     if (dartRecipe != null) return dartRecipe;
 
     diagnostics.add(
-      RecipeDiagnostic(
-        severity: DiagnosticSeverity.error,
-        code: 'E_RECIPE_REF_NOT_FOUND',
-        message: 'Referenced recipe "$recipeId" not found',
-        sources: [DiagnosticSource(file: filePath)],
+      RecipeDiagnostics.recipeRefNotFound(
+        'Referenced recipe "$recipeId" not found',
+        filePath,
       ),
     );
     return null;

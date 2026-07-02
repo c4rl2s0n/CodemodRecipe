@@ -7,12 +7,7 @@ import 'package:yaml/yaml.dart';
 import 'diagnostics.dart';
 
 /// Schema validation error codes.
-class SchemaErrorCodes {
-  static const String schemaError = 'E_YAML_SCHEMA';
-  static const String compileError = 'E_YAML_COMPILE';
-  static const String astPathParseError = 'E_AST_PATH_PARSE';
-  static const String recipeRefNotFound = 'E_RECIPE_REF_NOT_FOUND';
-}
+typedef SchemaErrorCodes = DiagnosticCodes;
 
 /// Validates YAML recipe schema and generates diagnostics.
 ///
@@ -234,20 +229,66 @@ class YamlSchemaValidator {
     }
   }
 
-  /// Validates an edit sub-step (insert, etc.).
+  /// Validates an edit sub-step (insert, remove, replace).
   static void _validateEditSubStep(
     YamlMap entry,
     String filePath,
     List<RecipeDiagnostic> diagnostics,
   ) {
     final hasInsert = entry.containsKey('insert');
-    // Add other edit step types as needed
+    final hasRemove = entry.containsKey('remove');
+    final hasReplace = entry.containsKey('replace');
+    final opCount = [hasInsert, hasRemove, hasReplace].where((v) => v).length;
+
+    if (opCount != 1) {
+      diagnostics.add(
+        createError(
+          'Edit step must have exactly one of: insert, remove, replace',
+          filePath,
+        ),
+      );
+      return;
+    }
 
     if (hasInsert) {
       _validateInsertStep(entry, filePath, diagnostics);
-    } else {
+    } else if (hasRemove) {
+      _validatePatchStep(entry['remove'], 'remove', filePath, diagnostics);
+    } else if (hasReplace) {
+      _validateReplaceStep(entry, filePath, diagnostics);
+    }
+  }
+
+  static void _validatePatchStep(
+    Object? value,
+    String stepName,
+    String filePath,
+    List<RecipeDiagnostic> diagnostics,
+  ) {
+    if (value == null || value is! YamlMap) {
       diagnostics.add(
-        createError('Edit step must have an operation type', filePath),
+        createError('$stepName step must have a "$stepName" map', filePath),
+      );
+      return;
+    }
+
+    if (!value.containsKey('at')) {
+      diagnostics.add(
+        createError('$stepName step missing required field "at"', filePath),
+      );
+    }
+  }
+
+  static void _validateReplaceStep(
+    YamlMap entry,
+    String filePath,
+    List<RecipeDiagnostic> diagnostics,
+  ) {
+    final replaceValue = entry['replace'];
+    _validatePatchStep(replaceValue, 'replace', filePath, diagnostics);
+    if (replaceValue is YamlMap && !replaceValue.containsKey('text')) {
+      diagnostics.add(
+        createError('Replace step missing required field "text"', filePath),
       );
     }
   }
@@ -266,7 +307,6 @@ class YamlSchemaValidator {
       return;
     }
 
-    // Insert requires "at" field
     if (!insertValue.containsKey('at')) {
       diagnostics.add(
         createError('Insert step missing required field "at"', filePath),
@@ -274,7 +314,14 @@ class YamlSchemaValidator {
       return;
     }
 
-    // Anchor is optional - it might be parsed from the path string
+    if (!insertValue.containsKey('anchor')) {
+      final at = insertValue['at'];
+      if (at is! String || !at.contains('@')) {
+        diagnostics.add(
+          createError('Insert step missing required field "anchor"', filePath),
+        );
+      }
+    }
   }
 
   /// Validates a create step.
@@ -460,45 +507,21 @@ class YamlSchemaValidator {
   }
 
   /// Creates a schema error diagnostic.
-  static RecipeDiagnostic createError(String message, String filePath) {
-    return RecipeDiagnostic(
-      severity: DiagnosticSeverity.error,
-      code: SchemaErrorCodes.schemaError,
-      message: message,
-      sources: [DiagnosticSource(file: filePath)],
-    );
-  }
+  static RecipeDiagnostic createError(String message, String filePath) =>
+      RecipeDiagnostics.schemaError(message, filePath);
 
   /// Creates a compile error diagnostic.
-  static RecipeDiagnostic compileError(String message, String filePath) {
-    return RecipeDiagnostic(
-      severity: DiagnosticSeverity.error,
-      code: SchemaErrorCodes.compileError,
-      message: message,
-      sources: [DiagnosticSource(file: filePath)],
-    );
-  }
+  static RecipeDiagnostic compileError(String message, String filePath) =>
+      RecipeDiagnostics.compileError(message, filePath);
 
   /// Creates a diagnostic for AST path parse errors.
-  static RecipeDiagnostic astPathParseError(String message, String filePath) {
-    return RecipeDiagnostic(
-      severity: DiagnosticSeverity.error,
-      code: SchemaErrorCodes.astPathParseError,
-      message: message,
-      sources: [DiagnosticSource(file: filePath)],
-    );
-  }
+  static RecipeDiagnostic astPathParseError(String message, String filePath) =>
+      RecipeDiagnostics.astPathParseError(message, filePath);
 
   /// Creates a diagnostic for recipe reference not found errors.
   static RecipeDiagnostic recipeRefNotFoundError(
     String message,
     String filePath,
-  ) {
-    return RecipeDiagnostic(
-      severity: DiagnosticSeverity.error,
-      code: SchemaErrorCodes.recipeRefNotFound,
-      message: message,
-      sources: [DiagnosticSource(file: filePath)],
-    );
-  }
+  ) =>
+      RecipeDiagnostics.recipeRefNotFound(message, filePath);
 }

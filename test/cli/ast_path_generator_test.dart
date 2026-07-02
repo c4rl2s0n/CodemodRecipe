@@ -2,7 +2,7 @@ import 'dart:io';
 import 'package:test/test.dart';
 import 'package:path/path.dart' as path;
 
-import '../../lib/src/cli/ast_path_generator.dart';
+import 'package:codemod_recipe/src/cli/ast_path_generator.dart';
 
 // Sample code used for testing - defined at class level so all tests can access it
 const sampleCode = '''
@@ -23,22 +23,21 @@ void topLevelFunction() {
 
 void main() {
   group('AstPathGenerator CLI', () {
-    const testFileName = 'test_cli_sample.dart';
     late File testFile;
     late String testFilePath;
 
-    setUp(() {
-      // Create a test Dart file
-      testFilePath = path.join(Directory.systemTemp.path, testFileName);
+    setUp(() async {
+      final dir = await Directory.systemTemp.createTemp('ast_path_cli_');
+      testFilePath = path.join(dir.path, 'sample.dart');
       testFile = File(testFilePath)
         ..createSync()
         ..writeAsStringSync(sampleCode);
     });
 
     tearDown(() {
-      // Clean up test file
-      if (testFile.existsSync()) {
-        testFile.deleteSync();
+      final parent = testFile.parent;
+      if (parent.existsSync()) {
+        parent.deleteSync(recursive: true);
       }
     });
 
@@ -48,7 +47,7 @@ void main() {
         const classOffset = 6; // "SampleClass" starts here
 
         final result = await _captureOutput((stdout, stderr) async {
-          await AstPathGenerator.generateFromFile(
+          return AstPathGenerator.generateFromFile(
             testFilePath,
             classOffset,
             outputFormat: 'text',
@@ -68,7 +67,7 @@ void main() {
         final methodOffset = sampleCode.indexOf('sampleMethod');
 
         final result = await _captureOutput((stdout, stderr) async {
-          await AstPathGenerator.generateFromFile(
+          return AstPathGenerator.generateFromFile(
             testFilePath,
             methodOffset,
             outputFormat: 'text',
@@ -87,7 +86,7 @@ void main() {
         final fieldOffset = sampleCode.indexOf('sampleField');
 
         final result = await _captureOutput((stdout, stderr) async {
-          await AstPathGenerator.generateFromFile(
+          return AstPathGenerator.generateFromFile(
             testFilePath,
             fieldOffset,
             outputFormat: 'text',
@@ -105,7 +104,7 @@ void main() {
         const classOffset = 6;
 
         final result = await _captureOutput((stdout, stderr) async {
-          await AstPathGenerator.generateFromFile(
+          return AstPathGenerator.generateFromFile(
             testFilePath,
             classOffset,
             outputFormat: 'yaml',
@@ -126,7 +125,7 @@ void main() {
         const classOffset = 6;
 
         final result = await _captureOutput((stdout, stderr) async {
-          await AstPathGenerator.generateFromFile(
+          return AstPathGenerator.generateFromFile(
             testFilePath,
             classOffset,
             outputFormat: 'json',
@@ -144,7 +143,7 @@ void main() {
 
       test('handles invalid offset gracefully', () async {
         final result = await _captureOutput((stdout, stderr) async {
-          await AstPathGenerator.generateFromFile(
+          return AstPathGenerator.generateFromFile(
             testFilePath,
             10000, // Invalid offset
             outputFormat: 'text',
@@ -158,8 +157,8 @@ void main() {
       });
 
       test('handles non-existent file gracefully', () async {
-        final result = await _captureOutput(() async {
-          await AstPathGenerator.generateFromFile(
+        final result = await _captureOutput((stdout, stderr) async {
+          return AstPathGenerator.generateFromFile(
             'non_existent_file.dart',
             0,
             outputFormat: 'text',
@@ -175,8 +174,8 @@ void main() {
 
     group('main function', () {
       test('shows help when no arguments provided', () async {
-        final result = await _captureOutput(() async {
-          await AstPathGenerator.main([]);
+        final result = await _captureOutput((stdout, stderr) async {
+          return AstPathGenerator.runCli([], stdout: stdout, stderr: stderr);
         });
 
         expect(result.exitCode, 1);
@@ -185,8 +184,8 @@ void main() {
       });
 
       test('shows help with --help flag', () async {
-        final result = await _captureOutput(() async {
-          await AstPathGenerator.main(['--help']);
+        final result = await _captureOutput((stdout, stderr) async {
+          return AstPathGenerator.runCli(['--help'], stdout: stdout, stderr: stderr);
         });
 
         expect(result.exitCode, 0);
@@ -196,8 +195,12 @@ void main() {
       });
 
       test('shows error for invalid offset', () async {
-        final result = await _captureOutput(() async {
-          await AstPathGenerator.main([testFilePath, 'invalid']);
+        final result = await _captureOutput((stdout, stderr) async {
+          return AstPathGenerator.runCli(
+            [testFilePath, 'invalid'],
+            stdout: stdout,
+            stderr: stderr,
+          );
         });
 
         expect(result.exitCode, 1);
@@ -207,15 +210,19 @@ void main() {
       test('generates output with valid arguments', () async {
         const classOffset = 6;
 
-        final result = await _captureOutput(() async {
-          await AstPathGenerator.main([
-            testFilePath,
-            classOffset.toString(),
-            '--format',
-            'yaml',
-            '--recipe-id',
-            'cli_test',
-          ]);
+        final result = await _captureOutput((stdout, stderr) async {
+          return AstPathGenerator.runCli(
+            [
+              testFilePath,
+              classOffset.toString(),
+              '--format',
+              'yaml',
+              '--recipe-id',
+              'cli_test',
+            ],
+            stdout: stdout,
+            stderr: stderr,
+          );
         });
 
         expect(result.exitCode, 0);
@@ -235,22 +242,16 @@ class _CaptureResult {
   _CaptureResult(this.stdout, this.stderr, this.exitCode);
 }
 
-Future<_CaptureResult> _captureOutput(Function func) async {
+Future<_CaptureResult> _captureOutput(
+  Future<int> Function(IOSink stdout, IOSink stderr) func,
+) async {
   final stdoutBuffer = StringBuffer();
   final stderrBuffer = StringBuffer();
-  int exitCode = 0;
 
-  // Create custom streams for capturing output
   final stdoutSink = _CaptureStream(stdoutBuffer);
   final stderrSink = _CaptureStream(stderrBuffer);
 
-  try {
-    await func(stdoutSink, stderrSink);
-  } catch (e) {
-    // Handle any exceptions
-    stderrBuffer.writeln('Unexpected error: $e');
-    exitCode = 1;
-  }
+  final exitCode = await func(stdoutSink, stderrSink);
 
   return _CaptureResult(
     stdoutBuffer.toString(),

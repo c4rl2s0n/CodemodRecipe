@@ -21,6 +21,7 @@ export 'src/core/step.dart';
 export 'src/core/template.dart';
 export 'src/core/transform.dart';
 export 'src/core/utils/file_utils.dart';
+export 'src/core/atomic_apply.dart';
 export 'src/ast_path/ast_path.dart';
 export 'src/yaml/yaml.dart';
 export 'src/dart_codegen/ast_helpers/ast_helpers.dart';

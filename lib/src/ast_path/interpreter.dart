@@ -162,13 +162,13 @@ class AstPathInterpreter {
   AstFocus _methodNamed(AstFocus focus, String name, String? match) {
     try {
       final classDecl = focus.asClass;
-      final methods = classDecl.members
+      final methods = classMembers(classDecl)
           .whereType<MethodDeclaration>()
-          .where((method) => method.name.lexeme == name)
+          .where((method) => methodNameLexeme(method) == name)
           .toList();
       if (methods.isEmpty) {
         throw StateError(
-          'Method "$name" not found in ${classDecl.name.lexeme}',
+          'Method "$name" not found in ${classNameLexeme(classDecl)}',
         );
       }
 
@@ -187,7 +187,7 @@ class AstPathInterpreter {
   AstFocus _constructor(AstFocus focus, String? name, String? match) {
     try {
       final classDecl = focus.asClass;
-      final constructors = classDecl.members
+      final constructors = classMembers(classDecl)
           .whereType<ConstructorDeclaration>()
           .where((ctor) {
             final ctorName = ctor.name?.lexeme;
@@ -199,7 +199,7 @@ class AstPathInterpreter {
           .toList();
 
       if (constructors.isEmpty && name == null) {
-        final fallback = classDecl.members
+        final fallback = classMembers(classDecl)
             .whereType<ConstructorDeclaration>()
             .toList();
         if (fallback.length == 1) {
@@ -211,7 +211,7 @@ class AstPathInterpreter {
         final label = name == null
             ? 'unnamed constructor'
             : 'constructor "$name"';
-        throw StateError('$label not found in ${classDecl.name.lexeme}');
+        throw StateError('$label not found in ${classNameLexeme(classDecl)}');
       }
 
       final ctor = _selectMatch(
@@ -238,7 +238,7 @@ class AstPathInterpreter {
           .toList();
 
       if (fields.isEmpty) {
-        throw StateError('Field "$name" not found in ${classDecl.name.lexeme}');
+        throw StateError('Field "$name" not found in ${classNameLexeme(classDecl)}');
       }
 
       final field = _selectMatch(
@@ -287,7 +287,7 @@ class AstPathInterpreter {
     // If we're inside a class, search class members first
     if (node is ClassDeclaration) {
       // Check constructors
-      final constructors = node.members
+      final constructors = classMembers(node)
           .whereType<ConstructorDeclaration>()
           .where((ctor) => ctor.name?.lexeme == name)
           .toList();
@@ -302,9 +302,9 @@ class AstPathInterpreter {
       }
 
       // Check methods
-      final methods = node.members
+      final methods = classMembers(node)
           .whereType<MethodDeclaration>()
-          .where((method) => method.name.lexeme == name)
+          .where((method) => methodNameLexeme(method) == name)
           .toList();
       if (methods.isNotEmpty) {
         final method = _selectMatch(

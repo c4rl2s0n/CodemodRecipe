@@ -1,9 +1,10 @@
 import 'package:test/test.dart';
 import 'package:analyzer/dart/ast/ast.dart';
 
-import '../../lib/src/dart_codegen/ast_helpers/ast_focus.dart';
-import '../../lib/src/ast_path/node_finder.dart';
-import '../../lib/src/ast_path/model.dart';
+import 'package:codemod_recipe/src/dart_codegen/ast_helpers/ast_focus.dart';
+import 'package:codemod_recipe/src/dart_codegen/ast_helpers/offsets.dart';
+import 'package:codemod_recipe/src/ast_path/node_finder.dart';
+import 'package:codemod_recipe/src/ast_path/model.dart';
 
 void main() {
   group('AstNodeFinder', () {
@@ -22,7 +23,7 @@ class MyClass {
         final node = AstNodeFinder.findNodeAtOffset(unit, classOffset);
 
         expect(node, isA<ClassDeclaration>());
-        expect((node as ClassDeclaration).name.lexeme, 'MyClass');
+        expect(classNameLexeme(node as ClassDeclaration), 'MyClass');
       });
 
       test('finds method declaration', () async {
@@ -139,7 +140,7 @@ class MyClass {
                 as ClassDeclaration;
 
         final methodNode =
-            classNode.members.firstWhere(
+            classMembers(classNode).firstWhere(
                   (member) => member is MethodDeclaration,
                 )
                 as MethodDeclaration;
@@ -169,7 +170,7 @@ class MyClass {
                 as ClassDeclaration;
 
         final fieldNode =
-            classNode.members.firstWhere((member) => member is FieldDeclaration)
+            classMembers(classNode).firstWhere((member) => member is FieldDeclaration)
                 as FieldDeclaration;
 
         final path = AstNodeFinder.createPathFromNode(fieldNode, unit);

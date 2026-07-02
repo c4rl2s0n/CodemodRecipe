@@ -63,7 +63,7 @@ class AstFocus {
     final classDecl = asClass;
     final method = findMethodByName(classDecl, name);
     if (method == null) {
-      throw StateError('Method "$name" not found in ${classDecl.name.lexeme}');
+      throw StateError('Method "$name" not found in ${classNameLexeme(classDecl)}');
     }
     return AstFocus(source, unit, method);
   }
@@ -76,7 +76,7 @@ class AstFocus {
       final label = name == null
           ? 'unnamed constructor'
           : 'constructor "$name"';
-      throw StateError('$label not found in ${classDecl.name.lexeme}');
+      throw StateError('$label not found in ${classNameLexeme(classDecl)}');
     }
     return AstFocus(source, unit, ctor);
   }
@@ -86,7 +86,7 @@ class AstFocus {
     final classDecl = asClass;
     final field = findFieldByName(classDecl, name);
     if (field == null) {
-      throw StateError('Field "$name" not found in ${classDecl.name.lexeme}');
+      throw StateError('Field "$name" not found in ${classNameLexeme(classDecl)}');
     }
     return AstFocus(source, unit, field);
   }

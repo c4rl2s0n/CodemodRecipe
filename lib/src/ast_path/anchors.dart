@@ -1,7 +1,6 @@
 import 'package:analyzer/dart/ast/ast.dart';
 
 import '../dart_codegen/ast_helpers/invocations.dart';
-import '../dart_codegen/ast_helpers/localizers.dart';
 import '../dart_codegen/ast_helpers/offsets.dart';
 import 'model.dart';
 import 'anchor_validators.dart';
@@ -270,22 +269,7 @@ int _metaBefore(AstNode node) {
   return _declarationKeywordOffset(node);
 }
 
-int _declarationKeywordOffset(AstNode node) {
-  if (node is ClassDeclaration) {
-    return node.classKeyword.offset;
-  }
-  if (node is MethodDeclaration) {
-    return node.returnType?.offset ?? node.name.offset;
-  }
-  if (node is ConstructorDeclaration) {
-    return node.returnType.offset;
-  }
-  if (node is FieldDeclaration) {
-    return node.fields.keyword?.offset ??
-        node.fields.variables.first.name.offset;
-  }
-  return node.offset;
-}
+int _declarationKeywordOffset(AstNode node) => declarationKeywordOffset(node);
 
 List<Annotation> _metadataList(AstNode node) {
   return switch (node) {

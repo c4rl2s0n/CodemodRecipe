@@ -1,11 +1,18 @@
 import 'package:analyzer/dart/ast/ast.dart';
 import 'package:analyzer/dart/ast/visitor.dart';
 
+import 'offsets.dart';
+
 export 'offsets.dart'
     show
+        classBodyLeftBracketEnd,
+        classMembers,
+        classNameLexeme,
+        declarationKeywordOffset,
         findClassEndOffset,
         findClassBodyStartOffset,
-        findOptimalInsertionOffset;
+        findOptimalInsertionOffset,
+        methodNameLexeme;
 
 /// Returns the first class declaration named [className] in [unit].
 ClassDeclaration? findClassByName(CompilationUnit unit, String className) {
@@ -13,7 +20,7 @@ ClassDeclaration? findClassByName(CompilationUnit unit, String className) {
 
   unit.accept(
     ClassVisitor((node) {
-      if (node.name.lexeme == className) {
+      if (classNameLexeme(node) == className) {
         found = node;
       }
     }),
@@ -27,8 +34,9 @@ MethodDeclaration? findMethodByName(
   ClassDeclaration classNode,
   String methodName,
 ) {
-  for (final member in classNode.members) {
-    if (member is MethodDeclaration && member.name.lexeme == methodName) {
+  for (final member in classMembers(classNode)) {
+    if (member is MethodDeclaration &&
+        methodNameLexeme(member) == methodName) {
       return member;
     }
   }
@@ -43,7 +51,7 @@ ConstructorDeclaration? findConstructor(
   ClassDeclaration classNode, {
   String? name,
 }) {
-  for (final member in classNode.members) {
+  for (final member in classMembers(classNode)) {
     if (member is ConstructorDeclaration) {
       final constructorName = member.name?.lexeme;
       if (name == null && constructorName == null) {
@@ -56,7 +64,7 @@ ConstructorDeclaration? findConstructor(
   }
 
   if (name == null) {
-    for (final member in classNode.members) {
+    for (final member in classMembers(classNode)) {
       if (member is ConstructorDeclaration) {
         return member;
       }
@@ -68,7 +76,7 @@ ConstructorDeclaration? findConstructor(
 
 /// Returns abstract methods directly declared in [classNode].
 List<MethodDeclaration> getAbstractMethods(ClassDeclaration classNode) {
-  return classNode.members
+  return classMembers(classNode)
       .whereType<MethodDeclaration>()
       .where((m) => m.isAbstract)
       .toList();
@@ -76,7 +84,7 @@ List<MethodDeclaration> getAbstractMethods(ClassDeclaration classNode) {
 
 /// Returns field declarations directly declared in [classNode].
 List<FieldDeclaration> getFields(ClassDeclaration classNode) {
-  return classNode.members.whereType<FieldDeclaration>().toList();
+  return classMembers(classNode).whereType<FieldDeclaration>().toList();
 }
 
 /// Returns the field declaration containing variable [fieldName] in [classNode].
@@ -101,7 +109,7 @@ List<ClassDeclaration> findClassesByName(
 ) {
   return findAllClasses(
     unit,
-  ).where((node) => node.name.lexeme == className).toList();
+  ).where((node) => classNameLexeme(node) == className).toList();
 }
 
 /// Returns whether [classNode] extends a class named [baseClassName].
@@ -117,7 +125,7 @@ bool extendsClass(ClassDeclaration classNode, String baseClassName) {
 
 /// Returns method declarations directly declared in [classNode].
 List<MethodDeclaration> getMethods(ClassDeclaration classNode) {
-  return classNode.members.whereType<MethodDeclaration>().toList();
+  return classMembers(classNode).whereType<MethodDeclaration>().toList();
 }
 
 /// Recursive visitor that invokes [onClass] for each class declaration.

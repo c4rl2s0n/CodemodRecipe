@@ -45,11 +45,9 @@ class YamlMapRegistry {
         final doc = loadYaml(file.readAsStringSync());
         if (doc is! YamlMap) {
           diagnostics.add(
-            RecipeDiagnostic(
-              severity: DiagnosticSeverity.error,
-              code: 'E_MAP_SCHEMA',
-              message: 'Map file root must be a map',
-              sources: [DiagnosticSource(file: relativePath)],
+            RecipeDiagnostics.mapSchemaError(
+              'Map file root must be a map',
+              relativePath,
             ),
           );
           continue;
@@ -58,11 +56,9 @@ class YamlMapRegistry {
         final id = doc['id']?.toString();
         if (id == null || id.isEmpty) {
           diagnostics.add(
-            RecipeDiagnostic(
-              severity: DiagnosticSeverity.error,
-              code: 'E_MAP_SCHEMA',
-              message: 'Map file missing required \"id\"',
-              sources: [DiagnosticSource(file: relativePath)],
+            RecipeDiagnostics.mapSchemaError(
+              'Map file missing required "id"',
+              relativePath,
             ),
           );
           continue;
@@ -71,11 +67,9 @@ class YamlMapRegistry {
         final entriesNode = doc['entries'];
         if (entriesNode is! YamlMap) {
           diagnostics.add(
-            RecipeDiagnostic(
-              severity: DiagnosticSeverity.error,
-              code: 'E_MAP_SCHEMA',
-              message: 'Map \"$id\" missing required \"entries\" map',
-              sources: [DiagnosticSource(file: relativePath)],
+            RecipeDiagnostics.mapSchemaError(
+              'Map "$id" missing required "entries" map',
+              relativePath,
             ),
           );
           continue;
@@ -94,12 +88,7 @@ class YamlMapRegistry {
             .add(DiagnosticSource(file: relativePath));
       } catch (error) {
         diagnostics.add(
-          RecipeDiagnostic(
-            severity: DiagnosticSeverity.error,
-            code: 'E_MAP_PARSE',
-            message: '$error',
-            sources: [DiagnosticSource(file: relativePath)],
-          ),
+          RecipeDiagnostics.mapParseError('$error', relativePath),
         );
       }
     }
@@ -108,14 +97,7 @@ class YamlMapRegistry {
     for (final entry in idSources.entries) {
       if (entry.value.length < 2) continue;
       rejectedIds.add(entry.key);
-      diagnostics.add(
-        RecipeDiagnostic(
-          severity: DiagnosticSeverity.error,
-          code: 'E_DUPLICATE_MAP_ID',
-          message: "Duplicate map id '${entry.key}'",
-          sources: entry.value,
-        ),
-      );
+      diagnostics.add(RecipeDiagnostics.duplicateMapId(entry.key, entry.value));
     }
 
     for (final id in rejectedIds) {

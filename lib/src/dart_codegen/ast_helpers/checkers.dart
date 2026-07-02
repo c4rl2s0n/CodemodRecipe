@@ -9,7 +9,7 @@ bool hasMethodInClass(ClassDeclaration classNode, String methodName) {
 
 /// Returns whether [classNode] has a field named [fieldName].
 bool hasFieldInClass(ClassDeclaration classNode, String fieldName) {
-  for (final member in classNode.members) {
+  for (final member in classMembers(classNode)) {
     if (member is FieldDeclaration) {
       for (final variable in member.fields.variables) {
         if (variable.name.lexeme == fieldName) {

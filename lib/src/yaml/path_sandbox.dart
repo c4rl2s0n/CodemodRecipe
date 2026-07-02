@@ -76,10 +76,9 @@ RecipeDiagnostic diagnosticFromSandbox(
   PathSandboxException error,
   String file,
 ) {
-  return RecipeDiagnostic(
-    severity: DiagnosticSeverity.error,
-    code: error.code ?? 'E_PATH_TRAVERSAL',
-    message: error.message,
-    sources: [DiagnosticSource(file: file)],
+  return RecipeDiagnostics.pathSandbox(
+    error.message,
+    file,
+    code: error.code,
   );
 }

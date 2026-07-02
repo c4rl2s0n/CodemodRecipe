@@ -9,4 +9,5 @@ export 'codemod_recipe.dart';
 export 'src/vscode/codemod_host.dart';
 export 'src/vscode/diff_service.dart';
 export 'src/vscode/patch_selector.dart';
+export 'src/vscode/preview_token.dart';
 export 'src/vscode/recipe_schema.dart';

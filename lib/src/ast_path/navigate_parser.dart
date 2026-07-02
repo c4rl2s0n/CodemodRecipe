@@ -97,7 +97,7 @@ class NavigateParser {
             'Navigate map entry must have one step key plus optional "match"',
           );
         }
-        final name = entry[key] == null ? null : entry[key].toString();
+        final name = entry[key]?.toString();
         step = stepForKey(key.toString(), name);
       }
 
