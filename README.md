@@ -125,6 +125,17 @@ steps:
 Referenced edit steps are inlined; args are merged (first definition wins).
 Use top-level `postExecution` on the parent recipe.
 
+**Delete files** — remove an existing file:
+
+```yaml
+steps:
+  - delete:
+      path: "{{legacyPath}}"
+      ifMissing: skip   # fail | skip (default fail)
+```
+
+**Inline recipes** — pass a full recipe object to the host/MCP as `inlineRecipe` (no file on disk required).
+
 **Dart** — `CodemodRecipe.compose(steps: [...])` merges recipes, inline
 operations, and post-execution actions. The Rust YAML layer provides the same
 semantics for `recipe:` steps and a `compose_recipe` API in `codemod_recipe_yaml`.
@@ -142,8 +153,12 @@ semantics for `recipe:` steps and a `compose_recipe` API in `codemod_recipe_yaml
 | Atomic multi-file apply | Done |
 | MCP subprocess | Done |
 | Recipe composition (`recipe:` steps) | Done |
+| Multi-file edit/create/delete in one recipe | Done |
+| `create:` / `delete:` file steps | Done |
+| `inlineRecipe` (host + MCP) | Done |
+| Full MCP tool parity (minus `generate_astPath`) | Done |
 | `generateAstPath` | Not planned (v1) |
-| Create / template file steps | Not yet |
+| Legacy navigate+anchor DSL | Not planned |
 | TypeScript grammar | Planned |
 
 Run tests:
@@ -169,6 +184,7 @@ node vscode_extension/scripts/smoke.mjs
 ## Documentation
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — design decisions (Dart-centric; being updated)
+- [docs/new-project-rust-mcp.md](docs/new-project-rust-mcp.md) — Rust MCP quickstart for new projects
 - [docs/codemod-mcp.md](docs/codemod-mcp.md) — MCP tools and agent workflow
 - [vscode_extension/README.md](vscode_extension/README.md) — extension setup
 - [example/README.md](example/README.md) — Dart API examples

@@ -95,7 +95,8 @@ fn preview_returns_preview_token_and_modified_content() {
     let response = dispatch::handle_command(
         &mut registry,
         HostCommand::Preview {
-            recipe: "insert_log_line".to_string(),
+            recipe: Some("insert_log_line".to_string()),
+            inline_recipe: None,
             args,
             snippet_lines: None,
         },
@@ -122,7 +123,8 @@ fn preview_reports_missing_required_arguments() {
     let response = dispatch::handle_command(
         &mut registry,
         HostCommand::Preview {
-            recipe: "insert_log_line".to_string(),
+            recipe: Some("insert_log_line".to_string()),
+            inline_recipe: None,
             args: BTreeMap::new(),
             snippet_lines: None,
         },
@@ -188,7 +190,8 @@ fn apply_writes_transformed_file() {
     let preview = dispatch::handle_command(
         &mut registry,
         HostCommand::Preview {
-            recipe: "insert_log_line".to_string(),
+            recipe: Some("insert_log_line".to_string()),
+            inline_recipe: None,
             args: args.clone(),
             snippet_lines: None,
         },
@@ -199,7 +202,8 @@ fn apply_writes_transformed_file() {
     let apply = dispatch::handle_command(
         &mut registry,
         HostCommand::Apply {
-            recipe: "insert_log_line".to_string(),
+            recipe: Some("insert_log_line".to_string()),
+            inline_recipe: None,
             args,
             preview_token: token,
             selection: serde_json::json!({}),
@@ -242,7 +246,8 @@ fn remove_is_idempotent_on_second_preview() {
     let first = dispatch::handle_command(
         &mut registry,
         HostCommand::Preview {
-            recipe: "remove_count_field".to_string(),
+            recipe: Some("remove_count_field".to_string()),
+            inline_recipe: None,
             args: args.clone(),
             snippet_lines: None,
         },
@@ -253,7 +258,8 @@ fn remove_is_idempotent_on_second_preview() {
     let apply = dispatch::handle_command(
         &mut registry,
         HostCommand::Apply {
-            recipe: "remove_count_field".to_string(),
+            recipe: Some("remove_count_field".to_string()),
+            inline_recipe: None,
             args: args.clone(),
             preview_token: token.to_string(),
             selection: serde_json::json!({}),
@@ -264,7 +270,8 @@ fn remove_is_idempotent_on_second_preview() {
     let second = dispatch::handle_command(
         &mut registry,
         HostCommand::Preview {
-            recipe: "remove_count_field".to_string(),
+            recipe: Some("remove_count_field".to_string()),
+            inline_recipe: None,
             args,
             snippet_lines: None,
         },
@@ -297,7 +304,8 @@ fn apply_rejects_missing_preview_token() {
     let apply = dispatch::handle_command(
         &mut registry,
         HostCommand::Apply {
-            recipe: "insert_log_line".to_string(),
+            recipe: Some("insert_log_line".to_string()),
+            inline_recipe: None,
             args,
             preview_token: String::new(),
             selection: serde_json::json!({}),
@@ -330,7 +338,8 @@ fn apply_rejects_stale_preview_token_after_file_changes() {
     let preview = dispatch::handle_command(
         &mut registry,
         HostCommand::Preview {
-            recipe: "insert_log_line".to_string(),
+            recipe: Some("insert_log_line".to_string()),
+            inline_recipe: None,
             args: args.clone(),
             snippet_lines: None,
         },
@@ -342,7 +351,8 @@ fn apply_rejects_stale_preview_token_after_file_changes() {
     let apply = dispatch::handle_command(
         &mut registry,
         HostCommand::Apply {
-            recipe: "insert_log_line".to_string(),
+            recipe: Some("insert_log_line".to_string()),
+            inline_recipe: None,
             args,
             preview_token: token,
             selection: serde_json::json!({}),
@@ -403,7 +413,8 @@ fn preview_includes_structured_patches() {
     let response = dispatch::handle_command(
         &mut registry,
         HostCommand::Preview {
-            recipe: "insert_log_line".to_string(),
+            recipe: Some("insert_log_line".to_string()),
+            inline_recipe: None,
             args,
             snippet_lines: None,
         },
@@ -438,7 +449,8 @@ fn diff_returns_full_file_data() {
     let response = dispatch::handle_command(
         &mut registry,
         HostCommand::Diff {
-            recipe: "insert_log_line".to_string(),
+            recipe: Some("insert_log_line".to_string()),
+            inline_recipe: None,
             args,
             path: rel.to_string(),
         },
@@ -465,7 +477,8 @@ fn preview_add_log_line_with_class_and_method_args() {
     let response = dispatch::handle_command(
         &mut registry,
         HostCommand::Preview {
-            recipe: "add_log_line".to_string(),
+            recipe: Some("add_log_line".to_string()),
+            inline_recipe: None,
             args,
             snippet_lines: Some(2),
         },
@@ -475,3 +488,172 @@ fn preview_add_log_line_with_class_and_method_args() {
     assert_eq!(files.len(), 1);
     assert!(files[0]["snippet"].as_str().unwrap_or("").contains("print"));
 }
+
+#[test]
+fn preview_create_file_step() {
+    let workspace = temp_workspace("create_step");
+    let recipes_dir = workspace.join(".codemod/recipes");
+    std::fs::create_dir_all(&recipes_dir).unwrap();
+    std::fs::copy(
+        repo_root().join("test/fixtures/rust_oracle/scaffold_widget.recipe.yaml"),
+        recipes_dir.join("scaffold_widget.yaml"),
+    )
+    .unwrap();
+
+    let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+    registry.reload();
+
+    let mut args = BTreeMap::new();
+    args.insert("featurePath".to_string(), "lib/features".to_string());
+    args.insert("name".to_string(), "Counter".to_string());
+
+    let response = dispatch::handle_command(
+        &mut registry,
+        HostCommand::Preview {
+            recipe: Some("scaffold_widget".to_string()),
+            inline_recipe: None,
+            args: args.clone(),
+            snippet_lines: None,
+        },
+    );
+    assert_eq!(response["ok"], true, "{}", response["error"]);
+    let files = response["files"].as_array().unwrap();
+    assert_eq!(files.len(), 1);
+    assert_eq!(files[0]["kind"], "create");
+    assert!(files[0]["isNew"].as_bool().unwrap());
+
+    let token = response["previewToken"].as_str().unwrap();
+    let apply = dispatch::handle_command(
+        &mut registry,
+        HostCommand::Apply {
+            recipe: Some("scaffold_widget".to_string()),
+            inline_recipe: None,
+            args,
+            preview_token: token.to_string(),
+            selection: serde_json::json!({}),
+        },
+    );
+    assert_eq!(apply["ok"], true, "{}", apply["error"]);
+    let created = workspace.join("lib/features/counter.dart");
+    assert!(created.exists());
+    assert!(std::fs::read_to_string(&created).unwrap().contains("class Counter"));
+
+    let _ = std::fs::remove_dir_all(workspace);
+}
+
+#[test]
+fn preview_delete_file_step() {
+    let workspace = temp_workspace("delete_step");
+    let recipes_dir = workspace.join(".codemod/recipes");
+    std::fs::create_dir_all(&recipes_dir).unwrap();
+    std::fs::copy(
+        repo_root().join("test/fixtures/rust_oracle/delete_legacy.recipe.yaml"),
+        recipes_dir.join("delete_legacy.yaml"),
+    )
+    .unwrap();
+
+    let legacy = workspace.join("lib/legacy.dart");
+    std::fs::create_dir_all(legacy.parent().unwrap()).unwrap();
+    std::fs::write(&legacy, "class Legacy {}\n").unwrap();
+
+    let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+    registry.reload();
+
+    let mut args = BTreeMap::new();
+    args.insert("legacyPath".to_string(), "lib/legacy.dart".to_string());
+
+    let preview = dispatch::handle_command(
+        &mut registry,
+        HostCommand::Preview {
+            recipe: Some("delete_legacy".to_string()),
+            inline_recipe: None,
+            args: args.clone(),
+            snippet_lines: None,
+        },
+    );
+    assert_eq!(preview["ok"], true, "{}", preview["error"]);
+    assert_eq!(preview["files"][0]["kind"], "delete");
+
+    let token = preview["previewToken"].as_str().unwrap();
+    let apply = dispatch::handle_command(
+        &mut registry,
+        HostCommand::Apply {
+            recipe: Some("delete_legacy".to_string()),
+            inline_recipe: None,
+            args,
+            preview_token: token.to_string(),
+            selection: serde_json::json!({}),
+        },
+    );
+    assert_eq!(apply["ok"], true);
+    assert!(!legacy.exists());
+
+    let _ = std::fs::remove_dir_all(workspace);
+}
+
+#[test]
+fn inline_recipe_preview_and_apply() {
+    let workspace = temp_workspace("inline_recipe");
+    let settings = workspace.join("lib/settings.dart");
+    std::fs::create_dir_all(settings.parent().unwrap()).unwrap();
+    std::fs::copy(
+        repo_root().join("test/fixtures/ast_paths/settings.dart"),
+        &settings,
+    )
+    .unwrap();
+
+    let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+    registry.reload();
+
+    let inline_recipe = serde_json::json!({
+        "dslVersion": 2,
+        "id": "inline_insert",
+        "args": [{ "name": "file", "required": true }],
+        "steps": [{
+            "edit": {
+                "path": "{{file}}",
+                "ops": [{
+                    "insert": {
+                        "query": "(class_declaration name: (identifier) @className body: (class_body (class_member (method_signature (function_signature name: (identifier) @methodName)) (function_body (block) @body))) (#eq? @className \"Settings\") (#eq? @methodName \"update\"))",
+                        "capture": "body",
+                        "anchor": "end",
+                        "text": "    print('inline');\n"
+                    }
+                }]
+            }
+        }]
+    });
+
+    let mut args = BTreeMap::new();
+    args.insert("file".to_string(), "lib/settings.dart".to_string());
+
+    let preview = dispatch::handle_command(
+        &mut registry,
+        HostCommand::Preview {
+            recipe: None,
+            inline_recipe: Some(inline_recipe.clone()),
+            args: args.clone(),
+            snippet_lines: None,
+        },
+    );
+    assert_eq!(preview["ok"], true, "{}", preview["error"]);
+    let token = preview["previewToken"].as_str().unwrap();
+
+    let apply = dispatch::handle_command(
+        &mut registry,
+        HostCommand::Apply {
+            recipe: None,
+            inline_recipe: Some(inline_recipe),
+            args,
+            preview_token: token.to_string(),
+            selection: serde_json::json!({}),
+        },
+    );
+    assert_eq!(apply["ok"], true, "{}", apply["error"]);
+    assert!(std::fs::read_to_string(&settings)
+        .unwrap()
+        .contains("print('inline')"));
+
+    let _ = std::fs::remove_dir_all(workspace);
+}
+

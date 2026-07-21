@@ -14,22 +14,35 @@ pub enum HostCommand {
     Describe { recipe: String },
     #[serde(rename = "preview")]
     Preview {
-        recipe: String,
+        #[serde(default)]
+        recipe: Option<String>,
+        #[serde(default, rename = "inlineRecipe")]
+        inline_recipe: Option<serde_json::Value>,
+        #[serde(default)]
         args: std::collections::BTreeMap<String, String>,
         #[serde(default, rename = "snippetLines")]
         snippet_lines: Option<u32>,
     },
     #[serde(rename = "apply")]
     Apply {
-        recipe: String,
+        #[serde(default)]
+        recipe: Option<String>,
+        #[serde(default, rename = "inlineRecipe")]
+        inline_recipe: Option<serde_json::Value>,
+        #[serde(default)]
         args: std::collections::BTreeMap<String, String>,
         #[serde(rename = "previewToken")]
         preview_token: String,
+        #[serde(default)]
         selection: serde_json::Value,
     },
     #[serde(rename = "diff")]
     Diff {
-        recipe: String,
+        #[serde(default)]
+        recipe: Option<String>,
+        #[serde(default, rename = "inlineRecipe")]
+        inline_recipe: Option<serde_json::Value>,
+        #[serde(default)]
         args: std::collections::BTreeMap<String, String>,
         path: String,
     },
@@ -192,7 +205,7 @@ mod tests {
                 snippet_lines,
                 ..
             } => {
-                assert_eq!(recipe, "r");
+                assert_eq!(recipe.as_deref(), Some("r"));
                 assert_eq!(snippet_lines, Some(3));
             }
             _ => panic!("expected preview"),

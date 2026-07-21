@@ -27,6 +27,18 @@ pub struct Arg {
     pub required: bool,
     #[serde(default, rename = "inputKind")]
     pub input_kind: Option<String>,
+    #[serde(default)]
+    pub abbr: Option<String>,
+    #[serde(default)]
+    pub help: Option<String>,
+    #[serde(default, rename = "defaultsTo")]
+    pub defaults_to: Option<String>,
+    #[serde(default)]
+    pub options: Vec<String>,
+    #[serde(default, rename = "allowCustomValue")]
+    pub allow_custom_value: Option<bool>,
+    #[serde(default, rename = "contextKey")]
+    pub context_key: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -39,7 +51,8 @@ pub enum PostExecution {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Step {
     Edit(EditStep),
-    Create(serde_yaml::Value),
+    Create(CreateStep),
+    Delete(DeleteStep),
     RecipeRef(serde_yaml::Value),
     Unknown(String, serde_yaml::Value),
 }
@@ -77,7 +90,16 @@ impl<'de> Deserialize<'de> for Step {
                             .map_err(|e| de::Error::custom(format!("invalid edit step: {e}")))?;
                         Ok(Step::Edit(edit))
                     }
-                    "create" => Ok(Step::Create(v)),
+                    "create" => {
+                        let create: CreateStep = serde_yaml::from_value(v)
+                            .map_err(|e| de::Error::custom(format!("invalid create step: {e}")))?;
+                        Ok(Step::Create(create))
+                    }
+                    "delete" => {
+                        let delete: DeleteStep = serde_yaml::from_value(v)
+                            .map_err(|e| de::Error::custom(format!("invalid delete step: {e}")))?;
+                        Ok(Step::Delete(delete))
+                    }
                     "recipe" => Ok(Step::RecipeRef(v)),
                     other => Ok(Step::Unknown(other.to_string(), v)),
                 }
@@ -86,6 +108,48 @@ impl<'de> Deserialize<'de> for Step {
 
         deserializer.deserialize_map(StepVisitor)
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CreateStep {
+    pub path: String,
+    #[serde(default)]
+    pub template: Option<String>,
+    #[serde(default, rename = "templateFile")]
+    pub template_file: Option<String>,
+    #[serde(default, rename = "ifExists")]
+    pub if_exists: IfExistsStrategy,
+    #[serde(default = "default_true")]
+    pub format: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum IfExistsStrategy {
+    #[default]
+    Fail,
+    Skip,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DeleteStep {
+    pub path: String,
+    #[serde(default, rename = "ifMissing")]
+    pub if_missing: IfMissingStrategy,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum IfMissingStrategy {
+    #[default]
+    Fail,
+    Skip,
+}
+
+fn default_true() -> bool {
+    true
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]

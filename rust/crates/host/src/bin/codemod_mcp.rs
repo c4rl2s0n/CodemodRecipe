@@ -74,7 +74,7 @@ fn handle_request(
             id,
             result: Some(json!({
               "protocolVersion": "2024-11-05",
-              "serverInfo": { "name": "codemod-mcp-rust", "version": "0.1.0" },
+              "serverInfo": { "name": "codemod-mcp-rust", "version": "0.2.0" },
               "capabilities": { "tools": {} }
             })),
             error: None,
@@ -84,9 +84,66 @@ fn handle_request(
             id,
             result: Some(json!({
               "tools": [
-                { "name": "list_recipes", "description": "List registered recipes", "inputSchema": { "type": "object" } },
-                { "name": "preview_recipe", "description": "Preview a recipe against args (returns previewToken)", "inputSchema": { "type": "object", "properties": { "recipe": { "type": "string" }, "args": { "type": "object" }, "snippetLines": { "type": "number" } }, "required": ["recipe","args"] } },
-                { "name": "apply_recipe", "description": "Apply a previewed recipe atomically", "inputSchema": { "type": "object", "properties": { "recipe": { "type": "string" }, "args": { "type": "object" }, "previewToken": { "type": "string" } }, "required": ["recipe","args","previewToken"] } }
+                {
+                  "name": "list_recipes",
+                  "description": "List registered recipes with schemas and diagnostics",
+                  "inputSchema": { "type": "object" }
+                },
+                {
+                  "name": "describe_recipe",
+                  "description": "Describe one registered recipe",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": { "recipe": { "type": "string" } },
+                    "required": ["recipe"]
+                  }
+                },
+                {
+                  "name": "validate_recipes",
+                  "description": "Reload and validate all recipes and maps",
+                  "inputSchema": { "type": "object" }
+                },
+                {
+                  "name": "preview_recipe",
+                  "description": "Preview a registered or inline recipe",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "recipe": { "type": "string" },
+                      "inlineRecipe": { "type": "object" },
+                      "args": { "type": "object" },
+                      "snippetLines": { "type": "number" }
+                    }
+                  }
+                },
+                {
+                  "name": "apply_recipe",
+                  "description": "Apply a previewed recipe atomically",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "recipe": { "type": "string" },
+                      "inlineRecipe": { "type": "object" },
+                      "args": { "type": "object" },
+                      "previewToken": { "type": "string" },
+                      "selection": { "type": "object" }
+                    },
+                    "required": ["previewToken"]
+                  }
+                },
+                {
+                  "name": "bootstrap_project",
+                  "description": "Install codemod-recipe agent skills (.agents/skills/), rules (.cursor/rules/), and .codemod/ scaffolding into the workspace",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "force": {
+                        "type": "boolean",
+                        "description": "Overwrite existing files (default false)"
+                      }
+                    }
+                  }
+                }
               ]
             })),
             error: None,
@@ -104,22 +161,31 @@ fn handle_request(
                 .unwrap_or_else(|| json!({}));
 
             let result = match tool {
-                "list_recipes" => json!({ "ok": true, "recipes": registry.list_ids() }),
-                "preview_recipe" => {
+                "list_recipes" => handle_command(registry, HostCommand::List),
+                "describe_recipe" => {
                     let recipe_id = arguments
                         .get("recipe")
                         .and_then(|v| v.as_str())
                         .unwrap_or("");
-                    let args = json_args_to_btreemap(&arguments);
-                    preview_or_apply(registry, recipe_id, &args, false, &arguments)
+                    handle_command(
+                        registry,
+                        HostCommand::Describe {
+                            recipe: recipe_id.to_string(),
+                        },
+                    )
                 }
-                "apply_recipe" => {
-                    let recipe_id = arguments
-                        .get("recipe")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("");
-                    let args = json_args_to_btreemap(&arguments);
-                    preview_or_apply(registry, recipe_id, &args, true, &arguments)
+                "validate_recipes" => handle_command(registry, HostCommand::Validate),
+                "preview_recipe" => mcp_preview_or_apply(registry, &arguments, false),
+                "apply_recipe" => mcp_preview_or_apply(registry, &arguments, true),
+                "bootstrap_project" => {
+                    let force = arguments
+                        .get("force")
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false);
+                    codemod_recipe_host::bootstrap::bootstrap_project(
+                        &registry.workspace_root,
+                        force,
+                    )
                 }
                 _ => json!({ "ok": false, "error": format!("Unknown tool: {tool}") }),
             };
@@ -145,28 +211,21 @@ fn handle_request(
     }
 }
 
-fn json_args_to_btreemap(arguments: &serde_json::Value) -> BTreeMap<String, String> {
-    arguments
-        .get("args")
-        .and_then(|v| v.as_object())
-        .map(|obj| {
-            obj.iter()
-                .filter_map(|(k, v)| v.as_str().map(|s| (k.clone(), s.to_string())))
-                .collect()
-        })
-        .unwrap_or_default()
-}
-
-fn preview_or_apply(
+fn mcp_preview_or_apply(
     registry: &mut RecipeRegistry,
-    recipe_id: &str,
-    args: &BTreeMap<String, String>,
-    do_apply: bool,
     arguments: &serde_json::Value,
+    do_apply: bool,
 ) -> serde_json::Value {
-    if recipe_id.is_empty() {
-        return json!({ "ok": false, "error": "Missing recipe id" });
+    let recipe = arguments
+        .get("recipe")
+        .and_then(|v| v.as_str())
+        .map(String::from);
+    let inline_recipe = arguments.get("inlineRecipe").cloned();
+    if recipe.is_none() && inline_recipe.is_none() {
+        return json!({ "ok": false, "error": "Missing recipe or inlineRecipe" });
     }
+
+    let args = json_args_to_btreemap(arguments);
 
     if do_apply {
         let preview_token = arguments
@@ -181,8 +240,9 @@ fn preview_or_apply(
         handle_command(
             registry,
             HostCommand::Apply {
-                recipe: recipe_id.to_string(),
-                args: args.clone(),
+                recipe,
+                inline_recipe,
+                args,
                 preview_token,
                 selection,
             },
@@ -195,10 +255,23 @@ fn preview_or_apply(
         handle_command(
             registry,
             HostCommand::Preview {
-                recipe: recipe_id.to_string(),
-                args: args.clone(),
+                recipe,
+                inline_recipe,
+                args,
                 snippet_lines,
             },
         )
     }
+}
+
+fn json_args_to_btreemap(arguments: &serde_json::Value) -> BTreeMap<String, String> {
+    arguments
+        .get("args")
+        .and_then(|v| v.as_object())
+        .map(|obj| {
+            obj.iter()
+                .filter_map(|(k, v)| v.as_str().map(|s| (k.clone(), s.to_string())))
+                .collect()
+        })
+        .unwrap_or_default()
 }

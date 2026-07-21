@@ -1,3 +1,4 @@
+pub mod bootstrap;
 pub mod map_registry;
 pub mod naming;
 pub mod config;

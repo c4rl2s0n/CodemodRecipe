@@ -17,6 +17,12 @@ pub enum ValidationError {
 
     #[error("duplicate arg name: {0}")]
     DuplicateArgName(String),
+
+    #[error("create step requires template or templateFile")]
+    CreateMissingTemplate,
+
+    #[error("create step cannot have both template and templateFile")]
+    CreateConflictingTemplate,
 }
 
 pub fn validate_recipe(recipe: &Recipe) -> Result<(), Vec<ValidationError>> {
@@ -38,77 +44,12 @@ pub fn validate_recipe(recipe: &Recipe) -> Result<(), Vec<ValidationError>> {
 
     for step in &recipe.steps {
         match step {
-            Step::Edit(edit) => {
-                if edit.path.trim().is_empty() {
-                    errors.push(ValidationError::MissingRequiredField {
-                        op: "edit",
-                        field: "path",
-                    });
-                }
-                if edit.ops.is_empty() {
-                    errors.push(ValidationError::EmptyEditOps);
-                }
-                for op in &edit.ops {
-                    match op {
-                        EditOp::Insert(insert) => {
-                            if insert.query.trim().is_empty() {
-                                errors.push(ValidationError::MissingRequiredField {
-                                    op: "insert",
-                                    field: "query",
-                                });
-                            }
-                            if insert.capture.trim().is_empty() {
-                                errors.push(ValidationError::MissingRequiredField {
-                                    op: "insert",
-                                    field: "capture",
-                                });
-                            }
-                        }
-                        EditOp::Replace(replace) => {
-                            if replace.query.trim().is_empty() {
-                                errors.push(ValidationError::MissingRequiredField {
-                                    op: "replace",
-                                    field: "query",
-                                });
-                            }
-                            if replace.capture.trim().is_empty() {
-                                errors.push(ValidationError::MissingRequiredField {
-                                    op: "replace",
-                                    field: "capture",
-                                });
-                            }
-                            if replace.text.is_empty() {
-                                errors.push(ValidationError::MissingRequiredField {
-                                    op: "replace",
-                                    field: "text",
-                                });
-                            }
-                        }
-                        EditOp::Remove(remove) => {
-                            if remove.query.trim().is_empty() {
-                                errors.push(ValidationError::MissingRequiredField {
-                                    op: "remove",
-                                    field: "query",
-                                });
-                            }
-                            if remove.capture.trim().is_empty() {
-                                errors.push(ValidationError::MissingRequiredField {
-                                    op: "remove",
-                                    field: "capture",
-                                });
-                            }
-                        }
-                        EditOp::Unknown(kind, _) => {
-                            errors.push(ValidationError::UnsupportedOp(kind.to_string()))
-                        }
-                    }
-                }
-            }
-            Step::Create(_) | Step::RecipeRef(_) => {
-                // not implemented/validated in v1 slice; accepted for forward compat.
-            }
+            Step::Edit(edit) => validate_edit(edit, &mut errors),
+            Step::Create(create) => validate_create(create, &mut errors),
+            Step::Delete(delete) => validate_delete(delete, &mut errors),
+            Step::RecipeRef(_) => {}
             Step::Unknown(kind, _) => {
-                errors.push(ValidationError::UnsupportedStep(kind.to_string()))
+                errors.push(ValidationError::UnsupportedStep(kind.to_string()));
             }
         }
     }
@@ -117,5 +58,100 @@ pub fn validate_recipe(recipe: &Recipe) -> Result<(), Vec<ValidationError>> {
         Ok(())
     } else {
         Err(errors)
+    }
+}
+
+fn validate_edit(edit: &EditStep, errors: &mut Vec<ValidationError>) {
+    if edit.path.trim().is_empty() {
+        errors.push(ValidationError::MissingRequiredField {
+            op: "edit",
+            field: "path",
+        });
+    }
+    if edit.ops.is_empty() {
+        errors.push(ValidationError::EmptyEditOps);
+    }
+    for op in &edit.ops {
+        match op {
+            EditOp::Insert(insert) => {
+                if insert.query.trim().is_empty() {
+                    errors.push(ValidationError::MissingRequiredField {
+                        op: "insert",
+                        field: "query",
+                    });
+                }
+                if insert.capture.trim().is_empty() {
+                    errors.push(ValidationError::MissingRequiredField {
+                        op: "insert",
+                        field: "capture",
+                    });
+                }
+            }
+            EditOp::Replace(replace) => {
+                if replace.query.trim().is_empty() {
+                    errors.push(ValidationError::MissingRequiredField {
+                        op: "replace",
+                        field: "query",
+                    });
+                }
+                if replace.capture.trim().is_empty() {
+                    errors.push(ValidationError::MissingRequiredField {
+                        op: "replace",
+                        field: "capture",
+                    });
+                }
+                if replace.text.is_empty() {
+                    errors.push(ValidationError::MissingRequiredField {
+                        op: "replace",
+                        field: "text",
+                    });
+                }
+            }
+            EditOp::Remove(remove) => {
+                if remove.query.trim().is_empty() {
+                    errors.push(ValidationError::MissingRequiredField {
+                        op: "remove",
+                        field: "query",
+                    });
+                }
+                if remove.capture.trim().is_empty() {
+                    errors.push(ValidationError::MissingRequiredField {
+                        op: "remove",
+                        field: "capture",
+                    });
+                }
+            }
+            EditOp::Unknown(kind, _) => {
+                errors.push(ValidationError::UnsupportedOp(kind.to_string()));
+            }
+        }
+    }
+}
+
+fn validate_create(create: &CreateStep, errors: &mut Vec<ValidationError>) {
+    if create.path.trim().is_empty() {
+        errors.push(ValidationError::MissingRequiredField {
+            op: "create",
+            field: "path",
+        });
+    }
+    let has_template = create.template.as_ref().is_some_and(|t| !t.is_empty());
+    let has_file = create
+        .template_file
+        .as_ref()
+        .is_some_and(|t| !t.is_empty());
+    match (has_template, has_file) {
+        (false, false) => errors.push(ValidationError::CreateMissingTemplate),
+        (true, true) => errors.push(ValidationError::CreateConflictingTemplate),
+        _ => {}
+    }
+}
+
+fn validate_delete(delete: &DeleteStep, errors: &mut Vec<ValidationError>) {
+    if delete.path.trim().is_empty() {
+        errors.push(ValidationError::MissingRequiredField {
+            op: "delete",
+            field: "path",
+        });
     }
 }

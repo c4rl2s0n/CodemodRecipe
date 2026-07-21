@@ -1,0 +1,9 @@
+dslVersion: 2
+id: delete_legacy
+args:
+  - name: legacyPath
+    required: true
+steps:
+  - delete:
+      path: "{{legacyPath}}"
+      ifMissing: fail

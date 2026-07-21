@@ -1,0 +1,24 @@
+dslVersion: 2
+id: scaffold_feature
+name: scaffold_feature
+description: |
+  Composed scaffold: create repository, patch counter + app, delete legacy file.
+  Canonical orchestrator example — see skill codemod-recipe-design-patterns.
+
+args:
+  - name: className
+    required: true
+    inputKind: symbol
+    help: PascalCase class name for the repository template
+  - name: fieldName
+    required: true
+    inputKind: symbol
+    help: Field to insert on Counter (use tickCount or label)
+
+steps:
+  - recipe: create_repository
+  - recipe: patch_counter
+  - recipe: patch_app
+  - delete:
+      path: "lib/legacy/stale.dart"
+      ifMissing: skip

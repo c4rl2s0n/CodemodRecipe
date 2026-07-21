@@ -23,7 +23,8 @@ pub fn file_snapshot(path: &Path) -> FileSnapshot {
 }
 
 pub fn compute_preview_token(
-    recipe: &str,
+    recipe: Option<&str>,
+    inline_recipe: Option<&serde_json::Value>,
     args: &BTreeMap<String, String>,
     snapshot_paths: &[&Path],
 ) -> String {
@@ -34,6 +35,7 @@ pub fn compute_preview_token(
 
     let payload = serde_json::json!({
         "recipe": recipe,
+        "inlineRecipe": inline_recipe,
         "args": args,
         "snapshots": snapshots,
     });
@@ -42,7 +44,8 @@ pub fn compute_preview_token(
 }
 
 pub fn validate_preview_token(
-    recipe: &str,
+    recipe: Option<&str>,
+    inline_recipe: Option<&serde_json::Value>,
     args: &BTreeMap<String, String>,
     provided: &str,
     snapshot_paths: &[&Path],
@@ -50,7 +53,7 @@ pub fn validate_preview_token(
     if provided.is_empty() {
         return Err("Missing previewToken (run preview first)".to_string());
     }
-    let expected = compute_preview_token(recipe, args, snapshot_paths);
+    let expected = compute_preview_token(recipe, inline_recipe, args, snapshot_paths);
     if provided != expected {
         return Err("Stale previewToken (files changed since preview; re-run preview)".to_string());
     }
@@ -60,81 +63,68 @@ pub fn validate_preview_token(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::thread;
-    use std::time::Duration;
+    use std::path::PathBuf;
 
     #[test]
     fn token_is_stable_for_same_inputs() {
-        let file = std::env::temp_dir().join(format!(
-            "codemod_preview_token_test_{}.dart",
-            std::process::id()
-        ));
-        std::fs::write(&file, "class A {}").unwrap();
-
-        let mut args = BTreeMap::new();
-        args.insert("file".to_string(), "a.dart".to_string());
-
-        let t1 = compute_preview_token("r1", &args, &[&file]);
-        let t2 = compute_preview_token("r1", &args, &[&file]);
-        assert_eq!(t1, t2);
-
-        let _ = std::fs::remove_file(file);
+        let args = BTreeMap::from([("file".to_string(), "a.dart".to_string())]);
+        let file = PathBuf::from("/tmp/example.dart");
+        let a = compute_preview_token(Some("r"), None, &args, &[file.as_path()]);
+        let b = compute_preview_token(Some("r"), None, &args, &[file.as_path()]);
+        assert_eq!(a, b);
     }
 
     #[test]
     fn token_is_stable_for_arg_key_order() {
-        let file = std::env::temp_dir().join(format!(
-            "codemod_preview_token_order_{}.dart",
-            std::process::id()
-        ));
-        std::fs::write(&file, "class A {}").unwrap();
-
-        let mut args_ab = BTreeMap::new();
-        args_ab.insert("a".to_string(), "1".to_string());
-        args_ab.insert("b".to_string(), "2".to_string());
-
-        let mut args_ba = BTreeMap::new();
-        args_ba.insert("b".to_string(), "2".to_string());
-        args_ba.insert("a".to_string(), "1".to_string());
-
-        let t1 = compute_preview_token("recipe", &args_ab, &[&file]);
-        let t2 = compute_preview_token("recipe", &args_ba, &[&file]);
-        assert_eq!(t1, t2);
-
-        let _ = std::fs::remove_file(file);
+        let args1 = BTreeMap::from([
+            ("a".to_string(), "1".to_string()),
+            ("b".to_string(), "2".to_string()),
+        ]);
+        let args2 = BTreeMap::from([
+            ("b".to_string(), "2".to_string()),
+            ("a".to_string(), "1".to_string()),
+        ]);
+        let file = PathBuf::from("/tmp/example.dart");
+        let a = compute_preview_token(Some("r"), None, &args1, &[file.as_path()]);
+        let b = compute_preview_token(Some("r"), None, &args2, &[file.as_path()]);
+        assert_eq!(a, b);
     }
 
     #[test]
     fn token_changes_when_snapshot_content_changes() {
-        let file = std::env::temp_dir().join(format!(
-            "codemod_preview_token_mut_{}.dart",
-            std::process::id()
-        ));
-        std::fs::write(&file, "class A {}").unwrap();
+        let dir = std::env::temp_dir().join(format!("preview_token_{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("a.dart");
+        std::fs::write(&file, "version-one").unwrap();
         let args = BTreeMap::new();
-
-        let before = compute_preview_token("x", &args, &[&file]);
-        thread::sleep(Duration::from_millis(10));
-        std::fs::write(&file, "class B {} // longer").unwrap();
-        let after = compute_preview_token("x", &args, &[&file]);
-
-        assert_ne!(before, after);
-        let _ = std::fs::remove_file(file);
+        let t1 = compute_preview_token(Some("r"), None, &args, &[file.as_path()]);
+        std::fs::write(&file, "version-two-is-longer").unwrap();
+        let t2 = compute_preview_token(Some("r"), None, &args, &[file.as_path()]);
+        assert_ne!(t1, t2);
+        let _ = std::fs::remove_dir_all(dir);
     }
 
     #[test]
     fn validate_rejects_stale_token() {
-        let file = std::env::temp_dir().join(format!(
-            "codemod_preview_token_stale_{}.dart",
-            std::process::id()
-        ));
-        std::fs::write(&file, "class A {}\n").unwrap();
+        let dir = std::env::temp_dir().join(format!("preview_token_stale_{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let file = dir.join("a.dart");
+        std::fs::write(&file, "version-one").unwrap();
         let args = BTreeMap::new();
-        let token = compute_preview_token("x", &args, &[&file]);
-        thread::sleep(Duration::from_millis(10));
-        std::fs::write(&file, "class B {} // mutated\n").unwrap();
-        let err = validate_preview_token("x", &args, &token, &[&file]).unwrap_err();
-        assert!(err.contains("Stale previewToken"));
-        let _ = std::fs::remove_file(file);
+        let token = compute_preview_token(Some("r"), None, &args, &[file.as_path()]);
+        std::fs::write(&file, "version-two-is-longer").unwrap();
+        let err = validate_preview_token(Some("r"), None, &args, &token, &[file.as_path()]).unwrap_err();
+        assert!(err.contains("Stale"));
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn inline_recipe_affects_token() {
+        let args = BTreeMap::new();
+        let file = PathBuf::from("/tmp/example.dart");
+        let inline = serde_json::json!({"id": "inline"});
+        let a = compute_preview_token(None, Some(&inline), &args, &[file.as_path()]);
+        let b = compute_preview_token(Some("registered"), None, &args, &[file.as_path()]);
+        assert_ne!(a, b);
     }
 }

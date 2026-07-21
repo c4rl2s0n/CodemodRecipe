@@ -1,0 +1,36 @@
+dslVersion: 2
+id: patch_counter
+name: patch_counter
+description: Insert a typed counter field before increment()
+
+args:
+  - name: className
+    required: true
+    inputKind: symbol
+  - name: fieldName
+    required: true
+    inputKind: symbol
+
+maps:
+  field_kind:
+    tickCount: int
+    label: String
+
+steps:
+  - edit:
+      path: "lib/counter/counter.dart"
+      ops:
+        - insert:
+            query: |
+              (class_declaration
+                name: (identifier) @className
+                body: (class_body
+                  (class_member
+                    (method_signature
+                      (function_signature
+                        name: (identifier) @methodName)))) @member
+                (#eq? @className "{{className}}")
+                (#eq? @methodName "increment"))
+            capture: member
+            anchor: start
+            text: "  final {{$map 'field_kind' fieldName}} {{$camel fieldName}} = 0;\n\n"

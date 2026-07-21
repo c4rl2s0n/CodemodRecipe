@@ -1,0 +1,25 @@
+dslVersion: 2
+id: patch_app
+name: patch_app
+description: Insert a log line in App.run()
+
+steps:
+  - edit:
+      path: "lib/app.dart"
+      ops:
+        - insert:
+            query: |
+              (class_declaration
+                name: (identifier) @className
+                body: (class_body
+                  (class_member
+                    (method_signature
+                      (function_signature
+                        name: (identifier) @methodName))
+                    (function_body
+                      (block) @body)))
+                (#eq? @className "App")
+                (#eq? @methodName "run"))
+            capture: body
+            anchor: end
+            text: "    print('scaffold');\n"

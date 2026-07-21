@@ -1,4 +1,5 @@
 use crate::protocol::{FilePreview, PatchInfo};
+use codemod_recipe_core::file_change::FileChange;
 use codemod_recipe_core::patch::SourcePatch;
 
 pub fn patches_to_patch_info(patches: &[SourcePatch], include_replacement: bool) -> Vec<PatchInfo> {
@@ -74,6 +75,81 @@ pub fn build_file_preview(
     }
 }
 
+pub fn build_file_preview_from_change(
+    change: &FileChange,
+    include_contents: bool,
+    include_replacements: bool,
+    snippet_lines: Option<u32>,
+) -> Result<FilePreview, codemod_recipe_core::patch::PatchError> {
+    let path = change.path().to_string();
+    match change {
+        FileChange::Patch { source, patches, .. } => {
+            let modified = if patches.is_empty() {
+                source.clone()
+            } else {
+                codemod_recipe_core::patch::apply_patches(source, patches)?
+            };
+            Ok(build_file_preview(
+                path,
+                source,
+                &modified,
+                patches,
+                include_contents,
+                include_replacements,
+                snippet_lines,
+            ))
+        }
+        FileChange::Create {
+            content,
+            skipped,
+            ..
+        } => Ok(FilePreview {
+            path,
+            kind: "create",
+            is_new: true,
+            skipped: *skipped,
+            original: if include_contents {
+                Some(String::new())
+            } else {
+                None
+            },
+            modified: if include_contents {
+                Some(content.clone())
+            } else {
+                None
+            },
+            patches: vec![],
+            snippet: snippet_lines.and_then(|n| {
+                let lines: Vec<_> = content.lines().take(n as usize).collect();
+                let snippet = lines.join("\n");
+                if snippet.is_empty() {
+                    None
+                } else {
+                    Some(snippet)
+                }
+            }),
+        }),
+        FileChange::Delete { source, skipped, .. } => Ok(FilePreview {
+            path,
+            kind: "delete",
+            is_new: false,
+            skipped: *skipped,
+            original: if include_contents {
+                Some(source.clone())
+            } else {
+                None
+            },
+            modified: if include_contents {
+                Some(String::new())
+            } else {
+                None
+            },
+            patches: vec![],
+            snippet: None,
+        }),
+    }
+}
+
 fn preview_replacement(replacement: &str) -> String {
     const MAX: usize = 120;
     if replacement.len() <= MAX {
@@ -85,6 +161,7 @@ fn preview_replacement(replacement: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use codemod_recipe_core::file_change::{FileChange, IfExists};
     use codemod_recipe_core::patch::SourcePatch;
 
     #[test]
@@ -109,5 +186,20 @@ mod tests {
             Some(2),
         );
         assert_eq!(preview.snippet.as_deref(), Some("line one\nline two"));
+    }
+
+    #[test]
+    fn previews_create_file() {
+        let change = FileChange::Create {
+            path: "lib/new.dart".to_string(),
+            content: "class New {}\n".to_string(),
+            if_exists: IfExists::Fail,
+            format: true,
+            skipped: false,
+        };
+        let preview = build_file_preview_from_change(&change, true, false, None).unwrap();
+        assert_eq!(preview.kind, "create");
+        assert!(preview.is_new);
+        assert_eq!(preview.modified.as_deref(), Some("class New {}\n"));
     }
 }

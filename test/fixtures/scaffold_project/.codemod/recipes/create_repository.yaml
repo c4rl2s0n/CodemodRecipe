@@ -1,0 +1,16 @@
+dslVersion: 2
+id: create_repository
+name: create_repository
+description: Create a repository file from a template
+
+args:
+  - name: className
+    required: true
+    inputKind: symbol
+
+steps:
+  - create:
+      path: "lib/counter/counter_repository.dart"
+      templateFile: templates/counter_repository.dart.template
+      ifExists: fail
+      format: false

@@ -97,7 +97,11 @@ fn stdio_subprocess_lists_recipes_and_previews() {
         .filter_map(|t| t["name"].as_str().map(str::to_string))
         .collect();
     assert!(tool_names.contains(&"list_recipes".to_string()));
+    assert!(tool_names.contains(&"describe_recipe".to_string()));
+    assert!(tool_names.contains(&"validate_recipes".to_string()));
     assert!(tool_names.contains(&"preview_recipe".to_string()));
+    assert!(tool_names.contains(&"apply_recipe".to_string()));
+    assert!(tool_names.contains(&"bootstrap_project".to_string()));
 
     let list = session.rpc(
         3,
@@ -107,6 +111,28 @@ fn stdio_subprocess_lists_recipes_and_previews() {
     let list_text = list["result"]["content"][0]["text"].as_str().unwrap();
     let list_json: serde_json::Value = serde_json::from_str(list_text).unwrap();
     assert_eq!(list_json["ok"], true);
+    assert!(list_json["recipes"].as_array().is_some());
+
+    let describe = session.rpc(
+        3,
+        "tools/call",
+        serde_json::json!({
+            "name": "describe_recipe",
+            "arguments": { "recipe": "insert_log_line" }
+        }),
+    );
+    let describe_text = describe["result"]["content"][0]["text"].as_str().unwrap();
+    let describe_json: serde_json::Value = serde_json::from_str(describe_text).unwrap();
+    assert_eq!(describe_json["ok"], true);
+
+    let validate = session.rpc(
+        4,
+        "tools/call",
+        serde_json::json!({ "name": "validate_recipes", "arguments": {} }),
+    );
+    let validate_text = validate["result"]["content"][0]["text"].as_str().unwrap();
+    let validate_json: serde_json::Value = serde_json::from_str(validate_text).unwrap();
+    assert_eq!(validate_json["ok"], true);
 
     let rel = "lib/settings.dart";
     let settings = workspace.join(rel);
@@ -118,7 +144,7 @@ fn stdio_subprocess_lists_recipes_and_previews() {
     .unwrap();
 
     let preview = session.rpc(
-        4,
+        5,
         "tools/call",
         serde_json::json!({
             "name": "preview_recipe",
@@ -141,7 +167,7 @@ fn stdio_subprocess_lists_recipes_and_previews() {
         .expect("preview should return previewToken");
 
     let apply = session.rpc(
-        5,
+        6,
         "tools/call",
         serde_json::json!({
             "name": "apply_recipe",
@@ -160,7 +186,7 @@ fn stdio_subprocess_lists_recipes_and_previews() {
     assert!(content.contains("print('codemod')"));
 
     let reject = session.rpc(
-        6,
+        7,
         "tools/call",
         serde_json::json!({
             "name": "apply_recipe",
@@ -179,6 +205,47 @@ fn stdio_subprocess_lists_recipes_and_previews() {
             .unwrap()
             .contains("previewToken")
     );
+
+    let _ = std::fs::remove_dir_all(workspace);
+}
+
+#[test]
+fn stdio_subprocess_bootstraps_project() {
+    let workspace = temp_workspace("mcp_bootstrap");
+    std::fs::create_dir_all(&workspace).unwrap();
+    if !mcp_bin().exists() {
+        eprintln!("skip: codemod_mcp binary not found");
+        return;
+    }
+
+    let mut session = McpSession::spawn(&workspace);
+
+    let _ = session.rpc(
+        1,
+        "initialize",
+        serde_json::json!({ "protocolVersion": "2024-11-05", "capabilities": {} }),
+    );
+
+    let bootstrap = session.rpc(
+        2,
+        "tools/call",
+        serde_json::json!({
+            "name": "bootstrap_project",
+            "arguments": {}
+        }),
+    );
+    let bootstrap_text = bootstrap["result"]["content"][0]["text"]
+        .as_str()
+        .unwrap();
+    let bootstrap_json: serde_json::Value = serde_json::from_str(bootstrap_text).unwrap();
+    assert_eq!(bootstrap_json["ok"], true, "bootstrap failed: {bootstrap_text}");
+    assert!(
+        workspace
+            .join(".agents/skills/codemod-overview/SKILL.md")
+            .is_file()
+    );
+    assert!(workspace.join(".cursor/rules/codemod-recipe.mdc").is_file());
+    assert!(workspace.join(".codemod/recipes").is_dir());
 
     let _ = std::fs::remove_dir_all(workspace);
 }

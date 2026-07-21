@@ -1,0 +1,14 @@
+dslVersion: 2
+id: scaffold_widget
+args:
+  - name: featurePath
+    required: true
+  - name: name
+    required: true
+steps:
+  - create:
+      path: "{{featurePath}}/{{$snake name}}.dart"
+      template: |
+        class {{$pascal name}} {}
+      ifExists: fail
+      format: false

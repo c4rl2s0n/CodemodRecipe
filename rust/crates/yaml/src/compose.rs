@@ -122,13 +122,18 @@ fn expand_recipe_references_inner(
                         .or_insert_with(|| arg.clone());
                 }
                 for child_step in &expanded.steps {
-                    if let Step::Edit(edit) = child_step {
-                        steps.push(Step::Edit(edit.clone()));
+                    match child_step {
+                        Step::Edit(edit) => steps.push(Step::Edit(edit.clone())),
+                        Step::Create(create) => steps.push(Step::Create(create.clone())),
+                        Step::Delete(delete) => steps.push(Step::Delete(delete.clone())),
+                        Step::RecipeRef(_) | Step::Unknown(_, _) => {}
                     }
                 }
                 merge_maps_into(&mut maps, &expanded.maps);
             }
-            Step::Create(_) | Step::Unknown(_, _) => steps.push(step.clone()),
+            Step::Create(create) => steps.push(Step::Create(create.clone())),
+            Step::Delete(delete) => steps.push(Step::Delete(delete.clone())),
+            Step::Unknown(_, _) => steps.push(step.clone()),
         }
     }
 
@@ -166,6 +171,12 @@ mod tests {
             name: name.to_string(),
             required: true,
             input_kind: None,
+            abbr: None,
+            help: None,
+            defaults_to: None,
+            options: vec![],
+            allow_custom_value: None,
+            context_key: None,
         }
     }
 
@@ -234,6 +245,12 @@ mod tests {
                 name: "root".to_string(),
                 required: false,
                 input_kind: Some("text".to_string()),
+                abbr: None,
+                help: None,
+                defaults_to: None,
+                options: vec![],
+                allow_custom_value: None,
+                context_key: None,
             }],
             vec![ComposeStep::Recipe(nested)],
         );

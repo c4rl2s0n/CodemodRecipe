@@ -2,6 +2,7 @@
 name = "codemod_recipe_host"
 version = "0.1.0"
 edition = "2021"
+build = "build.rs"
 
 [lib]
 name = "codemod_recipe_host"

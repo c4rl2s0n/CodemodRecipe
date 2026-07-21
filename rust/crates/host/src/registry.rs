@@ -3,7 +3,7 @@ use crate::protocol::{DiagnosticSource, RecipeArg, RecipeDiagnostic, RecipeSchem
 use crate::template::render_template;
 use codemod_recipe_engine::engine::parse_recipe_yaml;
 use codemod_recipe_yaml::compose::{expand_recipe_references, recipe_ref_id};
-use codemod_recipe_yaml::model::{Arg, EditOp, Recipe, Step};
+use codemod_recipe_yaml::model::{Arg, CreateStep, DeleteStep, EditOp, Recipe, Step};
 use codemod_recipe_yaml::validate::validate_recipe;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -291,14 +291,14 @@ pub fn recipe_to_schema(recipe: &Recipe) -> RecipeSchema {
 fn arg_to_schema(arg: &Arg) -> RecipeArg {
     RecipeArg {
         name: arg.name.clone(),
-        abbr: None,
-        help: None,
+        abbr: arg.abbr.clone(),
+        help: arg.help.clone(),
         required: arg.required,
-        defaults_to: None,
+        defaults_to: arg.defaults_to.clone(),
         input_kind: arg.input_kind.clone().unwrap_or_else(|| "text".to_string()),
-        options: vec![],
-        allow_custom_value: true,
-        context_key: None,
+        options: arg.options.clone(),
+        allow_custom_value: arg.allow_custom_value.unwrap_or(true),
+        context_key: arg.context_key.clone(),
     }
 }
 
@@ -310,31 +310,50 @@ pub fn render_recipe_templates(
     let render = |text: &str| render_template(text, args, maps);
     let mut out = recipe.clone();
     for step in &mut out.steps {
-        let Step::Edit(edit) = step else {
-            continue;
-        };
-        edit.path = render(&edit.path);
-        if let Some(lang) = &edit.language {
-            edit.language = Some(render(lang));
-        }
-        for op in &mut edit.ops {
-            match op {
-                EditOp::Insert(insert) => {
-                    insert.query = render(&insert.query);
-                    insert.capture = render(&insert.capture);
-                    insert.text = render(&insert.text);
+        match step {
+            Step::Edit(edit) => {
+                edit.path = render(&edit.path);
+                if let Some(lang) = &edit.language {
+                    edit.language = Some(render(lang));
                 }
-                EditOp::Replace(replace) => {
-                    replace.query = render(&replace.query);
-                    replace.capture = render(&replace.capture);
-                    replace.text = render(&replace.text);
+                for op in &mut edit.ops {
+                    match op {
+                        EditOp::Insert(insert) => {
+                            insert.query = render(&insert.query);
+                            insert.capture = render(&insert.capture);
+                            insert.text = render(&insert.text);
+                        }
+                        EditOp::Replace(replace) => {
+                            replace.query = render(&replace.query);
+                            replace.capture = render(&replace.capture);
+                            replace.text = render(&replace.text);
+                        }
+                        EditOp::Remove(remove) => {
+                            remove.query = render(&remove.query);
+                            remove.capture = render(&remove.capture);
+                        }
+                        EditOp::Unknown(_, _) => {}
+                    }
                 }
-                EditOp::Remove(remove) => {
-                    remove.query = render(&remove.query);
-                    remove.capture = render(&remove.capture);
-                }
-                EditOp::Unknown(_, _) => {}
             }
+            Step::Create(CreateStep {
+                path,
+                template,
+                template_file,
+                ..
+            }) => {
+                *path = render(path);
+                if let Some(text) = template {
+                    *template = Some(render(text));
+                }
+                if let Some(file) = template_file {
+                    *template_file = Some(render(file));
+                }
+            }
+            Step::Delete(DeleteStep { path, .. }) => {
+                *path = render(path);
+            }
+            Step::RecipeRef(_) | Step::Unknown(_, _) => {}
         }
     }
     out

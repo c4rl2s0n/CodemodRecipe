@@ -1,0 +1,4 @@
+/// Repository for {{$pascal className}}.
+class {{$pascal className}}Repository {
+  {{$pascal className}}Repository();
+}
