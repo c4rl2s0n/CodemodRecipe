@@ -1,8 +1,22 @@
-use crate::naming::{to_camel_case, to_pascal_case, to_snake_case};
 use std::collections::BTreeMap;
+use std::path::Path;
+use std::sync::Arc;
 
-/// Replace `{{key}}`, `{{$camel key}}`, and `{{$map 'id' key}}` placeholders.
-pub fn render_string(template: &str, args: &BTreeMap<String, String>) -> String {
+use minijinja::value::Value;
+use minijinja::{Environment, UndefinedBehavior};
+
+use crate::naming::{
+    to_camel_case, to_kebab_case, to_lower, to_pascal_case, to_screaming_snake, to_snake_case,
+    to_upper,
+};
+
+const TEMPLATE_FUEL: usize = 50_000;
+
+/// Render a template string (recipe paths, queries, inline create.template).
+pub fn render_string(
+    template: &str,
+    args: &BTreeMap<String, String>,
+) -> Result<String, String> {
     render_template(template, args, &BTreeMap::new())
 }
 
@@ -10,26 +24,112 @@ pub fn render_template(
     template: &str,
     args: &BTreeMap<String, String>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
-) -> String {
-    let mut out = render_map_helpers(template, args, maps);
-    for (key, value) in args {
-        out = out.replace(&format!("{{{{{key}}}}}"), value);
-    }
-    render_casing_helpers(&out, args)
+) -> Result<String, String> {
+    let converted = convert_legacy_syntax(template);
+    let env = build_environment(maps)?;
+    let ctx = build_context(args, maps);
+    env.render_str(&converted, ctx).map_err(|e| e.to_string())
 }
 
-fn render_map_helpers(
-    template: &str,
+/// Render a file-backed template with `extends` / `include` support.
+pub fn render_template_file(
+    template_name: &str,
     args: &BTreeMap<String, String>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
-) -> String {
+    templates_root: &Path,
+) -> Result<String, String> {
+    let root = templates_root.to_path_buf();
+    let mut env = build_environment(maps)?;
+    env.set_loader(move |name| -> Result<Option<String>, minijinja::Error> {
+        let path = root.join(name);
+        let content = std::fs::read_to_string(&path).map_err(|e| {
+            minijinja::Error::new(
+                minijinja::ErrorKind::InvalidOperation,
+                format!("failed to read template {name}: {e}"),
+            )
+        })?;
+        Ok(Some(convert_legacy_syntax(&content)))
+    });
+    let tmpl = env
+        .get_template(template_name)
+        .map_err(|e| format!("Template {template_name}: {e}"))?;
+    let ctx = build_context(args, maps);
+    tmpl.render(ctx).map_err(|e| e.to_string())
+}
+
+fn build_environment(
+    maps: &BTreeMap<String, BTreeMap<String, String>>,
+) -> Result<Environment<'_>, String> {
+    let mut env = Environment::new();
+    env.set_undefined_behavior(UndefinedBehavior::Strict);
+    env.set_fuel(Some(TEMPLATE_FUEL as u64));
+    env.set_keep_trailing_newline(true);
+
+    env.add_filter("snake_case", |value: String| -> String { to_snake_case(&value) });
+    env.add_filter("camel_case", |value: String| -> String { to_camel_case(&value) });
+    env.add_filter("pascal_case", |value: String| -> String { to_pascal_case(&value) });
+    env.add_filter("lower", |value: String| -> String { to_lower(&value) });
+    env.add_filter("upper", |value: String| -> String { to_upper(&value) });
+    env.add_filter("screaming_snake", |value: String| -> String {
+        to_screaming_snake(&value)
+    });
+    env.add_filter("kebab_case", |value: String| -> String { to_kebab_case(&value) });
+
+    let maps = Arc::new(maps.clone());
+    env.add_filter(
+        "map",
+        move |value: String, map_id: String| -> Result<String, minijinja::Error> {
+            let lookup = maps
+                .get(&map_id)
+                .and_then(|entries| entries.get(&value))
+                .cloned()
+                .unwrap_or(value);
+            Ok(lookup)
+        },
+    );
+
+    Ok(env)
+}
+
+fn build_context(
+    args: &BTreeMap<String, String>,
+    maps: &BTreeMap<String, BTreeMap<String, String>>,
+) -> BTreeMap<String, Value> {
+    let mut ctx: BTreeMap<String, Value> = BTreeMap::new();
+    for (key, value) in args {
+        ctx.insert(key.clone(), coerce_value(value));
+    }
+    ctx.insert("maps".to_string(), Value::from_serialize(maps));
+    ctx
+}
+
+fn coerce_value(raw: &str) -> Value {
+    match raw {
+        "true" => Value::from(true),
+        "false" => Value::from(false),
+        other => Value::from(other.to_string()),
+    }
+}
+
+/// True when the template still uses legacy `{{$…}}` helpers.
+pub fn contains_legacy_syntax(template: &str) -> bool {
+    template.contains("{{$")
+}
+
+/// Convert legacy `{{$snake x}}` / `{{$map 'id' key}}` to Jinja filter syntax.
+pub fn convert_legacy_syntax(template: &str) -> String {
+    let after_maps = convert_legacy_map_helpers(template);
+    convert_legacy_casing_helpers(&after_maps)
+}
+
+fn convert_legacy_map_helpers(template: &str) -> String {
     let mut out = String::with_capacity(template.len());
     let mut rest = template;
     while let Some(start) = rest.find("{{$map") {
         out.push_str(&rest[..start]);
         rest = &rest[start + 6..];
         let Some(end) = rest.find("}}") else {
-            out.push_str("{{");
+            out.push_str("{{$map");
             out.push_str(rest);
             return out;
         };
@@ -37,13 +137,11 @@ fn render_map_helpers(
         rest = &rest[end + 2..];
 
         if let Some((map_id, key_token)) = parse_quoted_map_args(inner) {
-            let lookup_key = args.get(&key_token).map(String::as_str).unwrap_or(&key_token);
-            let replacement = maps
-                .get(&map_id)
-                .and_then(|entries| entries.get(lookup_key))
-                .cloned()
-                .unwrap_or_else(|| lookup_key.to_string());
-            out.push_str(&replacement);
+            out.push_str("{{ ");
+            out.push_str(&key_token);
+            out.push_str(" | map('");
+            out.push_str(&map_id);
+            out.push_str("') }}");
         } else {
             out.push_str("{{$map");
             out.push_str(inner);
@@ -54,24 +152,7 @@ fn render_map_helpers(
     out
 }
 
-fn parse_quoted_map_args(text: &str) -> Option<(String, String)> {
-    let text = text.trim();
-    let mut chars = text.chars();
-    let quote = chars.next()?;
-    if quote != '\'' && quote != '"' {
-        return None;
-    }
-    let after_quote: String = chars.collect();
-    let id_end = after_quote.find(quote)?;
-    let map_id = after_quote[..id_end].to_string();
-    let key_token = after_quote[id_end + 1..].trim().to_string();
-    if map_id.is_empty() || key_token.is_empty() {
-        return None;
-    }
-    Some((map_id, key_token))
-}
-
-fn render_casing_helpers(template: &str, args: &BTreeMap<String, String>) -> String {
+fn convert_legacy_casing_helpers(template: &str) -> String {
     let mut out = String::with_capacity(template.len());
     let mut rest = template;
     while let Some(start) = rest.find("{{$") {
@@ -99,55 +180,96 @@ fn render_casing_helpers(template: &str, args: &BTreeMap<String, String>) -> Str
             continue;
         };
 
-        let replacement = match helper {
-            "snake" => args.get(key).map(|v| to_snake_case(v)),
-            "camel" => args.get(key).map(|v| to_camel_case(v)),
-            "pascal" => args.get(key).map(|v| to_pascal_case(v)),
+        let filter = match helper {
+            "snake" => Some("snake_case"),
+            "camel" => Some("camel_case"),
+            "pascal" => Some("pascal_case"),
             _ => None,
         };
 
-        match replacement {
-            Some(value) => out.push_str(&value),
-            None => {
-                out.push_str("{{$");
-                out.push_str(inner);
-                out.push_str("}}");
-            }
+        if let Some(filter_name) = filter {
+            out.push_str("{{ ");
+            out.push_str(key);
+            out.push_str(" | ");
+            out.push_str(filter_name);
+            out.push_str(" }}");
+        } else {
+            out.push_str("{{$");
+            out.push_str(inner);
+            out.push_str("}}");
         }
     }
     out.push_str(rest);
     out
 }
 
+fn parse_quoted_map_args(text: &str) -> Option<(String, String)> {
+    let text = text.trim();
+    let mut chars = text.chars();
+    let quote = chars.next()?;
+    if quote != '\'' && quote != '"' {
+        return None;
+    }
+    let after_quote: String = chars.collect();
+    let id_end = after_quote.find(quote)?;
+    let map_id = after_quote[..id_end].to_string();
+    let key_token = after_quote[id_end + 1..].trim().to_string();
+    if map_id.is_empty() || key_token.is_empty() {
+        return None;
+    }
+    Some((map_id, key_token))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn render_ok(template: &str, args: &BTreeMap<String, String>) -> String {
+        render_string(template, args).expect("render")
+    }
+
+    fn render_tpl(
+        template: &str,
+        args: &BTreeMap<String, String>,
+        maps: &BTreeMap<String, BTreeMap<String, String>>,
+    ) -> String {
+        render_template(template, args, maps).expect("render")
+    }
+
+    #[test]
+    fn preserves_trailing_newline_in_literal_text() {
+        let args = BTreeMap::new();
+        assert_eq!(
+            render_ok("    print('codemod');\n", &args),
+            "    print('codemod');\n"
+        );
+    }
 
     #[test]
     fn replaces_placeholders() {
         let mut args = BTreeMap::new();
         args.insert("file".to_string(), "lib/foo.dart".to_string());
-        assert_eq!(render_string("path: {{file}}", &args), "path: lib/foo.dart");
+        assert_eq!(render_ok("path: {{file}}", &args), "path: lib/foo.dart");
     }
 
     #[test]
-    fn leaves_unknown_placeholders() {
+    fn strict_undefined_errors_on_missing() {
         let args = BTreeMap::new();
-        assert_eq!(render_string("{{missing}}", &args), "{{missing}}");
+        assert!(render_string("{{missing}}", &args).is_err());
     }
 
     #[test]
-    fn preserves_special_characters_in_raw_placeholders() {
+    fn preserves_special_characters_in_values() {
         let mut args = BTreeMap::new();
         args.insert("x".to_string(), "a$b".to_string());
-        assert_eq!(render_string("{{x}}", &args), "a$b");
+        assert_eq!(render_ok("{{x}}", &args), "a$b");
     }
 
     #[test]
     fn renders_unicode_values() {
         let mut args = BTreeMap::new();
         args.insert("emoji".to_string(), "🚀".to_string());
-        assert_eq!(render_string("// {{emoji}}", &args), "// 🚀");
+        assert_eq!(render_ok("// {{emoji}}", &args), "// 🚀");
     }
 
     #[test]
@@ -155,7 +277,7 @@ mod tests {
         let mut args = BTreeMap::new();
         args.insert("feature".to_string(), "FeedList".to_string());
         assert_eq!(
-            render_string(
+            render_ok(
                 "{{feature}} {{$snake feature}} {{$camel feature}} {{$pascal feature}}",
                 &args
             ),
@@ -164,9 +286,26 @@ mod tests {
     }
 
     #[test]
-    fn leaves_missing_casing_helper_placeholders() {
-        let args = BTreeMap::new();
-        assert_eq!(render_string("{{$camel field}}", &args), "{{$camel field}}");
+    fn renders_jinja_casing_filters() {
+        let mut args = BTreeMap::new();
+        args.insert("feature".to_string(), "FeedList".to_string());
+        assert_eq!(
+            render_ok(
+                "{{ feature | snake_case }} {{ feature | screaming_snake }}",
+                &args
+            ),
+            "feed_list FEED_LIST"
+        );
+    }
+
+    #[test]
+    fn conditional_if_block() {
+        let mut args = BTreeMap::new();
+        args.insert("include_tests".to_string(), "true".to_string());
+        let tmpl = "{% if include_tests %}YES{% else %}NO{% endif %}";
+        assert_eq!(render_ok(tmpl, &args), "YES");
+        args.insert("include_tests".to_string(), "false".to_string());
+        assert_eq!(render_ok(tmpl, &args), "NO");
     }
 
     #[test]
@@ -174,7 +313,7 @@ mod tests {
         let mut args = BTreeMap::new();
         args.insert("field".to_string(), "counter".to_string());
         assert_eq!(
-            render_string("final int {{$camel field}};", &args),
+            render_ok("final int {{$camel field}};", &args),
             "final int counter;"
         );
     }
@@ -189,7 +328,7 @@ mod tests {
         maps.insert("columnType".to_string(), entries);
 
         assert_eq!(
-            render_template("final {{$map 'columnType' type}} x;", &args, &maps),
+            render_tpl("final {{$map 'columnType' type}} x;", &args, &maps),
             "final intColumn x;"
         );
     }
@@ -199,8 +338,44 @@ mod tests {
         let mut args = BTreeMap::new();
         args.insert("type".to_string(), "int".to_string());
         assert_eq!(
-            render_template("{{$map 'missing' type}}", &args, &BTreeMap::new()),
+            render_tpl("{{$map 'missing' type}}", &args, &BTreeMap::new()),
             "int"
         );
+    }
+
+    #[test]
+    fn jinja_map_filter() {
+        let mut args = BTreeMap::new();
+        args.insert("fieldName".to_string(), "tickCount".to_string());
+        let mut maps = BTreeMap::new();
+        let mut entries = BTreeMap::new();
+        entries.insert("tickCount".to_string(), "int".to_string());
+        maps.insert("field_kind".to_string(), entries);
+        assert_eq!(
+            render_tpl(
+                "{{ fieldName | map('field_kind') }}",
+                &args,
+                &maps
+            ),
+            "int"
+        );
+    }
+
+    #[test]
+    fn template_extends_and_include() {
+        use std::path::PathBuf;
+        let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../test/fixtures/template_inheritance/.codemod");
+        let mut args = BTreeMap::new();
+        args.insert("className".to_string(), "FeedList".to_string());
+        let rendered = render_template_file(
+            "templates/feature.template",
+            &args,
+            &BTreeMap::new(),
+            &root,
+        )
+        .expect("render");
+        assert!(rendered.contains("// Generated for FeedList"));
+        assert!(rendered.contains("class FeedListWidget {}"));
     }
 }

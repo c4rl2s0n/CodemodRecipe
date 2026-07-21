@@ -1,0 +1,22 @@
+dslVersion: 2
+id: conditional_create
+name: conditional_create
+description: |
+  Example file-backed Jinja template with {% if %} on a bool arg.
+  See docs/recipe-templates.md and test/fixtures/jinja_examples/.
+
+args:
+  - name: className
+    required: true
+    inputKind: symbol
+  - name: includeTests
+    required: false
+    defaultsTo: "false"
+    inputKind: text
+
+steps:
+  - create:
+      path: "lib/{{ className | snake_case }}/{{ className | snake_case }}_widget.dart"
+      templateFile: templates/conditional_widget.dart.template
+      ifExists: fail
+      format: false

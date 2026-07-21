@@ -18,6 +18,7 @@ import {
   HostCommand,
   PreviewResponse,
   RecipeCatalogResponse,
+  ValidateResponse,
   parseHostResponse,
 } from './hostProtocol';
 import type { RecipeSchema, SelectionPayload, AstPathResult } from '../../shared';
@@ -150,6 +151,13 @@ export class DartBridge {
   async reloadRecipes(): Promise<RecipeLoadResult> {
     const response = await this.send<RecipeCatalogResponse>({ command: 'reload' });
     return this.parseRecipeLoadResponse(response, 'reload');
+  }
+
+  async validateRecipes(recipeId?: string): Promise<ValidateResponse> {
+    return this.send<ValidateResponse>({
+      command: 'validate',
+      ...(recipeId ? { recipe: recipeId } : {}),
+    });
   }
 
   async ensureHost(): Promise<void> {

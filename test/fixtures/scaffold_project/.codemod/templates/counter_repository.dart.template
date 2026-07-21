@@ -1,4 +1,4 @@
-/// Repository for {{$pascal className}}.
-class {{$pascal className}}Repository {
-  {{$pascal className}}Repository();
+/// Repository for {{ className | pascal_case }}.
+class {{ className | pascal_case }}Repository {
+  {{ className | pascal_case }}Repository();
 }

@@ -50,15 +50,26 @@ Do not reimplement CLI parsing, dry-run, apply, formatting, or error handling. U
 
 ## Templates
 
-Use `CodemodTemplate` for generated snippets and files. Templates use
-Mustache-style placeholders plus package-defined casing filters:
+**Dart API** — use `CodemodTemplate` with Mustache-style placeholders and package casing
+filters (`{{$snake feature}}`, etc.) in Dart `CodemodRecipe` code.
+
+**YAML / MCP recipes** — use Jinja2 (MiniJinja) in `.codemod/recipes/*.yaml`. See
+[`docs/recipe-templates.md`](../../docs/recipe-templates.md) and
+[`test/fixtures/jinja_examples/`](../../test/fixtures/jinja_examples/).
+
+Dart inline example:
 
 ```mustache
 {{feature}} {{$snake feature}} {{$camel feature}} {{$pascal feature}}
 ```
 
-Unknown variables and unsupported casing filters should fail the run. Use
-`context.render(...)` for inline path templates.
+YAML equivalent:
+
+```jinja
+{{ feature }} {{ feature | snake_case }} {{ feature | camel_case }} {{ feature | pascal_case }}
+```
+
+Unknown variables should fail the run. Use `context.render(...)` for inline path templates in Dart.
 
 ## File Creation
 

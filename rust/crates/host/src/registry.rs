@@ -65,31 +65,31 @@ impl RecipeRegistry {
             }
 
             let Ok(recipe) = parse_recipe_yaml(&text) else {
-                self.diagnostics.push(RecipeDiagnostic {
-                    severity: "error",
-                    code: "E_RECIPE_PARSE",
-                    message: format!("Failed to parse recipe: {}", path.display()),
-                    sources: vec![DiagnosticSource {
+                self.diagnostics.push(RecipeDiagnostic::simple(
+                    "error",
+                    "E_RECIPE_PARSE",
+                    format!("Failed to parse recipe: {}", path.display()),
+                    vec![DiagnosticSource {
                         file: relative.clone(),
                         line: None,
                         column: None,
                     }],
-                });
+                ));
                 continue;
             };
 
             let schema = recipe_to_schema(&recipe);
             if seen_ids.contains_key(&schema.id) {
-                self.diagnostics.push(RecipeDiagnostic {
-                    severity: "error",
-                    code: "E_DUPLICATE_ID",
-                    message: format!("Duplicate recipe id: {}", schema.id),
-                    sources: vec![DiagnosticSource {
+                self.diagnostics.push(RecipeDiagnostic::simple(
+                    "error",
+                    "E_DUPLICATE_ID",
+                    format!("Duplicate recipe id: {}", schema.id),
+                    vec![DiagnosticSource {
                         file: relative,
                         line: None,
                         column: None,
                     }],
-                });
+                ));
                 continue;
             }
             seen_ids.insert(schema.id.clone(), path.clone());
@@ -111,6 +111,24 @@ impl RecipeRegistry {
             self.recipes_by_id
                 .insert(schema.id.clone(), (path.clone(), schema));
         }
+
+        let mut expanded_diagnostics = Vec::new();
+        crate::validate::validate_expanded_recipes(self, &mut expanded_diagnostics);
+        self.diagnostics.extend(expanded_diagnostics);
+    }
+
+    pub fn diagnostics(&self) -> &[RecipeDiagnostic] {
+        &self.diagnostics
+    }
+
+    pub fn recipes_ast(&self) -> &BTreeMap<String, Recipe> {
+        &self.recipes_ast
+    }
+
+    pub fn recipe_file_for(&self, id: &str) -> Option<String> {
+        self.recipes_by_id.get(id).map(|(path, _)| {
+            relative_path(&self.workspace_root, path)
+        })
     }
 
     pub fn list(&self) -> (Vec<RecipeSchema>, Vec<RecipeDiagnostic>) {
@@ -188,29 +206,29 @@ fn collect_recipe_ref_errors(
             continue;
         };
         let Some(ref_id) = recipe_ref_id(value) else {
-            diagnostics.push(RecipeDiagnostic {
-                severity: "error",
-                code: "E_SCHEMA",
-                message: "recipe step must be a recipe id string".to_string(),
-                sources: vec![DiagnosticSource {
+            diagnostics.push(RecipeDiagnostic::simple(
+                "error",
+                "E_SCHEMA",
+                "recipe step must be a recipe id string".to_string(),
+                vec![DiagnosticSource {
                     file: file_path.to_string(),
                     line: None,
                     column: None,
                 }],
-            });
+            ));
             continue;
         };
         if !known_ids.contains_key(ref_id) {
-            diagnostics.push(RecipeDiagnostic {
-                severity: "error",
-                code: "E_RECIPE_REF",
-                message: format!("Unknown recipe reference: {ref_id}"),
-                sources: vec![DiagnosticSource {
+            diagnostics.push(RecipeDiagnostic::simple(
+                "error",
+                "E_RECIPE_REF",
+                format!("Unknown recipe reference: {ref_id}"),
+                vec![DiagnosticSource {
                     file: file_path.to_string(),
                     line: None,
                     column: None,
                 }],
-            });
+            ));
         }
     }
 }
@@ -222,16 +240,16 @@ fn collect_schema_errors(
 ) {
     if let Err(errors) = validate_recipe_with(recipe, codemod_recipe_engine::is_known_language) {
         for error in errors {
-            diagnostics.push(RecipeDiagnostic {
-                severity: "error",
-                code: "E_SCHEMA",
-                message: error.to_string(),
-                sources: vec![DiagnosticSource {
+            diagnostics.push(RecipeDiagnostic::simple(
+                "error",
+                "E_SCHEMA",
+                error.to_string(),
+                vec![DiagnosticSource {
                     file: file_path.to_string(),
                     line: None,
                     column: None,
                 }],
-            });
+            ));
         }
     }
 }
@@ -243,26 +261,42 @@ fn collect_map_warnings(
     diagnostics: &mut Vec<RecipeDiagnostic>,
 ) {
     for step in &recipe.steps {
-        let Step::Edit(edit) = step else { continue };
-        warn_on_missing_map_ids(&edit.path, file_path, maps, diagnostics);
-        for op in &edit.ops {
-            match op {
-                EditOp::Insert(insert) => {
-                    warn_on_missing_map_ids(&insert.query, file_path, maps, diagnostics);
-                    warn_on_missing_map_ids(&insert.capture, file_path, maps, diagnostics);
-                    warn_on_missing_map_ids(&insert.text, file_path, maps, diagnostics);
+        match step {
+            Step::Edit(edit) => {
+                warn_on_missing_map_ids(&edit.path, file_path, maps, diagnostics);
+                for op in &edit.ops {
+                    match op {
+                        EditOp::Insert(insert) => {
+                            warn_on_missing_map_ids(&insert.query, file_path, maps, diagnostics);
+                            warn_on_missing_map_ids(&insert.capture, file_path, maps, diagnostics);
+                            warn_on_missing_map_ids(&insert.text, file_path, maps, diagnostics);
+                        }
+                        EditOp::Replace(replace) => {
+                            warn_on_missing_map_ids(&replace.query, file_path, maps, diagnostics);
+                            warn_on_missing_map_ids(&replace.capture, file_path, maps, diagnostics);
+                            warn_on_missing_map_ids(&replace.text, file_path, maps, diagnostics);
+                        }
+                        EditOp::Remove(remove) => {
+                            warn_on_missing_map_ids(&remove.query, file_path, maps, diagnostics);
+                            warn_on_missing_map_ids(&remove.capture, file_path, maps, diagnostics);
+                        }
+                        EditOp::Unknown(_, _) => {}
+                    }
                 }
-                EditOp::Replace(replace) => {
-                    warn_on_missing_map_ids(&replace.query, file_path, maps, diagnostics);
-                    warn_on_missing_map_ids(&replace.capture, file_path, maps, diagnostics);
-                    warn_on_missing_map_ids(&replace.text, file_path, maps, diagnostics);
-                }
-                EditOp::Remove(remove) => {
-                    warn_on_missing_map_ids(&remove.query, file_path, maps, diagnostics);
-                    warn_on_missing_map_ids(&remove.capture, file_path, maps, diagnostics);
-                }
-                EditOp::Unknown(_, _) => {}
             }
+            Step::Create(create) => {
+                warn_on_missing_map_ids(&create.path, file_path, maps, diagnostics);
+                if let Some(text) = &create.template {
+                    warn_on_missing_map_ids(text, file_path, maps, diagnostics);
+                }
+                if let Some(file) = &create.template_file {
+                    warn_on_missing_map_ids(file, file_path, maps, diagnostics);
+                }
+            }
+            Step::Delete(delete) => {
+                warn_on_missing_map_ids(&delete.path, file_path, maps, diagnostics);
+            }
+            Step::RecipeRef(_) | Step::Unknown(_, _) => {}
         }
     }
 }
@@ -308,31 +342,31 @@ pub fn render_recipe_templates(
     recipe: &Recipe,
     args: &BTreeMap<String, String>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
-) -> Recipe {
+) -> Result<Recipe, String> {
     let render = |text: &str| render_template(text, args, maps);
     let mut out = recipe.clone();
     for step in &mut out.steps {
         match step {
             Step::Edit(edit) => {
-                edit.path = render(&edit.path);
+                edit.path = render(&edit.path)?;
                 if let Some(lang) = &edit.language {
-                    edit.language = Some(render(lang));
+                    edit.language = Some(render(lang)?);
                 }
                 for op in &mut edit.ops {
                     match op {
                         EditOp::Insert(insert) => {
-                            insert.query = render(&insert.query);
-                            insert.capture = render(&insert.capture);
-                            insert.text = render(&insert.text);
+                            insert.query = render(&insert.query)?;
+                            insert.capture = render(&insert.capture)?;
+                            insert.text = render(&insert.text)?;
                         }
                         EditOp::Replace(replace) => {
-                            replace.query = render(&replace.query);
-                            replace.capture = render(&replace.capture);
-                            replace.text = render(&replace.text);
+                            replace.query = render(&replace.query)?;
+                            replace.capture = render(&replace.capture)?;
+                            replace.text = render(&replace.text)?;
                         }
                         EditOp::Remove(remove) => {
-                            remove.query = render(&remove.query);
-                            remove.capture = render(&remove.capture);
+                            remove.query = render(&remove.query)?;
+                            remove.capture = render(&remove.capture)?;
                         }
                         EditOp::Unknown(_, _) => {}
                     }
@@ -344,21 +378,21 @@ pub fn render_recipe_templates(
                 template_file,
                 ..
             }) => {
-                *path = render(path);
+                *path = render(path)?;
                 if let Some(text) = template {
-                    *template = Some(render(text));
+                    *template = Some(render(text)?);
                 }
                 if let Some(file) = template_file {
-                    *template_file = Some(render(file));
+                    *template_file = Some(render(file)?);
                 }
             }
             Step::Delete(DeleteStep { path, .. }) => {
-                *path = render(path);
+                *path = render(path)?;
             }
             Step::RecipeRef(_) | Step::Unknown(_, _) => {}
         }
     }
-    out
+    Ok(out)
 }
 
 #[cfg(test)]

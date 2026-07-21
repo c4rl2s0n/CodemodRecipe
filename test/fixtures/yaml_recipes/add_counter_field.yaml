@@ -23,7 +23,7 @@ steps:
               - class: "{{className}}"
             anchor: member:last
             text: |
-              final int {{$camel field}};
+              final int {{ field | camel_case }};
 
 postExecution:
   - run: dart format .

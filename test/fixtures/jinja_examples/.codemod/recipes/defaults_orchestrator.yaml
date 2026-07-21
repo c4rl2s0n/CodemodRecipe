@@ -1,0 +1,12 @@
+dslVersion: 2
+id: defaults_orchestrator
+name: defaults_orchestrator
+description: Orchestrator that inherits child defaultsTo for verbose
+
+args:
+  - name: label
+    required: true
+    inputKind: symbol
+
+steps:
+  - recipe: defaults_child

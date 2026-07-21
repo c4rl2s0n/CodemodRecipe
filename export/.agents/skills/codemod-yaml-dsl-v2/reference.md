@@ -220,30 +220,40 @@ entries:
 Use in recipe text:
 
 ```yaml
-text: "  final {{$map 'field_kind' fieldName}} {{$camel fieldName}} = 0;\n\n"
+text: "  final {{ fieldName | map('field_kind') }} {{ fieldName | camel_case }} = 0;\n\n"
 ```
 
-## Template syntax
+## Template syntax (Jinja2)
 
-Supported in paths, queries, and text:
+Canonical syntax for the Rust host (MiniJinja). See [docs/recipe-templates.md](../../../docs/recipe-templates.md).
 
-- `{{argName}}`
-- `{{$camel argName}}`
-- `{{$snake argName}}`
-- `{{$pascal argName}}`
-- `{{$map 'mapId' keyArg}}`
+Supported in paths, queries, inline `create.template`, and `create.templateFile`:
 
-Example path: `lib/features/{{$snake feature}}/{{$snake feature}}_state.dart`
+- `{{ argName }}`
+- `{{ arg | camel_case }}`, `snake_case`, `pascal_case`, `lower`, `upper`, `screaming_snake`, `kebab_case`
+- `{{ keyArg | map('mapId') }}`
+- `{% if includeTests %}…{% endif %}` (bool args as `"true"` / `"false"`)
+
+File-backed templates support `{% extends %}`, `{% block %}`, `{% include %}`.
+
+Legacy helpers (`{{$camel x}}`, `{{$map 'id' key}}`) still work but emit `W_LEGACY_TEMPLATE`.
+
+Example path: `lib/features/{{ feature | snake_case }}/{{ feature | snake_case }}_state.dart`
 
 Example typed field insert:
 
 ```yaml
-text: "  final {{$map 'field_kind' fieldName}} {{$camel fieldName}};\n\n"
+text: "  final {{ fieldName | map('field_kind') }} {{ fieldName | camel_case }};\n\n"
 ```
 
 ## Validation rules
 
-Call `validate_recipes` after editing YAML.
+Call `validate_recipes` (MCP) or host `{ "command": "validate" }` after editing YAML.
+Optional scope: `{ "recipe": "scaffold_feature" }`.
+
+Expanded-recipe checks include undeclared template variables, missing template files,
+MiniJinja syntax errors, and map reference warnings. Diagnostics may include `hint`
+and `relatedRecipe`.
 
 - Recipe must have `steps`
 - Arg names must be unique

@@ -7,6 +7,7 @@ Dart, Rust, Java, Kotlin, SQL/SQLite, and 300+ languages via lazy-loaded
 tree-sitter grammars.
 
 **Agent playbook:** `.cursor/skills/codemod-mcp/reference.md`  
+**Templates:** [recipe-templates.md](recipe-templates.md)  
 **Multi-language:** [language-support.md](language-support.md) and skill `codemod-languages`  
 **Query language:** [tree-sitter-queries.md](tree-sitter-queries.md) and skill `codemod-tree-sitter-queries`
 
@@ -87,14 +88,14 @@ All tools return a JSON string. Parse it, then check `ok`.
 | `bootstrap_project` | Install agent skills, rules, and `.codemod/` scaffolding |
 | `list_recipes` | Discover registered recipe ids and argument schemas |
 | `describe_recipe` | Show metadata/args for one recipe |
-| `validate_recipes` | Reload + validate recipes/maps |
+| `validate_recipes` | Reload + validate recipes/maps (optional `recipe` id) |
 | `preview_recipe` | Dry-run recipe; returns `previewToken` |
 | `apply_recipe` | Apply recipe atomically; requires `previewToken` |
 
 ## End-to-end workflow
 
 0. `bootstrap_project` (once per workspace)
-1. `validate_recipes` after recipe edits
+1. `validate_recipes` after recipe edits (or VS Code **Validate Recipes**)
 2. `list_recipes`
 3. `describe_recipe`
 4. `preview_recipe` (save `previewToken`)
@@ -139,6 +140,20 @@ All tools return a JSON string. Parse it, then check `ok`.
 ```
 
 `selection` is optional; omit to apply all patches.
+
+Validate all recipes:
+
+```json
+{}
+```
+
+Validate one recipe:
+
+```json
+{ "recipe": "scaffold_feature" }
+```
+
+Host stdio equivalent: `{ "command": "validate" }` or `{ "command": "validate", "recipe": "scaffold_feature" }`.
 
 ## Inline recipe examples (v2 shape)
 

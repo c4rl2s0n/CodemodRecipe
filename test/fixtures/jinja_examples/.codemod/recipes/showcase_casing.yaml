@@ -1,0 +1,34 @@
+dslVersion: 2
+id: showcase_casing
+name: showcase_casing
+description: Demonstrates Jinja casing filters and map lookups
+
+args:
+  - name: name
+    required: true
+    inputKind: symbol
+  - name: fieldKey
+    required: true
+    inputKind: symbol
+
+maps:
+  field_kind:
+    tickCount: int
+    label: String
+
+steps:
+  - create:
+      path: "lib/generated/{{ name | snake_case }}_casing.dart"
+      template: |
+        // snake={{ name | snake_case }}
+        // camel={{ name | camel_case }}
+        // pascal={{ name | pascal_case }}
+        // lower={{ name | lower }}
+        // upper={{ name | upper }}
+        // screaming={{ name | screaming_snake }}
+        // kebab={{ name | kebab_case }}
+        // mapFilter={{ fieldKey | map('field_kind') }}
+        // mapContext={{ maps.field_kind[fieldKey] }}
+        class {{ name | pascal_case }}Casing {}
+      ifExists: fail
+      format: false

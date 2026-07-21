@@ -32,4 +32,4 @@ steps:
                 (#eq? @methodName "increment"))
             capture: member
             anchor: start
-            text: "  final {{$map 'field_kind' fieldName}} {{$camel fieldName}} = 0;\n\n"
+            text: "  final {{ fieldName | map('field_kind') }} {{ fieldName | camel_case }} = 0;\n\n"

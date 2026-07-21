@@ -1,0 +1,6 @@
+class {{ className | pascal_case }}Widget {
+  {{ className | pascal_case }}Widget();
+{% if includeTests %}
+  void testHook() {}
+{% endif %}
+}

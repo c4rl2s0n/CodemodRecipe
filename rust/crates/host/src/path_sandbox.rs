@@ -59,16 +59,16 @@ impl PathSandbox {
 }
 
 pub fn diagnostic_from_sandbox(error: PathSandboxError, file: &str) -> RecipeDiagnostic {
-    RecipeDiagnostic {
-        severity: "error",
-        code: error.code,
-        message: error.message,
-        sources: vec![DiagnosticSource {
+    RecipeDiagnostic::simple(
+        "error",
+        error.code,
+        error.message,
+        vec![DiagnosticSource {
             file: file.to_string(),
             line: None,
             column: None,
         }],
-    }
+    )
 }
 
 fn normalize(path: &str) -> Result<String, PathSandboxError> {

@@ -30,7 +30,7 @@ description: Orientation for codemod-recipe — what it is, when to use MCP tool
 ```text
 .codemod/
   recipes/    # registered YAML recipes (*.yaml)
-  maps/       # optional string maps for {{$map ...}}
+  maps/       # optional string maps for {{ key | map('mapId') }}
   templates/  # optional files for create.templateFile
 ```
 

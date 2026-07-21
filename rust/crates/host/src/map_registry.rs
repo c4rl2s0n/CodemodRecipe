@@ -50,12 +50,12 @@ pub fn load_maps(workspace_root: &Path, maps_directory: &Path) -> MapLoadResult 
     for id in &rejected {
         maps_by_id.remove(id);
         if let Some(sources) = id_sources.get(id) {
-            diagnostics.push(RecipeDiagnostic {
-                severity: "error",
-                code: "E_DUPLICATE_MAP_ID",
-                message: format!("Duplicate map id: {id}"),
-                sources: sources.clone(),
-            });
+            diagnostics.push(RecipeDiagnostic::simple(
+                "error",
+                "E_DUPLICATE_MAP_ID",
+                format!("Duplicate map id: {id}"),
+                sources.clone(),
+            ));
         }
     }
 
@@ -67,27 +67,27 @@ pub fn load_maps(workspace_root: &Path, maps_directory: &Path) -> MapLoadResult 
 
 fn load_map_file(path: &Path) -> Result<(String, BTreeMap<String, String>), RecipeDiagnostic> {
     let relative = path_to_string(path);
-    let text = std::fs::read_to_string(path).map_err(|e| RecipeDiagnostic {
-        severity: "error",
-        code: "E_MAP_PARSE",
-        message: format!("Failed to read map file: {e}"),
-        sources: vec![DiagnosticSource {
+    let text = std::fs::read_to_string(path).map_err(|e| RecipeDiagnostic::simple(
+        "error",
+        "E_MAP_PARSE",
+        format!("Failed to read map file: {e}"),
+        vec![DiagnosticSource {
             file: relative.clone(),
             line: None,
             column: None,
         }],
-    })?;
+    ))?;
 
-    let doc: Value = serde_yaml::from_str(&text).map_err(|e| RecipeDiagnostic {
-        severity: "error",
-        code: "E_MAP_PARSE",
-        message: format!("Failed to parse map YAML: {e}"),
-        sources: vec![DiagnosticSource {
+    let doc: Value = serde_yaml::from_str(&text).map_err(|e| RecipeDiagnostic::simple(
+        "error",
+        "E_MAP_PARSE",
+        format!("Failed to parse map YAML: {e}"),
+        vec![DiagnosticSource {
             file: relative.clone(),
             line: None,
             column: None,
         }],
-    })?;
+    ))?;
 
     let Value::Mapping(root) = doc else {
         return Err(map_schema_error("Map file root must be a map", &relative));
@@ -128,16 +128,16 @@ fn load_map_file(path: &Path) -> Result<(String, BTreeMap<String, String>), Reci
 }
 
 fn map_schema_error(message: &str, file: &str) -> RecipeDiagnostic {
-    RecipeDiagnostic {
-        severity: "error",
-        code: "E_MAP_SCHEMA",
-        message: message.to_string(),
-        sources: vec![DiagnosticSource {
+    RecipeDiagnostic::simple(
+        "error",
+        "E_MAP_SCHEMA",
+        message.to_string(),
+        vec![DiagnosticSource {
             file: file.to_string(),
             line: None,
             column: None,
         }],
-    }
+    )
 }
 
 pub fn merge_maps(
@@ -158,6 +158,17 @@ pub fn merge_maps(
 }
 
 pub fn warn_on_missing_map_ids(
+    template: &str,
+    file_path: &str,
+    maps_by_id: &BTreeMap<String, BTreeMap<String, String>>,
+    diagnostics: &mut Vec<RecipeDiagnostic>,
+) {
+    warn_legacy_map_references(template, file_path, maps_by_id, diagnostics);
+    let converted = crate::template::convert_legacy_syntax(template);
+    warn_jinja_map_references(&converted, file_path, maps_by_id, diagnostics);
+}
+
+fn warn_legacy_map_references(
     template: &str,
     file_path: &str,
     maps_by_id: &BTreeMap<String, BTreeMap<String, String>>,
@@ -192,17 +203,67 @@ pub fn warn_on_missing_map_ids(
         if maps_by_id.contains_key(map_id) {
             continue;
         }
-        diagnostics.push(RecipeDiagnostic {
-            severity: "warning",
-            code: "W_MAP_ID_NOT_FOUND",
-            message: format!("Template references unknown map id: {map_id}"),
-            sources: vec![DiagnosticSource {
-                file: file_path.to_string(),
-                line: None,
-                column: None,
-            }],
-        });
+        push_map_id_warning(file_path, map_id, diagnostics);
     }
+}
+
+fn warn_jinja_map_references(
+    template: &str,
+    file_path: &str,
+    maps_by_id: &BTreeMap<String, BTreeMap<String, String>>,
+    diagnostics: &mut Vec<RecipeDiagnostic>,
+) {
+    let mut index = 0;
+    while let Some(start) = template[index..].find("map(") {
+        let abs_start = index + start;
+        let rest = &template[abs_start + 4..];
+        if let Some(map_id) = parse_quoted_map_id(rest) {
+            if !maps_by_id.contains_key(&map_id) {
+                push_map_id_warning(file_path, &map_id, diagnostics);
+            }
+            index = abs_start + 4 + map_id.len() + 2;
+        } else {
+            index = abs_start + 4;
+        }
+    }
+}
+
+fn parse_quoted_map_id(text: &str) -> Option<String> {
+    let text = text.trim_start();
+    let quote = text.as_bytes().first()?;
+    if *quote != b'\'' && *quote != b'"' {
+        return None;
+    }
+    let quote_char = *quote as char;
+    let rest = &text[1..];
+    let end = rest.find(quote_char)?;
+    let map_id = rest[..end].to_string();
+    if map_id.is_empty() {
+        return None;
+    }
+    Some(map_id)
+}
+
+fn push_map_id_warning(
+    file_path: &str,
+    map_id: &str,
+    diagnostics: &mut Vec<RecipeDiagnostic>,
+) {
+    if diagnostics.iter().any(|d| {
+        d.code == "W_MAP_ID_NOT_FOUND" && d.message.contains(map_id) && d.sources.first().is_some_and(|s| s.file == file_path)
+    }) {
+        return;
+    }
+    diagnostics.push(RecipeDiagnostic::simple(
+        "warning",
+        "W_MAP_ID_NOT_FOUND",
+        format!("Template references unknown map id: {map_id}"),
+        vec![DiagnosticSource {
+            file: file_path.to_string(),
+            line: None,
+            column: None,
+        }],
+    ));
 }
 
 fn collect_yaml_files(dir: &Path, out: &mut Vec<PathBuf>) {

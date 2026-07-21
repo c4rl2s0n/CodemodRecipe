@@ -1,0 +1,20 @@
+dslVersion: 2
+id: conditional_create
+name: conditional_create
+description: File-backed template with {% if %} on a bool arg
+
+args:
+  - name: className
+    required: true
+    inputKind: symbol
+  - name: includeTests
+    required: false
+    defaultsTo: "false"
+    inputKind: text
+
+steps:
+  - create:
+      path: "lib/generated/{{ className | snake_case }}_widget.dart"
+      templateFile: templates/conditional_widget.dart.template
+      ifExists: fail
+      format: false

@@ -7,8 +7,8 @@ args:
     required: true
 steps:
   - create:
-      path: "{{featurePath}}/{{$snake name}}.dart"
+      path: "{{featurePath}}/{{ name | snake_case }}.dart"
       template: |
-        class {{$pascal name}} {}
+        class {{ name | pascal_case }} {}
       ifExists: fail
       format: false

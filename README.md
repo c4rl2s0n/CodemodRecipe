@@ -53,7 +53,7 @@ The Rust engine is the target for new development.
 | `lib/` | Dart package: analyzer transforms, YAML compiler, VS Code host |
 | `rust/` | Rust workspace: tree-sitter engine, YAML model, stdio host, MCP |
 | `.codemod/recipes/` | Shipped YAML recipes (query DSL v2) |
-| `.codemod/maps/` | Reusable string maps for `{{$map 'id' key}}` templates |
+| `.codemod/maps/` | Reusable string maps for `{{ arg \| map('id') }}` templates |
 | `vscode_extension/` | VS Code / Codium extension |
 | `test/fixtures/rust_oracle/` | Golden fixtures for the Rust engine |
 | `example/` | Runnable Dart examples |
@@ -98,15 +98,24 @@ postExecution:
   - dartFormat
 ```
 
-### Template helpers
+### Template syntax (Jinja2)
+
+Recipes use [MiniJinja](https://docs.rs/minijinja/) (Jinja2-compatible). See
+[docs/recipe-templates.md](docs/recipe-templates.md) for the full guide.
 
 | Syntax | Meaning |
 |--------|---------|
 | `{{argName}}` | Replace with argument value |
-| `{{$camel field}}` | camelCase of argument `field` |
-| `{{$snake field}}` | snake_case |
-| `{{$pascal field}}` | PascalCase |
-| `{{$map 'mapId' keyArg}}` | Lookup in `.codemod/maps/` (key from arg value) |
+| `{{ field \| camel_case }}` | camelCase |
+| `{{ field \| snake_case }}` | snake_case |
+| `{{ field \| pascal_case }}` | PascalCase |
+| `{{ key \| map('mapId') }}` | Lookup in `.codemod/maps/` |
+| `{% if flag %}…{% endif %}` | Conditional (bool args: `"true"` / `"false"`) |
+
+Legacy `{{$camel field}}` helpers still work but are deprecated.
+
+See [docs/recipe-templates.md](docs/recipe-templates.md) for the full Jinja guide and
+[`test/fixtures/jinja_examples/`](test/fixtures/jinja_examples/) for feature showcase recipes.
 
 Query values can be inline (above) or a path to a `.scm` file relative to the
 recipe or `.codemod/queries/`.
@@ -146,8 +155,10 @@ semantics for `recipe:` steps and a `compose_recipe` API in `codemod_recipe_yaml
 | insert / replace / remove (tree-sitter, multi-language) | Done |
 | Language registry (language-pack + sqlite native) | Done |
 | Query file paths (`.scm`) | Done |
-| Maps registry + `{{$map}}` | Done |
-| Template casing helpers | Done |
+| Maps registry + Jinja `map` filter | Done |
+| Template engine (MiniJinja) + conditionals | Done |
+| Template inheritance (`extends` / `include`) | Done |
+| Comprehensive validate API | Done |
 | Host: preview / apply / diff / validate | Done |
 | previewToken + patch selection | Done |
 | Atomic multi-file apply | Done |

@@ -145,6 +145,35 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(COMMANDS.refresh, () =>
       reloadRecipesFromHost(true)
     ),
+    vscode.commands.registerCommand(COMMANDS.validateRecipes, async () => {
+      try {
+        await bridge.ensureHost();
+        const result = await bridge.validateRecipes();
+        await repository.reload();
+        await syncRunnerFromRepository();
+        const diagnostics = result.diagnostics ?? [];
+        const errors = diagnostics.filter((d) => d.severity === 'error');
+        const warnings = diagnostics.filter((d) => d.severity === 'warning');
+        if (result.ok) {
+          const suffix =
+            warnings.length > 0 ? ` (${warnings.length} warning(s))` : '';
+          vscode.window.showInformationMessage(
+            `Codemod Recipe: validation passed${suffix}`
+          );
+        } else {
+          const detail = errors
+            .slice(0, 3)
+            .map((d) => d.message)
+            .join('; ');
+          vscode.window.showErrorMessage(
+            `Codemod Recipe: ${errors.length} validation error(s) — ${detail}`
+          );
+        }
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        vscode.window.showErrorMessage(`Codemod Recipe validate failed: ${message}`);
+      }
+    }),
     vscode.commands.registerCommand(COMMANDS.bootstrap, () => bootstrap(true)),
     vscode.commands.registerCommand(
       COMMANDS.runRecipe,

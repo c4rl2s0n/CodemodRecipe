@@ -24,7 +24,7 @@ steps:
               - ctor: null
             anchor: param:last
             text: |
-              , String {{$camel param}}
+              , String {{ param | camel_case }}
 
 postExecution:
   - run: dart format .

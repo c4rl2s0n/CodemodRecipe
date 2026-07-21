@@ -15,6 +15,7 @@ export type {
   DiffResponse,
   PreviewResponse,
   ApplyResponse,
+  ValidateResponse,
 };
 
 export function extractHostResult(output: string): string | undefined {

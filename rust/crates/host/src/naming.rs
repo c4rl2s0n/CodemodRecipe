@@ -58,6 +58,22 @@ pub fn to_camel_case(input: &str) -> String {
     }
 }
 
+pub fn to_lower(input: &str) -> String {
+    input.to_ascii_lowercase()
+}
+
+pub fn to_upper(input: &str) -> String {
+    input.to_ascii_uppercase()
+}
+
+pub fn to_screaming_snake(input: &str) -> String {
+    to_snake_case(input).to_ascii_uppercase()
+}
+
+pub fn to_kebab_case(input: &str) -> String {
+    to_snake_case(input).replace('_', "-")
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -72,5 +88,11 @@ mod tests {
     #[test]
     fn handles_acronym_boundaries() {
         assert_eq!(to_snake_case("URLValue"), "url_value");
+    }
+
+    #[test]
+    fn screaming_snake_and_kebab() {
+        assert_eq!(to_screaming_snake("FeedList"), "FEED_LIST");
+        assert_eq!(to_kebab_case("FeedList"), "feed-list");
     }
 }

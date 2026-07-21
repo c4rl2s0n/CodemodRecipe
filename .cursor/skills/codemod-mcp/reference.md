@@ -46,8 +46,8 @@ Show metadata for a registered recipe.
 
 Reload and validate `.codemod/recipes` and `.codemod/maps`.
 
-- Args: none
-- Returns: `ok` + `diagnostics[]`
+- Args: optional `recipe` (string) — validate one recipe by id; omit to validate all
+- Returns: `ok` + `diagnostics[]` (may include `hint`, `relatedRecipe`)
 
 ### `preview_recipe`
 

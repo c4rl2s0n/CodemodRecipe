@@ -8,10 +8,11 @@ use crate::post_execution::run_post_execution;
 use crate::preview_token::{compute_preview_token, validate_preview_token};
 use crate::protocol::{
     ApplyResponse, AstPathResult, DescribeResponse, DiffResponse, HostCommand, PreviewResponse,
-    RecipeCatalogResponse, ValidateResponse,
+    RecipeCatalogResponse,
 };
 use crate::registry::RecipeRegistry;
 use crate::runner::{collect_recipe_changes, planned_snapshot_paths, resolve_recipe};
+use crate::validate::{validate_recipe, validate_workspace};
 
 struct RecipeRequest<'a> {
     recipe_id: Option<&'a str>,
@@ -50,20 +51,6 @@ fn catalog_response(registry: &RecipeRegistry) -> serde_json::Value {
     })
 }
 
-fn validate_response(registry: &RecipeRegistry) -> serde_json::Value {
-    let (_, diagnostics) = registry.list();
-    let ok = diagnostics.iter().all(|d| d.severity != "error");
-    to_value(ValidateResponse {
-        ok,
-        error: None,
-        diagnostics: if diagnostics.is_empty() {
-            None
-        } else {
-            Some(diagnostics)
-        },
-    })
-}
-
 pub fn handle_command(registry: &mut RecipeRegistry, cmd: HostCommand) -> serde_json::Value {
     match cmd {
         HostCommand::Reload => {
@@ -71,9 +58,12 @@ pub fn handle_command(registry: &mut RecipeRegistry, cmd: HostCommand) -> serde_
             catalog_response(registry)
         }
         HostCommand::List => catalog_response(registry),
-        HostCommand::Validate => {
-            registry.reload();
-            validate_response(registry)
+        HostCommand::Validate { recipe } => {
+            if let Some(recipe_id) = recipe {
+                to_value(validate_recipe(registry, &recipe_id))
+            } else {
+                to_value(validate_workspace(registry))
+            }
         }
         HostCommand::Describe { recipe } => match registry.get(&recipe) {
             Some(schema) => to_value(DescribeResponse {

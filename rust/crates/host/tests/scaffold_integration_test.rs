@@ -53,7 +53,7 @@ fn scaffold_project_validate_describe_and_catalog() {
     let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
     registry.reload();
 
-    let validate = dispatch::handle_command(&mut registry, HostCommand::Validate);
+    let validate = dispatch::handle_command(&mut registry, HostCommand::Validate { recipe: None });
     assert_eq!(validate["ok"], true, "{}", validate["error"]);
     let diagnostics = validate["diagnostics"].as_array();
     if let Some(items) = diagnostics {

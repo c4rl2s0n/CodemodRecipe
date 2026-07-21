@@ -101,8 +101,16 @@ fn handle_request(
                 },
                 {
                   "name": "validate_recipes",
-                  "description": "Reload and validate all recipes and maps",
-                  "inputSchema": { "type": "object" }
+                  "description": "Reload and validate all recipes and maps (optionally one recipe by id)",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "recipe": {
+                        "type": "string",
+                        "description": "Optional recipe id to validate without reloading others"
+                      }
+                    }
+                  }
                 },
                 {
                   "name": "preview_recipe",
@@ -175,7 +183,16 @@ fn handle_request(
                         },
                     )
                 }
-                "validate_recipes" => handle_command(registry, HostCommand::Validate),
+                "validate_recipes" => {
+                    let recipe = arguments
+                        .get("recipe")
+                        .and_then(|v| v.as_str())
+                        .map(String::from);
+                    handle_command(
+                        registry,
+                        HostCommand::Validate { recipe },
+                    )
+                }
                 "preview_recipe" => mcp_preview_or_apply(registry, &arguments, false),
                 "apply_recipe" => mcp_preview_or_apply(registry, &arguments, true),
                 "bootstrap_project" => {

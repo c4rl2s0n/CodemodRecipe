@@ -30,7 +30,7 @@ steps:
                 (#eq? @methodName "update"))
             capture: member
             anchor: start
-            text: "  final int {{$camel field}};\n\n"
+            text: "  final int {{ field | camel_case }};\n\n"
 
 postExecution:
   - dartFormat

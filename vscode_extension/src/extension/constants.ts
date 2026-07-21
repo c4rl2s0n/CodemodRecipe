@@ -9,6 +9,7 @@ export const COMMANDS = {
   runFromCursorContext: 'codemodRecipe.runFromCursorContext',
   configureCodemodRoot: 'codemodRecipe.configureHost',
   generateAstPath: 'codemodRecipe.generateAstPath',
+  validateRecipes: 'codemodRecipe.validateRecipes',
 } as const;
 
 export const VIEWS = {

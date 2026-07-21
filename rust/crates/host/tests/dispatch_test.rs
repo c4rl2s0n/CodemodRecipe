@@ -384,7 +384,7 @@ fn validate_reports_duplicate_recipe_ids() {
     .unwrap();
 
     let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
-    let response = dispatch::handle_command(&mut registry, HostCommand::Validate);
+    let response = dispatch::handle_command(&mut registry, HostCommand::Validate { recipe: None });
     assert_eq!(response["ok"], false);
     let diagnostics = response["diagnostics"].as_array().unwrap();
     assert!(diagnostics.iter().any(|d| d["code"] == "E_DUPLICATE_ID"));

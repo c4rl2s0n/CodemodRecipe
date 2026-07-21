@@ -48,6 +48,8 @@ export interface RecipeDiagnostic {
   code: string;
   message: string;
   sources?: { file: string; line?: number; column?: number }[];
+  hint?: string;
+  relatedRecipe?: string;
 }
 
 export interface RecipeCatalogResponse {
@@ -93,9 +95,16 @@ export interface DiffResponse {
   file?: FilePreview;
 }
 
+export interface ValidateResponse {
+  ok: boolean;
+  error?: string;
+  diagnostics?: RecipeDiagnostic[];
+}
+
 export type HostCommand =
   | { command: 'list' }
   | { command: 'reload' }
+  | { command: 'validate'; recipe?: string }
   | { command: 'describe'; recipe: string }
   | { command: 'diff'; recipe: string; args: Record<string, string>; path: string }
   | {

@@ -8,9 +8,10 @@ use codemod_recipe_yaml::model::{
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use crate::args;
 use crate::path_sandbox::PathSandbox;
 use crate::registry::{render_recipe_templates, RecipeRegistry};
-use crate::template::render_template;
+use crate::template::{render_template, render_template_file};
 
 pub struct CollectedChanges {
     pub recipe: Recipe,
@@ -40,21 +41,9 @@ pub fn resolve_recipe(
 
 pub fn validate_required_args(
     recipe: &Recipe,
-    args: &BTreeMap<String, String>,
+    caller: &BTreeMap<String, String>,
 ) -> Result<(), String> {
-    let missing: Vec<String> = recipe
-        .args
-        .iter()
-        .filter(|arg| arg.required && !args.contains_key(&arg.name))
-        .map(|arg| arg.name.clone())
-        .collect();
-    if !missing.is_empty() {
-        return Err(format!(
-            "Missing required arguments: {}",
-            missing.join(", ")
-        ));
-    }
-    Ok(())
+    args::validate_required_args(recipe, caller).map(|_| ())
 }
 
 pub fn collect_recipe_changes(
@@ -63,9 +52,9 @@ pub fn collect_recipe_changes(
     recipe_path: Option<&Path>,
     args: &BTreeMap<String, String>,
 ) -> Result<CollectedChanges, String> {
-    validate_required_args(recipe, args)?;
+    let effective = args::validate_required_args(recipe, args)?;
     let merged_maps = registry.merged_maps_for(recipe);
-    let rendered = render_recipe_templates(recipe, args, &merged_maps);
+    let rendered = render_recipe_templates(recipe, &effective, &merged_maps)?;
 
     let sandbox = PathSandbox::new(registry.workspace_root.clone());
     let codemod_rel = relative_codemod_path(registry);
@@ -106,7 +95,7 @@ pub fn collect_recipe_changes(
                     &sandbox,
                     &codemod_rel,
                     create,
-                    args,
+                    &effective,
                     &merged_maps,
                 )?);
             }
@@ -129,9 +118,9 @@ pub fn collect_recipe_changes(
 }
 
 fn collect_create_change(
-    _registry: &RecipeRegistry,
+    registry: &RecipeRegistry,
     sandbox: &PathSandbox,
-    codemod_rel: &str,
+    _codemod_rel: &str,
     create: &CreateStep,
     args: &BTreeMap<String, String>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
@@ -160,19 +149,13 @@ fn collect_create_change(
         });
     }
 
-    let template_text = if let Some(inline) = &create.template {
-        inline.clone()
+    let content = if let Some(inline) = &create.template {
+        render_template(inline, args, maps)?
     } else if let Some(file) = &create.template_file {
-        let template_path = sandbox
-            .resolve_template_relative(codemod_rel, file)
-            .map_err(|e| e.message)?;
-        std::fs::read_to_string(&template_path)
-            .map_err(|e| format!("Failed to read template {file}: {e}"))?
+        render_template_file(file, args, maps, registry.codemod_root())?
     } else {
         return Err("create step missing template".to_string());
     };
-
-    let content = render_template(&template_text, args, maps);
     Ok(FileChange::Create {
         path: relative,
         content,
@@ -301,7 +284,8 @@ pub fn planned_snapshot_paths(
     args: &BTreeMap<String, String>,
 ) -> Result<Vec<PathBuf>, String> {
     let merged_maps = registry.merged_maps_for(recipe);
-    let rendered = render_recipe_templates(recipe, args, &merged_maps);
+    let effective = crate::args::resolve_effective_args(recipe, args);
+    let rendered = render_recipe_templates(recipe, &effective, &merged_maps)?;
     let sandbox = PathSandbox::new(registry.workspace_root.clone());
     let mut paths = Vec::new();
     for step in &rendered.steps {

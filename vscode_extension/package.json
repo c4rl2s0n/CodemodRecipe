@@ -57,6 +57,11 @@
         "title": "Codemod Recipe: Set Codemod Root Directory"
       },
       {
+        "command": "codemodRecipe.validateRecipes",
+        "title": "Codemod Recipe: Validate Recipes",
+        "icon": "$(check-all)"
+      },
+      {
         "command": "codemodRecipe.generateAstPath",
         "title": "Codemod Recipe: Generate AST Path at Cursor",
         "icon": "$(symbol-keyword)"

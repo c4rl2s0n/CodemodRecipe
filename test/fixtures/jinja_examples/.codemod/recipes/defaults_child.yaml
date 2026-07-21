@@ -1,0 +1,23 @@
+dslVersion: 2
+id: defaults_child
+name: defaults_child
+description: Child recipe with defaultsTo on a required arg
+
+args:
+  - name: label
+    required: true
+    inputKind: symbol
+  - name: verbose
+    required: true
+    defaultsTo: "false"
+    inputKind: text
+
+steps:
+  - create:
+      path: "lib/generated/{{ label | snake_case }}_defaults.dart"
+      template: |
+        class {{ label | pascal_case }}Defaults {
+          static const verbose = {{ verbose }};
+        }
+      ifExists: fail
+      format: false

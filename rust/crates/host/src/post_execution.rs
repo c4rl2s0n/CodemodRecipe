@@ -18,11 +18,11 @@ pub fn run_post_execution(
                             let mut file_args = args.clone();
                             file_args.insert("file".to_string(), path.clone());
                             file_args
-                        });
+                        })?;
                         run_shell_command(&rendered)?;
                     }
                 } else {
-                    let rendered = render_string(command, args);
+                    let rendered = render_string(command, args)?;
                     run_shell_command(&rendered)?;
                 }
             }

@@ -9,7 +9,10 @@ pub enum HostCommand {
     #[serde(rename = "reload")]
     Reload,
     #[serde(rename = "validate")]
-    Validate,
+    Validate {
+        #[serde(default)]
+        recipe: Option<String>,
+    },
     #[serde(rename = "describe")]
     Describe { recipe: String },
     #[serde(rename = "preview")]
@@ -73,11 +76,34 @@ pub struct RecipeSchema {
 }
 
 #[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct RecipeDiagnostic {
     pub severity: &'static str,
     pub code: &'static str,
     pub message: String,
     pub sources: Vec<DiagnosticSource>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hint: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub related_recipe: Option<String>,
+}
+
+impl RecipeDiagnostic {
+    pub fn simple(
+        severity: &'static str,
+        code: &'static str,
+        message: String,
+        sources: Vec<DiagnosticSource>,
+    ) -> Self {
+        Self {
+            severity,
+            code,
+            message,
+            sources,
+            hint: None,
+            related_recipe: None,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, Clone)]

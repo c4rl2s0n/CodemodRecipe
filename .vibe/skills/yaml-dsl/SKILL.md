@@ -226,19 +226,24 @@ Example: [`test/fixtures/scaffold_project/.codemod/recipes/patch_counter.yaml`](
 You can also load shared maps from `.codemod/maps/*.yaml`. These merge with
 recipe-local maps.
 
-## Template syntax
+## Template syntax (Jinja2 / MiniJinja)
 
-Supported in paths, queries, and text:
+Canonical syntax for Rust host recipes. Full guide: [`docs/recipe-templates.md`](../../../docs/recipe-templates.md).
 
-- `{{argName}}`
-- `{{$camel argName}}`
-- `{{$snake argName}}`
-- `{{$pascal argName}}`
-- `{{$map 'mapId' keyArg}}`
+Supported in paths, queries, inline `create.template`, and `create.templateFile`:
+
+- `{{ argName }}`
+- `{{ arg | camel_case }}`, `snake_case`, `pascal_case`, `lower`, `upper`, `screaming_snake`, `kebab_case`
+- `{{ keyArg | map('mapId') }}` or `{{ maps.mapId[keyArg] }}`
+- `{% if includeTests %}…{% endif %}` (bool args as `"true"` / `"false"`)
+
+Legacy `{{$camel x}}` helpers still work via a shim but emit `W_LEGACY_TEMPLATE` — prefer Jinja filters.
 
 Examples:
 - [`.codemod/recipes/add_counter_field.yaml`](../../../.codemod/recipes/add_counter_field.yaml)
+- [`.codemod/recipes/conditional_create.yaml`](../../../.codemod/recipes/conditional_create.yaml)
 - [`test/fixtures/scaffold_project/.codemod/recipes/patch_counter.yaml`](../../../test/fixtures/scaffold_project/.codemod/recipes/patch_counter.yaml)
+- [`test/fixtures/jinja_examples/`](../../../test/fixtures/jinja_examples/) — full feature showcase
 
 ## Validation rules (Rust)
 
@@ -268,6 +273,7 @@ From `rust/crates/yaml/src/validate.rs`:
 
 - Insert op: [`.codemod/recipes/add_log_line.yaml`](../../../.codemod/recipes/add_log_line.yaml)
 - Insert with map/casing helper: [`test/fixtures/scaffold_project/.codemod/recipes/patch_counter.yaml`](../../../test/fixtures/scaffold_project/.codemod/recipes/patch_counter.yaml)
-- Create step: [`test/fixtures/scaffold_project/.codemod/recipes/create_repository.yaml`](../../../test/fixtures/scaffold_project/.codemod/recipes/create_repository.yaml)
+- Create with conditional template: [`.codemod/recipes/conditional_create.yaml`](../../../.codemod/recipes/conditional_create.yaml)
+- Jinja feature showcase: [`test/fixtures/jinja_examples/`](../../../test/fixtures/jinja_examples/)
 - Remove step: [`test/fixtures/rust_oracle/remove_count_field.recipe.yaml`](../../../test/fixtures/rust_oracle/remove_count_field.recipe.yaml)
 - Replace step: [`test/fixtures/rust_oracle/replace_count_field.recipe.yaml`](../../../test/fixtures/rust_oracle/replace_count_field.recipe.yaml)

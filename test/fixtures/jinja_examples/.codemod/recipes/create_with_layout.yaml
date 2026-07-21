@@ -1,0 +1,16 @@
+dslVersion: 2
+id: create_with_layout
+name: create_with_layout
+description: create.templateFile with extends and include
+
+args:
+  - name: className
+    required: true
+    inputKind: symbol
+
+steps:
+  - create:
+      path: "lib/generated/{{ className | snake_case }}_layout.dart"
+      templateFile: templates/layout_widget.dart.template
+      ifExists: fail
+      format: false

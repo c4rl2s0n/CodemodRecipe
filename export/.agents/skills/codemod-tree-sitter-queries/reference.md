@@ -274,7 +274,7 @@ Search order (engine): recipe directory → `queries/` under recipe → `.codemo
 
 ### Template substitution
 
-Recipe args (`{{name}}`, `{{$camel field}}`, maps) are expanded into `query`, `capture`, and `text` **before** the query is parsed. Use predicates with rendered literals:
+Recipe args (`{{ name }}`, `{{ field | camel_case }}`, maps) are expanded into `query`, `capture`, and `text` **before** the query is parsed. Use predicates with rendered literals:
 
 ```yaml
 args:

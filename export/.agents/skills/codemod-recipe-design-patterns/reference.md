@@ -158,8 +158,9 @@ re-run the orchestrator.
 
 ## Maps and templates
 
-**Templates** (`create.templateFile`) hold greenfield file skeletons. Use `{{arg}}` and
-casing helpers (`{{$pascal feature}}`, `{{$snake feature}}`). See skill `codemod-yaml-dsl-v2`.
+**Templates** (`create.templateFile`) hold greenfield file skeletons. Use Jinja2 syntax
+(MiniJinja in the Rust host): `{{ arg }}`, filters like `{{ feature | pascal_case }}`,
+and `{% if %}`. See skill `codemod-yaml-dsl-v2` and [`docs/recipe-templates.md`](../../../docs/recipe-templates.md).
 
 **Maps** resolve symbolic names to types or snippets:
 
@@ -173,7 +174,7 @@ entries:
 
 ```yaml
 # In a recipe
-text: "  final {{$map 'dart_types' fieldName}} {{$camel fieldName}};\n\n"
+text: "  final {{ fieldName | map('dart_types') }} {{ fieldName | camel_case }};\n\n"
 ```
 
 Recipe-local `maps:` and workspace `.codemod/maps/*.yaml` both work and merge.
@@ -185,14 +186,14 @@ Use a consistent vocabulary across related recipes:
 | Arg | `inputKind` | Used by |
 |-----|-------------|---------|
 | `file` | `file` | Generic edit recipes |
-| `feature` | `symbol` | Scaffold orchestrators (drives paths via `{{$snake feature}}`) |
+| `feature` | `symbol` | Scaffold orchestrators (drives paths via `{{ feature \| snake_case }}`) |
 | `className` | `symbol` | Class-targeted edits |
 | `fieldName` / `eventName` | `symbol` | Domain symbols; type resolved via map |
 | `fieldType` | optional or map-backed | When not inferable from map |
 
 **Path convention:** pick one style per project and stick to it.
 
-- Scaffolds derive paths from args: `lib/features/{{$snake feature}}/{{$snake feature}}_state.dart`
+- Scaffolds derive paths from args: `lib/features/{{ feature | snake_case }}/{{ feature | snake_case }}_state.dart`
 - Modify recipes take explicit `file`, or use the same path template as scaffolds
 
 ## Example: Flutter Bloc feature
@@ -247,17 +248,17 @@ maps:
 
 steps:
   - edit:
-      path: "lib/features/{{$snake feature}}/{{$snake feature}}_state.dart"
+      path: "lib/features/{{ feature | snake_case }}/{{ feature | snake_case }}_state.dart"
       ops:
         - insert:
             query: |
               (class_definition
                 name: (identifier) @className
                 body: (class_body) @body
-                (#eq? @className "{{$pascal feature}}State"))
+                (#eq? @className "{{ feature | pascal_case }}State"))
             capture: body
             anchor: start
-            text: "  final {{$map 'dart_types' fieldName}} {{$camel fieldName}};\n\n"
+            text: "  final {{ fieldName | map('dart_types') }} {{ fieldName | camel_case }};\n\n"
 ```
 
 **Agent workflow:**
