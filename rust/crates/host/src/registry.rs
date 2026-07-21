@@ -4,13 +4,14 @@ use crate::template::render_template;
 use codemod_recipe_engine::engine::parse_recipe_yaml;
 use codemod_recipe_yaml::compose::{expand_recipe_references, recipe_ref_id};
 use codemod_recipe_yaml::model::{Arg, CreateStep, DeleteStep, EditOp, Recipe, Step};
-use codemod_recipe_yaml::validate::validate_recipe;
+use codemod_recipe_yaml::validate::validate_recipe_with;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 pub struct RecipeRegistry {
     pub workspace_root: PathBuf,
     codemod_root: PathBuf,
+    pub language_config: codemod_recipe_engine::RegistryConfig,
     maps_by_id: BTreeMap<String, BTreeMap<String, String>>,
     recipes_by_id: BTreeMap<String, (PathBuf, RecipeSchema)>,
     recipes_ast: BTreeMap<String, Recipe>,
@@ -22,6 +23,7 @@ impl RecipeRegistry {
         Self {
             workspace_root,
             codemod_root,
+            language_config: codemod_recipe_engine::RegistryConfig::default(),
             maps_by_id: BTreeMap::new(),
             recipes_by_id: BTreeMap::new(),
             recipes_ast: BTreeMap::new(),
@@ -218,7 +220,7 @@ fn collect_schema_errors(
     file_path: &str,
     diagnostics: &mut Vec<RecipeDiagnostic>,
 ) {
-    if let Err(errors) = validate_recipe(recipe) {
+    if let Err(errors) = validate_recipe_with(recipe, codemod_recipe_engine::is_known_language) {
         for error in errors {
             diagnostics.push(RecipeDiagnostic {
                 severity: "error",

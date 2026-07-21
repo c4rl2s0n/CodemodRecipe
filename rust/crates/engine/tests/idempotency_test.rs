@@ -1,20 +1,20 @@
-use codemod_recipe_engine::engine::{parse_recipe_yaml, Engine, QueryContext};
+use codemod_recipe_engine::engine::{parse_recipe_yaml, QueryContext};
 use codemod_recipe_yaml::model::{EditOp, EditStep, Recipe, RemoveOp, ReplaceOp, Step};
 use std::collections::BTreeMap;
 
+mod common;
+
 const SETTINGS: &str = "class Settings {\n  final int count = 0;\n}\n";
 
-const SETTINGS_WITHOUT_COUNT: &str = "class Settings {\n  \n}\n";
+const SETTINGS_WITHOUT_COUNT: &str = "class Settings {\n}\n";
 
-const FIELD_QUERY: &str = r#"(class_declaration
+const FIELD_QUERY: &str = r#"(class_definition
   name: (identifier) @className
   body: (class_body
-    (class_member
-      (declaration
-        (initialized_identifier_list
-          (initialized_identifier
-            (identifier) @fieldName)))
-    ) @member)
+    (declaration
+      (initialized_identifier_list
+        (initialized_identifier
+          (identifier) @fieldName))) @member)
   (#eq? @className "Settings")
   (#eq? @fieldName "count"))"#;
 
@@ -70,13 +70,14 @@ fn replace_count_recipe(text: &str) -> Recipe {
 fn remove_deletes_field_declaration() {
     let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
     let codemod = repo.join(".codemod");
-    let mut engine = Engine::new_dart().unwrap();
     let recipe = remove_count_recipe();
     let ctx = inline_ctx(&codemod);
-    let out = engine
-        .apply_recipe_to_source(&ctx, &recipe, "test.dart", SETTINGS)
-        .unwrap()
-        .modified;
+    let out = common::with_engine("dart", |engine| {
+        engine
+            .apply_recipe_to_source(&ctx, &recipe, "test.dart", SETTINGS)
+            .unwrap()
+            .modified
+    });
     assert_eq!(out, SETTINGS_WITHOUT_COUNT);
 }
 
@@ -84,13 +85,14 @@ fn remove_deletes_field_declaration() {
 fn remove_no_ops_when_field_absent() {
     let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
     let codemod = repo.join(".codemod");
-    let mut engine = Engine::new_dart().unwrap();
     let recipe = remove_count_recipe();
     let ctx = inline_ctx(&codemod);
-    let out = engine
-        .apply_recipe_to_source(&ctx, &recipe, "test.dart", SETTINGS_WITHOUT_COUNT)
-        .unwrap()
-        .modified;
+    let out = common::with_engine("dart", |engine| {
+        engine
+            .apply_recipe_to_source(&ctx, &recipe, "test.dart", SETTINGS_WITHOUT_COUNT)
+            .unwrap()
+            .modified
+    });
     assert_eq!(out, SETTINGS_WITHOUT_COUNT);
 }
 
@@ -98,13 +100,14 @@ fn remove_no_ops_when_field_absent() {
 fn replace_no_ops_when_whitespace_normalized_text_matches() {
     let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
     let codemod = repo.join(".codemod");
-    let mut engine = Engine::new_dart().unwrap();
     let recipe = replace_count_recipe("final int count = 0;");
     let ctx = inline_ctx(&codemod);
-    let out = engine
-        .apply_recipe_to_source(&ctx, &recipe, "test.dart", SETTINGS)
-        .unwrap()
-        .modified;
+    let out = common::with_engine("dart", |engine| {
+        engine
+            .apply_recipe_to_source(&ctx, &recipe, "test.dart", SETTINGS)
+            .unwrap()
+            .modified
+    });
     assert_eq!(out, SETTINGS);
 }
 

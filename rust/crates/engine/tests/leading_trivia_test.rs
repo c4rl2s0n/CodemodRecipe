@@ -1,7 +1,9 @@
-use codemod_recipe_engine::engine::{Engine, QueryContext};
+use codemod_recipe_engine::engine::QueryContext;
 use codemod_recipe_yaml::model::{EditOp, EditStep, Recipe, RemoveOp, Step};
 
 use std::collections::BTreeMap;
+
+mod common;
 
 const SOURCE_WITH_DOC_FIELD: &str = "class Settings {\n  /// Count of items.\n  final int count = 0;\n  final int other = 1;\n}\n";
 
@@ -24,15 +26,13 @@ fn remove_with_leading_trivia_strips_doc_comment() {
             path: "test.dart".to_string(),
             language: None,
             ops: vec![EditOp::Remove(RemoveOp {
-                query: r#"(class_declaration
+                query: r#"(class_definition
   name: (identifier) @className
   body: (class_body
-    (class_member
-      (declaration
-        (initialized_identifier_list
-          (initialized_identifier
-            (identifier) @fieldName)))
-    ) @member)
+    (declaration
+      (initialized_identifier_list
+        (initialized_identifier
+          (identifier) @fieldName))) @member)
   (#eq? @className "Settings")
   (#eq? @fieldName "count"))"#
                     .to_string(),
@@ -43,11 +43,12 @@ fn remove_with_leading_trivia_strips_doc_comment() {
         post_execution: vec![],
     };
 
-    let mut engine = Engine::new_dart().unwrap();
-    let out = engine
-        .apply_recipe_to_source(&ctx, &recipe, "test.dart", SOURCE_WITH_DOC_FIELD)
-        .unwrap()
-        .modified;
+    let out = common::with_engine("dart", |engine| {
+        engine
+            .apply_recipe_to_source(&ctx, &recipe, "test.dart", SOURCE_WITH_DOC_FIELD)
+            .unwrap()
+            .modified
+    });
 
     assert!(!out.contains("/// Count"));
     assert!(!out.contains("final int count"));

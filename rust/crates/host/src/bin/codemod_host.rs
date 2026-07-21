@@ -7,7 +7,8 @@ use codemod_recipe_host::protocol::HostCommand;
 
 fn main() -> anyhow::Result<()> {
     let config = HostConfig::from_env_args();
-    let mut registry = RecipeRegistry::new(config.workspace_root, config.codemod_root);
+    let mut registry = RecipeRegistry::new(config.workspace_root.clone(), config.codemod_root.clone());
+    registry.language_config = config.language_registry_config();
     registry.reload();
 
     let stdin = io::stdin();

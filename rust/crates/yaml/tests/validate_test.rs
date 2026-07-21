@@ -1,6 +1,6 @@
 use std::collections::BTreeMap;
 use codemod_recipe_yaml::model::{EditOp, EditStep, Recipe, Step};
-use codemod_recipe_yaml::validate::{validate_recipe, ValidationError};
+use codemod_recipe_yaml::validate::{validate_recipe, validate_recipe_with, ValidationError};
 use serde_yaml::Value;
 
 #[test]
@@ -124,6 +124,33 @@ fn rejects_unknown_edit_op_kind() {
     assert!(errors
         .iter()
         .any(|e| matches!(e, ValidationError::UnsupportedOp(kind) if kind == "rename")));
+}
+
+#[test]
+fn rejects_unknown_language() {
+    let recipe = Recipe {
+        id: "bad".to_string(),
+        name: None,
+        description: None,
+        args: vec![],
+        maps: BTreeMap::new(),
+        steps: vec![Step::Edit(EditStep {
+            path: "a.rs".to_string(),
+            language: Some("not_a_real_language_xyz".to_string()),
+            ops: vec![EditOp::Insert(codemod_recipe_yaml::model::InsertOp {
+                query: "(identifier) @x".to_string(),
+                capture: "x".to_string(),
+                anchor: codemod_recipe_yaml::model::InsertAnchor::End,
+                text: "x".to_string(),
+            })],
+        })],
+        post_execution: vec![],
+    };
+
+    let errors = validate_recipe_with(&recipe, |_| false).unwrap_err();
+    assert!(errors
+        .iter()
+        .any(|e| matches!(e, ValidationError::UnknownLanguage(id) if id == "not_a_real_language_xyz")));
 }
 
 #[test]

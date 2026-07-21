@@ -74,6 +74,7 @@ Each entry in `steps` must be a single-key object of one of:
 ```yaml
 - edit:
     path: "lib/file.dart"
+    language: dart   # optional; see skill codemod-languages
     ops:
       - insert: { ... }
       - replace: { ... }
@@ -81,6 +82,7 @@ Each entry in `steps` must be a single-key object of one of:
 ```
 
 - `path`: file path (often templated, e.g. `{{file}}`)
+- `language` (optional): tree-sitter language id (`dart`, `rust`, `java`, `kotlin`, `sqlite`, `sql`, …). When omitted, inferred from extension (default `dart`; `.sql` → `sqlite` unless host config overrides).
 - `ops`: list of edit operations (must not be empty)
 
 ### `insert`
@@ -106,6 +108,8 @@ Optional: `includeLeadingTrivia` (bool, default false)
 
 ### Query + capture semantics
 
+See skill `codemod-tree-sitter-queries` for full query language syntax (captures, predicates, operators, `.scm` files).
+
 - `query` is a tree-sitter query and may define multiple captures (`@className`, `@body`, etc.).
 - `capture` chooses which captured node span is edited.
 - If the named capture is missing, unmatched, or ambiguous, execution fails.
@@ -114,21 +118,22 @@ Example insert query:
 
 ```yaml
 query: |
-  (class_declaration
+  (class_definition
     name: (identifier) @className
     body: (class_body
-      (class_member
-        (method_signature
-          (function_signature
-            name: (identifier) @methodName))
-        (function_body
-          (block) @body)))
+      (method_signature
+        (function_signature
+          name: (identifier) @methodName))
+      (function_body
+        (block) @body))
     (#eq? @className "{{className}}")
     (#eq? @methodName "{{methodName}}"))
 capture: body
 anchor: end
 text: "    print('codemod');\n"
 ```
+
+For non-Dart files, set `language:` and use that grammar’s node names. See skill `codemod-languages`.
 
 ## Create steps (`create`)
 
@@ -244,6 +249,7 @@ Call `validate_recipes` after editing YAML.
 - Arg names must be unique
 - Unsupported step kinds are errors
 - `edit.path` required; `edit.ops` must be non-empty
+- `edit.language` when set must be a known language id
 - `insert`: `query` and `capture` required
 - `replace`: `query`, `capture`, `text` required
 - `remove`: `query`, `capture` required
@@ -263,5 +269,7 @@ Common errors: empty `ops`, missing `capture`, duplicate arg names.
 ## Related skills
 
 - `codemod-recipe-design-patterns` — create vs modify taxonomy
-- `codemod-recipe-authoring` — tree-sitter query patterns
+- `codemod-languages` — `language:` field, SQL dialects, grammar loading
+- `codemod-tree-sitter-queries` — query language syntax, captures, predicates
+- `codemod-recipe-authoring` — Dart query patterns
 - `codemod-mcp-playbook` — preview/apply workflow

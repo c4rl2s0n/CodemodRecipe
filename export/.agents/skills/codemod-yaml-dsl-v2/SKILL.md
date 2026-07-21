@@ -14,7 +14,9 @@ description: YAML DSL v2 for codemod-recipe — recipe structure, step types, an
 ## When not to use
 
 - Recipe organization (create vs modify) → `codemod-recipe-design-patterns`
-- Tree-sitter query patterns → `codemod-recipe-authoring`
+- Tree-sitter query syntax → `codemod-tree-sitter-queries`
+- Dart-specific query patterns → `codemod-recipe-authoring`
+- Language IDs, SQL dialects, extension inference → `codemod-languages`
 - Running MCP tools → `codemod-mcp-playbook`
 
 ## Top-level shape
@@ -43,18 +45,18 @@ Each `steps[]` entry is a single-key object:
 ```yaml
 - edit:
     path: "{{file}}"
+    language: dart   # optional for .dart; required for ambiguous paths
     ops:
       - insert:
           query: |
-            (class_declaration
+            (class_definition
               name: (identifier) @className
               body: (class_body
-                (class_member
-                  (method_signature
-                    (function_signature
-                      name: (identifier) @methodName))
-                  (function_body
-                    (block) @body)))
+                (method_signature
+                  (function_signature
+                    name: (identifier) @methodName))
+                (function_body
+                  (block) @body))
               (#eq? @className "{{className}}")
               (#eq? @methodName "{{methodName}}"))
           capture: body
@@ -72,5 +74,7 @@ Each `steps[]` entry is a single-key object:
 | Skill | Use for |
 |-------|---------|
 | `codemod-recipe-design-patterns` | create vs modify taxonomy |
-| `codemod-recipe-authoring` | tree-sitter queries and captures |
+| `codemod-languages` | `language:` field and multi-language support |
+| `codemod-tree-sitter-queries` | query syntax, captures, predicates |
+| `codemod-recipe-authoring` | Dart query patterns and testing |
 | `codemod-mcp-playbook` | preview/apply workflow |

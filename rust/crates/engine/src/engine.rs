@@ -2,7 +2,7 @@ use std::path::Path;
 
 use crate::adapter::LanguageAdapter;
 use codemod_recipe_core::patch::{apply_patches, SourcePatch};
-use codemod_recipe_yaml::model::{EditOp, InsertAnchor, Recipe, Step};
+use codemod_recipe_yaml::model::{EditOp, EditStep, InsertAnchor, Recipe, Step};
 use thiserror::Error;
 use tree_sitter::StreamingIterator;
 use tree_sitter::{Parser, Query, QueryCursor};
@@ -22,6 +22,9 @@ pub enum EngineError {
     #[error("syntax errors present in file: {path}")]
     SyntaxError { path: String },
 
+    #[error("failed to load language: {0}")]
+    LanguageLoad(String),
+
     #[error("tree-sitter query error: {0}")]
     Query(String),
 
@@ -40,7 +43,7 @@ pub enum EngineError {
 
 pub struct Engine {
     parser: Parser,
-    adapter: crate::adapter::DartAdapter,
+    adapter: Box<dyn LanguageAdapter>,
 }
 
 pub struct ApplyResult {
@@ -56,15 +59,95 @@ struct CaptureSpan {
 }
 
 impl Engine {
-    pub fn new_dart() -> Result<Self, EngineError> {
+    pub fn new(adapter: Box<dyn LanguageAdapter>) -> Result<Self, EngineError> {
         let mut parser = Parser::new();
         parser
-            .set_language(&crate::dart::language())
+            .set_language(&adapter.language())
             .map_err(|e| EngineError::Query(format!("set_language failed: {e:?}")))?;
-        Ok(Self {
-            parser,
-            adapter: crate::adapter::DartAdapter,
-        })
+        Ok(Self { parser, adapter })
+    }
+
+    pub fn collect_patches_for_edit(
+        &mut self,
+        ctx: &QueryContext<'_>,
+        edit: &EditStep,
+        source: &str,
+    ) -> Result<Vec<SourcePatch>, EngineError> {
+        let mut patches: Vec<SourcePatch> = Vec::new();
+
+        for op in &edit.ops {
+            match op {
+                EditOp::Insert(insert) => {
+                    let span = self.resolve_single_capture(
+                        ctx,
+                        source,
+                        &insert.query,
+                        &insert.capture,
+                        true,
+                    )?;
+                    let Some(span) = span else {
+                        return Err(EngineError::NoMatch {
+                            capture: insert.capture.clone(),
+                        });
+                    };
+                    let offset = match insert.anchor {
+                        InsertAnchor::Start => span.start,
+                        InsertAnchor::End => crate::span::insert_offset_at_anchor_end(
+                            source,
+                            span.start,
+                            span.end,
+                            span.is_block,
+                        ),
+                    };
+                    patches.push(SourcePatch::new(offset, offset, insert.text.clone()));
+                }
+                EditOp::Replace(replace) => {
+                    let span = self.resolve_single_capture(
+                        ctx,
+                        source,
+                        &replace.query,
+                        &replace.capture,
+                        true,
+                    )?;
+                    let Some(span) = span else {
+                        continue;
+                    };
+                    let (start, end) = self.adapter.expand_remove_span(
+                        source,
+                        span.start,
+                        span.end,
+                        replace.include_leading_trivia,
+                    );
+                    let current = &source[start..end];
+                    if whitespace_normalized(current) == whitespace_normalized(&replace.text) {
+                        continue;
+                    }
+                    patches.push(SourcePatch::new(start, end, replace.text.clone()));
+                }
+                EditOp::Remove(remove) => {
+                    let span = self.resolve_single_capture(
+                        ctx,
+                        source,
+                        &remove.query,
+                        &remove.capture,
+                        true,
+                    )?;
+                    let Some(span) = span else {
+                        continue;
+                    };
+                    let (start, end) = self.adapter.expand_remove_span(
+                        source,
+                        span.start,
+                        span.end,
+                        remove.include_leading_trivia,
+                    );
+                    patches.push(SourcePatch::new(start, end, ""));
+                }
+                EditOp::Unknown(_, _) => {}
+            }
+        }
+
+        Ok(patches)
     }
 
     pub fn collect_patches_for_source(
@@ -81,78 +164,7 @@ impl Engine {
             if edit.path != file_path {
                 continue;
             }
-
-            for op in &edit.ops {
-                match op {
-                    EditOp::Insert(insert) => {
-                        let span = self.resolve_single_capture(
-                            ctx,
-                            source,
-                            &insert.query,
-                            &insert.capture,
-                            true,
-                        )?;
-                        let Some(span) = span else {
-                            return Err(EngineError::NoMatch {
-                                capture: insert.capture.clone(),
-                            });
-                        };
-                        let offset = match insert.anchor {
-                            InsertAnchor::Start => span.start,
-                            InsertAnchor::End => crate::span::insert_offset_at_anchor_end(
-                                source,
-                                span.start,
-                                span.end,
-                                span.is_block,
-                            ),
-                        };
-                        patches.push(SourcePatch::new(offset, offset, insert.text.clone()));
-                    }
-                    EditOp::Replace(replace) => {
-                        let span = self.resolve_single_capture(
-                            ctx,
-                            source,
-                            &replace.query,
-                            &replace.capture,
-                            true,
-                        )?;
-                        let Some(span) = span else {
-                            continue;
-                        };
-                        let (start, end) = self.adapter.expand_remove_span(
-                            source,
-                            span.start,
-                            span.end,
-                            replace.include_leading_trivia,
-                        );
-                        let current = &source[start..end];
-                        if whitespace_normalized(current) == whitespace_normalized(&replace.text) {
-                            continue;
-                        }
-                        patches.push(SourcePatch::new(start, end, replace.text.clone()));
-                    }
-                    EditOp::Remove(remove) => {
-                        let span = self.resolve_single_capture(
-                            ctx,
-                            source,
-                            &remove.query,
-                            &remove.capture,
-                            true,
-                        )?;
-                        let Some(span) = span else {
-                            continue;
-                        };
-                        let (start, end) = self.adapter.expand_remove_span(
-                            source,
-                            span.start,
-                            span.end,
-                            remove.include_leading_trivia,
-                        );
-                        patches.push(SourcePatch::new(start, end, ""));
-                    }
-                    EditOp::Unknown(_, _) => {}
-                }
-            }
+            patches.extend(self.collect_patches_for_edit(ctx, edit, source)?);
         }
 
         Ok(patches)

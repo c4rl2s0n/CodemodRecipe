@@ -23,6 +23,7 @@ Related modular skills (also under `.agents/skills/` after bootstrap):
 |-------|----------|
 | `codemod-yaml-dsl-v2` | YAML syntax, templates, maps (`reference.md`) |
 | `codemod-recipe-authoring` | Tree-sitter queries |
+| `codemod-languages` | Multi-language `language:` field, SQL dialects |
 | `codemod-mcp-playbook` | preview/apply workflow |
 
 ## Quick summary

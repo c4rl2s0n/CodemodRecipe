@@ -181,7 +181,7 @@ range is used for the operation.
           "ops": [
             {
               "replace": {
-                "query": "(class_declaration name: (identifier) @className body: (class_body (class_member (declaration (initialized_identifier_list (initialized_identifier (identifier) @fieldName))) @member)) (#eq? @className \"Settings\") (#eq? @fieldName \"count\"))",
+                "query": "(class_definition name: (identifier) @className body: (class_body (declaration (initialized_identifier_list (initialized_identifier (identifier) @fieldName))) @member) (#eq? @className \"Settings\") (#eq? @fieldName \"count\"))",
                 "capture": "member",
                 "text": "  final int count = 0;"
               }

@@ -68,15 +68,14 @@ steps:
       ops:
         - insert:
             query: |
-              (class_declaration
+              (class_definition
                 name: (identifier) @className
                 body: (class_body
-                  (class_member
-                    (method_signature
-                      (function_signature
-                        name: (identifier) @methodName))
-                    (function_body
-                      (block) @body)))
+                  (method_signature
+                    (function_signature
+                      name: (identifier) @methodName))
+                  (function_body
+                    (block) @body))
                 (#eq? @className "{{className}}")
                 (#eq? @methodName "{{methodName}}"))
             capture: body
@@ -169,7 +168,7 @@ You can skip on-disk recipes and pass `inlineRecipe` directly:
           "ops": [
             {
               "replace": {
-                "query": "(class_declaration name: (identifier) @className body: (class_body (class_member (declaration (initialized_identifier_list (initialized_identifier (identifier) @fieldName))) @member)) (#eq? @className \"Settings\") (#eq? @fieldName \"count\"))",
+                "query": "(class_definition name: (identifier) @className body: (class_body (declaration (initialized_identifier_list (initialized_identifier (identifier) @fieldName))) @member) (#eq? @className \"Settings\") (#eq? @fieldName \"count\"))",
                 "capture": "member",
                 "text": "  final int count = 0;"
               }
@@ -187,7 +186,13 @@ You can skip on-disk recipes and pass `inlineRecipe` directly:
 - `replace`: requires `query`, `capture`, `text` (`includeLeadingTrivia` optional)
 - `remove`: requires `query`, `capture` (`includeLeadingTrivia` optional)
 
-## 10) Validation checklist
+## 10) Multi-language edits
+
+For non-Dart files, set `language:` on `edit` steps and write queries for that grammar’s node names. `.sql` paths default to `sqlite`.
+
+See [language-support.md](language-support.md) and agent skill `codemod-languages` (installed via `bootstrap_project`).
+
+## 11) Validation checklist
 
 - `validate_recipes` returns `ok: true`.
 - `preview_recipe` returns a `previewToken`.

@@ -18,6 +18,9 @@ pub enum ValidationError {
     #[error("duplicate arg name: {0}")]
     DuplicateArgName(String),
 
+    #[error("unknown language: {0}")]
+    UnknownLanguage(String),
+
     #[error("create step requires template or templateFile")]
     CreateMissingTemplate,
 
@@ -26,6 +29,13 @@ pub enum ValidationError {
 }
 
 pub fn validate_recipe(recipe: &Recipe) -> Result<(), Vec<ValidationError>> {
+    validate_recipe_with(recipe, |_| true)
+}
+
+pub fn validate_recipe_with(
+    recipe: &Recipe,
+    is_known_language: impl Fn(&str) -> bool,
+) -> Result<(), Vec<ValidationError>> {
     let mut errors = Vec::new();
 
     let mut arg_names = std::collections::BTreeSet::new();
@@ -44,7 +54,20 @@ pub fn validate_recipe(recipe: &Recipe) -> Result<(), Vec<ValidationError>> {
 
     for step in &recipe.steps {
         match step {
-            Step::Edit(edit) => validate_edit(edit, &mut errors),
+            Step::Edit(edit) => {
+                validate_edit(edit, &mut errors);
+                if let Some(lang) = edit.language.as_deref() {
+                    let lang = lang.trim();
+                    if lang.is_empty() {
+                        errors.push(ValidationError::MissingRequiredField {
+                            op: "edit",
+                            field: "language",
+                        });
+                    } else if !is_known_language(lang) {
+                        errors.push(ValidationError::UnknownLanguage(lang.to_string()));
+                    }
+                }
+            }
             Step::Create(create) => validate_create(create, &mut errors),
             Step::Delete(delete) => validate_delete(delete, &mut errors),
             Step::RecipeRef(_) => {}

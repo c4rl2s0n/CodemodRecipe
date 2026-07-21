@@ -17,15 +17,14 @@ steps:
             # This query is intended for tree-sitter-dart; the exact node names
             # may be adjusted once the Rust engine is wired up.
             query: |
-              (class_declaration
+              (class_definition
                 name: (identifier) @className
                 body: (class_body
-                  (class_member
-                    (method_signature
-                      (function_signature
-                        name: (identifier) @methodName))
-                    (function_body
-                      (block) @body)))
+                  (method_signature
+                    (function_signature
+                      name: (identifier) @methodName))
+                  (function_body
+                    (block) @body))
                 (#eq? @className "Settings")
                 (#eq? @methodName "update"))
             capture: body

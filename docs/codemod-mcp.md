@@ -1,10 +1,14 @@
 # codemod-mcp (Rust Host)
 
 MCP server that exposes the Rust `CodemodHost` protocol as tools for AI agents.
-Use it to preview and apply deterministic Dart AST edits from registered YAML
-recipes (`.codemod/recipes/*.yaml`) or `inlineRecipe` payloads.
+Use it to preview and apply deterministic AST edits from registered YAML
+recipes (`.codemod/recipes/*.yaml`) or `inlineRecipe` payloads. Supports
+Dart, Rust, Java, Kotlin, SQL/SQLite, and 300+ languages via lazy-loaded
+tree-sitter grammars.
 
-**Agent playbook:** `.cursor/skills/codemod-mcp/reference.md`
+**Agent playbook:** `.cursor/skills/codemod-mcp/reference.md`  
+**Multi-language:** [language-support.md](language-support.md) and skill `codemod-languages`  
+**Query language:** [tree-sitter-queries.md](tree-sitter-queries.md) and skill `codemod-tree-sitter-queries`
 
 ## Quick start
 
@@ -54,7 +58,9 @@ Create `.cursor/mcp.json` in the target workspace:
         "--workspace-root",
         ".",
         "--codemod-root",
-        ".codemod"
+        ".codemod",
+        "--sql-default",
+        "sqlite"
       ]
     }
   }
@@ -62,6 +68,15 @@ Create `.cursor/mcp.json` in the target workspace:
 ```
 
 Reload MCP servers and call `list_recipes` to verify connectivity.
+
+## Multi-language support
+
+- Set `language:` on `edit` steps for non-Dart files (or to be explicit).
+- Queries must use node names for that grammar — they do not port across languages.
+- `.sql` paths default to `sqlite`; use `language: sql` for generic SQL or `--sql-default sql`.
+- First use of a language may download its parser (cached under `~/.cache/tree-sitter-language-pack`).
+
+See [language-support.md](language-support.md) for language ids, SQL dialects, Dart `class_definition` notes, and troubleshooting.
 
 ## Tools
 
@@ -130,7 +145,7 @@ All tools return a JSON string. Parse it, then check `ok`.
 `inlineRecipe` follows the Rust YAML model:
 
 - top-level: `id`, `steps`, optional `args`, `maps`, `postExecution`
-- edit step: `edit.path`, `edit.ops[]`
+- edit step: `edit.path`, optional `edit.language`, `edit.ops[]`
 - ops: `insert`, `replace`, `remove`
 
 ### Inline insert
@@ -146,7 +161,7 @@ All tools return a JSON string. Parse it, then check `ok`.
           "ops": [
             {
               "insert": {
-                "query": "(class_declaration name: (identifier) @className body: (class_body (class_member (method_signature (function_signature name: (identifier) @methodName)) (function_body (block) @body))) (#eq? @className \"Settings\") (#eq? @methodName \"update\"))",
+                "query": "(class_definition name: (identifier) @className body: (class_body (method_signature (function_signature name: (identifier) @methodName)) (function_body (block) @body)) (#eq? @className \"Settings\") (#eq? @methodName \"update\"))",
                 "capture": "body",
                 "anchor": "end",
                 "text": "    print('codemod');\\n"
@@ -173,7 +188,7 @@ All tools return a JSON string. Parse it, then check `ok`.
           "ops": [
             {
               "replace": {
-                "query": "(class_declaration name: (identifier) @className body: (class_body (class_member (declaration (initialized_identifier_list (initialized_identifier (identifier) @fieldName))) @member)) (#eq? @className \"Settings\") (#eq? @fieldName \"count\"))",
+                "query": "(class_definition name: (identifier) @className body: (class_body (declaration (initialized_identifier_list (initialized_identifier (identifier) @fieldName))) @member) (#eq? @className \"Settings\") (#eq? @fieldName \"count\"))",
                 "capture": "member",
                 "text": "  final int count = 0;"
               }
@@ -199,7 +214,7 @@ All tools return a JSON string. Parse it, then check `ok`.
           "ops": [
             {
               "remove": {
-                "query": "(class_declaration name: (identifier) @className body: (class_body (class_member (declaration (initialized_identifier_list (initialized_identifier (identifier) @fieldName))) @member)) (#eq? @className \"Settings\") (#eq? @fieldName \"count\"))",
+                "query": "(class_definition name: (identifier) @className body: (class_body (declaration (initialized_identifier_list (initialized_identifier (identifier) @fieldName))) @member) (#eq? @className \"Settings\") (#eq? @fieldName \"count\"))",
                 "capture": "member"
               }
             }
@@ -233,12 +248,15 @@ You can combine file creation/deletion with edit ops in one recipe:
 | `Unknown recipe` | Call `list_recipes`, verify id and workspace root |
 | `Missing previewToken` | Call `preview_recipe` first and pass token to apply |
 | `Stale previewToken` | Re-run preview after any file change |
+| `Invalid node type "class_declaration"` | Use `class_definition` in Dart queries — see [language-support.md](language-support.md) |
+| `unknown language` | Set valid `language:` id; see skill `codemod-languages` |
 | Empty `files` in preview | Query/capture matched nothing, or recipe already applied |
 | `Missing required arguments: ...` | Supply required args from `describe_recipe` |
 
 ## Related docs
 
-- Bootstrap skills: `.agents/skills/codemod-recipe-design-patterns/` (after `bootstrap_project`)
+- [tree-sitter-queries.md](tree-sitter-queries.md) — tree-sitter query language for recipes
+- [language-support.md](language-support.md) — multi-language tree-sitter support
 - `docs/recipe-design-patterns.md` — human stub pointing to agent skills
 - `docs/new-project-rust-mcp.md`
 - `.cursor/skills/codemod-mcp/reference.md`

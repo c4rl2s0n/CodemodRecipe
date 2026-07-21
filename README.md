@@ -1,6 +1,6 @@
 # codemod_recipe
 
-Deterministic codemods for Dart (and growing multi-language support) using
+Deterministic codemods for Dart, Rust, Java, Kotlin, SQL/SQLite, and 300+ languages using
 declarative YAML recipes, tree-sitter queries, and a VS Code extension for
 preview/apply with selective patches.
 
@@ -81,15 +81,14 @@ steps:
       ops:
         - insert:
             query: |
-              (class_declaration
+              (class_definition
                 name: (identifier) @className
                 body: (class_body
-                  (class_member
-                    (method_signature
-                      (function_signature
-                        name: (identifier) @methodName))
-                    (function_body
-                      (block) @body)))
+                  (method_signature
+                    (function_signature
+                      name: (identifier) @methodName))
+                  (function_body
+                    (block) @body))
                 (#eq? @className "{{className}}")
                 (#eq? @methodName "{{methodName}}"))
             capture: body
@@ -144,7 +143,8 @@ semantics for `recipe:` steps and a `compose_recipe` API in `codemod_recipe_yaml
 
 | Feature | Status |
 |---------|--------|
-| insert / replace / remove (tree-sitter Dart) | Done |
+| insert / replace / remove (tree-sitter, multi-language) | Done |
+| Language registry (language-pack + sqlite native) | Done |
 | Query file paths (`.scm`) | Done |
 | Maps registry + `{{$map}}` | Done |
 | Template casing helpers | Done |
@@ -160,6 +160,12 @@ semantics for `recipe:` steps and a `compose_recipe` API in `codemod_recipe_yaml
 | `generateAstPath` | Not planned (v1) |
 | Legacy navigate+anchor DSL | Not planned |
 | TypeScript grammar | Planned |
+
+### Multi-language support
+
+Set `language:` on `edit` steps for non-Dart files. Queries must match that grammar’s node names. `.sql` defaults to `sqlite`; override with `language: sql` or `--sql-default`.
+
+See [docs/language-support.md](docs/language-support.md) and agent skill `codemod-languages` (in `export/.agents/skills/`).
 
 Run tests:
 
@@ -185,6 +191,8 @@ node vscode_extension/scripts/smoke.mjs
 
 - [ARCHITECTURE.md](ARCHITECTURE.md) — design decisions (Dart-centric; being updated)
 - [docs/new-project-rust-mcp.md](docs/new-project-rust-mcp.md) — Rust MCP quickstart for new projects
+- [docs/tree-sitter-queries.md](docs/tree-sitter-queries.md) — tree-sitter query language for recipes
+- [docs/language-support.md](docs/language-support.md) — multi-language tree-sitter support
 - [docs/codemod-mcp.md](docs/codemod-mcp.md) — MCP tools and agent workflow
 - [vscode_extension/README.md](vscode_extension/README.md) — extension setup
 - [example/README.md](example/README.md) — Dart API examples

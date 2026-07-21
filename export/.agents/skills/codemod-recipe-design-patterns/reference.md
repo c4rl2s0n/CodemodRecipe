@@ -251,7 +251,7 @@ steps:
       ops:
         - insert:
             query: |
-              (class_declaration
+              (class_definition
                 name: (identifier) @className
                 body: (class_body) @body
                 (#eq? @className "{{$pascal feature}}State"))

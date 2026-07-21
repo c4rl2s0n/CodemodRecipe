@@ -5,7 +5,6 @@ class Settings {
   Settings({this.name});
 
   final String name;
-  
 
   void update() {
     print('hi');

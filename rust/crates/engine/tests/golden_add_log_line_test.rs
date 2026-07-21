@@ -1,7 +1,9 @@
-use codemod_recipe_engine::engine::{parse_recipe_yaml, Engine, QueryContext};
+use codemod_recipe_engine::engine::{parse_recipe_yaml, QueryContext};
 use codemod_recipe_host::registry::render_recipe_templates;
 use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
+
+mod common;
 
 #[test]
 fn golden_add_log_line_parameterized() {
@@ -26,17 +28,18 @@ fn golden_add_log_line_parameterized() {
     args.insert("methodName".to_string(), "update".to_string());
 
     let rendered = render_recipe_templates(&recipe, &args, &BTreeMap::new());
-    let mut engine = Engine::new_dart().unwrap();
     let codemod = repo_root.join(".codemod");
     let ctx = QueryContext {
         recipe_file: Some(recipe_path.as_path()),
         codemod_root: &codemod,
     };
 
-    let out = engine
-        .apply_recipe_to_source(&ctx, &rendered, args["file"].as_str(), &before)
-        .unwrap()
-        .modified;
+    let out = common::with_engine("dart", |engine| {
+        engine
+            .apply_recipe_to_source(&ctx, &rendered, args["file"].as_str(), &before)
+            .unwrap()
+            .modified
+    });
 
     assert_eq!(out, expected);
 }
@@ -61,33 +64,36 @@ fn matches_insert_log_line_for_settings_update() {
     args.insert("methodName".to_string(), "update".to_string());
 
     let codemod = repo_root.join(".codemod");
-    let mut engine = Engine::new_dart().unwrap();
 
-    let insert_out = engine
-        .apply_recipe_to_source(
-            &QueryContext {
-                recipe_file: Some(insert_path.as_path()),
-                codemod_root: &codemod,
-            },
-            &render_recipe_templates(&insert, &args, &BTreeMap::new()),
-            args["file"].as_str(),
-            &before,
-        )
-        .unwrap()
-        .modified;
+    let insert_out = common::with_engine("dart", |engine| {
+        engine
+            .apply_recipe_to_source(
+                &QueryContext {
+                    recipe_file: Some(insert_path.as_path()),
+                    codemod_root: &codemod,
+                },
+                &render_recipe_templates(&insert, &args, &BTreeMap::new()),
+                args["file"].as_str(),
+                &before,
+            )
+            .unwrap()
+            .modified
+    });
 
-    let add_out = engine
-        .apply_recipe_to_source(
-            &QueryContext {
-                recipe_file: Some(add_path.as_path()),
-                codemod_root: &codemod,
-            },
-            &render_recipe_templates(&add, &args, &BTreeMap::new()),
-            args["file"].as_str(),
-            &before,
-        )
-        .unwrap()
-        .modified;
+    let add_out = common::with_engine("dart", |engine| {
+        engine
+            .apply_recipe_to_source(
+                &QueryContext {
+                    recipe_file: Some(add_path.as_path()),
+                    codemod_root: &codemod,
+                },
+                &render_recipe_templates(&add, &args, &BTreeMap::new()),
+                args["file"].as_str(),
+                &before,
+            )
+            .unwrap()
+            .modified
+    });
 
     assert_eq!(insert_out, add_out);
 }

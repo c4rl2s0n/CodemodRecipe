@@ -22,13 +22,12 @@ steps:
       ops:
         - insert:
             query: |
-              (class_declaration
+              (class_definition
                 name: (identifier) @className
                 body: (class_body
-                  (class_member
-                    (method_signature
-                      (function_signature
-                        name: (identifier) @methodName)))) @member
+                  (method_signature
+                    (function_signature
+                      name: (identifier) @methodName)) @member)
                 (#eq? @className "{{className}}")
                 (#eq? @methodName "increment"))
             capture: member

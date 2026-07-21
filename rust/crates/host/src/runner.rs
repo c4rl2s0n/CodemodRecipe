@@ -1,6 +1,7 @@
 use codemod_recipe_core::file_change::{merge_file_changes, FileChange, IfExists, IfMissing};
 use codemod_recipe_core::patch::apply_patches;
-use codemod_recipe_engine::engine::{Engine, EngineError, QueryContext};
+use codemod_recipe_engine::engine::{EngineError, QueryContext};
+use codemod_recipe_engine::LanguageRegistry;
 use codemod_recipe_yaml::model::{
     CreateStep, DeleteStep, IfExistsStrategy, IfMissingStrategy, Recipe, Step,
 };
@@ -69,7 +70,8 @@ pub fn collect_recipe_changes(
     let sandbox = PathSandbox::new(registry.workspace_root.clone());
     let codemod_rel = relative_codemod_path(registry);
     let mut raw_changes: Vec<FileChange> = Vec::new();
-    let mut engine = Engine::new_dart().map_err(|e| e.to_string())?;
+    let mut language_registry =
+        LanguageRegistry::with_config(registry.language_config.clone());
     let ctx = QueryContext {
         recipe_file: recipe_path,
         codemod_root: registry.codemod_root(),
@@ -84,8 +86,11 @@ pub fn collect_recipe_changes(
                     .map_err(|e| e.message)?;
                 let source = std::fs::read_to_string(&absolute)
                     .map_err(|e| format!("Failed to read {relative}: {e}"))?;
+                let engine = language_registry
+                    .resolve_for_edit(edit.language.as_deref(), &relative)
+                    .map_err(engine_error_to_string)?;
                 let patches = engine
-                    .collect_patches_for_source(&ctx, &rendered, &relative, &source)
+                    .collect_patches_for_edit(&ctx, edit, &source)
                     .map_err(engine_error_to_string)?;
                 if !patches.is_empty() {
                     raw_changes.push(FileChange::Patch {

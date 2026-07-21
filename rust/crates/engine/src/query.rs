@@ -77,7 +77,7 @@ mod tests {
             &codemod,
         )
         .unwrap();
-        assert!(text.contains("class_declaration"));
+        assert!(text.contains("class_definition"));
         assert!(text.contains("@body"));
     }
 

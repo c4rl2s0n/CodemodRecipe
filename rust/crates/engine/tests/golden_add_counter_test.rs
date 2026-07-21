@@ -1,8 +1,10 @@
-use codemod_recipe_engine::engine::{parse_recipe_yaml, Engine, QueryContext};
+use codemod_recipe_engine::engine::{parse_recipe_yaml, QueryContext};
 use codemod_recipe_host::registry::render_recipe_templates;
 use codemod_recipe_host::template::render_string;
 use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
+
+mod common;
 
 #[test]
 fn golden_add_counter_field() {
@@ -24,17 +26,18 @@ fn golden_add_counter_field() {
     args.insert("field".to_string(), "counter".to_string());
 
     let rendered = render_recipe_templates(&recipe, &args, &BTreeMap::new());
-    let mut engine = Engine::new_dart().unwrap();
     let codemod = repo_root.join(".codemod");
     let ctx = QueryContext {
         recipe_file: Some(recipe_path.as_path()),
         codemod_root: &codemod,
     };
 
-    let out = engine
-        .apply_recipe_to_source(&ctx, &rendered, args["file"].as_str(), &before)
-        .unwrap()
-        .modified;
+    let out = common::with_engine("dart", |engine| {
+        engine
+            .apply_recipe_to_source(&ctx, &rendered, args["file"].as_str(), &before)
+            .unwrap()
+            .modified
+    });
 
     assert!(
         out.contains("final int counter;"),

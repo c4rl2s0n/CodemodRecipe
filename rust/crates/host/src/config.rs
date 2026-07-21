@@ -4,18 +4,22 @@ use std::path::PathBuf;
 pub struct HostConfig {
     pub workspace_root: PathBuf,
     pub codemod_root: PathBuf,
+    /// Default SQL dialect when `language:` is omitted and path ends in `.sql`.
+    pub sql_default: String,
 }
 
 impl HostConfig {
     pub fn from_env_args() -> Self {
         let mut workspace_root: Option<PathBuf> = None;
         let mut codemod_root: Option<PathBuf> = None;
+        let mut sql_default: Option<String> = None;
 
         let mut args = std::env::args().skip(1);
         while let Some(arg) = args.next() {
             match arg.as_str() {
                 "--workspace-root" => workspace_root = args.next().map(PathBuf::from),
                 "--codemod-root" => codemod_root = args.next().map(PathBuf::from),
+                "--sql-default" => sql_default = args.next(),
                 "--stdio-server" => {}
                 "--empty-constructor-style" => {
                     let _ = args.next();
@@ -30,10 +34,20 @@ impl HostConfig {
         let codemod_root = codemod_root
             .or_else(|| std::env::var("CODEMOD_ROOT").ok().map(PathBuf::from))
             .unwrap_or_else(|| workspace_root.join(".codemod"));
+        let sql_default = sql_default
+            .or_else(|| std::env::var("CODEMOD_SQL_DEFAULT").ok())
+            .unwrap_or_else(|| "sqlite".to_string());
 
         Self {
             workspace_root,
             codemod_root,
+            sql_default,
+        }
+    }
+
+    pub fn language_registry_config(&self) -> codemod_recipe_engine::RegistryConfig {
+        codemod_recipe_engine::RegistryConfig {
+            sql_default: self.sql_default.clone(),
         }
     }
 }
@@ -47,6 +61,7 @@ mod tests {
         let cfg = HostConfig {
             workspace_root: PathBuf::from("/tmp/ws"),
             codemod_root: PathBuf::from("/tmp/ws/.codemod"),
+            sql_default: "sqlite".to_string(),
         };
         assert_eq!(cfg.codemod_root, cfg.workspace_root.join(".codemod"));
     }

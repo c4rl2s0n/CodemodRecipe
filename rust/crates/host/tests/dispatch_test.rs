@@ -614,7 +614,7 @@ fn inline_recipe_preview_and_apply() {
                 "path": "{{file}}",
                 "ops": [{
                     "insert": {
-                        "query": "(class_declaration name: (identifier) @className body: (class_body (class_member (method_signature (function_signature name: (identifier) @methodName)) (function_body (block) @body))) (#eq? @className \"Settings\") (#eq? @methodName \"update\"))",
+                        "query": "(class_definition name: (identifier) @className body: (class_body (method_signature (function_signature name: (identifier) @methodName)) (function_body (block) @body)) (#eq? @className \"Settings\") (#eq? @methodName \"update\"))",
                         "capture": "body",
                         "anchor": "end",
                         "text": "    print('inline');\n"

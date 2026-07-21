@@ -41,6 +41,8 @@ Also: same `recipe` or `inlineRecipe`, same `args`.
 
 Optional: `selection` for partial patch apply.
 
+Optional host flags: `--sql-default` (default `sqlite` for `.sql` files). See skill `codemod-languages`.
+
 ## inlineRecipe shape (v2)
 
 ```json
@@ -49,9 +51,10 @@ Optional: `selection` for partial patch apply.
   "steps": [{
     "edit": {
       "path": "lib/file.dart",
+      "language": "dart",
       "ops": [{
         "insert": {
-          "query": "(class_declaration ... @body)",
+          "query": "(class_definition ... @body)",
           "capture": "body",
           "anchor": "end",
           "text": "    print('ok');\n"
@@ -79,3 +82,13 @@ Optional: `selection` for partial patch apply.
 - `Stale previewToken` — re-preview after file changes
 - Empty `files` — query matched nothing or already applied
 - `Missing required arguments` — check `describe_recipe`
+- `Invalid node type "class_declaration"` — use `class_definition` (pack Dart); see `codemod-languages`
+- `unknown language` — set valid `language:` id; see `codemod-languages`
+
+## Related skills
+
+| Skill | Use for |
+|-------|---------|
+| `codemod-languages` | `language:` field, SQL dialects, grammar loading |
+| `codemod-yaml-dsl-v2` | inlineRecipe step shape |
+| `codemod-recipe-authoring` | tree-sitter queries |

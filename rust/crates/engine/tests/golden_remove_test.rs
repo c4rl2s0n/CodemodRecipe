@@ -1,5 +1,7 @@
-use codemod_recipe_engine::engine::{parse_recipe_yaml, Engine, QueryContext};
+use codemod_recipe_engine::engine::{parse_recipe_yaml, QueryContext};
 use pretty_assertions::assert_eq;
+
+mod common;
 
 #[test]
 fn golden_remove_count_field() {
@@ -14,16 +16,17 @@ fn golden_remove_count_field() {
     let expected = std::fs::read_to_string(&after_path).unwrap();
 
     let recipe = parse_recipe_yaml(&recipe_yaml).unwrap();
-    let mut engine = Engine::new_dart().unwrap();
     let codemod = repo_root.join(".codemod");
     let ctx = QueryContext {
         recipe_file: Some(recipe_path.as_path()),
         codemod_root: &codemod,
     };
-    let out = engine
-        .apply_recipe_to_source(&ctx, &recipe, "{{file}}", &before)
-        .unwrap()
-        .modified;
+    let out = common::with_engine("dart", |engine| {
+        engine
+            .apply_recipe_to_source(&ctx, &recipe, "{{file}}", &before)
+            .unwrap()
+            .modified
+    });
 
     assert_eq!(out, expected);
 }
