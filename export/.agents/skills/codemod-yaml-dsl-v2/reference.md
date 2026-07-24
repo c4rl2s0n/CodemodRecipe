@@ -85,6 +85,19 @@ Each entry in `steps` must be a single-key object of one of:
 - `language` (optional): tree-sitter language id (`dart`, `rust`, `java`, `kotlin`, `sqlite`, `sql`, …). When omitted, inferred from extension (default `dart`; `.sql` → `sqlite` unless host config overrides).
 - `ops`: list of edit operations (must not be empty)
 
+### Sequential staging
+
+Steps (and ops within one `edit`) run **in order** against an in-memory working tree.
+Later steps see earlier mutations on the same path — disk is written only on apply.
+
+- `create` then `edit` on the same path is supported (`ifExists: skip` for ensure-then-patch).
+- Dependent `edit` then `edit` is supported (e.g. insert a class, then insert a member into it).
+- Ops inside one `edit` also apply sequentially (each op reparses the current text).
+- Invalid orders error (e.g. `edit` then `create` with `ifExists: fail` on an existing file).
+- Preview for a multi-step same-path file is the **final** original vs modified content.
+  Per-patch selection on that file is file-level (all-or-nothing); independent single-edit
+  files still expose patches.
+
 ### `insert`
 
 Required fields:

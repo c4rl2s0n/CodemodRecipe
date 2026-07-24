@@ -106,16 +106,20 @@ Important invariants:
 
 ## Patch merging behavior (critical)
 
-Patch merging is performed by the runner:
+**Rust MCP host** (`codemod-mcp`): collect uses an in-memory working tree. Same-path
+`create` then `edit` (and dependent `edit` then `edit`) compose; finalize emits one
+`FileChange` per path. See skill `codemod-yaml-dsl-v2` (Sequential staging).
+
+**Dart package runner** (legacy): patch merging is performed by:
 - File: `lib/src/runner.dart`
 - Method: `_mergePatchChanges(...)`
 
-Rules enforced:
+Rules enforced on the Dart side:
 - Cannot combine patch and full-file changes for the same path
 - Cannot have multiple full-file changes for the same path
 - Patch file changes targeting the same file are merged, then validated for overlap
 
-If you change operation behavior, ensure you don’t accidentally violate these invariants.
+If you change Dart operation behavior, ensure you don’t accidentally violate these invariants.
 
 ## Common extension patterns
 
@@ -128,5 +132,6 @@ If you change operation behavior, ensure you don’t accidentally violate these 
 - Introducing nondeterminism (timestamps, random ids) into transforms/templates.
 - Allowing silent template rendering with missing variables.
 - Changing patch ordering/overlap rules without updating tests and preview/diff serialization expectations.
-- Mixing full-file and patch changes for a single path (runner treats this as an error).
+- On the Dart runner: mixing full-file and patch changes for a single path (treated as an error).
+  The Rust host stages same-path steps instead.
 

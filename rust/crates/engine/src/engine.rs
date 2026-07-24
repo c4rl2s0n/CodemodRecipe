@@ -67,6 +67,86 @@ impl Engine {
         Ok(Self { parser, adapter })
     }
 
+    /// Collect patches for a single edit op against `source`.
+    pub fn collect_patches_for_single_op(
+        &mut self,
+        ctx: &QueryContext<'_>,
+        op: &EditOp,
+        source: &str,
+    ) -> Result<Vec<SourcePatch>, EngineError> {
+        match op {
+            EditOp::Insert(insert) => {
+                let span = self.resolve_single_capture(
+                    ctx,
+                    source,
+                    &insert.query,
+                    &insert.capture,
+                    true,
+                )?;
+                let Some(span) = span else {
+                    return Err(EngineError::NoMatch {
+                        capture: insert.capture.clone(),
+                    });
+                };
+                let offset = match insert.anchor {
+                    InsertAnchor::Start => span.start,
+                    InsertAnchor::End => crate::span::insert_offset_at_anchor_end(
+                        source,
+                        span.start,
+                        span.end,
+                        span.is_block,
+                    ),
+                };
+                Ok(vec![SourcePatch::new(offset, offset, insert.text.clone())])
+            }
+            EditOp::Replace(replace) => {
+                let span = self.resolve_single_capture(
+                    ctx,
+                    source,
+                    &replace.query,
+                    &replace.capture,
+                    true,
+                )?;
+                let Some(span) = span else {
+                    return Ok(vec![]);
+                };
+                let (start, end) = self.adapter.expand_remove_span(
+                    source,
+                    span.start,
+                    span.end,
+                    replace.include_leading_trivia,
+                );
+                let current = &source[start..end];
+                if whitespace_normalized(current) == whitespace_normalized(&replace.text) {
+                    return Ok(vec![]);
+                }
+                Ok(vec![SourcePatch::new(start, end, replace.text.clone())])
+            }
+            EditOp::Remove(remove) => {
+                let span = self.resolve_single_capture(
+                    ctx,
+                    source,
+                    &remove.query,
+                    &remove.capture,
+                    true,
+                )?;
+                let Some(span) = span else {
+                    return Ok(vec![]);
+                };
+                let (start, end) = self.adapter.expand_remove_span(
+                    source,
+                    span.start,
+                    span.end,
+                    remove.include_leading_trivia,
+                );
+                Ok(vec![SourcePatch::new(start, end, "")])
+            }
+            EditOp::Unknown(_, _) => Ok(vec![]),
+        }
+    }
+
+    /// Collect patches for all ops in an edit against one `source` (non-sequential).
+    /// Prefer [`Self::apply_edit_ops_sequential`] when later ops depend on earlier ones.
     pub fn collect_patches_for_edit(
         &mut self,
         ctx: &QueryContext<'_>,
@@ -74,102 +154,30 @@ impl Engine {
         source: &str,
     ) -> Result<Vec<SourcePatch>, EngineError> {
         let mut patches: Vec<SourcePatch> = Vec::new();
-
         for op in &edit.ops {
-            match op {
-                EditOp::Insert(insert) => {
-                    let span = self.resolve_single_capture(
-                        ctx,
-                        source,
-                        &insert.query,
-                        &insert.capture,
-                        true,
-                    )?;
-                    let Some(span) = span else {
-                        return Err(EngineError::NoMatch {
-                            capture: insert.capture.clone(),
-                        });
-                    };
-                    let offset = match insert.anchor {
-                        InsertAnchor::Start => span.start,
-                        InsertAnchor::End => crate::span::insert_offset_at_anchor_end(
-                            source,
-                            span.start,
-                            span.end,
-                            span.is_block,
-                        ),
-                    };
-                    patches.push(SourcePatch::new(offset, offset, insert.text.clone()));
-                }
-                EditOp::Replace(replace) => {
-                    let span = self.resolve_single_capture(
-                        ctx,
-                        source,
-                        &replace.query,
-                        &replace.capture,
-                        true,
-                    )?;
-                    let Some(span) = span else {
-                        continue;
-                    };
-                    let (start, end) = self.adapter.expand_remove_span(
-                        source,
-                        span.start,
-                        span.end,
-                        replace.include_leading_trivia,
-                    );
-                    let current = &source[start..end];
-                    if whitespace_normalized(current) == whitespace_normalized(&replace.text) {
-                        continue;
-                    }
-                    patches.push(SourcePatch::new(start, end, replace.text.clone()));
-                }
-                EditOp::Remove(remove) => {
-                    let span = self.resolve_single_capture(
-                        ctx,
-                        source,
-                        &remove.query,
-                        &remove.capture,
-                        true,
-                    )?;
-                    let Some(span) = span else {
-                        continue;
-                    };
-                    let (start, end) = self.adapter.expand_remove_span(
-                        source,
-                        span.start,
-                        span.end,
-                        remove.include_leading_trivia,
-                    );
-                    patches.push(SourcePatch::new(start, end, ""));
-                }
-                EditOp::Unknown(_, _) => {}
-            }
+            patches.extend(self.collect_patches_for_single_op(ctx, op, source)?);
         }
-
         Ok(patches)
     }
 
-    pub fn collect_patches_for_source(
+    /// Apply each op in order: resolve against current text, apply patches, continue.
+    pub fn apply_edit_ops_sequential(
         &mut self,
         ctx: &QueryContext<'_>,
-        recipe: &Recipe,
-        file_path: &str,
+        edit: &EditStep,
         source: &str,
-    ) -> Result<Vec<SourcePatch>, EngineError> {
-        let mut patches: Vec<SourcePatch> = Vec::new();
-
-        for step in &recipe.steps {
-            let Step::Edit(edit) = step else { continue };
-            if edit.path != file_path {
-                continue;
+    ) -> Result<String, EngineError> {
+        let mut current = source.to_string();
+        for op in &edit.ops {
+            let patches = self.collect_patches_for_single_op(ctx, op, &current)?;
+            if !patches.is_empty() {
+                current = apply_patches(&current, &patches)?;
             }
-            patches.extend(self.collect_patches_for_edit(ctx, edit, source)?);
         }
-
-        Ok(patches)
+        Ok(current)
     }
 
+    /// Apply all edit steps for `file_path` sequentially against evolving source.
     pub fn apply_recipe_to_source(
         &mut self,
         ctx: &QueryContext<'_>,
@@ -177,9 +185,23 @@ impl Engine {
         file_path: &str,
         source: &str,
     ) -> Result<ApplyResult, EngineError> {
-        let patches = self.collect_patches_for_source(ctx, recipe, file_path, source)?;
-        let modified = apply_patches(source, &patches)?;
-        Ok(ApplyResult { modified, patches })
+        let mut current = source.to_string();
+        for step in &recipe.steps {
+            let Step::Edit(edit) = step else { continue };
+            if edit.path != file_path {
+                continue;
+            }
+            current = self.apply_edit_ops_sequential(ctx, edit, &current)?;
+        }
+        let patches = if current == source {
+            vec![]
+        } else {
+            vec![SourcePatch::new(0, source.len(), current.clone())]
+        };
+        Ok(ApplyResult {
+            modified: current,
+            patches,
+        })
     }
 
     fn resolve_single_capture(

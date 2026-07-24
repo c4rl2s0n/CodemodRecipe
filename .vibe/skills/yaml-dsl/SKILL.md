@@ -100,6 +100,11 @@ Each entry in `steps` must be a single-key object of one of:
 - `path`: file path (often templated, e.g. `{{file}}`)
 - `ops`: list of edit operations (must not be empty)
 
+Steps and ops apply **sequentially** against an in-memory working tree (later steps see
+earlier mutations on the same path). Same-path `create` then `edit` and dependent
+`edit` then `edit` are supported. See export skill `codemod-yaml-dsl-v2` reference
+(Sequential staging).
+
 ### Edit operation types
 
 #### `insert`

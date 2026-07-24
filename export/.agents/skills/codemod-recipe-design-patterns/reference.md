@@ -173,8 +173,33 @@ steps:
 Referenced recipe steps are inlined in order. Args merge by name (first definition wins).
 Recipe cycles are rejected.
 
+**Same-path incremental steps** are supported via sequential staging: a scaffold may
+`create` a file (with `ifExists: skip`) and then `edit` it in a later step (or via a
+composed `add_*` recipe), or chain dependent edits (class then members). Templates for
+greenfield creates must be query-compatible with the following edits.
+
 For incremental changes after scaffolding, call atomic `add_*` recipes directly — do not
-re-run the orchestrator.
+re-run the orchestrator unless the orchestrator is intentionally idempotent (`ifExists: skip`
+plus edits that no-op when already applied).
+
+### Ensure / barrel pattern
+
+```yaml
+steps:
+  - create:
+      path: "lib/foo/foo.dart"
+      template: "// Exports for foo.\n"
+      ifExists: skip
+  - edit:
+      path: "lib/foo/foo.dart"
+      ops:
+        - insert:
+            # Must match both the template and existing barrels
+            query: "(program) @root"
+            capture: root
+            anchor: end
+            text: "export 'bar.dart';\n"
+```
 
 ## Maps and templates
 

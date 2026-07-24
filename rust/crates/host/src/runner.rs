@@ -1,9 +1,9 @@
-use codemod_recipe_core::file_change::{merge_file_changes, FileChange, IfExists, IfMissing};
+use codemod_recipe_core::file_change::{FileChange, IfExists, IfMissing};
 use codemod_recipe_core::patch::apply_patches;
 use codemod_recipe_engine::engine::{EngineError, QueryContext};
 use codemod_recipe_engine::LanguageRegistry;
 use codemod_recipe_yaml::model::{
-    CreateStep, DeleteStep, IfExistsStrategy, IfMissingStrategy, Recipe, Step,
+    CreateStep, IfExistsStrategy, IfMissingStrategy, Recipe, Step,
 };
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -12,6 +12,7 @@ use crate::args;
 use crate::path_sandbox::PathSandbox;
 use crate::registry::{render_recipe_templates_with_root, RecipeRegistry};
 use crate::template::render_template_file;
+use crate::working_tree::WorkingTree;
 
 pub struct CollectedChanges {
     pub recipe: Recipe,
@@ -64,8 +65,7 @@ pub fn collect_recipe_changes(
     )?;
 
     let sandbox = PathSandbox::new(registry.workspace_root.clone());
-    let codemod_rel = relative_codemod_path(registry);
-    let mut raw_changes: Vec<FileChange> = Vec::new();
+    let mut tree = WorkingTree::new();
     let mut language_registry =
         LanguageRegistry::with_config(registry.language_config.clone());
     let ctx = QueryContext {
@@ -77,38 +77,32 @@ pub fn collect_recipe_changes(
         match step {
             Step::Edit(edit) => {
                 let relative = edit.path.clone();
-                let absolute = sandbox
-                    .resolve_workspace_relative(&relative)
-                    .map_err(|e| e.message)?;
-                let source = std::fs::read_to_string(&absolute)
-                    .map_err(|e| format!("Failed to read {relative}: {e}"))?;
                 let engine = language_registry
                     .resolve_for_edit(edit.language.as_deref(), &relative)
                     .map_err(engine_error_to_string)?;
-                let patches = engine
-                    .collect_patches_for_edit(&ctx, edit, &source)
-                    .map_err(engine_error_to_string)?;
-                if !patches.is_empty() {
-                    raw_changes.push(FileChange::Patch {
-                        path: relative,
-                        source,
-                        patches,
-                    });
-                }
+                tree.apply_edit(&sandbox, &relative, |source| {
+                    engine
+                        .apply_edit_ops_sequential(&ctx, edit, source)
+                        .map_err(engine_error_to_string)
+                })?;
             }
             Step::Create(create) => {
-                raw_changes.push(collect_create_change(
+                apply_create_to_tree(
+                    &mut tree,
                     registry,
                     &sandbox,
-                    &codemod_rel,
                     create,
                     &effective,
                     &merged_maps,
                     vars,
-                )?);
+                )?;
             }
             Step::Delete(delete) => {
-                raw_changes.push(collect_delete_change(&sandbox, delete)?);
+                let if_missing = match delete.if_missing {
+                    IfMissingStrategy::Fail => IfMissing::Fail,
+                    IfMissingStrategy::Skip => IfMissing::Skip,
+                };
+                tree.delete(&sandbox, &delete.path, if_missing)?;
             }
             Step::RecipeRef(_) | Step::Scoped(_) => {}
             Step::Unknown(kind, _) => {
@@ -117,99 +111,47 @@ pub fn collect_recipe_changes(
         }
     }
 
-    let changes = merge_file_changes(raw_changes)?;
     Ok(CollectedChanges {
         recipe: rendered,
         recipe_path: recipe_path.map(Path::to_path_buf),
-        changes,
+        changes: tree.finalize(),
     })
 }
 
-fn collect_create_change(
+fn apply_create_to_tree(
+    tree: &mut WorkingTree,
     registry: &RecipeRegistry,
     sandbox: &PathSandbox,
-    _codemod_rel: &str,
     create: &CreateStep,
     args: &BTreeMap<String, String>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     vars: &BTreeMap<String, BTreeMap<String, String>>,
-) -> Result<FileChange, String> {
-    let relative = create.path.clone();
-    let absolute = sandbox
-        .resolve_workspace_relative(&relative)
-        .map_err(|e| e.message)?;
-    let exists = absolute.exists();
-
+) -> Result<(), String> {
     let if_exists = match create.if_exists {
         IfExistsStrategy::Fail => IfExists::Fail,
         IfExistsStrategy::Skip => IfExists::Skip,
     };
 
-    if exists && if_exists == IfExists::Fail {
-        return Err(format!("File already exists: {relative}"));
+    // When skipping an existing file we never need template content.
+    let absolute = sandbox
+        .resolve_workspace_relative(&create.path)
+        .map_err(|e| e.message)?;
+    if absolute.exists() && if_exists == IfExists::Skip {
+        return tree.create(sandbox, &create.path, String::new(), if_exists, create.format);
     }
-    if exists && if_exists == IfExists::Skip {
-        return Ok(FileChange::Create {
-            path: relative,
-            content: String::new(),
-            if_exists,
-            format: create.format,
-            skipped: true,
-        });
+    if absolute.exists() && if_exists == IfExists::Fail {
+        return Err(format!("File already exists: {}", create.path));
     }
 
     let content = if let Some(inline) = &create.template {
-        // Already rendered under the correct (possibly scoped) arg overlay.
         inline.clone()
     } else if let Some(file) = &create.template_file {
         render_template_file(file, args, maps, vars, registry.codemod_root())?
     } else {
         return Err("create step missing template".to_string());
     };
-    Ok(FileChange::Create {
-        path: relative,
-        content,
-        if_exists,
-        format: create.format,
-        skipped: false,
-    })
-}
 
-fn collect_delete_change(
-    sandbox: &PathSandbox,
-    delete: &DeleteStep,
-) -> Result<FileChange, String> {
-    let relative = delete.path.clone();
-    let absolute = sandbox
-        .resolve_workspace_relative(&relative)
-        .map_err(|e| e.message)?;
-    let exists = absolute.exists();
-
-    let if_missing = match delete.if_missing {
-        IfMissingStrategy::Fail => IfMissing::Fail,
-        IfMissingStrategy::Skip => IfMissing::Skip,
-    };
-
-    if !exists && if_missing == IfMissing::Fail {
-        return Err(format!("File not found: {relative}"));
-    }
-    if !exists && if_missing == IfMissing::Skip {
-        return Ok(FileChange::Delete {
-            path: relative,
-            source: String::new(),
-            if_missing,
-            skipped: true,
-        });
-    }
-
-    let source = std::fs::read_to_string(&absolute)
-        .map_err(|e| format!("Failed to read {relative}: {e}"))?;
-    Ok(FileChange::Delete {
-        path: relative,
-        source,
-        if_missing,
-        skipped: false,
-    })
+    tree.create(sandbox, &create.path, content, if_exists, create.format)
 }
 
 pub fn absolute_paths_for_changes(
@@ -225,21 +167,6 @@ pub fn absolute_paths_for_changes(
                 .map_err(|e| e.message)
         })
         .collect()
-}
-
-fn relative_codemod_path(registry: &RecipeRegistry) -> String {
-    let workspace = registry
-        .workspace_root
-        .canonicalize()
-        .unwrap_or_else(|_| registry.workspace_root.clone());
-    let codemod = registry
-        .codemod_root()
-        .canonicalize()
-        .unwrap_or_else(|_| registry.codemod_root().to_path_buf());
-    codemod
-        .strip_prefix(&workspace)
-        .map(|p| p.to_string_lossy().replace('\\', "/"))
-        .unwrap_or_else(|_| ".codemod".to_string())
 }
 
 fn engine_error_to_string(error: EngineError) -> String {

@@ -44,6 +44,54 @@ pub fn snippet_from_patches(patches: &[SourcePatch], max_lines: u32) -> Option<S
     }
 }
 
+/// Prefer a window around the first differing line when a patch replaces the whole file.
+pub fn snippet_from_original_and_modified(
+    original: &str,
+    modified: &str,
+    max_lines: u32,
+) -> Option<String> {
+    if max_lines == 0 || original == modified {
+        return None;
+    }
+    let orig_norm = original.replace("\r\n", "\n");
+    let mod_norm = modified.replace("\r\n", "\n");
+    let orig_lines: Vec<_> = orig_norm.lines().collect();
+    let mod_lines: Vec<_> = mod_norm.lines().collect();
+    let mut first_diff = 0usize;
+    let limit = orig_lines.len().min(mod_lines.len());
+    while first_diff < limit && orig_lines[first_diff] == mod_lines[first_diff] {
+        first_diff += 1;
+    }
+    if first_diff >= mod_lines.len() {
+        // Only deletions / trailing changes — show end of modified or empty.
+        if mod_lines.is_empty() {
+            return None;
+        }
+        first_diff = mod_lines.len().saturating_sub(max_lines as usize);
+    }
+    let snippet = mod_lines
+        .iter()
+        .skip(first_diff)
+        .take(max_lines as usize)
+        .copied()
+        .collect::<Vec<_>>()
+        .join("\n")
+        .trim_end()
+        .to_string();
+    if snippet.is_empty() {
+        None
+    } else {
+        Some(snippet)
+    }
+}
+
+fn is_full_span_replace(source: &str, patches: &[SourcePatch]) -> bool {
+    matches!(
+        patches,
+        [p] if p.start == 0 && p.end == source.len() && !p.replacement.is_empty()
+    )
+}
+
 pub fn build_file_preview(
     path: String,
     original: &str,
@@ -54,7 +102,13 @@ pub fn build_file_preview(
     snippet_lines: Option<u32>,
 ) -> FilePreview {
     let skipped = original == modified;
-    let snippet = snippet_lines.and_then(|n| snippet_from_patches(patches, n));
+    let snippet = snippet_lines.and_then(|n| {
+        if is_full_span_replace(original, patches) {
+            snippet_from_original_and_modified(original, modified, n)
+        } else {
+            snippet_from_patches(patches, n)
+        }
+    });
     FilePreview {
         path,
         kind: "edit",
@@ -186,6 +240,23 @@ mod tests {
             Some(2),
         );
         assert_eq!(preview.snippet.as_deref(), Some("line one\nline two"));
+    }
+
+    #[test]
+    fn snippet_for_full_span_replace_starts_at_first_diff() {
+        let original = "line1\nline2\nline3\n";
+        let modified = "line1\nCHANGED\nline3\n";
+        let patches = vec![SourcePatch::new(0, original.len(), modified)];
+        let preview = build_file_preview(
+            "a.dart".to_string(),
+            original,
+            modified,
+            &patches,
+            false,
+            false,
+            Some(2),
+        );
+        assert_eq!(preview.snippet.as_deref(), Some("CHANGED\nline3"));
     }
 
     #[test]

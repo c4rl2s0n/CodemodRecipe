@@ -14,6 +14,7 @@ pub mod registry;
 pub mod runner;
 pub mod template;
 pub mod validate;
+pub mod working_tree;
 
 pub const RESULT_BEGIN: &str = "__CODEMOD_RESULT_BEGIN__";
 pub const RESULT_END: &str = "__CODEMOD_RESULT_END__";
