@@ -82,7 +82,8 @@ pub fn expand_trailing_semicolon(source: &str, end: usize) -> usize {
     while new_end < bytes.len() && bytes[new_end].is_ascii_whitespace() && bytes[new_end] != b'\n' {
         new_end += 1;
     }
-    if new_end < bytes.len() && bytes[new_end] == b';' {
+    // Eat trailing `;` (declarations) or `,` (parameter / argument lists).
+    if new_end < bytes.len() && (bytes[new_end] == b';' || bytes[new_end] == b',') {
         new_end += 1;
     }
     if new_end < bytes.len() && bytes[new_end] == b'\n' {
