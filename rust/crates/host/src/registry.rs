@@ -603,4 +603,56 @@ steps:
 
         let _ = std::fs::remove_dir_all(workspace);
     }
+
+    #[test]
+    fn loads_recipe_map_and_var_from_nested_tree() {
+        let workspace = std::env::temp_dir().join(format!(
+            "codemod_registry_nested_tree_{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&workspace);
+        let nested = workspace.join(".codemod/a/b/c");
+        std::fs::create_dir_all(&nested).unwrap();
+        std::fs::write(
+            nested.join("deep_recipe.yaml"),
+            r#"dslVersion: 2
+id: deep_recipe
+args:
+  - name: file
+    required: true
+steps:
+  - delete:
+      path: "{{file}}"
+      ifMissing: skip
+"#,
+        )
+        .unwrap();
+        std::fs::write(
+            nested.join("deep_map.yaml"),
+            "id: deep_types\nmap:\n  x: int\n",
+        )
+        .unwrap();
+        std::fs::write(
+            nested.join("deep_vars.yaml"),
+            "id: deep_paths\nvalues:\n  root: lib/deep\n",
+        )
+        .unwrap();
+
+        let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+        registry.reload();
+
+        let (_, diagnostics) = registry.list();
+        assert!(
+            diagnostics.iter().all(|d| d.severity != "error"),
+            "diagnostics: {diagnostics:?}"
+        );
+        assert!(registry.get("deep_recipe").is_some());
+        assert!(registry.maps_count() >= 1);
+        assert_eq!(
+            registry.vars_by_id().get("deep_paths").map(|m| m.get("root")),
+            Some(Some(&"lib/deep".to_string()))
+        );
+
+        let _ = std::fs::remove_dir_all(workspace);
+    }
 }

@@ -633,6 +633,70 @@ entries:
     }
 
     #[test]
+    fn reports_duplicate_var_ids() {
+        let workspace = temp_workspace("var_registry_dup");
+        let _ = std::fs::remove_dir_all(&workspace);
+        let vars_dir = workspace.join(".codemod/variables");
+        std::fs::create_dir_all(&vars_dir).unwrap();
+        std::fs::write(
+            vars_dir.join("a.yaml"),
+            "id: paths\nvalues:\n  feature_root: lib/a\n",
+        )
+        .unwrap();
+        std::fs::write(
+            vars_dir.join("b.yaml"),
+            "id: paths\nvalues:\n  feature_root: lib/b\n",
+        )
+        .unwrap();
+
+        let result = load_codemod_assets(&workspace, &workspace.join(".codemod"));
+        assert!(
+            result
+                .diagnostics
+                .iter()
+                .any(|d| d.code == "E_DUPLICATE_VAR_ID"),
+            "diagnostics: {:?}",
+            result.diagnostics
+        );
+        assert!(!result.vars_by_id.contains_key("paths"));
+
+        let _ = std::fs::remove_dir_all(workspace);
+    }
+
+    #[test]
+    fn allows_same_id_across_map_and_variables() {
+        let workspace = temp_workspace("cross_type_same_id");
+        let _ = std::fs::remove_dir_all(&workspace);
+        let root = workspace.join(".codemod");
+        std::fs::create_dir_all(root.join("anywhere")).unwrap();
+        std::fs::write(
+            root.join("anywhere/shared_map.yaml"),
+            "id: shared\nmap:\n  key: mapValue\n",
+        )
+        .unwrap();
+        std::fs::write(
+            root.join("anywhere/shared_var.yaml"),
+            "id: shared\nvalues:\n  key: varValue\n",
+        )
+        .unwrap();
+
+        let result = load_codemod_assets(&workspace, &root);
+        assert!(
+            result.diagnostics.iter().all(|d| d.severity != "error"),
+            "diagnostics: {:?}",
+            result.diagnostics
+        );
+        assert!(result
+            .diagnostics
+            .iter()
+            .all(|d| d.code != "E_DUPLICATE_MAP_ID" && d.code != "E_DUPLICATE_VAR_ID"));
+        assert_eq!(result.maps_by_id["shared"]["key"], "mapValue");
+        assert_eq!(result.vars_by_id["shared"]["key"], "varValue");
+
+        let _ = std::fs::remove_dir_all(workspace);
+    }
+
+    #[test]
     fn reports_duplicate_keys_within_values_block() {
         let workspace = temp_workspace("var_dup_keys");
         let _ = std::fs::remove_dir_all(&workspace);
