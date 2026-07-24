@@ -72,6 +72,8 @@ fn validate_expanded_recipe(
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     diagnostics: &mut Vec<RecipeDiagnostic>,
 ) {
+    validate_recipe_with_bindings(registry, recipe, file_path, diagnostics);
+
     let expanded = match expand_recipe_references(recipe, registry.recipes_ast()) {
         Ok(expanded) => expanded,
         Err(err) => {
@@ -87,28 +89,150 @@ fn validate_expanded_recipe(
     };
 
     let declared: BTreeSet<String> = expanded.args.iter().map(|a| a.name.clone()).collect();
-    let mut referenced = BTreeSet::new();
+    check_undeclared_args_in_steps(
+        &expanded.steps,
+        &declared,
+        recipe_id,
+        file_path,
+        maps,
+        diagnostics,
+    );
 
-    for (field, text) in collect_templated_fields(&expanded) {
-        warn_on_missing_map_ids(text, file_path, maps, diagnostics);
-        if crate::template::contains_legacy_syntax(text) {
-            diagnostics.push(warning(
-                "W_LEGACY_TEMPLATE",
-                format!(
-                    "Legacy template helper in {field} of recipe '{recipe_id}' — use Jinja filters (e.g. {{ arg | snake_case }})"
-                ),
-                file_path,
-                Some("See docs/recipe-templates.md for canonical Jinja2 syntax".to_string()),
-                Some(recipe_id.to_string()),
-            ));
-        }
-        for var in extract_template_variables(text) {
-            referenced.insert(var);
-        }
-        let _ = field;
+    for step in &expanded.steps {
+        visit_create_steps(step, &mut |create| {
+            validate_create_step(registry, create, file_path, recipe_id, diagnostics);
+        });
     }
+}
 
-    for var in referenced {
+fn validate_recipe_with_bindings(
+    registry: &RecipeRegistry,
+    recipe: &Recipe,
+    file_path: &str,
+    diagnostics: &mut Vec<RecipeDiagnostic>,
+) {
+    validate_with_bindings_in_steps(&recipe.steps, registry, file_path, diagnostics);
+}
+
+fn validate_with_bindings_in_steps(
+    steps: &[Step],
+    registry: &RecipeRegistry,
+    file_path: &str,
+    diagnostics: &mut Vec<RecipeDiagnostic>,
+) {
+    for step in steps {
+        match step {
+            Step::RecipeRef(recipe_ref) => {
+                if recipe_ref.with.is_empty() {
+                    continue;
+                }
+                let Some(child) = registry.recipes_ast().get(&recipe_ref.id) else {
+                    continue;
+                };
+                // Direct child's declared args only — not args unioned from its children.
+                let child_args: BTreeSet<String> =
+                    child.args.iter().map(|a| a.name.clone()).collect();
+                for key in recipe_ref.with.keys() {
+                    if !child_args.contains(key) {
+                        diagnostics.push(error(
+                            "E_RECIPE_WITH",
+                            format!(
+                                "recipe '{}' with.{} does not match any argument on the referenced recipe",
+                                recipe_ref.id, key
+                            ),
+                            file_path,
+                            Some(format!(
+                                "Remove with.{key} or add that arg to {}",
+                                recipe_ref.id
+                            )),
+                            Some(recipe_ref.id.clone()),
+                        ));
+                    }
+                }
+            }
+            Step::Scoped(scoped) => {
+                validate_with_bindings_in_steps(
+                    &scoped.steps,
+                    registry,
+                    file_path,
+                    diagnostics,
+                );
+            }
+            _ => {}
+        }
+    }
+}
+
+fn check_undeclared_args_in_steps(
+    steps: &[Step],
+    declared: &BTreeSet<String>,
+    recipe_id: &str,
+    file_path: &str,
+    maps: &BTreeMap<String, BTreeMap<String, String>>,
+    diagnostics: &mut Vec<RecipeDiagnostic>,
+) {
+    for step in steps {
+        match step {
+            Step::Scoped(scoped) => {
+                for value in scoped.with.values() {
+                    warn_on_missing_map_ids(value, file_path, maps, diagnostics);
+                    report_legacy_and_undeclared(
+                        "recipe.with",
+                        value,
+                        declared,
+                        recipe_id,
+                        file_path,
+                        diagnostics,
+                    );
+                }
+                let mut inner = declared.clone();
+                inner.extend(scoped.with.keys().cloned());
+                check_undeclared_args_in_steps(
+                    &scoped.steps,
+                    &inner,
+                    recipe_id,
+                    file_path,
+                    maps,
+                    diagnostics,
+                );
+            }
+            _ => {
+                for (field, text) in templated_fields_for_step(step) {
+                    warn_on_missing_map_ids(text, file_path, maps, diagnostics);
+                    report_legacy_and_undeclared(
+                        field,
+                        text,
+                        declared,
+                        recipe_id,
+                        file_path,
+                        diagnostics,
+                    );
+                }
+            }
+        }
+    }
+}
+
+fn report_legacy_and_undeclared(
+    field: &str,
+    text: &str,
+    declared: &BTreeSet<String>,
+    recipe_id: &str,
+    file_path: &str,
+    diagnostics: &mut Vec<RecipeDiagnostic>,
+) {
+    if crate::template::contains_legacy_syntax(text) {
+        diagnostics.push(warning(
+            "W_LEGACY_TEMPLATE",
+            format!(
+                "Legacy template helper in {field} of recipe '{recipe_id}' — use Jinja filters (e.g. {{ arg | snake_case }})"
+            ),
+            file_path,
+            Some("See docs/recipe-templates.md for canonical Jinja2 syntax".to_string()),
+            Some(recipe_id.to_string()),
+        ));
+    }
+    for var in extract_template_variables(text) {
         if declared.contains(&var) {
             continue;
         }
@@ -124,12 +248,68 @@ fn validate_expanded_recipe(
             Some(recipe_id.to_string()),
         ));
     }
+}
 
-    for step in &expanded.steps {
-        if let Step::Create(create) = step {
-            validate_create_step(registry, create, file_path, recipe_id, diagnostics);
+fn visit_create_steps(step: &Step, f: &mut impl FnMut(&CreateStep)) {
+    match step {
+        Step::Create(create) => f(create),
+        Step::Scoped(scoped) => {
+            for inner in &scoped.steps {
+                visit_create_steps(inner, f);
+            }
         }
+        _ => {}
     }
+}
+
+fn templated_fields_for_step(step: &Step) -> Vec<(&'static str, &str)> {
+    let mut out = Vec::new();
+    match step {
+        Step::Edit(edit) => {
+            out.push(("edit.path", edit.path.as_str()));
+            if let Some(lang) = &edit.language {
+                out.push(("edit.language", lang.as_str()));
+            }
+            for op in &edit.ops {
+                match op {
+                    EditOp::Insert(insert) => {
+                        out.push(("insert.query", insert.query.as_str()));
+                        out.push(("insert.capture", insert.capture.as_str()));
+                        out.push(("insert.text", insert.text.as_str()));
+                    }
+                    EditOp::Replace(replace) => {
+                        out.push(("replace.query", replace.query.as_str()));
+                        out.push(("replace.capture", replace.capture.as_str()));
+                        out.push(("replace.text", replace.text.as_str()));
+                    }
+                    EditOp::Remove(remove) => {
+                        out.push(("remove.query", remove.query.as_str()));
+                        out.push(("remove.capture", remove.capture.as_str()));
+                    }
+                    EditOp::Unknown(_, _) => {}
+                }
+            }
+        }
+        Step::Create(create) => {
+            out.push(("create.path", create.path.as_str()));
+            if let Some(text) = &create.template {
+                out.push(("create.template", text.as_str()));
+            }
+            if let Some(file) = &create.template_file {
+                out.push(("create.templateFile", file.as_str()));
+            }
+        }
+        Step::Delete(delete) => {
+            out.push(("delete.path", delete.path.as_str()));
+        }
+        Step::RecipeRef(recipe_ref) => {
+            for value in recipe_ref.with.values() {
+                out.push(("recipe.with", value.as_str()));
+            }
+        }
+        Step::Scoped(_) | Step::Unknown(_, _) => {}
+    }
+    out
 }
 
 fn validate_create_step(
@@ -167,53 +347,6 @@ fn validate_create_step(
             }
         }
     }
-}
-
-fn collect_templated_fields(recipe: &Recipe) -> Vec<(&'static str, &str)> {
-    let mut out = Vec::new();
-    for step in &recipe.steps {
-        match step {
-            Step::Edit(edit) => {
-                out.push(("edit.path", edit.path.as_str()));
-                if let Some(lang) = &edit.language {
-                    out.push(("edit.language", lang.as_str()));
-                }
-                for op in &edit.ops {
-                    match op {
-                        EditOp::Insert(insert) => {
-                            out.push(("insert.query", insert.query.as_str()));
-                            out.push(("insert.capture", insert.capture.as_str()));
-                            out.push(("insert.text", insert.text.as_str()));
-                        }
-                        EditOp::Replace(replace) => {
-                            out.push(("replace.query", replace.query.as_str()));
-                            out.push(("replace.capture", replace.capture.as_str()));
-                            out.push(("replace.text", replace.text.as_str()));
-                        }
-                        EditOp::Remove(remove) => {
-                            out.push(("remove.query", remove.query.as_str()));
-                            out.push(("remove.capture", remove.capture.as_str()));
-                        }
-                        EditOp::Unknown(_, _) => {}
-                    }
-                }
-            }
-            Step::Create(create) => {
-                out.push(("create.path", create.path.as_str()));
-                if let Some(text) = &create.template {
-                    out.push(("create.template", text.as_str()));
-                }
-                if let Some(file) = &create.template_file {
-                    out.push(("create.templateFile", file.as_str()));
-                }
-            }
-            Step::Delete(delete) => {
-                out.push(("delete.path", delete.path.as_str()));
-            }
-            Step::RecipeRef(_) | Step::Unknown(_, _) => {}
-        }
-    }
-    out
 }
 
 fn extract_template_variables(text: &str) -> BTreeSet<String> {

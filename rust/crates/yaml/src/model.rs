@@ -48,12 +48,28 @@ pub enum PostExecution {
     Map(serde_yaml::Value),
 }
 
+/// Reference to another recipe, optionally with call-site arg bindings.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RecipeRef {
+    pub id: String,
+    /// Child arg name → template string rendered in the parent context.
+    pub with: BTreeMap<String, String>,
+}
+
+/// Inlined child steps with call-site `with` overlays (produced by compose expand).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ScopedStep {
+    pub with: BTreeMap<String, String>,
+    pub steps: Vec<Step>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Step {
     Edit(EditStep),
     Create(CreateStep),
     Delete(DeleteStep),
-    RecipeRef(serde_yaml::Value),
+    RecipeRef(RecipeRef),
+    Scoped(ScopedStep),
     Unknown(String, serde_yaml::Value),
 }
 
@@ -100,13 +116,82 @@ impl<'de> Deserialize<'de> for Step {
                             .map_err(|e| de::Error::custom(format!("invalid delete step: {e}")))?;
                         Ok(Step::Delete(delete))
                     }
-                    "recipe" => Ok(Step::RecipeRef(v)),
+                    "recipe" => {
+                        let recipe_ref = parse_recipe_ref(v).map_err(de::Error::custom)?;
+                        Ok(Step::RecipeRef(recipe_ref))
+                    }
                     other => Ok(Step::Unknown(other.to_string(), v)),
                 }
             }
         }
 
         deserializer.deserialize_map(StepVisitor)
+    }
+}
+
+/// Parse a `recipe:` step value: string id or `{ id, with }`.
+pub fn parse_recipe_ref(value: serde_yaml::Value) -> Result<RecipeRef, String> {
+    match value {
+        serde_yaml::Value::String(id) => {
+            if id.trim().is_empty() {
+                return Err("recipe step id must be a non-empty string".to_string());
+            }
+            Ok(RecipeRef {
+                id,
+                with: BTreeMap::new(),
+            })
+        }
+        serde_yaml::Value::Mapping(map) => {
+            let id = map
+                .get(serde_yaml::Value::String("id".to_string()))
+                .and_then(|v| v.as_str())
+                .map(str::to_string)
+                .ok_or_else(|| "recipe step mapping requires string field 'id'".to_string())?;
+            if id.trim().is_empty() {
+                return Err("recipe step id must be a non-empty string".to_string());
+            }
+            let mut with = BTreeMap::new();
+            if let Some(with_val) = map.get(serde_yaml::Value::String("with".to_string())) {
+                let with_map = with_val.as_mapping().ok_or_else(|| {
+                    "recipe step 'with' must be a mapping of arg name to template string"
+                        .to_string()
+                })?;
+                for (k, v) in with_map {
+                    let key = k
+                        .as_str()
+                        .ok_or_else(|| "recipe with keys must be strings".to_string())?
+                        .to_string();
+                    let value = yaml_scalar_to_string(v).ok_or_else(|| {
+                        format!("recipe with.{key} must be a string (or scalar) template")
+                    })?;
+                    with.insert(key, value);
+                }
+            }
+            for key in map.keys() {
+                let Some(name) = key.as_str() else {
+                    continue;
+                };
+                if name != "id" && name != "with" {
+                    return Err(format!(
+                        "unknown field '{name}' in recipe step (expected id, with)"
+                    ));
+                }
+            }
+            Ok(RecipeRef { id, with })
+        }
+        _ => Err(
+            "recipe step must be a recipe id string or a mapping with 'id'".to_string(),
+        ),
+    }
+}
+
+fn yaml_scalar_to_string(value: &serde_yaml::Value) -> Option<String> {
+    match value {
+        serde_yaml::Value::String(s) => Some(s.clone()),
+        serde_yaml::Value::Bool(b) => Some(b.to_string()),
+        serde_yaml::Value::Number(n) => Some(n.to_string()),
+        serde_yaml::Value::Null => Some(String::new()),
+        _ => None,
     }
 }
 

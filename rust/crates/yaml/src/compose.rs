@@ -19,9 +19,9 @@ pub enum ComposeStep {
     PostExecution(PostExecution),
 }
 
-/// Extract the referenced recipe id from a `Step::RecipeRef` value.
-pub fn recipe_ref_id(value: &serde_yaml::Value) -> Option<&str> {
-    value.as_str()
+/// Extract the referenced recipe id from a `Step::RecipeRef`.
+pub fn recipe_ref_id(recipe_ref: &RecipeRef) -> &str {
+    &recipe_ref.id
 }
 
 /// Compose a recipe from explicit args and ordered steps (Dart `CodemodRecipe.compose`).
@@ -78,8 +78,9 @@ pub fn compose_recipe(
 
 /// Expand `recipe:` reference steps using [registry] (YAML composition).
 ///
-/// Referenced recipes contribute edit steps and merged args. Child
-/// `postExecution` is **not** inlined (matches Dart YAML compiler behaviour).
+/// Referenced recipes contribute edit steps and merged args. Child args listed
+/// in call-site `with` are not unioned into the parent. Child `postExecution`
+/// is **not** inlined (matches Dart YAML compiler behaviour).
 pub fn expand_recipe_references(
     recipe: &Recipe,
     registry: &BTreeMap<String, Recipe>,
@@ -108,31 +109,43 @@ fn expand_recipe_references_inner(
     for step in &recipe.steps {
         match step {
             Step::Edit(edit) => steps.push(Step::Edit(edit.clone())),
-            Step::RecipeRef(value) => {
-                let Some(ref_id) = recipe_ref_id(value) else {
-                    continue;
-                };
+            Step::RecipeRef(recipe_ref) => {
+                let ref_id = recipe_ref_id(recipe_ref);
                 let child = registry
                     .get(ref_id)
                     .ok_or_else(|| ComposeError::RecipeNotFound(ref_id.to_string()))?;
                 let expanded = expand_recipe_references_inner(child, registry, visiting)?;
                 for arg in &expanded.args {
+                    if recipe_ref.with.contains_key(&arg.name) {
+                        continue;
+                    }
                     merged_args
                         .entry(arg.name.clone())
                         .or_insert_with(|| arg.clone());
                 }
+                let mut child_steps: Vec<Step> = Vec::new();
                 for child_step in &expanded.steps {
                     match child_step {
-                        Step::Edit(edit) => steps.push(Step::Edit(edit.clone())),
-                        Step::Create(create) => steps.push(Step::Create(create.clone())),
-                        Step::Delete(delete) => steps.push(Step::Delete(delete.clone())),
+                        Step::Edit(edit) => child_steps.push(Step::Edit(edit.clone())),
+                        Step::Create(create) => child_steps.push(Step::Create(create.clone())),
+                        Step::Delete(delete) => child_steps.push(Step::Delete(delete.clone())),
+                        Step::Scoped(scoped) => child_steps.push(Step::Scoped(scoped.clone())),
                         Step::RecipeRef(_) | Step::Unknown(_, _) => {}
                     }
+                }
+                if recipe_ref.with.is_empty() {
+                    steps.extend(child_steps);
+                } else {
+                    steps.push(Step::Scoped(ScopedStep {
+                        with: recipe_ref.with.clone(),
+                        steps: child_steps,
+                    }));
                 }
                 merge_maps_into(&mut maps, &expanded.maps);
             }
             Step::Create(create) => steps.push(Step::Create(create.clone())),
             Step::Delete(delete) => steps.push(Step::Delete(delete.clone())),
+            Step::Scoped(scoped) => steps.push(Step::Scoped(scoped.clone())),
             Step::Unknown(_, _) => steps.push(step.clone()),
         }
     }
@@ -203,6 +216,20 @@ mod tests {
             steps: vec![Step::Edit(edit_step(path))],
             post_execution: vec![],
         }
+    }
+
+    fn recipe_ref(id: &str) -> Step {
+        Step::RecipeRef(RecipeRef {
+            id: id.to_string(),
+            with: BTreeMap::new(),
+        })
+    }
+
+    fn recipe_ref_with(id: &str, with: BTreeMap<String, String>) -> Step {
+        Step::RecipeRef(RecipeRef {
+            id: id.to_string(),
+            with,
+        })
     }
 
     #[test]
@@ -296,9 +323,7 @@ mod tests {
             description: None,
             args: vec![],
             maps: BTreeMap::new(),
-            steps: vec![Step::RecipeRef(serde_yaml::Value::String(
-                "child".to_string(),
-            ))],
+            steps: vec![recipe_ref("child")],
             post_execution: vec![],
         };
 
@@ -318,7 +343,7 @@ mod tests {
             description: None,
             args: vec![],
             maps: BTreeMap::new(),
-            steps: vec![Step::RecipeRef(serde_yaml::Value::String("b".to_string()))],
+            steps: vec![recipe_ref("b")],
             post_execution: vec![],
         };
         let b = Recipe {
@@ -327,12 +352,86 @@ mod tests {
             description: None,
             args: vec![],
             maps: BTreeMap::new(),
-            steps: vec![Step::RecipeRef(serde_yaml::Value::String("a".to_string()))],
+            steps: vec![recipe_ref("a")],
             post_execution: vec![],
         };
         let registry = BTreeMap::from([("a".to_string(), a.clone()), ("b".to_string(), b)]);
 
         let err = expand_recipe_references(&a, &registry).unwrap_err();
         assert!(matches!(err, ComposeError::Cycle(_)));
+    }
+
+    #[test]
+    fn expand_with_excludes_bound_args_from_union() {
+        let child = recipe_named(
+            "child",
+            "child.dart",
+            vec![sample_arg("className"), sample_arg("fieldName")],
+        );
+        let mut with = BTreeMap::new();
+        with.insert("className".to_string(), "{{ featureName }}".to_string());
+        let parent = Recipe {
+            id: "parent".to_string(),
+            name: None,
+            description: None,
+            args: vec![sample_arg("featureName"), sample_arg("fieldName")],
+            maps: BTreeMap::new(),
+            steps: vec![recipe_ref_with("child", with)],
+            post_execution: vec![],
+        };
+        let mut registry = BTreeMap::new();
+        registry.insert("child".to_string(), child);
+
+        let expanded = expand_recipe_references(&parent, &registry).unwrap();
+        let names: Vec<_> = expanded.args.iter().map(|a| a.name.as_str()).collect();
+        assert!(names.contains(&"featureName"));
+        assert!(names.contains(&"fieldName"));
+        assert!(!names.contains(&"className"));
+        assert!(matches!(&expanded.steps[0], Step::Scoped(_)));
+    }
+
+    #[test]
+    fn expand_partial_with_keeps_unbound_child_args() {
+        let child = recipe_named(
+            "child",
+            "child.dart",
+            vec![sample_arg("className"), sample_arg("fieldName")],
+        );
+        let mut with = BTreeMap::new();
+        with.insert("className".to_string(), "{{ featureName }}".to_string());
+        let parent = Recipe {
+            id: "parent".to_string(),
+            name: None,
+            description: None,
+            args: vec![sample_arg("featureName")],
+            maps: BTreeMap::new(),
+            steps: vec![recipe_ref_with("child", with)],
+            post_execution: vec![],
+        };
+        let mut registry = BTreeMap::new();
+        registry.insert("child".to_string(), child);
+
+        let expanded = expand_recipe_references(&parent, &registry).unwrap();
+        assert!(expanded.args.iter().any(|a| a.name == "fieldName"));
+        assert!(!expanded.args.iter().any(|a| a.name == "className"));
+    }
+
+    #[test]
+    fn expand_empty_with_inlines_without_scoped() {
+        let child = recipe_named("child", "child.dart", vec![sample_arg("file")]);
+        let parent = Recipe {
+            id: "parent".to_string(),
+            name: None,
+            description: None,
+            args: vec![],
+            maps: BTreeMap::new(),
+            steps: vec![recipe_ref_with("child", BTreeMap::new())],
+            post_execution: vec![],
+        };
+        let mut registry = BTreeMap::new();
+        registry.insert("child".to_string(), child);
+
+        let expanded = expand_recipe_references(&parent, &registry).unwrap();
+        assert!(matches!(&expanded.steps[0], Step::Edit(_)));
     }
 }

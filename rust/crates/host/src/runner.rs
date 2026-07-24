@@ -10,8 +10,8 @@ use std::path::{Path, PathBuf};
 
 use crate::args;
 use crate::path_sandbox::PathSandbox;
-use crate::registry::{render_recipe_templates, RecipeRegistry};
-use crate::template::{render_template, render_template_file};
+use crate::registry::{render_recipe_templates_with_root, RecipeRegistry};
+use crate::template::render_template_file;
 
 pub struct CollectedChanges {
     pub recipe: Recipe,
@@ -55,7 +55,13 @@ pub fn collect_recipe_changes(
     let effective = args::validate_required_args(recipe, args)?;
     let merged_maps = registry.merged_maps_for(recipe);
     let vars = registry.vars_by_id();
-    let rendered = render_recipe_templates(recipe, &effective, &merged_maps, vars)?;
+    let rendered = render_recipe_templates_with_root(
+        recipe,
+        &effective,
+        &merged_maps,
+        vars,
+        Some(registry.codemod_root()),
+    )?;
 
     let sandbox = PathSandbox::new(registry.workspace_root.clone());
     let codemod_rel = relative_codemod_path(registry);
@@ -104,7 +110,7 @@ pub fn collect_recipe_changes(
             Step::Delete(delete) => {
                 raw_changes.push(collect_delete_change(&sandbox, delete)?);
             }
-            Step::RecipeRef(_) => {}
+            Step::RecipeRef(_) | Step::Scoped(_) => {}
             Step::Unknown(kind, _) => {
                 return Err(format!("Unsupported step kind: {kind}"));
             }
@@ -153,7 +159,8 @@ fn collect_create_change(
     }
 
     let content = if let Some(inline) = &create.template {
-        render_template(inline, args, maps, vars)?
+        // Already rendered under the correct (possibly scoped) arg overlay.
+        inline.clone()
     } else if let Some(file) = &create.template_file {
         render_template_file(file, args, maps, vars, registry.codemod_root())?
     } else {
@@ -288,7 +295,13 @@ pub fn planned_snapshot_paths(
 ) -> Result<Vec<PathBuf>, String> {
     let merged_maps = registry.merged_maps_for(recipe);
     let effective = crate::args::resolve_effective_args(recipe, args);
-    let rendered = render_recipe_templates(recipe, &effective, &merged_maps, registry.vars_by_id())?;
+    let rendered = render_recipe_templates_with_root(
+        recipe,
+        &effective,
+        &merged_maps,
+        registry.vars_by_id(),
+        Some(registry.codemod_root()),
+    )?;
     let sandbox = PathSandbox::new(registry.workspace_root.clone());
     let mut paths = Vec::new();
     for step in &rendered.steps {
@@ -296,7 +309,7 @@ pub fn planned_snapshot_paths(
             Step::Edit(edit) => edit.path.clone(),
             Step::Create(create) => create.path.clone(),
             Step::Delete(delete) => delete.path.clone(),
-            Step::RecipeRef(_) | Step::Unknown(_, _) => continue,
+            Step::RecipeRef(_) | Step::Scoped(_) | Step::Unknown(_, _) => continue,
         };
         paths.push(
             sandbox

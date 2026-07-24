@@ -125,9 +125,10 @@ mod tests {
             description: None,
             args: vec![],
             maps: BTreeMap::new(),
-            steps: vec![Step::RecipeRef(serde_yaml::Value::String(
-                "child".to_string(),
-            ))],
+            steps: vec![Step::RecipeRef(codemod_recipe_yaml::model::RecipeRef {
+                id: "child".to_string(),
+                with: BTreeMap::new(),
+            })],
             post_execution: vec![],
         };
         let expanded = expand_recipe_references(&parent, &registry).unwrap();

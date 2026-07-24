@@ -186,12 +186,46 @@ steps:
   - recipe: patch_app
 ```
 
+Or pass call-site bindings (like function arguments). `with` keys are **child** arg
+names; values are templates rendered in the **parent** context. Partial `with` is
+allowed — unbound child args fall through by name from the parent (and remain on
+the parent's public arg schema).
+
+`with` only binds the **directly referenced** recipe. Deeper nesting is compositional:
+each intermediate recipe owns its children’s args via its own `args` / `with`. Parents
+do not bind grandchildren.
+
+```yaml
+args:
+  - name: featureName
+    required: true
+  - name: fieldName
+    required: true
+
+steps:
+  - recipe:
+      id: create_repository
+      with:
+        className: "{{ featureName }}"
+  - recipe:
+      id: patch_counter
+      with:
+        className: "{{ featureName }}"
+        # fieldName omitted → resolved from parent args
+  - recipe:
+      id: defaults_child
+      with:
+        verbose: "false"   # hardcode
+```
+
 Composition behavior:
 
 - Referenced recipe steps are expanded in order
-- Args are merged by name (first definition wins)
-- Create/edit/delete steps are inlined
+- Args listed in `with` are **not** unioned into the parent schema
+- Unbound child args are merged by name (first definition wins)
+- Create/edit/delete steps are inlined; non-empty `with` wraps them in a scoped overlay
 - Recipe cycles are rejected
+- Unknown `with` keys (not in the child’s declared `args`) are errors (`E_RECIPE_WITH`)
 
 ## Maps
 

@@ -1,0 +1,19 @@
+dslVersion: 2
+id: with_partial_orchestrator
+name: with_partial_orchestrator
+description: |
+  Partial with: remaps className from featureName; suffix falls through from parent.
+
+args:
+  - name: featureName
+    required: true
+    inputKind: symbol
+  - name: suffix
+    required: true
+    inputKind: text
+
+steps:
+  - recipe:
+      id: with_bind_child
+      with:
+        className: "{{ featureName }}"

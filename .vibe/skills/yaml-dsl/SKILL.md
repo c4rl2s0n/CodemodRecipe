@@ -198,13 +198,29 @@ steps:
   - recipe: patch_app
 ```
 
+Call-site bindings (`with`) forward, remap, or hardcode child args. Values are
+templates in the parent context; unbound child args still fall through by name.
+`with` only applies to the directly referenced recipe (each recipe owns its own
+children); unknown keys error with `E_RECIPE_WITH`.
+
+```yaml
+steps:
+  - recipe:
+      id: create_repository
+      with:
+        className: "{{ featureName }}"
+```
+
 Composition behavior (Rust YAML compose):
 - referenced recipe steps are expanded in order
-- args are merged by name (first definition wins)
-- create/edit/delete steps are inlined
+- args listed in `with` are not unioned into the parent
+- unbound child args are merged by name (first definition wins)
+- create/edit/delete steps are inlined (scoped when `with` is non-empty)
 - recipe cycles are rejected
+- unknown `with` keys (not in the child’s declared `args`) are errors
 
 Example: [`test/fixtures/scaffold_project/.codemod/recipes/scaffold_feature.yaml`](../../../test/fixtures/scaffold_project/.codemod/recipes/scaffold_feature.yaml)
+Bindings: [`test/fixtures/jinja_examples/.codemod/recipes/with_bind_orchestrator.yaml`](../../../test/fixtures/jinja_examples/.codemod/recipes/with_bind_orchestrator.yaml)
 
 ## Maps and templates
 

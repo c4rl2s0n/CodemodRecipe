@@ -108,7 +108,8 @@ steps:
   - delete: { path: "...", ifMissing: skip }
 ```
 
-Or compose with `- recipe: other_recipe_id`.
+Or compose with `- recipe: other_recipe_id`, or bind child args via
+`- recipe: { id: other_recipe_id, with: { ... } }`.
 
 ## Testing checklist
 

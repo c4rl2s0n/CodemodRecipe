@@ -132,6 +132,8 @@ Runnable recipes demonstrating each feature:
 | `conditional_create` (fixture) | [`test/fixtures/jinja_examples/.../conditional_create.yaml`](../test/fixtures/jinja_examples/.codemod/recipes/conditional_create.yaml) | Bool conditional in template file |
 | `create_with_layout` | [`test/fixtures/jinja_examples/.../create_with_layout.yaml`](../test/fixtures/jinja_examples/.codemod/recipes/create_with_layout.yaml) | `extends` + `include` |
 | `defaults_orchestrator` | [`test/fixtures/jinja_examples/.../defaults_orchestrator.yaml`](../test/fixtures/jinja_examples/.codemod/recipes/defaults_orchestrator.yaml) | `defaultsTo` via recipe composition |
+| `with_bind_orchestrator` | [`test/fixtures/jinja_examples/.../with_bind_orchestrator.yaml`](../test/fixtures/jinja_examples/.codemod/recipes/with_bind_orchestrator.yaml) | `recipe.with` forward + hardcode |
+| `with_partial_orchestrator` | [`test/fixtures/jinja_examples/.../with_partial_orchestrator.yaml`](../test/fixtures/jinja_examples/.codemod/recipes/with_partial_orchestrator.yaml) | Partial `with` + parent fallthrough |
 
 Integration tests: [`rust/crates/host/tests/jinja_examples_test.rs`](../rust/crates/host/tests/jinja_examples_test.rs).
 

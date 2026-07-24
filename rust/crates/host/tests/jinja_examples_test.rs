@@ -92,9 +92,61 @@ fn jinja_examples_validate_all_recipes() {
         "create_with_layout",
         "defaults_orchestrator",
         "defaults_child",
+        "with_bind_child",
+        "with_bind_orchestrator",
+        "with_partial_orchestrator",
     ] {
         assert!(ids.contains(&id), "missing recipe {id}");
     }
+
+    let _ = std::fs::remove_dir_all(workspace);
+}
+
+#[test]
+fn with_bindings_forward_and_hardcode() {
+    let workspace = setup_jinja_workspace("jinja_with_full");
+    let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+    registry.reload();
+
+    let schema = registry.get("with_bind_orchestrator").expect("schema");
+    let names: Vec<_> = schema.args.iter().map(|a| a.name.as_str()).collect();
+    assert!(names.contains(&"featureName"));
+    assert!(!names.contains(&"className"));
+    assert!(!names.contains(&"suffix"));
+
+    let mut args = BTreeMap::new();
+    args.insert("featureName".to_string(), "FeedList".to_string());
+
+    let response = preview_recipe(&mut registry, "with_bind_orchestrator", args);
+    assert_eq!(response["ok"], true, "{}", response["error"]);
+
+    let content = file_content(&response, "lib/generated/feed_list_Widget.dart");
+    assert!(content.contains("class FeedListWidget {}"));
+
+    let _ = std::fs::remove_dir_all(workspace);
+}
+
+#[test]
+fn with_bindings_partial_fallthrough() {
+    let workspace = setup_jinja_workspace("jinja_with_partial");
+    let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+    registry.reload();
+
+    let schema = registry.get("with_partial_orchestrator").expect("schema");
+    let names: Vec<_> = schema.args.iter().map(|a| a.name.as_str()).collect();
+    assert!(names.contains(&"featureName"));
+    assert!(names.contains(&"suffix"));
+    assert!(!names.contains(&"className"));
+
+    let mut args = BTreeMap::new();
+    args.insert("featureName".to_string(), "Metrics".to_string());
+    args.insert("suffix".to_string(), "View".to_string());
+
+    let response = preview_recipe(&mut registry, "with_partial_orchestrator", args);
+    assert_eq!(response["ok"], true, "{}", response["error"]);
+
+    let content = file_content(&response, "lib/generated/metrics_View.dart");
+    assert!(content.contains("class MetricsView {}"));
 
     let _ = std::fs::remove_dir_all(workspace);
 }

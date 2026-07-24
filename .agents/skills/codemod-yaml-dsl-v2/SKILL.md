@@ -38,7 +38,7 @@ Each `steps[]` entry is a single-key object:
 - `edit` — patch existing files (insert/replace/remove)
 - `create` — new files from template
 - `delete` — remove files
-- `recipe` — compose another recipe by id
+- `recipe` — compose another recipe by id (optional `with:` call-site arg bindings)
 
 ## Minimal insert example
 

@@ -53,34 +53,54 @@ pub fn validate_recipe_with(
     }
 
     for step in &recipe.steps {
-        match step {
-            Step::Edit(edit) => {
-                validate_edit(edit, &mut errors);
-                if let Some(lang) = edit.language.as_deref() {
-                    let lang = lang.trim();
-                    if lang.is_empty() {
-                        errors.push(ValidationError::MissingRequiredField {
-                            op: "edit",
-                            field: "language",
-                        });
-                    } else if !is_known_language(lang) {
-                        errors.push(ValidationError::UnknownLanguage(lang.to_string()));
-                    }
-                }
-            }
-            Step::Create(create) => validate_create(create, &mut errors),
-            Step::Delete(delete) => validate_delete(delete, &mut errors),
-            Step::RecipeRef(_) => {}
-            Step::Unknown(kind, _) => {
-                errors.push(ValidationError::UnsupportedStep(kind.to_string()));
-            }
-        }
+        validate_step(step, &is_known_language, &mut errors);
     }
 
     if errors.is_empty() {
         Ok(())
     } else {
         Err(errors)
+    }
+}
+
+fn validate_step(
+    step: &Step,
+    is_known_language: &impl Fn(&str) -> bool,
+    errors: &mut Vec<ValidationError>,
+) {
+    match step {
+        Step::Edit(edit) => {
+            validate_edit(edit, errors);
+            if let Some(lang) = edit.language.as_deref() {
+                let lang = lang.trim();
+                if lang.is_empty() {
+                    errors.push(ValidationError::MissingRequiredField {
+                        op: "edit",
+                        field: "language",
+                    });
+                } else if !is_known_language(lang) {
+                    errors.push(ValidationError::UnknownLanguage(lang.to_string()));
+                }
+            }
+        }
+        Step::Create(create) => validate_create(create, errors),
+        Step::Delete(delete) => validate_delete(delete, errors),
+        Step::RecipeRef(recipe_ref) => {
+            if recipe_ref.id.trim().is_empty() {
+                errors.push(ValidationError::MissingRequiredField {
+                    op: "recipe",
+                    field: "id",
+                });
+            }
+        }
+        Step::Scoped(scoped) => {
+            for inner in &scoped.steps {
+                validate_step(inner, is_known_language, errors);
+            }
+        }
+        Step::Unknown(kind, _) => {
+            errors.push(ValidationError::UnsupportedStep(kind.to_string()));
+        }
     }
 }
 

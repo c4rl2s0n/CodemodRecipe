@@ -77,12 +77,26 @@ Run a "new feature" workflow end-to-end: create files, wire into existing code, 
 cleanup.
 
 - Steps are `- recipe: <id>` references (plus optional `delete`).
-- Args are the union of child recipe args; pass through to composed recipes.
+- Unbound child args are unioned into the orchestrator; use `with` to forward, remap,
+  or hardcode child args at the call site (bound args are omitted from the public schema).
 
 ```yaml
+args:
+  - name: featureName
+    required: true
+  - name: fieldName
+    required: true
+
 steps:
-  - recipe: create_repository
-  - recipe: patch_counter
+  - recipe:
+      id: create_repository
+      with:
+        className: "{{ featureName }}"
+  - recipe:
+      id: patch_counter
+      with:
+        className: "{{ featureName }}"
+        # fieldName falls through from parent
   - recipe: patch_app
   - delete:
       path: "lib/legacy/stale.dart"
