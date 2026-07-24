@@ -52,8 +52,9 @@ The Rust engine is the target for new development.
 |------|---------|
 | `lib/` | Dart package: analyzer transforms, YAML compiler, VS Code host |
 | `rust/` | Rust workspace: tree-sitter engine, YAML model, stdio host, MCP |
-| `.codemod/recipes/` | Shipped YAML recipes (query DSL v2) |
-| `.codemod/maps/` | Reusable string maps for `{{ arg \| map('id') }}` templates |
+| `.codemod/recipes/` | Shipped YAML recipes (query DSL v2; schema: `steps`) |
+| `.codemod/maps/` | Recommended location for maps (`id` + `map:`) |
+| `.codemod/variables/` | Recommended location for variables (`id` + `values:`) |
 | `vscode_extension/` | VS Code / Codium extension |
 | `test/fixtures/rust_oracle/` | Golden fixtures for the Rust engine |
 | `example/` | Runnable Dart examples |
@@ -109,7 +110,9 @@ Recipes use [MiniJinja](https://docs.rs/minijinja/) (Jinja2-compatible). See
 | `{{ field \| camel_case }}` | camelCase |
 | `{{ field \| snake_case }}` | snake_case |
 | `{{ field \| pascal_case }}` | PascalCase |
-| `{{ key \| map('mapId') }}` | Lookup in `.codemod/maps/` |
+| `{{ key \| map('mapId') }}` | Lookup in workspace/recipe maps |
+| `{{ map.mapId.key }}` | Nested map access |
+| `{{ var.varId.key }}` | Shared variable (`id` + `values:`) |
 | `{% if flag %}…{% endif %}` | Conditional (bool args: `"true"` / `"false"`) |
 
 Legacy `{{$camel field}}` helpers still work but are deprecated.

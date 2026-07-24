@@ -29,11 +29,11 @@ flowchart LR
 ### YAML recipes
 
 1. Create a `.codemod/` directory in your workspace root.
-2. Add YAML recipe files (`.yaml` or `.yml`) under `.codemod/recipes/` (or
-   configure another layout under the codemod root). Each recipe must have an
-   `id:` and `steps:` field (`dslVersion: 2`).
-3. Optionally add maps under `.codemod/maps/` and templates under
-   `.codemod/templates/`.
+2. Add YAML recipe files (`.yaml` or `.yml`) under `.codemod/` (conventionally
+   `.codemod/recipes/`). Each recipe must have `id:` and `steps:` (`dslVersion: 2`).
+   Discovery is schema-based under the codemod root (not by directory name).
+3. Optionally add maps (`id` + `map:`), variables (`id` + `values:`), and templates
+   (e.g. under `.codemod/maps/`, `.codemod/variables/`, `.codemod/templates/`).
 4. Build and install the extension from `vscode_extension/` (`./build.sh`, or
    `npm run compile` then package/install the VSIX).
 5. Open your project in VS Code and configure settings if needed:

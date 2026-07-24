@@ -14,7 +14,7 @@ MCP server `codemod-mcp` returns JSON text. Parse output and branch on `ok`.
 | `bootstrap_project` | Install `.agents/skills/`, `.cursor/rules/`, `.codemod/` scaffolding |
 | `list_recipes` | Discover registered recipe ids |
 | `describe_recipe` | Args + metadata for one recipe |
-| `validate_recipes` | Reload + validate recipes/maps |
+| `validate_recipes` | Reload + validate recipes/maps/variables under `.codemod/` |
 | `preview_recipe` | Dry-run; returns `previewToken` |
 | `apply_recipe` | Atomic apply; requires `previewToken` |
 

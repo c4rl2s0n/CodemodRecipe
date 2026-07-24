@@ -1,6 +1,6 @@
 ---
 name: codemod-yaml-dsl-v2
-description: YAML DSL v2 for codemod-recipe — recipe structure, step types, and tree-sitter edit ops. Read reference.md for templates, maps, composition, and validation.
+description: YAML DSL v2 for codemod-recipe — recipe structure, step types, tree-sitter edit ops, maps, and variables. Read reference.md for templates, maps/variables, composition, and validation.
 ---
 
 # YAML DSL v2
@@ -66,7 +66,7 @@ Each `steps[]` entry is a single-key object:
 
 ## Instructions
 
-1. **Read and follow** [reference.md](reference.md) for templates, maps, args, composition, and validation.
+1. **Read and follow** [reference.md](reference.md) for templates, maps, variables, args, composition, and validation.
 2. Call `validate_recipes` after editing recipe YAML.
 
 ## Related skills
