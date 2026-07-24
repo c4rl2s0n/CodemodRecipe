@@ -11,12 +11,14 @@ MCP server `codemod-mcp` returns JSON text. Parse output and branch on `ok`.
 
 | Tool | Purpose |
 |------|---------|
-| `bootstrap_project` | Install `.agents/skills/`, `.cursor/rules/`, `.codemod/` scaffolding |
+| `bootstrap_project` | Install `.agents/skills/`, `.cursor/rules/`, `.codemod/` scaffolding. Args: optional `force`, `edit_policy` (`recommend`\|`strict`), `companions` (e.g. `["codebase-memory"]`) |
 | `list_recipes` | Discover registered recipe ids |
 | `describe_recipe` | Args + metadata for one recipe |
 | `validate_recipes` | Reload + validate recipes/maps/variables under `.codemod/` |
 | `preview_recipe` | Dry-run; returns `previewToken` |
 | `apply_recipe` | Atomic apply; requires `previewToken` |
+
+Default bootstrap is soft (`edit_policy: "recommend"`). Use `"strict"` for recipe-first edits; add `"companions": ["codebase-memory"]` when that MCP is available.
 
 ## Response envelope
 

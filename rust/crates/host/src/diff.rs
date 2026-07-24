@@ -137,7 +137,9 @@ pub fn build_file_preview_from_change(
 ) -> Result<FilePreview, codemod_recipe_core::patch::PatchError> {
     let path = change.path().to_string();
     match change {
-        FileChange::Patch { source, patches, .. } => {
+        FileChange::Patch {
+            source, patches, ..
+        } => {
             let modified = if patches.is_empty() {
                 source.clone()
             } else {
@@ -154,9 +156,7 @@ pub fn build_file_preview_from_change(
             ))
         }
         FileChange::Create {
-            content,
-            skipped,
-            ..
+            content, skipped, ..
         } => Ok(FilePreview {
             path,
             kind: "create",
@@ -183,7 +183,9 @@ pub fn build_file_preview_from_change(
                 }
             }),
         }),
-        FileChange::Delete { source, skipped, .. } => Ok(FilePreview {
+        FileChange::Delete {
+            source, skipped, ..
+        } => Ok(FilePreview {
             path,
             kind: "delete",
             is_new: false,

@@ -13,6 +13,15 @@ tree-sitter grammars.
 
 ## Quick start
 
+
+Build the Rust MCP server:
+
+```bash
+cd /path/to/codemod_recipe
+cargo build -q --manifest-path rust/Cargo.toml -p codemod_recipe_host --bin codemod_mcp --release
+```
+
+
 Run the Rust MCP server:
 
 ```bash
@@ -88,7 +97,7 @@ All tools return a JSON string. Parse it, then check `ok`.
 
 | Tool | Purpose |
 |------|---------|
-| `bootstrap_project` | Install agent skills, rules, and `.codemod/` scaffolding |
+| `bootstrap_project` | Install agent skills, rules, and `.codemod/` scaffolding (`edit_policy`, optional `companions`) |
 | `list_recipes` | Discover registered recipe ids and argument schemas |
 | `describe_recipe` | Show metadata/args for one recipe |
 | `validate_recipes` | Reload + validate recipes/maps (optional `recipe` id) |
@@ -97,7 +106,7 @@ All tools return a JSON string. Parse it, then check `ok`.
 
 ## End-to-end workflow
 
-0. `bootstrap_project` (once per workspace)
+0. `bootstrap_project` (once per workspace; default soft `edit_policy: "recommend"`, optional `companions`)
 1. `validate_recipes` after recipe edits (or VS Code **Validate Recipes**)
 2. `list_recipes`
 3. `describe_recipe`

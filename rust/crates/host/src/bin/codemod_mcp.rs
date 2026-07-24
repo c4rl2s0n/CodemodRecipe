@@ -142,13 +142,23 @@ fn handle_request(
                 },
                 {
                   "name": "bootstrap_project",
-                  "description": "Install codemod-recipe agent skills (.agents/skills/), rules (.cursor/rules/), and .codemod/ scaffolding into the workspace",
+                  "description": "Install codemod-recipe agent skills (.agents/skills/), rules (.cursor/rules/), and .codemod/ scaffolding into the workspace. Soft edit_policy recommend by default; opt into strict and/or companions.",
                   "inputSchema": {
                     "type": "object",
                     "properties": {
                       "force": {
                         "type": "boolean",
                         "description": "Overwrite existing files (default false)"
+                      },
+                      "edit_policy": {
+                        "type": "string",
+                        "enum": ["recommend", "strict"],
+                        "description": "Rule pack: recommend (default, soft prefer+preview) or strict (recipe-first edit policy)"
+                      },
+                      "companions": {
+                        "type": "array",
+                        "items": { "type": "string", "enum": ["codebase-memory"] },
+                        "description": "Optional companion rule packs (default []). Use [\"codebase-memory\"] when that MCP is configured."
                       }
                     }
                   }
@@ -200,10 +210,33 @@ fn handle_request(
                         .get("force")
                         .and_then(|v| v.as_bool())
                         .unwrap_or(false);
-                    codemod_recipe_host::bootstrap::bootstrap_project(
-                        &registry.workspace_root,
-                        force,
-                    )
+                    let edit_policy_raw = arguments
+                        .get("edit_policy")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("recommend");
+                    let companions_raw: Vec<String> = arguments
+                        .get("companions")
+                        .and_then(|v| v.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| v.as_str().map(String::from))
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                    match (
+                        codemod_recipe_host::bootstrap::EditPolicy::parse(edit_policy_raw),
+                        codemod_recipe_host::bootstrap::parse_companions(&companions_raw),
+                    ) {
+                        (Ok(edit_policy), Ok(companions)) => {
+                            codemod_recipe_host::bootstrap::bootstrap_project(
+                                &registry.workspace_root,
+                                force,
+                                edit_policy,
+                                &companions,
+                            )
+                        }
+                        (Err(e), _) | (_, Err(e)) => json!({ "ok": false, "error": e }),
+                    }
                 }
                 _ => json!({ "ok": false, "error": format!("Unknown tool: {tool}") }),
             };

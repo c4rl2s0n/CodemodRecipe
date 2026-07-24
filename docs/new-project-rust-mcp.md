@@ -21,14 +21,18 @@ After connecting the MCP server, call **`bootstrap_project`** once. It installs:
   - `codemod-tree-sitter-queries` — query language (`reference.md`)
   - `codemod-recipe-authoring` — tree-sitter queries
   - `recipe-generation` — generate YAML recipes from `@` code refs
-- `.cursor/rules/codemod-recipe.mdc` — always-on orientation + codebase-memory hint
+- `.cursor/rules/codemod-recipe.mdc` — always-on orientation (soft by default)
 - `.codemod/recipes/`, `.codemod/maps/`, and `.codemod/variables/` scaffolding
 
 ```json
-{ "force": false }
+{ "force": false, "edit_policy": "recommend", "companions": [] }
 ```
 
-Set `"force": true` to overwrite existing bootstrap files.
+- `edit_policy`: `"recommend"` (default) soft prefer+preview, or `"strict"` recipe-first (in-body direct edit only; discuss before new recipes/templates).
+- `companions`: optional packs such as `["codebase-memory"]` when codebase-memory-mcp is configured (MCP-first navigation rule). Independent of `edit_policy`.
+- Set `"force": true` to overwrite existing bootstrap files when switching packs.
+
+Response echoes the profile: `{ "ok": true, "edit_policy": "...", "companions": [...], "written": [...], "skipped": [...] }`.
 
 ## 3) Create the `.codemod` layout
 

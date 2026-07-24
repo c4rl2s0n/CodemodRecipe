@@ -1,0 +1,24 @@
+---
+description: Navigate and understand the codebase via codebase-memory-mcp first
+alwaysApply: true
+---
+
+<!-- codemod-bootstrap: companions=codebase-memory -->
+
+# Codebase navigation
+
+Use **codebase-memory-mcp** as the primary way to locate, understand, and assess impact in this project.
+
+## Prefer MCP
+
+- Discover symbols, files, and relationships with `search_graph`, `query_graph`, `trace_path`, `get_architecture`, `detect_changes`, `search_code`.
+- Read symbol bodies with `get_code_snippet` (after resolving a qualified name via `search_graph`).
+
+## Do not default to file tools
+
+- Do **not** use workspace `Read`, `Grep`, or `Glob` for discovery when MCP can answer.
+- Escalate to reading or grepping real files only when MCP cannot supply the needed implementation detail (e.g. exact non-indexed text, or depth beyond snippets).
+
+## Fallback
+
+- If the project is not indexed or MCP tools are unavailable, say so and fall back to file tools. Do not invent project structure.

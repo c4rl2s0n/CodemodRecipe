@@ -50,6 +50,14 @@ Skills use thin SKILL.md routers; read `reference.md` in a skill directory when 
 4. `apply_recipe` with same recipe/args + token
 5. Re-preview — expect empty `files` if idempotent
 
+## Bootstrap profiles
+
+`bootstrap_project` always installs skills + scaffolding. Rule packs:
+
+- `edit_policy: "recommend"` (default) — soft prefer recipes + preview
+- `edit_policy: "strict"` — recipe-first; in-body direct edit only; discuss before new recipes/templates
+- `companions: ["codebase-memory"]` — optional MCP-first navigation (independent of edit policy)
+
 ## Related skills
 
 | Skill | Use for |

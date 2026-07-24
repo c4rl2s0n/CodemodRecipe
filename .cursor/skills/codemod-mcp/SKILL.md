@@ -31,7 +31,7 @@ description: Use when applying deterministic Dart AST edits via the Rust codemod
 
 | MCP tool | Purpose |
 |----------|---------|
-| `bootstrap_project` | Install skills/rules and `.codemod/` scaffolding |
+| `bootstrap_project` | Install skills/rules and `.codemod/` scaffolding (`edit_policy`, optional `companions`) |
 | `list_recipes` | Discover registered recipe ids |
 | `describe_recipe` | Args + metadata for one recipe |
 | `validate_recipes` | YAML/schema diagnostics |

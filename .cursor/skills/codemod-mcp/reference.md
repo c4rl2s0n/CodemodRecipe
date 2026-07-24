@@ -24,9 +24,18 @@ cargo run -q --manifest-path rust/Cargo.toml -p codemod_recipe_host --bin codemo
 
 Install codemod-recipe agent guidance into the workspace.
 
-- Args: optional `force` (boolean, default false) — overwrite existing files
-- Writes: `.agents/skills/*`, `.cursor/rules/codemod-recipe.mdc`, `.codemod/recipes/`, `.codemod/maps/`, `.codemod/variables/`
-- Returns: `{ "ok": true, "written": [...], "skipped": [...] }`
+- Args:
+  - optional `force` (boolean, default false) — overwrite existing files
+  - optional `edit_policy` (`"recommend"` | `"strict"`, default `"recommend"`) — soft prefer+preview vs recipe-first mandate
+  - optional `companions` (string array, default `[]`) — e.g. `["codebase-memory"]` when that MCP is configured
+- Writes: `.agents/skills/*`, `.cursor/rules/codemod-recipe.mdc` (selected policy), optional companion rules, `.codemod/recipes/`, `.codemod/maps/`, `.codemod/variables/`
+- Returns: `{ "ok": true, "edit_policy": "...", "companions": [...], "written": [...], "skipped": [...] }`
+
+```json
+{ "force": false, "edit_policy": "recommend", "companions": [] }
+```
+
+Use `"edit_policy": "strict"` for cookin-style recipe-first edits. Add `"companions": ["codebase-memory"]` independently when codebase-memory-mcp is available. Re-bootstrap with `force: true` to switch packs; omitted companions are not deleted.
 
 ### `list_recipes`
 

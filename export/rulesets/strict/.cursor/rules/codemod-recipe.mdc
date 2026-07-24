@@ -1,0 +1,22 @@
+---
+description: Prefer codemod-recipe for edits; direct edit only for in-body logic
+alwaysApply: true
+---
+
+<!-- codemod-bootstrap: edit_policy=strict -->
+
+# Codemod Recipe
+
+Use **codemod-recipe** for structural, scaffolding, multi-file, and AST-boundary changes. Dart is the default language; set `language:` for non-Dart files.
+
+Layout: `.codemod/recipes/`, `.codemod/maps/`, `.codemod/templates/`.
+
+## Edit policy
+
+1. **Default:** apply changes via recipes — `list_recipes` / `describe_recipe` → `preview_recipe` → `apply_recipe` (always preview first; pass `previewToken`).
+2. **Direct edit allowed only** for local logic inside an existing function/method/body (or similarly non-templatable internals) where a recipe or template would not help.
+3. **New template or recipe needed:** propose what would fit (`create_*` / `add_*` / `scaffold_*` / `remove_*`), then ask whether to implement as a one-off or design a reusable recipe/template. Do not add permanent recipes or templates without that discussion.
+
+## Skills
+
+Read under `.agents/skills/` as needed: `codemod-overview`, `codemod-yaml-dsl-v2`, `codemod-recipe-design-patterns`, `codemod-mcp-playbook`, `codemod-languages`, `codemod-tree-sitter-queries`, `codemod-recipe-authoring`, `recipe-generation`. Skills use SKILL.md routers; open `reference.md` for full detail.
