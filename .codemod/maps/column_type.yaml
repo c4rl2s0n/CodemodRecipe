@@ -1,4 +1,4 @@
 id: column_type
-entries:
+map:
   int: int
   String: String

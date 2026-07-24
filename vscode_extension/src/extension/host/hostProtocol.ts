@@ -6,6 +6,7 @@ import type {
   HostCommand,
   PreviewResponse,
   RecipeCatalogResponse,
+  ValidateResponse,
 } from '../../shared';
 
 export type {

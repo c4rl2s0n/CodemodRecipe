@@ -221,10 +221,11 @@ maps:
 
 Example: [`test/fixtures/scaffold_project/.codemod/recipes/patch_counter.yaml`](../../../test/fixtures/scaffold_project/.codemod/recipes/patch_counter.yaml)
 
-## Workspace maps
+## Workspace maps and variables
 
-You can also load shared maps from `.codemod/maps/*.yaml`. These merge with
-recipe-local maps.
+Shared maps (`id` + `map:`) and variables (`id` + `values:`) are discovered by
+schema anywhere under `.codemod/` (dirs like `maps/` / `variables/` are convention).
+Maps merge with recipe-local `maps:`.
 
 ## Template syntax (Jinja2 / MiniJinja)
 
@@ -234,7 +235,9 @@ Supported in paths, queries, inline `create.template`, and `create.templateFile`
 
 - `{{ argName }}`
 - `{{ arg | camel_case }}`, `snake_case`, `pascal_case`, `lower`, `upper`, `screaming_snake`, `kebab_case`
-- `{{ keyArg | map('mapId') }}` or `{{ maps.mapId[keyArg] }}`
+- `{{ keyArg | map('mapId') }}` or `{{ map.mapId[keyArg] }}`
+- `{{ var.varId.key }}` for shared variables (`id` + `values:` YAML under `.codemod/`)
+
 - `{% if includeTests %}…{% endif %}` (bool args as `"true"` / `"false"`)
 
 Legacy `{{$camel x}}` helpers still work via a shim but emit `W_LEGACY_TEMPLATE` — prefer Jinja filters.

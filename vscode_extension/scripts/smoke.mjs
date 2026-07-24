@@ -1,6 +1,6 @@
 // Standalone integration smoke test for the host protocol.
 //
-// Mirrors the spawn + marker-extraction logic in src/host/dartBridge.ts
+// Mirrors the spawn + marker-extraction logic in src/extension/host/hostBridge.ts
 // (without the vscode dependency) so the TypeScript <-> Rust contract can be
 // verified from the command line.
 //

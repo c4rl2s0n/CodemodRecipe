@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import { COMMANDS, DIFF, EXTENSION, VIEWS } from '../constants';
 import { DiffContentProvider } from '../diff/diffContentProvider';
 import { ExtensionConfig } from '../config/extensionConfig';
-import { DartBridge } from '../host/dartBridge';
+import { HostBridge } from '../host/hostBridge';
 import {
   EXTENSION_TO_WEBVIEW,
   WEBVIEW_TO_EXTENSION,
@@ -24,7 +24,7 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
   private readonly state = new RecipeRunnerState();
 
   constructor(
-    private readonly bridge: DartBridge,
+    private readonly bridge: HostBridge,
     private readonly config: ExtensionConfig,
     private readonly diffProvider: DiffContentProvider,
     private readonly workspaceRoot: string,

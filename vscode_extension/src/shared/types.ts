@@ -119,13 +119,7 @@ export type HostCommand =
       args: Record<string, string>;
       previewToken: string;
       selection: SelectionPayload;
-    }
-  | { command: 'generateAstPath'; path: string; offset: number };
-
-
-
-
-
+    };
 
 
 export interface FileSelection {
@@ -159,18 +153,4 @@ export interface PersistedWebviewState {
   activeChangeIndex: number;
   lastPreviewArgsKey: string;
   lastPreviewSuccess: boolean;
-}
-
-export interface AstPathResult {
-  ok: boolean;
-  error?: string;
-  path?: {
-    navigate: Array<{
-      kind?: string;
-      name: string;
-      match?: string;
-    }>;
-    anchor: string;
-    offset: number;
-  };
 }

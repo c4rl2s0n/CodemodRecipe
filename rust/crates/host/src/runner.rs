@@ -54,7 +54,8 @@ pub fn collect_recipe_changes(
 ) -> Result<CollectedChanges, String> {
     let effective = args::validate_required_args(recipe, args)?;
     let merged_maps = registry.merged_maps_for(recipe);
-    let rendered = render_recipe_templates(recipe, &effective, &merged_maps)?;
+    let vars = registry.vars_by_id();
+    let rendered = render_recipe_templates(recipe, &effective, &merged_maps, vars)?;
 
     let sandbox = PathSandbox::new(registry.workspace_root.clone());
     let codemod_rel = relative_codemod_path(registry);
@@ -97,6 +98,7 @@ pub fn collect_recipe_changes(
                     create,
                     &effective,
                     &merged_maps,
+                    vars,
                 )?);
             }
             Step::Delete(delete) => {
@@ -124,6 +126,7 @@ fn collect_create_change(
     create: &CreateStep,
     args: &BTreeMap<String, String>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
+    vars: &BTreeMap<String, BTreeMap<String, String>>,
 ) -> Result<FileChange, String> {
     let relative = create.path.clone();
     let absolute = sandbox
@@ -150,9 +153,9 @@ fn collect_create_change(
     }
 
     let content = if let Some(inline) = &create.template {
-        render_template(inline, args, maps)?
+        render_template(inline, args, maps, vars)?
     } else if let Some(file) = &create.template_file {
-        render_template_file(file, args, maps, registry.codemod_root())?
+        render_template_file(file, args, maps, vars, registry.codemod_root())?
     } else {
         return Err("create step missing template".to_string());
     };
@@ -285,7 +288,7 @@ pub fn planned_snapshot_paths(
 ) -> Result<Vec<PathBuf>, String> {
     let merged_maps = registry.merged_maps_for(recipe);
     let effective = crate::args::resolve_effective_args(recipe, args);
-    let rendered = render_recipe_templates(recipe, &effective, &merged_maps)?;
+    let rendered = render_recipe_templates(recipe, &effective, &merged_maps, registry.vars_by_id())?;
     let sandbox = PathSandbox::new(registry.workspace_root.clone());
     let mut paths = Vec::new();
     for step in &rendered.steps {

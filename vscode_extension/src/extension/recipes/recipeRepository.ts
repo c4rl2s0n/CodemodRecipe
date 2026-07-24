@@ -1,4 +1,4 @@
-import { DartBridge } from '../host/dartBridge';
+import { HostBridge } from '../host/hostBridge';
 import type { RecipeDiagnostic, RecipeSchema } from '../../shared';
 
 export type RecipeLoadResult = {
@@ -11,7 +11,7 @@ export class RecipeRepository {
   private diagnostics: RecipeDiagnostic[] = [];
   private lastError: string | undefined;
 
-  constructor(private readonly bridge: DartBridge) {}
+  constructor(private readonly bridge: HostBridge) {}
 
   getRecipes(): readonly RecipeSchema[] {
     return this.recipes;

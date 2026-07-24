@@ -37,8 +37,8 @@ All templated fields share the same argument namespace (`args` + merged `maps`).
 
 ### Maps
 
-Workspace maps (`.codemod/maps/*.yaml`) and recipe-local `maps:` merge into the
-render context. Lookup via filter:
+Workspace maps (schema: `id` + `map:`, anywhere under `.codemod/`) and recipe-local
+`maps:` merge into the render context under **`map`**. Lookup via filter:
 
 ```jinja
 {{ fieldName | map('field_kind') }}
@@ -47,7 +47,15 @@ render context. Lookup via filter:
 Or nested context:
 
 ```jinja
-{{ maps.field_kind[fieldName] }}
+{{ map.field_kind[fieldName] }}
+```
+
+### Variables
+
+Workspace variables (schema: `id` + `values:`) are exposed under **`var`**:
+
+```jinja
+{{ var.paths.feature_root }}
 ```
 
 ### Conditionals

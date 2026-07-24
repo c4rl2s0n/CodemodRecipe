@@ -6,8 +6,9 @@ exactly which edits to keep before applying.
 
 ## How it works
 
-The extension does not parse Dart. It launches the **Rust `codemod_host`**
-binary (tree-sitter engine) and talks to it over a JSON-over-stdio protocol.
+The extension does not parse source files itself. It launches the **Rust
+`codemod_host`** binary (tree-sitter engine) and talks to it over a
+JSON-over-stdio protocol.
 
 ```mermaid
 flowchart LR
@@ -21,45 +22,39 @@ flowchart LR
 
 **Default:** bundled `codemod_host` from `vscode_extension/bin/` (built via
 `build.sh` from `rust/`). **Dev fallback:** `cargo run -p codemod_recipe_host
---bin codemod_host` when no binary is present. Set `codemodRecipe.useDartRun`
-to use the legacy Dart host for debugging only.
+--bin codemod_host` when no binary is present.
 
 ## Setup
 
-### YAML recipes (recommended)
+### YAML recipes
 
-1. Add `codemod_recipe` as a dependency to your project.
-2. Create a `.codemod/` directory in your workspace root.
-3. Add YAML recipe files (`.yaml` or `.yml`) in `.codemod/` or any subdirectory.
-   Each recipe must have an `id:` and `steps:` field.
-4. Add template files (`.template`) for use with `templateFile:` in create steps.
-   Templates can be anywhere in the `.codemod/` tree.
-5. Build and install the extension from `vscode_extension/` (`npm run compile`,
-   then package/install the VSIX).
-6. Open your project in VS Code and configure settings if needed:
+1. Create a `.codemod/` directory in your workspace root.
+2. Add YAML recipe files (`.yaml` or `.yml`) under `.codemod/recipes/` (or
+   configure another layout under the codemod root). Each recipe must have an
+   `id:` and `steps:` field (`dslVersion: 2`).
+3. Optionally add maps under `.codemod/maps/` and templates under
+   `.codemod/templates/`.
+4. Build and install the extension from `vscode_extension/` (`./build.sh`, or
+   `npm run compile` then package/install the VSIX).
+5. Open your project in VS Code and configure settings if needed:
 
 ```jsonc
 // .vscode/settings.json
 {
   "codemodRecipe.codemodRoot": ".codemod",
-  "codemodRecipe.dartPath": "dart", // absolute path if dart is not on PATH
-  "codemodRecipe.emptyConstructorStyle": "named",
   "codemodRecipe.autoPreviewDebounceMs": 400,
   "codemodRecipe.previewSnippetLines": 5
 }
 ```
 
-The extension uses a host process that speaks the codemod host protocol over stdio.
+All YAML and `.template` files in the codemod root are automatically discovered
+and reloaded when changed; recipe load errors (e.g. duplicate ids) appear in the
+Recipes tab.
 
-- **Default (production):** bundled `codemod_host` binary built from the Rust workspace under `rust/`.
-- **Dev fallback:** if no bundled binary is present, the extension can spawn `cargo run ... --bin codemod_host`.
-All YAML and .template files in the codemod root are automatically discovered and reloaded
-when changed; recipe load errors (e.g. duplicate ids) appear in the Recipes tab.
+### Custom codemod root
 
-### Advanced: Custom Codemod Root
-
-To use a different directory than `.codemod`, set `codemodRecipe.codemodRoot` in settings
-or use **Codemod Recipe: Set Codemod Root Directory** command.
+To use a different directory than `.codemod`, set `codemodRecipe.codemodRoot` in
+settings or use **Codemod Recipe: Set Codemod Root Directory**.
 
 ## Usage
 
@@ -81,61 +76,26 @@ or use **Codemod Recipe: Set Codemod Root Directory** command.
 You can also run **Codemod Recipe: Run From Cursor Context** (`Cmd+Alt+R` on
 macOS, `Ctrl+Alt+R` elsewhere). Recipes whose args declare context keys are
 shown in a picker and opened with values derived from the active editor.
-Recipe metadata is cached in-memory and refreshed automatically on startup,
-manual refresh, and staleness checks.
-
-## Recipe UI metadata
-
-Recipes can provide optional argument metadata to improve the extension UX:
-
-```dart
-final addMethodRecipe = CodemodRecipe(
-  name: 'add_method',
-  args: [
-    CodemodArg.required(
-      'file',
-      inputKind: CodemodArgInputKind.file,
-      contextKey: CodemodContextKey.file,
-    ),
-    CodemodArg.required(
-      'class',
-      inputKind: CodemodArgInputKind.symbol,
-      contextKey: CodemodContextKey.dartClass,
-    ),
-    CodemodArg.required(
-      'method',
-      inputKind: CodemodArgInputKind.symbol,
-      options: ['reset', 'dispose'],
-      allowCustomValue: true,
-      contextKey: CodemodContextKey.word,
-    ),
-  ],
-  operations: [
-    // ...
-  ],
-);
-```
-
-For many independent recipes, keep each recipe in its own Dart file, export a
-single `allRecipes` list from a small registry file, and launch the extension
-host with `CodemodHost.fromList(allRecipes)`.
 
 ## Protocol reference
 
-Commands accepted by the host (one JSON object per process on stdin):
+Commands accepted by the host (one JSON object per line on stdin):
 
 ```jsonc
 { "command": "list" }
 
-{ "command": "preview", "recipe": "add_method",
-  "args": { "file": "lib/foo.dart", "class": "Foo", "method": "bar" },
+{ "command": "validate" }
+
+{ "command": "preview", "recipe": "add_log_line",
+  "args": { "file": "lib/foo.dart", "className": "Foo", "methodName": "bar" },
   "snippetLines": 5 }
 
-{ "command": "diff", "recipe": "add_method", "path": "lib/foo.dart",
-  "args": { "file": "lib/foo.dart", "class": "Foo", "method": "bar" } }
+{ "command": "diff", "recipe": "add_log_line", "path": "lib/foo.dart",
+  "args": { "file": "lib/foo.dart", "className": "Foo", "methodName": "bar" } }
 
-{ "command": "apply", "recipe": "add_method",
-  "args": { "file": "lib/foo.dart", "class": "Foo", "method": "bar" },
+{ "command": "apply", "recipe": "add_log_line",
+  "args": { "file": "lib/foo.dart", "className": "Foo", "methodName": "bar" },
+  "previewToken": "<from preview>",
   "selection": { "files": { "lib/foo.dart": { "include": true, "patches": [0] } } } }
 ```
 
@@ -151,22 +111,20 @@ npm run compile          # build Vue webview + type-check extension to dist/
 npm run watch            # rebuild extension host on change
 npm run watch:webview    # rebuild webview UI (media/recipeView.js) on change
 npm run test:webview     # unit tests for webview arg/selection helpers
+./build.sh               # release Rust host + package VSIX
 ```
 
 The sidebar UI lives in [`src/webview/`](src/webview/) (Vue 3 + Vite) and compiles
 into [`media/recipeView.js`](media/recipeView.js) and [`media/recipeView.css`](media/recipeView.css).
 Shared message types and constants used by both the extension host and webview are in
 [`src/shared/`](src/shared/). Run `npm run build:webview` (or full `npm run compile`) before `F5`
-if you change webview sources. Pressing **F5** with the `vscode_extension` folder open runs the
-`npm: compile` pre-launch task automatically (see [`.vscode/launch.json`](.vscode/launch.json)).
+if you change webview sources.
 
 The files in `media/` (`recipeView.html`, `recipeView.js`, `recipeView.css`) are
-**built artifacts**: edit sources under `src/webview/`, then compile. They are loaded
-as static extension resources at runtime (not generated when you open the view).
+**built artifacts**: edit sources under `src/webview/`, then compile.
 
 ```bash
-# Integration smoke test (requires Dart):
-# First ensure you have codemod_recipe as a dependency with bin/codemod_host.dart
+# Integration smoke test against the Rust host (requires cargo):
 node scripts/smoke.mjs
 ```
 

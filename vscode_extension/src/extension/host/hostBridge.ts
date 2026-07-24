@@ -5,7 +5,7 @@ import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
 import * as vscode from 'vscode';
 import { ExtensionConfig } from '../config/extensionConfig';
 import {
-  buildHostSpawnArgs,
+  buildHostBinaryArgs,
   hostSpawnConfigFromExtension,
   hostSpawnConfigSignature,
   type HostSpawnConfig,
@@ -21,7 +21,7 @@ import {
   ValidateResponse,
   parseHostResponse,
 } from './hostProtocol';
-import type { RecipeSchema, SelectionPayload, AstPathResult } from '../../shared';
+import type { RecipeSchema, SelectionPayload } from '../../shared';
 import type { RecipeLoadResult } from '../recipes/recipeRepository';
 
 type PendingRequest = {
@@ -33,7 +33,7 @@ type PendingRequest = {
   reject: (error: Error) => void;
 };
 
-export class DartBridge {
+export class HostBridge {
   private static readonly perfPrefix = '[codemod-recipe/perf]';
   private static readonly requestTimeoutMs = 30000;
 
@@ -56,8 +56,7 @@ export class DartBridge {
   private getBinaryPath(): string {
     const platform = os.platform();
     const binDir = path.join(this.extensionUri.fsPath, 'bin');
-    
-    // Map platform to executable name
+
     switch (platform) {
       case 'win32':
         return path.join(binDir, 'codemod_host.exe');
@@ -68,40 +67,26 @@ export class DartBridge {
     }
   }
 
-  /**
-   * Returns true if the bundled binary exists and we should use it.
-   */
   private hasBundledBinary(): boolean {
     try {
-      const binaryPath = this.getBinaryPath();
-      return fs.existsSync(binaryPath);
+      return fs.existsSync(this.getBinaryPath());
     } catch {
       return false;
     }
   }
 
   /**
-   * Returns the command and arguments to spawn the host process.
+   * Returns the command and arguments to spawn the Rust host process.
+   * Prefer the bundled binary; fall back to `cargo run` for development.
    */
   private getSpawnCommand(): { command: string; args: string[] } {
-    if (this.config.useDartRun) {
-      // Use 'dart run' mode for debugging
-      return {
-        command: this.config.dartPath,
-        args: this.buildSpawnArgs(),
-      };
-    }
-    
-    // Use bundled binary (default)
     if (this.hasBundledBinary()) {
       return {
         command: this.getBinaryPath(),
-        args: this.buildBinaryArgs(),
+        args: buildHostBinaryArgs(this.currentHostSpawnConfig()),
       };
     }
 
-    // Fallback: run the Rust host via cargo (dev mode).
-    // This avoids requiring a prebuilt binary during development.
     const hostConfig = this.currentHostSpawnConfig();
     const manifestPath = path.join(this.workspaceRoot, 'rust', 'Cargo.toml');
     return {
@@ -116,31 +101,9 @@ export class DartBridge {
         '--bin',
         'codemod_host',
         '--',
-        '--stdio-server',
-        '--workspace-root',
-        hostConfig.workspaceRoot,
-        '--codemod-root',
-        hostConfig.codemodRoot,
-        '--empty-constructor-style',
-        hostConfig.emptyConstructorStyle,
+        ...buildHostBinaryArgs(hostConfig),
       ],
     };
-  }
-
-  /**
-   * Builds arguments for the bundled binary (without 'run' and entrypoint).
-   */
-  private buildBinaryArgs(): string[] {
-    const hostConfig = this.currentHostSpawnConfig();
-    return [
-      '--stdio-server',
-      '--workspace-root',
-      hostConfig.workspaceRoot,
-      '--codemod-root',
-      hostConfig.codemodRoot,
-      '--empty-constructor-style',
-      hostConfig.emptyConstructorStyle,
-    ];
   }
 
   async listRecipes(): Promise<RecipeLoadResult> {
@@ -173,15 +136,6 @@ export class DartBridge {
       throw new Error(response.error ?? `Failed to describe recipe: ${recipe}`);
     }
     return response.recipe;
-  }
-
-  async generateAstPath(filePath: string, offset: number): Promise<AstPathResult> {
-    const response = await this.send<AstPathResult>({
-      command: 'generateAstPath',
-      path: filePath,
-      offset: offset,
-    });
-    return response;
   }
 
   preview(
@@ -238,9 +192,7 @@ export class DartBridge {
   }
 
   private currentHostSpawnConfig(): HostSpawnConfig {
-    return hostSpawnConfigFromExtension(
-      this.config
-    );
+    return hostSpawnConfigFromExtension(this.config);
   }
 
   private ensureHostConfigCurrent(): void {
@@ -249,10 +201,6 @@ export class DartBridge {
       this.stopPersistentHost();
     }
     this.hostConfigSignature = signature;
-  }
-
-  private buildSpawnArgs(): string[] {
-    return buildHostSpawnArgs(this.currentHostSpawnConfig());
   }
 
   private async send<T>(command: HostCommand): Promise<T> {
@@ -281,12 +229,12 @@ export class DartBridge {
               const [request] = this.pending.splice(index, 1);
               request.reject(
                 new Error(
-                  `Timed out waiting for ${command.command} response (${DartBridge.requestTimeoutMs}ms)`
+                  `Timed out waiting for ${command.command} response (${HostBridge.requestTimeoutMs}ms)`
                 )
               );
               this.stopPersistentHost();
             }
-          }, DartBridge.requestTimeoutMs);
+          }, HostBridge.requestTimeoutMs);
           const wrappedResolve = (value: unknown) => resolve(value as T);
           const wrappedReject = (err: Error) => reject(err);
           this.pending.push({
@@ -310,7 +258,7 @@ export class DartBridge {
     }
     this.stdoutBuffer = '';
     this.stderrBuffer = '';
-    
+
     const { command, args } = this.getSpawnCommand();
     return new Promise<ChildProcessWithoutNullStreams>((resolve, reject) => {
       const child = spawn(command, args, {
@@ -350,12 +298,12 @@ export class DartBridge {
         if (!startupResolved) {
           reject(
             new Error(
-              `Persistent host failed to start within ${DartBridge.requestTimeoutMs}ms`
+              `Persistent host failed to start within ${HostBridge.requestTimeoutMs}ms`
             )
           );
           this.stopPersistentHost();
         }
-      }, DartBridge.requestTimeoutMs);
+      }, HostBridge.requestTimeoutMs);
 
       child.once('spawn', () => {
         this.child = child;
@@ -468,7 +416,7 @@ export class DartBridge {
       return;
     }
     console.info(
-      `${DartBridge.perfPrefix} command=${metrics.command} elapsedMs=${metrics.elapsedMs.toFixed(
+      `${HostBridge.perfPrefix} command=${metrics.command} elapsedMs=${metrics.elapsedMs.toFixed(
         1
       )} inputBytes=${metrics.inputBytes} outputBytes=${metrics.outputBytes}`
     );
@@ -478,6 +426,6 @@ export class DartBridge {
     if (!this.config.performanceLogging) {
       return;
     }
-    console.warn(`${DartBridge.perfPrefix} ${message}`);
+    console.warn(`${HostBridge.perfPrefix} ${message}`);
   }
 }

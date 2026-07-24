@@ -1,125 +1,258 @@
 use crate::protocol::{DiagnosticSource, RecipeDiagnostic};
 use serde_yaml::Value;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
 
-pub struct MapLoadResult {
+pub struct AssetLoadResult {
     pub maps_by_id: BTreeMap<String, BTreeMap<String, String>>,
+    pub vars_by_id: BTreeMap<String, BTreeMap<String, String>>,
+    /// Absolute paths of YAML files classified as recipes.
+    pub recipe_paths: Vec<PathBuf>,
     pub diagnostics: Vec<RecipeDiagnostic>,
 }
 
-pub fn load_maps(workspace_root: &Path, maps_directory: &Path) -> MapLoadResult {
-    let mut maps_by_id: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
-    let mut diagnostics = Vec::new();
-    let mut id_sources: BTreeMap<String, Vec<DiagnosticSource>> = BTreeMap::new();
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum AssetKind {
+    Recipe,
+    Map,
+    Variables,
+}
 
-    if !maps_directory.is_dir() {
-        return MapLoadResult {
+/// Recursively scan `codemod_root` for YAML and classify by schema (not by directory).
+pub fn load_codemod_assets(workspace_root: &Path, codemod_root: &Path) -> AssetLoadResult {
+    let mut maps_by_id: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
+    let mut vars_by_id: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
+    let mut recipe_paths = Vec::new();
+    let mut diagnostics = Vec::new();
+    let mut map_id_sources: BTreeMap<String, Vec<DiagnosticSource>> = BTreeMap::new();
+    let mut var_id_sources: BTreeMap<String, Vec<DiagnosticSource>> = BTreeMap::new();
+
+    if !codemod_root.is_dir() {
+        return AssetLoadResult {
             maps_by_id,
+            vars_by_id,
+            recipe_paths,
             diagnostics,
         };
     }
 
     let mut files = Vec::new();
-    collect_yaml_files(maps_directory, &mut files);
+    collect_yaml_files(codemod_root, &mut files);
 
     for path in files {
         let relative = relative_path(workspace_root, &path);
-        match load_map_file(&path) {
-            Ok((id, entries)) => {
-                id_sources
-                    .entry(id.clone())
-                    .or_default()
-                    .push(DiagnosticSource {
+        let text = match std::fs::read_to_string(&path) {
+            Ok(t) => t,
+            Err(e) => {
+                diagnostics.push(RecipeDiagnostic::simple(
+                    "error",
+                    "E_ASSET_PARSE",
+                    format!("Failed to read YAML file: {e}"),
+                    vec![DiagnosticSource {
                         file: relative,
                         line: None,
                         column: None,
-                    });
-                maps_by_id.insert(id, entries);
+                    }],
+                ));
+                continue;
+            }
+        };
+
+        // Detect duplicate keys in map:/values: blocks from source text before YAML
+        // parsers collapse them.
+        let mut duplicate_keys = false;
+        for field in ["map", "values"] {
+            if let Some(dup) = find_duplicate_keys_in_block(&text, field) {
+                diagnostics.push(schema_error(
+                    &format!("Duplicate key \"{dup}\" in \"{field}\""),
+                    &relative,
+                ));
+                duplicate_keys = true;
+            }
+        }
+        if duplicate_keys {
+            continue;
+        }
+
+        let doc: Value = match serde_yaml::from_str(&text) {
+            Ok(v) => v,
+            Err(e) => {
+                diagnostics.push(RecipeDiagnostic::simple(
+                    "error",
+                    "E_ASSET_PARSE",
+                    format!("Failed to parse YAML: {e}"),
+                    vec![DiagnosticSource {
+                        file: relative,
+                        line: None,
+                        column: None,
+                    }],
+                ));
+                continue;
+            }
+        };
+
+        let Value::Mapping(root) = &doc else {
+            continue;
+        };
+
+        match classify_root(root, &relative) {
+            Ok(None) => continue,
+            Ok(Some(AssetKind::Recipe)) => {
+                recipe_paths.push(path);
+            }
+            Ok(Some(AssetKind::Map)) => match parse_keyed_string_map(&text, root, "map", &relative)
+            {
+                Ok((id, entries)) => {
+                    map_id_sources
+                        .entry(id.clone())
+                        .or_default()
+                        .push(DiagnosticSource {
+                            file: relative,
+                            line: None,
+                            column: None,
+                        });
+                    maps_by_id.insert(id, entries);
+                }
+                Err(diagnostic) => diagnostics.push(diagnostic),
+            },
+            Ok(Some(AssetKind::Variables)) => {
+                match parse_keyed_string_map(&text, root, "values", &relative) {
+                    Ok((id, entries)) => {
+                        var_id_sources
+                            .entry(id.clone())
+                            .or_default()
+                            .push(DiagnosticSource {
+                                file: relative,
+                                line: None,
+                                column: None,
+                            });
+                        vars_by_id.insert(id, entries);
+                    }
+                    Err(diagnostic) => diagnostics.push(diagnostic),
+                }
             }
             Err(diagnostic) => diagnostics.push(diagnostic),
         }
     }
 
-    let rejected: Vec<String> = id_sources
-        .iter()
-        .filter(|(_, sources)| sources.len() > 1)
-        .map(|(id, _)| id.clone())
-        .collect();
+    reject_duplicate_ids(
+        &mut maps_by_id,
+        &map_id_sources,
+        "E_DUPLICATE_MAP_ID",
+        "Duplicate map id",
+        &mut diagnostics,
+    );
+    reject_duplicate_ids(
+        &mut vars_by_id,
+        &var_id_sources,
+        "E_DUPLICATE_VAR_ID",
+        "Duplicate variables id",
+        &mut diagnostics,
+    );
 
-    for id in &rejected {
-        maps_by_id.remove(id);
-        if let Some(sources) = id_sources.get(id) {
-            diagnostics.push(RecipeDiagnostic::simple(
-                "error",
-                "E_DUPLICATE_MAP_ID",
-                format!("Duplicate map id: {id}"),
-                sources.clone(),
-            ));
-        }
-    }
-
-    MapLoadResult {
+    AssetLoadResult {
         maps_by_id,
+        vars_by_id,
+        recipe_paths,
         diagnostics,
     }
 }
 
-fn load_map_file(path: &Path) -> Result<(String, BTreeMap<String, String>), RecipeDiagnostic> {
-    let relative = path_to_string(path);
-    let text = std::fs::read_to_string(path).map_err(|e| RecipeDiagnostic::simple(
-        "error",
-        "E_MAP_PARSE",
-        format!("Failed to read map file: {e}"),
-        vec![DiagnosticSource {
-            file: relative.clone(),
-            line: None,
-            column: None,
-        }],
-    ))?;
+fn classify_root(
+    root: &serde_yaml::Mapping,
+    relative: &str,
+) -> Result<Option<AssetKind>, RecipeDiagnostic> {
+    let has_steps = root.contains_key("steps");
+    let has_map = root.contains_key("map");
+    let has_values = root.contains_key("values");
+    let source = vec![DiagnosticSource {
+        file: relative.to_string(),
+        line: None,
+        column: None,
+    }];
 
-    let doc: Value = serde_yaml::from_str(&text).map_err(|e| RecipeDiagnostic::simple(
-        "error",
-        "E_MAP_PARSE",
-        format!("Failed to parse map YAML: {e}"),
-        vec![DiagnosticSource {
-            file: relative.clone(),
-            line: None,
-            column: None,
-        }],
-    ))?;
+    if has_steps && (has_map || has_values) {
+        return Err(RecipeDiagnostic::simple(
+            "error",
+            "E_AMBIGUOUS_ASSET",
+            "YAML asset cannot combine steps with map or values".to_string(),
+            source,
+        ));
+    }
+    if has_map && has_values {
+        return Err(RecipeDiagnostic::simple(
+            "error",
+            "E_AMBIGUOUS_ASSET",
+            "YAML asset cannot define both map and values".to_string(),
+            source,
+        ));
+    }
+    if has_steps {
+        return Ok(Some(AssetKind::Recipe));
+    }
+    if has_map {
+        return Ok(Some(AssetKind::Map));
+    }
+    if has_values {
+        return Ok(Some(AssetKind::Variables));
+    }
+    Ok(None)
+}
 
-    let Value::Mapping(root) = doc else {
-        return Err(map_schema_error("Map file root must be a map", &relative));
-    };
-
+fn parse_keyed_string_map(
+    text: &str,
+    root: &serde_yaml::Mapping,
+    field: &str,
+    relative: &str,
+) -> Result<(String, BTreeMap<String, String>), RecipeDiagnostic> {
     let id = root
         .get("id")
         .and_then(Value::as_str)
         .filter(|s| !s.is_empty())
-        .ok_or_else(|| map_schema_error("Map file missing required \"id\"", &relative))?
+        .ok_or_else(|| {
+            schema_error(
+                &format!("Asset with \"{field}\" missing required \"id\""),
+                relative,
+            )
+        })?
         .to_string();
 
-    let entries_value = root
-        .get("entries")
-        .ok_or_else(|| map_schema_error(&format!("Map \"{id}\" missing required \"entries\" map"), &relative))?;
+    if let Some(dup) = find_duplicate_keys_in_block(text, field) {
+        return Err(schema_error(
+            &format!("Duplicate key \"{dup}\" in \"{field}\" of \"{id}\""),
+            relative,
+        ));
+    }
 
-    let Value::Mapping(entries_map) = entries_value else {
-        return Err(map_schema_error(
-            &format!("Map \"{id}\" missing required \"entries\" map"),
-            &relative,
+    let payload = root.get(field).ok_or_else(|| {
+        schema_error(
+            &format!("Asset \"{id}\" missing required \"{field}\" map"),
+            relative,
+        )
+    })?;
+
+    let Value::Mapping(entries_map) = payload else {
+        return Err(schema_error(
+            &format!("Asset \"{id}\" field \"{field}\" must be a map"),
+            relative,
         ));
     };
 
     let mut entries = BTreeMap::new();
     for (key, value) in entries_map {
         let key = key.as_str().unwrap_or_default().to_string();
+        if key.is_empty() {
+            continue;
+        }
         let value = match value {
             Value::String(s) => s.clone(),
             Value::Number(n) => n.to_string(),
             Value::Bool(b) => b.to_string(),
             Value::Null => String::new(),
-            other => serde_yaml::to_string(other).unwrap_or_default(),
+            other => serde_yaml::to_string(other)
+                .unwrap_or_default()
+                .trim()
+                .to_string(),
         };
         entries.insert(key, value);
     }
@@ -127,10 +260,95 @@ fn load_map_file(path: &Path) -> Result<(String, BTreeMap<String, String>), Reci
     Ok((id, entries))
 }
 
-fn map_schema_error(message: &str, file: &str) -> RecipeDiagnostic {
+/// Detect duplicate sibling keys under a top-level `map:` / `values:` block via indentation.
+fn find_duplicate_keys_in_block(text: &str, field: &str) -> Option<String> {
+    let header = format!("{field}:");
+    let mut block_indent: Option<usize> = None;
+    let mut seen: BTreeSet<String> = BTreeSet::new();
+    let mut in_block = false;
+    let mut header_indent = 0usize;
+
+    for line in text.lines() {
+        if !in_block {
+            let trimmed = line.trim_start();
+            if trimmed == header || trimmed.starts_with(&header) {
+                in_block = true;
+                header_indent = leading_spaces(line);
+            }
+            continue;
+        }
+
+        if line.trim().is_empty() || line.trim_start().starts_with('#') {
+            continue;
+        }
+        let indent = leading_spaces(line);
+        if indent <= header_indent {
+            break;
+        }
+        let key_indent = *block_indent.get_or_insert(indent);
+        if indent != key_indent {
+            if indent < key_indent {
+                break;
+            }
+            continue;
+        }
+        let Some(key) = key_from_yaml_line(line.trim_start()) else {
+            continue;
+        };
+        if !seen.insert(key.clone()) {
+            return Some(key);
+        }
+    }
+    None
+}
+
+fn key_from_yaml_line(trimmed: &str) -> Option<String> {
+    if trimmed.starts_with('-') {
+        return None;
+    }
+    let without_comment = trimmed.split('#').next()?.trim();
+    let (key_part, _) = without_comment.split_once(':')?;
+    let key = key_part.trim().trim_matches('"').trim_matches('\'').to_string();
+    if key.is_empty() {
+        return None;
+    }
+    Some(key)
+}
+
+fn leading_spaces(line: &str) -> usize {
+    line.chars().take_while(|c| *c == ' ').count()
+}
+
+fn reject_duplicate_ids(
+    by_id: &mut BTreeMap<String, BTreeMap<String, String>>,
+    id_sources: &BTreeMap<String, Vec<DiagnosticSource>>,
+    code: &'static str,
+    message_prefix: &str,
+    diagnostics: &mut Vec<RecipeDiagnostic>,
+) {
+    let rejected: Vec<String> = id_sources
+        .iter()
+        .filter(|(_, sources)| sources.len() > 1)
+        .map(|(id, _)| id.clone())
+        .collect();
+
+    for id in &rejected {
+        by_id.remove(id);
+        if let Some(sources) = id_sources.get(id) {
+            diagnostics.push(RecipeDiagnostic::simple(
+                "error",
+                code,
+                format!("{message_prefix}: {id}"),
+                sources.clone(),
+            ));
+        }
+    }
+}
+
+fn schema_error(message: &str, file: &str) -> RecipeDiagnostic {
     RecipeDiagnostic::simple(
         "error",
-        "E_MAP_SCHEMA",
+        "E_ASSET_SCHEMA",
         message.to_string(),
         vec![DiagnosticSource {
             file: file.to_string(),
@@ -250,7 +468,11 @@ fn push_map_id_warning(
     diagnostics: &mut Vec<RecipeDiagnostic>,
 ) {
     if diagnostics.iter().any(|d| {
-        d.code == "W_MAP_ID_NOT_FOUND" && d.message.contains(map_id) && d.sources.first().is_some_and(|s| s.file == file_path)
+        d.code == "W_MAP_ID_NOT_FOUND"
+            && d.message.contains(map_id)
+            && d.sources
+                .first()
+                .is_some_and(|s| s.file == file_path)
     }) {
         return;
     }
@@ -288,17 +510,17 @@ fn is_yaml(path: &Path) -> bool {
 }
 
 fn relative_path(workspace_root: &Path, absolute: &Path) -> String {
-    let root = workspace_root.canonicalize().unwrap_or_else(|_| workspace_root.to_path_buf());
-    let file = absolute.canonicalize().unwrap_or_else(|_| absolute.to_path_buf());
+    let root = workspace_root
+        .canonicalize()
+        .unwrap_or_else(|_| workspace_root.to_path_buf());
+    let file = absolute
+        .canonicalize()
+        .unwrap_or_else(|_| absolute.to_path_buf());
     if let Ok(rel) = file.strip_prefix(&root) {
         rel.to_string_lossy().to_string()
     } else {
         absolute.to_string_lossy().to_string()
     }
-}
-
-fn path_to_string(path: &Path) -> String {
-    path.to_string_lossy().to_string()
 }
 
 #[cfg(test)]
@@ -310,29 +532,76 @@ mod tests {
     }
 
     #[test]
-    fn loads_maps_by_id() {
+    fn loads_maps_by_id_with_map_key() {
         let workspace = temp_workspace("map_registry_ok");
         let maps_dir = workspace.join(".codemod/maps");
         std::fs::create_dir_all(&maps_dir).unwrap();
         std::fs::write(
             maps_dir.join("column_type.yaml"),
             r#"id: columnType
-entries:
+map:
   int: intColumn
   String: textColumn
 "#,
         )
         .unwrap();
 
-        let result = load_maps(&workspace, &maps_dir);
-        assert!(result
-            .diagnostics
-            .iter()
-            .all(|d| d.severity != "error"));
+        let result = load_codemod_assets(&workspace, &workspace.join(".codemod"));
+        assert!(result.diagnostics.iter().all(|d| d.severity != "error"));
         assert_eq!(
             result.maps_by_id["columnType"]["int"].as_str(),
             "intColumn"
         );
+
+        let _ = std::fs::remove_dir_all(workspace);
+    }
+
+    #[test]
+    fn loads_variables_and_maps_from_any_directory() {
+        let workspace = temp_workspace("asset_any_dir");
+        let root = workspace.join(".codemod");
+        std::fs::create_dir_all(root.join("custom")).unwrap();
+        std::fs::write(
+            root.join("custom/paths.yaml"),
+            r#"id: paths
+values:
+  feature_root: lib/features
+"#,
+        )
+        .unwrap();
+        std::fs::write(
+            root.join("custom/types.yaml"),
+            r#"id: paths
+map:
+  x: int
+"#,
+        )
+        .unwrap();
+
+        let result = load_codemod_assets(&workspace, &root);
+        assert!(result.diagnostics.iter().all(|d| d.severity != "error"));
+        assert_eq!(result.vars_by_id["paths"]["feature_root"], "lib/features");
+        assert_eq!(result.maps_by_id["paths"]["x"], "int");
+
+        let _ = std::fs::remove_dir_all(workspace);
+    }
+
+    #[test]
+    fn entries_key_is_not_loaded_as_map() {
+        let workspace = temp_workspace("map_entries_ignored");
+        let maps_dir = workspace.join(".codemod/maps");
+        std::fs::create_dir_all(&maps_dir).unwrap();
+        std::fs::write(
+            maps_dir.join("legacy.yaml"),
+            r#"id: columnType
+entries:
+  int: intColumn
+"#,
+        )
+        .unwrap();
+
+        let result = load_codemod_assets(&workspace, &workspace.join(".codemod"));
+        assert!(!result.maps_by_id.contains_key("columnType"));
 
         let _ = std::fs::remove_dir_all(workspace);
     }
@@ -344,21 +613,48 @@ entries:
         std::fs::create_dir_all(&maps_dir).unwrap();
         std::fs::write(
             maps_dir.join("a.yaml"),
-            "id: columnType\nentries:\n  int: intColumn\n",
+            "id: columnType\nmap:\n  int: intColumn\n",
         )
         .unwrap();
         std::fs::write(
             maps_dir.join("b.yaml"),
-            "id: columnType\nentries:\n  String: textColumn\n",
+            "id: columnType\nmap:\n  String: textColumn\n",
         )
         .unwrap();
 
-        let result = load_maps(&workspace, &maps_dir);
+        let result = load_codemod_assets(&workspace, &workspace.join(".codemod"));
         assert!(result
             .diagnostics
             .iter()
             .any(|d| d.code == "E_DUPLICATE_MAP_ID"));
         assert!(!result.maps_by_id.contains_key("columnType"));
+
+        let _ = std::fs::remove_dir_all(workspace);
+    }
+
+    #[test]
+    fn reports_duplicate_keys_within_values_block() {
+        let workspace = temp_workspace("var_dup_keys");
+        let _ = std::fs::remove_dir_all(&workspace);
+        let dir = workspace.join(".codemod/variables");
+        std::fs::create_dir_all(&dir).unwrap();
+        let contents = "id: paths\nvalues:\n  feature_root: a\n  feature_root: b\n";
+        std::fs::write(dir.join("paths.yaml"), contents).unwrap();
+        assert_eq!(
+            find_duplicate_keys_in_block(contents, "values").as_deref(),
+            Some("feature_root")
+        );
+
+        let result = load_codemod_assets(&workspace, &workspace.join(".codemod"));
+        assert!(
+            result
+                .diagnostics
+                .iter()
+                .any(|d| d.code == "E_ASSET_SCHEMA" && d.message.contains("Duplicate key")),
+            "diagnostics: {:?}",
+            result.diagnostics
+        );
+        assert!(!result.vars_by_id.contains_key("paths"));
 
         let _ = std::fs::remove_dir_all(workspace);
     }
@@ -378,5 +674,11 @@ entries:
         let merged = merge_maps(&global, &inline);
         assert_eq!(merged["columnType"]["int"], "intColumn");
         assert_eq!(merged["columnType"]["bool"], "boolColumn");
+    }
+
+    #[test]
+    fn detects_duplicate_keys_helper() {
+        let text = "id: paths\nvalues:\n  a: 1\n  a: 2\n";
+        assert_eq!(find_duplicate_keys_in_block(text, "values").as_deref(), Some("a"));
     }
 }

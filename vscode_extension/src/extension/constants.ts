@@ -8,7 +8,6 @@ export const COMMANDS = {
   runRecipe: 'codemodRecipe.runRecipe',
   runFromCursorContext: 'codemodRecipe.runFromCursorContext',
   configureCodemodRoot: 'codemodRecipe.configureHost',
-  generateAstPath: 'codemodRecipe.generateAstPath',
   validateRecipes: 'codemodRecipe.validateRecipes',
 } as const;
 
@@ -20,9 +19,6 @@ export const CONFIG = {
   section: 'codemodRecipe',
   workspaceRoot: 'workspaceRoot',
   codemodRoot: 'codemodRoot',
-  dartPath: 'dartPath',
-  useDartRun: 'useDartRun',
-  emptyConstructorStyle: 'emptyConstructorStyle',
   performanceLogging: 'performanceLogging',
   autoPreviewDebounceMs: 'autoPreviewDebounceMs',
   previewSnippetLines: 'previewSnippetLines',
@@ -38,13 +34,6 @@ export const HOST_PROTOCOL = {
   resultBegin: '__CODEMOD_RESULT_BEGIN__',
   resultEnd: '__CODEMOD_RESULT_END__',
 } as const;
-
-export const DEFAULT_HOST_CANDIDATES = [
-  'bin/codemod_host.dart',
-  'tool/codemod_host.dart',
-  'tool/codemods/codemod_host.dart',
-  'example/vscode_host_example/bin/codemod_host.dart',
-] as const;
 
 export const WEBVIEW_ASSETS = {
   html: ['media', 'recipeView.html'],

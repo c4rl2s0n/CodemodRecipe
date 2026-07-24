@@ -31,6 +31,7 @@ pub fn bootstrap_project(workspace_root: &Path, force: bool) -> serde_json::Valu
 
     let _ = std::fs::create_dir_all(workspace_root.join(".codemod/recipes"));
     let _ = std::fs::create_dir_all(workspace_root.join(".codemod/maps"));
+    let _ = std::fs::create_dir_all(workspace_root.join(".codemod/variables"));
 
     if errors.is_empty() {
         json!({

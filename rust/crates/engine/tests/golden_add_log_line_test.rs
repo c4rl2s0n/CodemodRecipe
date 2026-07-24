@@ -27,7 +27,7 @@ fn golden_add_log_line_parameterized() {
     args.insert("className".to_string(), "Settings".to_string());
     args.insert("methodName".to_string(), "update".to_string());
 
-    let rendered = render_recipe_templates(&recipe, &args, &BTreeMap::new()).expect("render");
+    let rendered = render_recipe_templates(&recipe, &args, &BTreeMap::new(), &BTreeMap::new()).expect("render");
     let codemod = repo_root.join(".codemod");
     let ctx = QueryContext {
         recipe_file: Some(recipe_path.as_path()),
@@ -72,7 +72,7 @@ fn matches_insert_log_line_for_settings_update() {
                     recipe_file: Some(insert_path.as_path()),
                     codemod_root: &codemod,
                 },
-                &render_recipe_templates(&insert, &args, &BTreeMap::new()).expect("render"),
+                &render_recipe_templates(&insert, &args, &BTreeMap::new(), &BTreeMap::new()).expect("render"),
                 args["file"].as_str(),
                 &before,
             )
@@ -87,7 +87,7 @@ fn matches_insert_log_line_for_settings_update() {
                     recipe_file: Some(add_path.as_path()),
                     codemod_root: &codemod,
                 },
-                &render_recipe_templates(&add, &args, &BTreeMap::new()).expect("render"),
+                &render_recipe_templates(&add, &args, &BTreeMap::new(), &BTreeMap::new()).expect("render"),
                 args["file"].as_str(),
                 &before,
             )

@@ -12,14 +12,17 @@ This guide shows how to use `codemod_recipe` in a brand-new project with the Rus
 
 After connecting the MCP server, call **`bootstrap_project`** once. It installs:
 
-- `.agents/skills/` — five modular skills:
+- `.agents/skills/` — modular skills:
   - `codemod-overview` — orientation and layout
   - `codemod-yaml-dsl-v2` — YAML syntax (`reference.md` for templates/maps)
   - `codemod-recipe-design-patterns` — create vs modify taxonomy (`reference.md`)
   - `codemod-mcp-playbook` — MCP tool reference
+  - `codemod-languages` — multi-language support (`reference.md`)
+  - `codemod-tree-sitter-queries` — query language (`reference.md`)
   - `codemod-recipe-authoring` — tree-sitter queries
+  - `recipe-generation` — generate YAML recipes from `@` code refs
 - `.cursor/rules/codemod-recipe.mdc` — always-on orientation + codebase-memory hint
-- `.codemod/recipes/` and `.codemod/maps/` scaffolding
+- `.codemod/recipes/`, `.codemod/maps/`, and `.codemod/variables/` scaffolding
 
 ```json
 { "force": false }
@@ -33,13 +36,17 @@ In your target workspace:
 
 ```text
 .codemod/
-  recipes/
-  maps/        # optional
+  recipes/     # recommended for recipes (*.yaml with steps)
+  maps/        # recommended for maps (id + map:)
+  variables/   # recommended for variables (id + values:)
   templates/   # optional (for create.templateFile)
 ```
 
-- Put registered recipes under `.codemod/recipes/*.yaml`.
-- Put shared maps under `.codemod/maps/*.yaml` when needed.
+Discovery is schema-based under `.codemod/` (directory names are convention only).
+
+- Put recipes in `.codemod/recipes/*.yaml` (or elsewhere under `.codemod/` if they have `steps`).
+- Put shared maps as YAML with `id` + `map:` (e.g. `.codemod/maps/*.yaml`).
+- Put shared variables as YAML with `id` + `values:` (e.g. `.codemod/variables/*.yaml`).
 
 ## 4) Add your first YAML v2 recipe
 

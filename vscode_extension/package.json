@@ -60,11 +60,6 @@
         "command": "codemodRecipe.validateRecipes",
         "title": "Codemod Recipe: Validate Recipes",
         "icon": "$(check-all)"
-      },
-      {
-        "command": "codemodRecipe.generateAstPath",
-        "title": "Codemod Recipe: Generate AST Path at Cursor",
-        "icon": "$(symbol-keyword)"
       }
     ],
     "keybindings": [
@@ -73,12 +68,6 @@
         "key": "ctrl+alt+r",
         "mac": "cmd+alt+r",
         "when": "editorTextFocus"
-      },
-      {
-        "command": "codemodRecipe.generateAstPath",
-        "key": "ctrl+alt+a",
-        "mac": "cmd+alt+a",
-        "when": "editorTextFocus && resourceLangId == dart"
       }
     ],
     "menus": {
@@ -93,11 +82,6 @@
         {
           "command": "codemodRecipe.runFromCursorContext",
           "group": "navigation"
-        },
-        {
-          "command": "codemodRecipe.generateAstPath",
-          "group": "navigation",
-          "when": "resourceLangId == dart"
         }
       ]
     },
@@ -113,22 +97,6 @@
           "type": "string",
           "default": ".codemod",
           "description": "Workspace-relative path to the codemod root directory containing YAML recipes, maps, and .template files."
-        },
-        "codemodRecipe.dartPath": {
-          "type": "string",
-          "default": "dart",
-          "description": "Path to the Dart executable used to run the host (only used when useDartRun is enabled)."
-        },
-        "codemodRecipe.useDartRun": {
-          "type": "boolean",
-          "default": false,
-          "description": "Use the legacy Dart host via 'dart run' instead of the bundled Rust codemod_host binary (debugging only)."
-        },
-        "codemodRecipe.emptyConstructorStyle": {
-          "type": "string",
-          "enum": ["named", "positional"],
-          "default": "named",
-          "description": "Constructor parameter style for empty constructors in generated code."
         },
         "codemodRecipe.performanceLogging": {
           "type": "boolean",

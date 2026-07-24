@@ -25,7 +25,7 @@ cargo run -q --manifest-path rust/Cargo.toml -p codemod_recipe_host --bin codemo
 Install codemod-recipe agent guidance into the workspace.
 
 - Args: optional `force` (boolean, default false) — overwrite existing files
-- Writes: `.agents/skills/*`, `.cursor/rules/codemod-recipe.mdc`, `.codemod/recipes/`, `.codemod/maps/`
+- Writes: `.agents/skills/*`, `.cursor/rules/codemod-recipe.mdc`, `.codemod/recipes/`, `.codemod/maps/`, `.codemod/variables/`
 - Returns: `{ "ok": true, "written": [...], "skipped": [...] }`
 
 ### `list_recipes`
@@ -44,7 +44,7 @@ Show metadata for a registered recipe.
 
 ### `validate_recipes`
 
-Reload and validate `.codemod/recipes` and `.codemod/maps`.
+Reload and validate YAML assets under `.codemod/` (recipes, maps, variables — schema-based).
 
 - Args: optional `recipe` (string) — validate one recipe by id; omit to validate all
 - Returns: `ok` + `diagnostics[]` (may include `hint`, `relatedRecipe`)

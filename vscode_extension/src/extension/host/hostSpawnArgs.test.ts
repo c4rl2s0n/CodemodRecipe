@@ -1,24 +1,31 @@
 import { describe, expect, it } from 'vitest';
-import { buildHostSpawnArgs } from './hostSpawnArgs';
+import { buildHostBinaryArgs, hostSpawnConfigSignature } from './hostSpawnArgs';
 
-describe('buildHostSpawnArgs', () => {
-  it('passes HostConfig flags to the generic stdio host', () => {
+describe('hostSpawnArgs', () => {
+  it('builds Rust host binary argv', () => {
     expect(
-      buildHostSpawnArgs({
-        workspaceRoot: '/workspace',
+      buildHostBinaryArgs({
+        workspaceRoot: '/ws',
         codemodRoot: '.codemod',
-        emptyConstructorStyle: 'positional',
       })
     ).toEqual([
-      'run',
-      'bin/codemod_host.dart',
       '--stdio-server',
       '--workspace-root',
-      '/workspace',
+      '/ws',
       '--codemod-root',
       '.codemod',
-      '--empty-constructor-style',
-      'positional',
     ]);
+  });
+
+  it('signatures change when spawn config changes', () => {
+    const a = hostSpawnConfigSignature({
+      workspaceRoot: '/ws',
+      codemodRoot: '.codemod',
+    });
+    const b = hostSpawnConfigSignature({
+      workspaceRoot: '/ws',
+      codemodRoot: 'custom',
+    });
+    expect(a).not.toEqual(b);
   });
 });

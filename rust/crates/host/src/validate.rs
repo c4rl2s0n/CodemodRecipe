@@ -12,7 +12,7 @@ use crate::template::convert_legacy_syntax;
 const JINJA_KEYWORDS: &[&str] = &[
     "if", "else", "elif", "endif", "for", "endfor", "block", "endblock", "extends", "include",
     "with", "endwith", "macro", "endmacro", "call", "endcall", "filter", "endfilter", "set",
-    "raw", "endraw", "true", "false", "none", "True", "False", "None", "maps", "LBRACE",
+    "raw", "endraw", "true", "false", "none", "True", "False", "None", "map", "var", "LBRACE",
 ];
 
 /// Reload workspace recipes/maps and run the full validation pipeline.

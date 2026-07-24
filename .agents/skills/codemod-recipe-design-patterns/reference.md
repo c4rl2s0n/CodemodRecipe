@@ -10,7 +10,7 @@ Think in three layers:
 
 1. **Atomic recipes** — one coherent change (create one file, add one field, remove one member).
 2. **Orchestrator recipes** — compose atomics into a feature-level workflow.
-3. **Shared assets** — templates and maps reused across recipes.
+3. **Shared assets** — templates, maps, and variables reused across recipes.
 
 ```mermaid
 flowchart TD
@@ -27,6 +27,7 @@ flowchart TD
   scaffold --> patch
   createRepo --> templates[".codemod/templates/"]
   patch --> maps[".codemod/maps/"]
+  patch --> vars[".codemod/variables/"]
 ```
 
 **One recipe = one coherent change**, composed upward for features. For YAML syntax see
@@ -101,6 +102,9 @@ Symmetric counterpart to `add_*`.
 Group recipes by **concept** (bloc, repository, routing), not by file type. Adopt
 incrementally — flat `recipes/` is fine for small projects.
 
+Dirs under `.codemod/` are **convention only**; the host discovers recipes (`steps`),
+maps (`id` + `map:`), and variables (`id` + `values:`) by schema anywhere under `.codemod/`.
+
 ```text
 .codemod/
   recipes/
@@ -113,8 +117,10 @@ incrementally — flat `recipes/` is fine for small projects.
     shared/
       add_class_field.yaml          # cross-cutting atomic edits
   maps/
-    dart_types.yaml                 # fieldName -> Dart type
+    dart_types.yaml                 # fieldName -> Dart type (id + map:)
     bloc_event_kinds.yaml
+  variables/
+    paths.yaml                      # shared constants (id + values:)
   templates/
     bloc/
       bloc.dart.template

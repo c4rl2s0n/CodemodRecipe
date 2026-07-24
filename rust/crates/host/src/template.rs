@@ -17,17 +17,18 @@ pub fn render_string(
     template: &str,
     args: &BTreeMap<String, String>,
 ) -> Result<String, String> {
-    render_template(template, args, &BTreeMap::new())
+    render_template(template, args, &BTreeMap::new(), &BTreeMap::new())
 }
 
 pub fn render_template(
     template: &str,
     args: &BTreeMap<String, String>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
+    vars: &BTreeMap<String, BTreeMap<String, String>>,
 ) -> Result<String, String> {
     let converted = convert_legacy_syntax(template);
     let env = build_environment(maps)?;
-    let ctx = build_context(args, maps);
+    let ctx = build_context(args, maps, vars);
     env.render_str(&converted, ctx).map_err(|e| e.to_string())
 }
 
@@ -36,6 +37,7 @@ pub fn render_template_file(
     template_name: &str,
     args: &BTreeMap<String, String>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
+    vars: &BTreeMap<String, BTreeMap<String, String>>,
     templates_root: &Path,
 ) -> Result<String, String> {
     let root = templates_root.to_path_buf();
@@ -53,7 +55,7 @@ pub fn render_template_file(
     let tmpl = env
         .get_template(template_name)
         .map_err(|e| format!("Template {template_name}: {e}"))?;
-    let ctx = build_context(args, maps);
+    let ctx = build_context(args, maps, vars);
     tmpl.render(ctx).map_err(|e| e.to_string())
 }
 
@@ -94,12 +96,14 @@ fn build_environment(
 fn build_context(
     args: &BTreeMap<String, String>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
+    vars: &BTreeMap<String, BTreeMap<String, String>>,
 ) -> BTreeMap<String, Value> {
     let mut ctx: BTreeMap<String, Value> = BTreeMap::new();
     for (key, value) in args {
         ctx.insert(key.clone(), coerce_value(value));
     }
-    ctx.insert("maps".to_string(), Value::from_serialize(maps));
+    ctx.insert("map".to_string(), Value::from_serialize(maps));
+    ctx.insert("var".to_string(), Value::from_serialize(vars));
     ctx
 }
 
@@ -233,7 +237,7 @@ mod tests {
         args: &BTreeMap<String, String>,
         maps: &BTreeMap<String, BTreeMap<String, String>>,
     ) -> String {
-        render_template(template, args, maps).expect("render")
+        render_template(template, args, maps, &BTreeMap::new()).expect("render")
     }
 
     #[test]
@@ -372,10 +376,34 @@ mod tests {
             "templates/feature.template",
             &args,
             &BTreeMap::new(),
+            &BTreeMap::new(),
             &root,
         )
         .expect("render");
         assert!(rendered.contains("// Generated for FeedList"));
         assert!(rendered.contains("class FeedListWidget {}"));
+    }
+
+    #[test]
+    fn renders_map_and_var_namespaces() {
+        let args = BTreeMap::new();
+        let mut maps = BTreeMap::new();
+        let mut map_entries = BTreeMap::new();
+        map_entries.insert("tickCount".to_string(), "int".to_string());
+        maps.insert("field_kind".to_string(), map_entries);
+        let mut vars = BTreeMap::new();
+        let mut var_entries = BTreeMap::new();
+        var_entries.insert("feature_root".to_string(), "lib/features".to_string());
+        vars.insert("paths".to_string(), var_entries);
+        assert_eq!(
+            render_template(
+                "{{ map.field_kind.tickCount }} {{ var.paths.feature_root }}",
+                &args,
+                &maps,
+                &vars
+            )
+            .unwrap(),
+            "int lib/features"
+        );
     }
 }

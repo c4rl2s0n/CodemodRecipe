@@ -28,7 +28,7 @@ steps:
         // screaming={{ name | screaming_snake }}
         // kebab={{ name | kebab_case }}
         // mapFilter={{ fieldKey | map('field_kind') }}
-        // mapContext={{ maps.field_kind[fieldKey] }}
+        // mapContext={{ map.field_kind[fieldKey] }}
         class {{ name | pascal_case }}Casing {}
       ifExists: fail
       format: false

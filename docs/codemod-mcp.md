@@ -30,10 +30,13 @@ In the target workspace:
 
 ```text
 .codemod/
-  recipes/   # required for registered recipe flow
-  maps/      # optional
-  templates/ # optional (create.templateFile)
+  recipes/    # recommended for recipes (*.yaml with steps)
+  maps/       # recommended for maps (id + map:)
+  variables/  # recommended for variables (id + values:)
+  templates/  # optional (create.templateFile)
 ```
+
+Discovery is schema-based under `.codemod/` (dirs are convention only).
 
 You can also use inline-only workflows with `inlineRecipe`.
 

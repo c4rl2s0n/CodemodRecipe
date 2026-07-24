@@ -1,4 +1,4 @@
-use crate::map_registry::{load_maps, merge_maps, warn_on_missing_map_ids};
+use crate::map_registry::{load_codemod_assets, merge_maps, warn_on_missing_map_ids};
 use crate::protocol::{DiagnosticSource, RecipeArg, RecipeDiagnostic, RecipeSchema};
 use crate::template::render_template;
 use codemod_recipe_engine::engine::parse_recipe_yaml;
@@ -13,6 +13,7 @@ pub struct RecipeRegistry {
     codemod_root: PathBuf,
     pub language_config: codemod_recipe_engine::RegistryConfig,
     maps_by_id: BTreeMap<String, BTreeMap<String, String>>,
+    vars_by_id: BTreeMap<String, BTreeMap<String, String>>,
     recipes_by_id: BTreeMap<String, (PathBuf, RecipeSchema)>,
     recipes_ast: BTreeMap<String, Recipe>,
     diagnostics: Vec<RecipeDiagnostic>,
@@ -25,6 +26,7 @@ impl RecipeRegistry {
             codemod_root,
             language_config: codemod_recipe_engine::RegistryConfig::default(),
             maps_by_id: BTreeMap::new(),
+            vars_by_id: BTreeMap::new(),
             recipes_by_id: BTreeMap::new(),
             recipes_ast: BTreeMap::new(),
             diagnostics: Vec::new(),
@@ -35,34 +37,22 @@ impl RecipeRegistry {
         self.recipes_by_id.clear();
         self.recipes_ast.clear();
         self.maps_by_id.clear();
+        self.vars_by_id.clear();
         self.diagnostics.clear();
 
-        let maps_dir = self.codemod_root.join("maps");
-        let map_result = load_maps(&self.workspace_root, &maps_dir);
-        self.maps_by_id = map_result.maps_by_id;
-        self.diagnostics.extend(map_result.diagnostics);
-
-        let recipes_dir = self.codemod_root.join("recipes");
-        let Ok(entries) = std::fs::read_dir(recipes_dir) else {
-            return;
-        };
+        let assets = load_codemod_assets(&self.workspace_root, &self.codemod_root);
+        self.maps_by_id = assets.maps_by_id;
+        self.vars_by_id = assets.vars_by_id;
+        self.diagnostics.extend(assets.diagnostics);
 
         let mut seen_ids: BTreeMap<String, PathBuf> = BTreeMap::new();
         let mut parsed_recipes: Vec<(PathBuf, String, Recipe)> = Vec::new();
 
-        for entry in entries.flatten() {
-            let path = entry.path();
-            if path.extension().is_none_or(|ext| ext != "yaml" && ext != "yml") {
-                continue;
-            }
+        for path in assets.recipe_paths {
             let relative = relative_path(&self.workspace_root, &path);
             let Ok(text) = std::fs::read_to_string(&path) else {
                 continue;
             };
-
-            if looks_like_map_file(&text) {
-                continue;
-            }
 
             let Ok(recipe) = parse_recipe_yaml(&text) else {
                 self.diagnostics.push(RecipeDiagnostic::simple(
@@ -102,7 +92,13 @@ impl RecipeRegistry {
             .collect();
 
         for (path, relative, recipe) in &parsed_recipes {
-            collect_map_warnings(recipe, relative, &self.merged_maps_for(recipe), &mut self.diagnostics);
+            collect_reserved_arg_errors(recipe, relative, &mut self.diagnostics);
+            collect_map_warnings(
+                recipe,
+                relative,
+                &self.merged_maps_for(recipe),
+                &mut self.diagnostics,
+            );
             collect_schema_errors(recipe, relative, &mut self.diagnostics);
             collect_recipe_ref_errors(recipe, relative, &known_ids, &mut self.diagnostics);
 
@@ -148,6 +144,10 @@ impl RecipeRegistry {
         self.maps_by_id.len()
     }
 
+    pub fn vars_by_id(&self) -> &BTreeMap<String, BTreeMap<String, String>> {
+        &self.vars_by_id
+    }
+
     pub fn get(&self, id: &str) -> Option<RecipeSchema> {
         self.recipes_by_id.get(id).map(|(_, s)| s.clone())
     }
@@ -185,14 +185,28 @@ impl RecipeRegistry {
     }
 }
 
-fn looks_like_map_file(text: &str) -> bool {
-    let Ok(value) = serde_yaml::from_str::<serde_yaml::Value>(text) else {
-        return false;
-    };
-    let serde_yaml::Value::Mapping(map) = value else {
-        return false;
-    };
-    map.contains_key("entries") && !map.contains_key("steps")
+fn collect_reserved_arg_errors(
+    recipe: &Recipe,
+    file_path: &str,
+    diagnostics: &mut Vec<RecipeDiagnostic>,
+) {
+    for arg in &recipe.args {
+        if arg.name == "map" || arg.name == "var" {
+            diagnostics.push(RecipeDiagnostic::simple(
+                "error",
+                "E_RESERVED_ARG",
+                format!(
+                    "Argument name '{}' shadows reserved template namespace",
+                    arg.name
+                ),
+                vec![DiagnosticSource {
+                    file: file_path.to_string(),
+                    line: None,
+                    column: None,
+                }],
+            ));
+        }
+    }
 }
 
 fn collect_recipe_ref_errors(
@@ -342,8 +356,9 @@ pub fn render_recipe_templates(
     recipe: &Recipe,
     args: &BTreeMap<String, String>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
+    vars: &BTreeMap<String, BTreeMap<String, String>>,
 ) -> Result<Recipe, String> {
-    let render = |text: &str| render_template(text, args, maps);
+    let render = |text: &str| render_template(text, args, maps, vars);
     let mut out = recipe.clone();
     for step in &mut out.steps {
         match step {
@@ -557,6 +572,34 @@ steps:
 
         let (_, diagnostics) = registry.list();
         assert!(diagnostics.iter().any(|d| d.code == "E_SCHEMA"));
+
+        let _ = std::fs::remove_dir_all(workspace);
+    }
+
+    #[test]
+    fn loads_recipe_outside_recipes_directory() {
+        let workspace =
+            std::env::temp_dir().join(format!("codemod_registry_anydir_{}", std::process::id()));
+        let nested = workspace.join(".codemod/features/foo");
+        std::fs::create_dir_all(&nested).unwrap();
+        std::fs::write(
+            nested.join("nested_recipe.yaml"),
+            r#"dslVersion: 2
+id: nested_recipe
+args:
+  - name: file
+    required: true
+steps:
+  - delete:
+      path: "{{file}}"
+      ifMissing: skip
+"#,
+        )
+        .unwrap();
+
+        let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+        registry.reload();
+        assert!(registry.get("nested_recipe").is_some());
 
         let _ = std::fs::remove_dir_all(workspace);
     }

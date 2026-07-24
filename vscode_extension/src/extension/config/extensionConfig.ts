@@ -7,47 +7,22 @@ export class ExtensionConfig {
     const configuredRoot = vscode.workspace
       .getConfiguration(CONFIG.section)
       .get<string>(CONFIG.workspaceRoot) || '';
-    
+
     // If workspaceRoot is configured, use it (must be absolute path)
     if (configuredRoot && path.isAbsolute(configuredRoot)) {
       return configuredRoot;
     }
-    
+
     // Otherwise, use the currently open VSCode workspace folder
     return vscode.workspace.workspaceFolders?.[0]?.uri?.fsPath || '.';
   }
 
-  
   get codemodRoot(): string {
     return (
       vscode.workspace
         .getConfiguration(CONFIG.section)
         .get<string>(CONFIG.codemodRoot) ?? '.codemod'
     );
-  }
-
-  get dartPath(): string {
-    return (
-      vscode.workspace
-        .getConfiguration(CONFIG.section)
-        .get<string>(CONFIG.dartPath) || 'dart'
-    );
-  }
-
-  get useDartRun(): boolean {
-    return (
-      vscode.workspace
-        .getConfiguration(CONFIG.section)
-        .get<boolean>(CONFIG.useDartRun) ?? false
-    );
-  }
-
-  get emptyConstructorStyle(): 'named' | 'positional' {
-    const value =
-      vscode.workspace
-        .getConfiguration(CONFIG.section)
-        .get<string>(CONFIG.emptyConstructorStyle) ?? 'named';
-    return value === 'positional' ? 'positional' : 'named';
   }
 
   get performanceLogging(): boolean {
