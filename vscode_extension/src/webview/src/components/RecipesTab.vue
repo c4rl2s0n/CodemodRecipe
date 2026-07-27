@@ -106,7 +106,8 @@ function countRecipes(node: RecipeTreeNode): number {
 }
 
 function isCollapsed(key: string): boolean {
-  return collapsedGroups.value[key] === true;
+  // Groups start collapsed; only expand when the user toggles them open.
+  return collapsedGroups.value[key] !== false;
 }
 
 function toggleGroup(key: string) {
