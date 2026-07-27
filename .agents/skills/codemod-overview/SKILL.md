@@ -7,7 +7,7 @@ description: Orientation for codemod-recipe — what it is, when to use MCP tool
 
 ## What it is
 
-**codemod-recipe** applies deterministic, AST-safe edits using declarative YAML recipes (dslVersion 2). The Rust MCP server exposes preview/apply tools for agents.
+**codemod-recipe** applies deterministic, AST-safe edits using declarative YAML recipes . The Rust MCP server exposes preview/apply tools for agents.
 
 **Languages:** Dart is the default, with lazy-loaded support for Rust, Java, Kotlin, SQL/SQLite, and 300+ grammars via tree-sitter-language-pack. See skill `codemod-languages`.
 
@@ -56,7 +56,7 @@ Skills use thin SKILL.md routers; read `reference.md` in a skill directory when 
 |-------|---------|
 | `codemod-languages` | `language:` field, SQL dialects, grammar loading |
 | `codemod-recipe-design-patterns` | create vs modify taxonomy |
-| `codemod-yaml-dsl-v2` | recipe YAML syntax |
+| `codemod-yaml-dsl` | recipe YAML syntax |
 | `codemod-mcp-playbook` | MCP tool reference |
 | `codemod-tree-sitter-queries` | query syntax, captures, predicates |
 | `codemod-recipe-authoring` | Dart query patterns (pack grammar) |

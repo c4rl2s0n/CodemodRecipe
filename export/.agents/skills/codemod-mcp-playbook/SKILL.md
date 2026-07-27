@@ -1,6 +1,6 @@
 ---
 name: codemod-mcp-playbook
-description: MCP tool reference and agent workflow for codemod-recipe preview/apply with YAML v2 recipes and inlineRecipe.
+description: MCP tool reference and agent workflow for codemod-recipe preview/apply with YAML recipes and inlineRecipe.
 ---
 
 # Codemod MCP Playbook
@@ -29,7 +29,7 @@ Default bootstrap is soft (`edit_policy: "recommend"`). Use `"strict"` for recip
 
 ## preview_recipe
 
-Provide one of `recipe` (id) or `inlineRecipe` (v2 object).
+Provide one of `recipe` (id) or `inlineRecipe` (full recipe object).
 
 Optional: `args` (string map), `snippetLines` (number).
 
@@ -45,7 +45,7 @@ Optional: `selection` for partial patch apply.
 
 Optional host flags: `--sql-default` (default `sqlite` for `.sql` files). See skill `codemod-languages`.
 
-## inlineRecipe shape (v2)
+## inlineRecipe shape
 
 ```json
 {
@@ -93,5 +93,5 @@ Optional host flags: `--sql-default` (default `sqlite` for `.sql` files). See sk
 | Skill | Use for |
 |-------|---------|
 | `codemod-languages` | `language:` field, SQL dialects, grammar loading |
-| `codemod-yaml-dsl-v2` | inlineRecipe step shape |
+| `codemod-yaml-dsl` | inlineRecipe step shape |
 | `codemod-recipe-authoring` | tree-sitter queries |

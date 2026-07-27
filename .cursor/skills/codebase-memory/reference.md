@@ -95,17 +95,14 @@ Pass as `project=` on tool calls when results are ambiguous. Discover via `list_
 Use `project="home-ikusa-workspace-Android-codemod_recipe"` when needed.
 
 ```
-search_graph(query="recipe compiler")
-→ lib/src/yaml/recipe_compiler.dart
-
 search_graph(query="recipe registry")
-→ lib/src/yaml/recipe_registry.dart
+→ rust/crates/host/src/registry.rs
 
-trace_path(function_name="CodemodHost", direction="both")
-→ VS Code host protocol (Dart ↔ TypeScript bridge)
+trace_path(function_name="handle_command", direction="both")
+→ Host protocol (Rust ↔ TypeScript bridge)
 
 get_architecture(aspects=["packages", "clusters"])
-→ module seams across Dart core, VS Code extension, Vue webview
+→ Rust engine, VS Code extension, Vue webview
 ```
 
 ## Structural edits (codemod + CBM)

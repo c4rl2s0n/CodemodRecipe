@@ -606,7 +606,6 @@ fn inline_recipe_preview_and_apply() {
     registry.reload();
 
     let inline_recipe = serde_json::json!({
-        "dslVersion": 2,
         "id": "inline_insert",
         "args": [{ "name": "file", "required": true }],
         "steps": [{

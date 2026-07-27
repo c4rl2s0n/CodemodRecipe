@@ -265,7 +265,6 @@ assert(fileExists('.codemod/recipes/scaffold_feature.yaml'), 'fixture recipes co
   fs.rmSync(path.join(workspaceRoot, 'lib/legacy/stale.dart'));
 
   const inlineRecipe = {
-    dslVersion: 2,
     id: 'delete_only',
     steps: [{ delete: { path: 'lib/legacy/stale.dart', ifMissing: 'skip' } }],
   };

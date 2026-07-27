@@ -14,7 +14,6 @@ fn edit_from_yaml(yaml: &str) -> EditStep {
 fn when_deserializes_single_string_guard() {
     let edit = edit_from_yaml(
         r#"
-dslVersion: 2
 id: t
 steps:
   - edit:
@@ -40,7 +39,6 @@ steps:
 fn when_not_deserializes_list_of_guards() {
     let edit = edit_from_yaml(
         r#"
-dslVersion: 2
 id: t
 steps:
   - edit:
@@ -64,7 +62,6 @@ steps:
 fn let_deserializes_single_binding() {
     let edit = edit_from_yaml(
         r#"
-dslVersion: 2
 id: t
 steps:
   - edit:
@@ -91,7 +88,6 @@ steps:
 fn let_deserializes_list_and_camel_case_fields() {
     let edit = edit_from_yaml(
         r#"
-dslVersion: 2
 id: t
 steps:
   - edit:

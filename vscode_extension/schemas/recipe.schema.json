@@ -6,11 +6,6 @@
   "required": ["id", "steps"],
   "additionalProperties": true,
   "properties": {
-    "dslVersion": {
-      "type": "integer",
-      "const": 2,
-      "description": "YAML DSL version (must be 2)."
-    },
     "id": {
       "type": "string",
       "minLength": 1,

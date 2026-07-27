@@ -1,4 +1,3 @@
-dslVersion: 2
 id: create_repository
 name: create_repository
 description: Create a repository file from a template

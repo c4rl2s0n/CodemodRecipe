@@ -237,7 +237,6 @@ fn scaffold_project_delete_if_missing_skip_is_idempotent() {
     registry.reload();
 
     let inline = serde_json::json!({
-        "dslVersion": 2,
         "id": "delete_only",
         "steps": [{
             "delete": {

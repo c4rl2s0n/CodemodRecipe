@@ -15,7 +15,7 @@ description: Tree-sitter query language for codemod-recipe — S-expression patt
 
 ## When not to use
 
-- YAML recipe structure or templates → `codemod-yaml-dsl-v2`
+- YAML recipe structure or templates → `codemod-yaml-dsl`
 - Which `language:` id or grammar to pick → `codemod-languages`
 - Dart-specific recipe patterns and testing workflow → `codemod-recipe-authoring`
 - Running preview/apply → `codemod-mcp-playbook`
@@ -60,7 +60,7 @@ text: "    print('codemod');\n"
 |-------|---------|
 | `codemod-languages` | language ids, grammar node names |
 | `codemod-recipe-authoring` | Dart patterns, idempotency, testing |
-| `codemod-yaml-dsl-v2` | `edit.ops` field shape |
+| `codemod-yaml-dsl` | `edit.ops` field shape |
 | `codemod-mcp-playbook` | preview/apply workflow |
 
 Official tree-sitter query docs: https://tree-sitter.github.io/tree-sitter/using-parsers/queries/1-syntax.html

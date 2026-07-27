@@ -1,4 +1,3 @@
-dslVersion: 2
 id: patch_app
 name: patch_app
 description: Insert a log line in App.run()

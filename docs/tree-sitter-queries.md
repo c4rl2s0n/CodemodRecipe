@@ -43,7 +43,7 @@ codemod-recipe uses [tree-sitter](https://tree-sitter.github.io/) queries to mat
 
 ## Edit-level `when` / `let`
 
-Use tree-sitter queries on the **current file text** to gate an entire `edit` step or to bind locals that change between sequential ops. Guard queries use the same composition rules as op `query` (inline, `.scm`, library refs, chains). See `codemod-yaml-dsl-v2` `reference.md` for YAML shape and template filters on `let.as`.
+Use tree-sitter queries on the **current file text** to gate an entire `edit` step or to bind locals that change between sequential ops. Guard queries use the same composition rules as op `query` (inline, `.scm`, library refs, chains). See `codemod-yaml-dsl` `reference.md` for YAML shape and template filters on `let.as`.
 
 ## Two kinds of “anchor”
 

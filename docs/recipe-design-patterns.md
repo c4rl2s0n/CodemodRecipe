@@ -1,6 +1,6 @@
 # Recipe Design Patterns (Create vs Modify)
 
-This guide describes how to organize codemod-recipe YAML v2 recipes around **concepts or
+This guide describes how to organize codemod-recipe YAML recipes around **concepts or
 features**, with a clear split between **creation** (greenfield scaffolding) and
 **modification** (brownfield AST edits).
 
@@ -21,7 +21,7 @@ Related modular skills (also under `.agents/skills/` after bootstrap):
 
 | Skill | Contents |
 |-------|----------|
-| `codemod-yaml-dsl-v2` | YAML syntax, templates, maps (`reference.md`) |
+| `codemod-yaml-dsl` | YAML syntax, templates, maps (`reference.md`) |
 | `codemod-recipe-authoring` | Tree-sitter queries |
 | `codemod-languages` | Multi-language `language:` field, SQL dialects |
 | `codemod-mcp-playbook` | preview/apply workflow |

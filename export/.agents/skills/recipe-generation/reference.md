@@ -86,6 +86,6 @@ For **compose**, list child recipe ids and the orchestrator `scaffold_*` id.
 ## Related skills
 
 - `codemod-recipe-design-patterns` — taxonomy and directory layout
-- `codemod-yaml-dsl-v2` — YAML / templates / composition
+- `codemod-yaml-dsl` — YAML / templates / composition
 - `codemod-recipe-authoring` — Dart queries and idempotency
 - `codemod-mcp-playbook` — MCP tool envelopes

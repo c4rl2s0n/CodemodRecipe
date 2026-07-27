@@ -14,7 +14,7 @@ description: Organize codemod-recipe YAML recipes by feature — create vs modif
 
 ## When not to use
 
-- YAML syntax or template helpers → `codemod-yaml-dsl-v2`
+- YAML syntax or template helpers → `codemod-yaml-dsl`
 - Tree-sitter query authoring → `codemod-recipe-authoring`
 - Running preview/apply → `codemod-mcp-playbook`
 
@@ -37,7 +37,7 @@ description: Organize codemod-recipe YAML recipes by feature — create vs modif
 
 | Skill | Use for |
 |-------|---------|
-| `codemod-yaml-dsl-v2` | YAML syntax, templates, maps |
+| `codemod-yaml-dsl` | YAML syntax, templates, maps |
 | `codemod-recipe-authoring` | Tree-sitter queries and captures |
 | `codemod-languages` | `language:` field for multi-file / non-Dart scaffolds |
 | `codemod-mcp-playbook` | preview/apply workflow |

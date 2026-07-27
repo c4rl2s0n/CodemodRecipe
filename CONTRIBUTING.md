@@ -1,233 +1,65 @@
 # Contributing to codemod_recipe
 
-Thank you for your interest in contributing to `codemod_recipe`! This document
-provides guidelines and instructions for setting up your development
-environment, running tests, and submitting contributions.
+Thank you for contributing. This repository is **Rust-first**: the tree-sitter engine,
+stdio host, and MCP server live under `rust/`. The VS Code extension is under
+`vscode_extension/`.
 
-## Development Setup
+## Prerequisites
 
-### Prerequisites
+- [Rust](https://rustup.rs/) (stable)
+- [Node.js](https://nodejs.org/) 18+ (extension webview and smoke scripts)
+- Git
 
-- [Dart SDK](https://dart.dev/get-dart) version ^3.10.0 or higher
-- [Git](https://git-scm.com/) for version control
-
-### Clone the Repository
-
-```bash
-git clone https://github.com/yourusername/codemod_recipe.git
-cd codemod_recipe
-```
-
-### Install Dependencies
+## Development setup
 
 ```bash
-dart pub get
+git clone https://github.com/c4rl2s0n/CodemodRecipe.git
+cd CodemodRecipe
+cd rust && cargo build
 ```
 
-## Development Workflow
+## Running tests
 
-### Running Tests
-
-Run all tests:
+Rust (primary):
 
 ```bash
-dart test
+cd rust && cargo test --all
+cd rust && cargo clippy --all-targets -- -D warnings
 ```
 
-Run tests with coverage (requires `coverage` package):
+Extension webview unit tests:
 
 ```bash
-dart pub global activate coverage
-dart test --coverage=coverage
-dart pub global run coverage:format_coverage --lcov --in=coverage --out=coverage/lcov.info
+cd vscode_extension/src/webview && npm ci && npm test
 ```
 
-### Code Analysis
-
-Run static analysis:
+Host protocol smoke (from repo root, after building `codemod_host`):
 
 ```bash
-dart analyze
+cd vscode_extension && ./build.sh
+node vscode_extension/scripts/smoke.mjs
 ```
 
-### Formatting
-
-Format all Dart files:
+Scaffold integration (optional):
 
 ```bash
-dart format .
+./scripts/scaffold_integration.sh
 ```
 
-Check formatting without making changes:
+## Code style
 
-```bash
-dart format --output=none --set-exit-if-changed .
-```
+- Rust: `rustfmt` defaults; run `cargo fmt` before submitting.
+- TypeScript/Vue: follow existing patterns under `vscode_extension/src/`.
 
-### Generating Documentation
+## Pull requests
 
-Generate API documentation:
+1. Keep changes focused; update README, skills under `export/.agents/skills/`, and
+   `.cursor/rules/` when behavior or agent workflows change.
+2. Add or extend Rust tests for engine/host behavior.
+3. Ensure `cargo test --all` passes.
 
-```bash
-dart doc
-```
+## Agent skills and bootstrap
 
-The generated documentation will be in `doc/api/`.
-
-## Code Style Guidelines
-
-This project follows the [Dart style guide](https://dart.dev/effective-dart/style)
-and uses `package:lints/recommended.yaml` for static analysis.
-
-Key points:
-
-- Use `lowerCamelCase` for variables, constants, and function names
-- Use `UpperCamelCase` for class and enum names
-- Use `lowercase_with_underscores` for file names
-- Use `PascalCase` for acronyms longer than two letters (e.g., `HttpResponse`)
-- Write docstrings for all public APIs using `///`
-- Prefer `const` constructors when possible
-
-## Testing Guidelines
-
-### Unit Tests
-
-Place unit tests in the `test/` directory with the naming convention
-`*_test.dart`.
-
-### Test Structure
-
-Use descriptive group and test names:
-
-```dart
-group('CodemodTemplate', () {
-  test('renders simple placeholders', () {
-    // test code
-  });
-
-  test('throws when variable is missing', () {
-    // test code
-  });
-});
-```
-
-### What to Test
-
-- **Template rendering**: Variable substitution, casing filters, missing variables
-- **Recipe composition**: Arg merging, operation concatenation, post-execution ordering
-- **Patch helpers**: Overlap detection, ordering, application
-- **Operations**: File changes, error handling, edge cases
-- **Transforms**: Idempotency (running twice produces no changes on second run)
-- **CodeEditor**: AST navigation, insertion offsets, method/field detection
-
-### Idempotency Testing
-
-All transforms should be idempotent. Test this pattern:
-
-```dart
-test('is idempotent', () async {
-  final patches = await transform.apply(source, context);
-  final result = applyPatches(source, patches);
-  
-  // Second run should produce no changes
-  final secondPatches = await transform.apply(result, context);
-  expect(secondPatches, isEmpty);
-});
-```
-
-## Pull Request Process
-
-1. **Create a branch**: `git checkout -b feature/your-feature-name`
-
-2. **Make your changes**: Follow the code style guidelines and add tests for
-   new functionality.
-
-3. **Run all checks locally**:
-   ```bash
-   dart format --output=none --set-exit-if-changed .
-   dart analyze --fatal-infos
-   dart test
-   ```
-
-4. **Update documentation**: If your changes affect the public API, update
-   docstrings and the README if necessary.
-
-5. **Commit your changes**: Use clear, descriptive commit messages following
-   [Conventional Commits](https://www.conventionalcommits.org/) style when
-   possible:
-   ```
-   feat: add AddGetterTransform for generating getters
-   fix: handle empty class bodies in CodeEditor
-   docs: improve CodemodContext docstrings
-   test: add edge case tests for template rendering
-   ```
-
-6. **Push to your fork**: `git push origin feature/your-feature-name`
-
-7. **Open a Pull Request**: Include a clear description of the changes,
-   motivation, and any breaking changes.
-
-## Reporting Issues
-
-When reporting issues, please include:
-
-- Dart SDK version (`dart --version`)
-- Package version from `pubspec.yaml`
-- Minimal reproduction steps
-- Expected vs actual behavior
-- Any relevant error messages or stack traces
-
-## Architecture Overview
-
-Understanding the architecture helps contribute effectively:
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        CodemodRunner                            │
-│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐  │
-│  │ CLI Parsing │→│ Context     │→│ Collect Changes         │  │
-│  │             │  │ Building    │  │ (Operations → Changes)  │  │
-│  └─────────────┘  └─────────────┘  └─────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                        CodemodRecipe                            │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │  Arguments (CodemodArg)                                  │    │
-│  │  Operations (EditDartFileOperation, CreateFileOperation)│   │
-│  │  PostExecution (DartFormatPostExecution, etc.)           │    │
-│  └─────────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                      CodemodOperation                             │
-│  ┌─────────────────────────────────────────────────────────┐    │
-│  │  EditDartFileOperation: Transforms → Patches            │    │
-│  │  CreateFileOperation: Templates → File content           │    │
-│  └─────────────────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### Key Design Principles
-
-1. **Idempotency**: Transforms must produce no changes when run again on their
-   own output.
-
-2. **Composability**: Recipes, operations, and post-execution actions can be
-   composed with `CodemodRecipe.compose(steps: ...)`, merging arguments and
-   flattening steps in order.
-
-3. **Separation of concerns**: Generic primitives in this package,
-   project-specific conventions in extensions outside this package.
-
-4. **Fail fast**: Missing variables, overlapping patches, and invalid operations
-   throw errors rather than silently producing incorrect output.
-
-## Questions?
-
-If you have questions not covered here, please open an issue or discussion on
-GitHub.
-
-Thank you for contributing to codemod_recipe!
+Bootstrap copies files from `export/` into consumer projects. When editing skills or
+rules, update both `.agents/skills/` (workspace copy) and `export/.agents/skills/`
+(source of truth for bootstrap).

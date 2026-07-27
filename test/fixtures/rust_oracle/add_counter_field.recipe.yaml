@@ -1,4 +1,3 @@
-dslVersion: 2
 id: add_counter_field
 name: add_counter_field
 description: Adds a field to a class

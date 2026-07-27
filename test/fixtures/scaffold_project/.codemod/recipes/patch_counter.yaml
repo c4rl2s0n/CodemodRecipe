@@ -1,4 +1,3 @@
-dslVersion: 2
 id: patch_counter
 name: patch_counter
 description: Insert a typed counter field before increment()

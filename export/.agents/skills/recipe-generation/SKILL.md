@@ -1,7 +1,7 @@
 ---
 name: recipe-generation
 description: >-
-  Generate YAML v2 codemod recipes from user-referenced code (@files, symbols,
+  Generate YAML codemod recipes from user-referenced code (@files, symbols,
   selections). Checks existing recipes for reuse or composition, infers
   parameters and confirms with the user, then writes under .codemod/recipes/
   and validates/previews. Use when the user runs /recipe-generation or asks
@@ -10,7 +10,7 @@ description: >-
 
 # Recipe Generation
 
-Turn `@`-referenced code into a registered YAML v2 recipe under `.codemod/recipes/`.
+Turn `@`-referenced code into a registered YAML recipe under `.codemod/recipes/`.
 
 ## When to use
 
@@ -70,7 +70,7 @@ If the decision is **reuse only**, stop after confirmation — no new YAML.
 
 Write `.codemod/recipes/<id>.yaml` (or concept subdirs when the project already groups recipes).
 
-- YAML shape: skill `codemod-yaml-dsl-v2`
+- YAML shape: skill `codemod-yaml-dsl`
 - Queries / captures: `codemod-recipe-authoring`, `codemod-tree-sitter-queries`
 - Non-Dart: set `edit.language` — skill `codemod-languages`
 
@@ -91,7 +91,7 @@ Report: recipe id (or reused ids), final args, preview summary (`files[]` / empt
 | Skill | Use for |
 |-------|---------|
 | `codemod-recipe-design-patterns` | create vs modify / scaffold taxonomy |
-| `codemod-yaml-dsl-v2` | recipe YAML syntax |
+| `codemod-yaml-dsl` | recipe YAML syntax |
 | `codemod-recipe-authoring` | Dart query patterns and testing |
 | `codemod-tree-sitter-queries` | query syntax, captures, predicates |
 | `codemod-languages` | `language:` field |

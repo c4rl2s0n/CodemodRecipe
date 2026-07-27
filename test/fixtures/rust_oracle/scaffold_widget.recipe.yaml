@@ -1,4 +1,3 @@
-dslVersion: 2
 id: scaffold_widget
 args:
   - name: featurePath

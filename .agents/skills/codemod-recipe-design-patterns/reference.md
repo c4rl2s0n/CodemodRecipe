@@ -1,6 +1,6 @@
 # Recipe Design Patterns (Create vs Modify)
 
-Organize codemod-recipe YAML v2 recipes around **concepts or features**, with a clear
+Organize codemod-recipe YAML recipes around **concepts or features**, with a clear
 split between **creation** (greenfield scaffolding) and **modification** (brownfield AST
 edits).
 
@@ -31,7 +31,7 @@ flowchart TD
 ```
 
 **One recipe = one coherent change**, composed upward for features. For YAML syntax see
-skill `codemod-yaml-dsl-v2`.
+skill `codemod-yaml-dsl`.
 
 ## Recipe taxonomy
 
@@ -205,7 +205,7 @@ steps:
 
 **Templates** (`create.templateFile`) hold greenfield file skeletons. Use Jinja2 syntax
 (MiniJinja in the Rust host): `{{ arg }}`, filters like `{{ feature | pascal_case }}`,
-and `{% if %}`. See skill `codemod-yaml-dsl-v2` and [`docs/recipe-templates.md`](../../../docs/recipe-templates.md).
+and `{% if %}`. See skill `codemod-yaml-dsl` and [`docs/recipe-templates.md`](../../../docs/recipe-templates.md).
 
 **Maps** resolve symbolic names to types or snippets:
 
@@ -255,7 +255,6 @@ Illustrative sketches — not shipped recipes.
 Orchestrator sketch:
 
 ```yaml
-dslVersion: 2
 id: scaffold_bloc_feature
 description: Scaffold a new Bloc feature (state, event, bloc files + app wiring)
 
@@ -274,7 +273,6 @@ steps:
 Atomic modify sketch (state field):
 
 ```yaml
-dslVersion: 2
 id: add_bloc_state_field
 description: Add a typed field to an existing Bloc state class
 
@@ -323,7 +321,7 @@ applies to database work when schema lives in Dart (Drift, Floor, Isar).
 | Add column | `add_column_users_email` | `edit` step targeting Dart table definition |
 | Remove column | `remove_column_users_email` | `remove` op on field member |
 
-For **raw SQL migrations**, use the same naming but note that YAML v2 `edit` ops do not
+For **raw SQL migrations**, use the same naming but note that YAML `edit` ops do not
 apply to `.sql` files today.
 
 ## Idempotency
@@ -337,14 +335,14 @@ Agents should always: `preview_recipe` → `apply_recipe` → re-preview.
 | `replace_*` | Idempotent | `replace` op with final desired text |
 | `remove_*` | Idempotent | `remove` when gone → empty preview |
 
-YAML v2 has no built-in "skip if exists" for inserts. Plan for non-idempotent `add_*`
+YAML has no built-in "skip if exists" for inserts. Plan for non-idempotent `add_*`
 recipes and document that in the recipe `description`.
 
 After apply, re-run `preview_recipe` — expect `files: []` for idempotent recipes.
 
 ## Related skills
 
-- `codemod-yaml-dsl-v2` — YAML syntax, templates, maps
+- `codemod-yaml-dsl` — YAML syntax, templates, maps
 - `codemod-recipe-authoring` — tree-sitter queries
 - `recipe-generation` — generate recipes from `@` code refs
 - `codemod-mcp-playbook` — preview/apply workflow

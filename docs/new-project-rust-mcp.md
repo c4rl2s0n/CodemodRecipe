@@ -1,6 +1,6 @@
-# New Project Quickstart (Rust MCP + YAML v2)
+# New Project Quickstart (Rust MCP + YAML)
 
-This guide shows how to use `codemod_recipe` in a brand-new project with the Rust MCP server and YAML `dslVersion: 2` recipes.
+This guide shows how to use `codemod_recipe` in a brand-new project with the Rust MCP server and YAML recipes.
 
 ## 1) Prerequisites
 
@@ -14,7 +14,7 @@ After connecting the MCP server, call **`bootstrap_project`** once. It installs:
 
 - `.agents/skills/` — modular skills:
   - `codemod-overview` — orientation and layout
-  - `codemod-yaml-dsl-v2` — YAML syntax (`reference.md` for templates/maps)
+  - `codemod-yaml-dsl` — YAML syntax (`reference.md` for templates/maps)
   - `codemod-recipe-design-patterns` — create vs modify taxonomy (`reference.md`)
   - `codemod-mcp-playbook` — MCP tool reference
   - `codemod-languages` — multi-language support (`reference.md`)
@@ -52,12 +52,11 @@ Discovery is schema-based under `.codemod/` (directory names are convention only
 - Put shared maps as YAML with `id` + `map:` (e.g. `.codemod/maps/*.yaml`).
 - Put shared variables as YAML with `id` + `values:` (e.g. `.codemod/variables/*.yaml`).
 
-## 4) Add your first YAML v2 recipe
+## 4) Add your first YAML recipe
 
 Create `.codemod/recipes/add_log_line.yaml`:
 
 ```yaml
-dslVersion: 2
 id: add_log_line
 name: add_log_line
 description: Inserts a log line at the end of a method

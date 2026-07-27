@@ -9,7 +9,6 @@ mod common;
 fn sequential_ops_second_insert_sees_first() {
     let source = "class Foo {\n}\n";
     let recipe_yaml = r#"
-dslVersion: 2
 id: sequential_ops
 steps:
   - edit:
@@ -62,7 +61,6 @@ steps:
 fn non_sequential_collect_misses_dependent_second_op() {
     let source = "class Foo {\n}\n";
     let recipe_yaml = r#"
-dslVersion: 2
 id: sequential_ops
 steps:
   - edit:

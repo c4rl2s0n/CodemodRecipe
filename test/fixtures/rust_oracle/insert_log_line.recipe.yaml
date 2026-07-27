@@ -1,4 +1,3 @@
-dslVersion: 2
 id: insert_log_line
 name: insert_log_line
 description: Insert a log line at end of Settings.update()

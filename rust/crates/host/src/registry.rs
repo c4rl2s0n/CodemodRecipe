@@ -746,8 +746,7 @@ mod tests {
         std::fs::create_dir_all(&recipes_dir).unwrap();
         std::fs::write(
             recipes_dir.join("uses_map.yaml"),
-            r#"dslVersion: 2
-id: uses_map
+            r#"id: uses_map
 args:
   - name: file
     required: true
@@ -795,8 +794,7 @@ steps:
         .unwrap();
         std::fs::write(
             recipes_dir.join("composed.yaml"),
-            r#"dslVersion: 2
-id: composed
+            r#"id: composed
 args:
   - name: file
     required: true
@@ -833,8 +831,7 @@ steps:
         std::fs::create_dir_all(&recipes_dir).unwrap();
         std::fs::write(
             recipes_dir.join("bad.yaml"),
-            r#"dslVersion: 2
-id: bad_recipe
+            r#"id: bad_recipe
 steps:
   - edit:
       path: "a.dart"
@@ -862,8 +859,7 @@ steps:
         std::fs::create_dir_all(&recipes_dir).unwrap();
         std::fs::write(
             recipes_dir.join("child.yaml"),
-            r#"dslVersion: 2
-id: child
+            r#"id: child
 args:
   - name: className
     required: true
@@ -878,8 +874,7 @@ steps:
         .unwrap();
         std::fs::write(
             recipes_dir.join("parent.yaml"),
-            r#"dslVersion: 2
-id: parent
+            r#"id: parent
 args:
   - name: featureName
     required: true
@@ -914,8 +909,7 @@ steps:
         std::fs::create_dir_all(&nested).unwrap();
         std::fs::write(
             nested.join("nested_recipe.yaml"),
-            r#"dslVersion: 2
-id: nested_recipe
+            r#"id: nested_recipe
 args:
   - name: file
     required: true
@@ -945,8 +939,7 @@ steps:
         std::fs::create_dir_all(&nested).unwrap();
         std::fs::write(
             nested.join("deep_recipe.yaml"),
-            r#"dslVersion: 2
-id: deep_recipe
+            r#"id: deep_recipe
 args:
   - name: file
     required: true

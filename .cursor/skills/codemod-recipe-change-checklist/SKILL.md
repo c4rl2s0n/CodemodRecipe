@@ -21,7 +21,6 @@ If your change affects behavior, conventions, configuration, or how developers s
 1. **Project READMEs**
    - Root: `README.md`
    - Extension: `vscode_extension/README.md`
-   - (and any relevant example README under `example/` when the change affects those workflows)
 
 2. **Modular skills library**
    - `.cursor/skills/*/SKILL.md` for any subsystem you changed
@@ -40,25 +39,22 @@ If your change affects behavior, conventions, configuration, or how developers s
 
 If you changed any of these, you almost certainly need coordinated updates across multiple files:
 
-- **Dart↔TS contract**
-  - Dart host commands / response JSON shapes:
-    - `lib/src/vscode/codemod_host.dart`
+- **Host↔TS contract**
+  - Rust host commands / response JSON shapes:
+    - `rust/crates/host/src/dispatch.rs`, `protocol.rs`
   - TS request/response types + markers:
-    - `vscode_extension/src/types.ts`
-    - `vscode_extension/src/constants.ts`
-    - `vscode_extension/src/views/recipeRunnerMessages.ts`
-    - `vscode_extension/src/webview/extensionToWebviewMessages.ts`
-    - `vscode_extension/webview-ui/src/messages.ts`
+    - `vscode_extension/src/shared/messages.ts`
+    - `vscode_extension/src/extension/host/hostProtocol.ts`
 
 - **Webview controller behavior**
   - Preview ordering/stale suppression:
-    - `vscode_extension/webview-ui/src/composables/useRunnerController.ts`
+    - `vscode_extension/src/webview/src/composables/useRunnerController.ts`
 
 - **Selection semantics**
   - UI selection model:
-    - `vscode_extension/webview-ui/src/lib/selection.ts`
-  - Host PatchSelector apply semantics:
-    - `lib/src/vscode/patch_selector.dart`
+    - `vscode_extension/src/webview/src/lib/selection.ts`
+  - Host apply semantics:
+    - `rust/crates/host/src/dispatch.rs` (selection parsing)
 
 ## Completion self-check
 

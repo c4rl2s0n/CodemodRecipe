@@ -44,7 +44,6 @@ fn create_then_edit_missing_file_is_single_create() {
     registry.reload();
 
     let inline = serde_json::json!({
-        "dslVersion": 2,
         "id": "ensure_barrel",
         "steps": [
             {
@@ -99,7 +98,6 @@ fn create_skip_then_edit_existing_is_patch() {
     registry.reload();
 
     let inline = serde_json::json!({
-        "dslVersion": 2,
         "id": "ensure_barrel",
         "steps": [
             {
@@ -147,7 +145,6 @@ fn edit_then_edit_dependent_class_and_constructor() {
     registry.reload();
 
     let inline = serde_json::json!({
-        "dslVersion": 2,
         "id": "class_then_ctor",
         "steps": [
             {
@@ -213,7 +210,6 @@ fn create_fail_when_exists() {
     registry.reload();
 
     let inline = serde_json::json!({
-        "dslVersion": 2,
         "id": "fail_create",
         "steps": [{
             "create": {
@@ -247,7 +243,6 @@ fn edit_then_create_same_path_errors() {
     registry.reload();
 
     let inline = serde_json::json!({
-        "dslVersion": 2,
         "id": "bad_order",
         "steps": [
             {
@@ -296,7 +291,6 @@ fn create_and_edit_different_paths() {
     registry.reload();
 
     let inline = serde_json::json!({
-        "dslVersion": 2,
         "id": "multi",
         "steps": [
             {

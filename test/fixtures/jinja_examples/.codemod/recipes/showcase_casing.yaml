@@ -1,4 +1,3 @@
-dslVersion: 2
 id: showcase_casing
 name: showcase_casing
 description: Demonstrates Jinja casing filters and map lookups

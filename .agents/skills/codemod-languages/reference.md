@@ -46,7 +46,7 @@ Any id in the [language-pack catalog](https://docs.tree-sitter-language-pack.xbe
 
 ## The `language` field
 
-Optional on `edit` steps (dslVersion 2):
+Optional on `edit` steps :
 
 ```yaml
 - edit:
@@ -226,7 +226,7 @@ Set `includeLeadingTrivia: true` on `remove` / `replace` to expand spans over do
 
 ## Related skills
 
-- `codemod-yaml-dsl-v2` — `edit` step shape and validation rules
+- `codemod-yaml-dsl` — `edit` step shape and validation rules
 - `codemod-tree-sitter-queries` — query language syntax and codemod capture semantics
 - `codemod-recipe-authoring` — Dart query authoring (pack grammar)
 - `codemod-mcp-playbook` — MCP tools and workflow

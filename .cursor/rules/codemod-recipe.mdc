@@ -18,7 +18,7 @@ This workspace uses **codemod-recipe** for deterministic AST edits via YAML reci
 Project skills live under `.agents/skills/`:
 
 - `codemod-overview` — orientation and layout
-- `codemod-yaml-dsl-v2` — YAML syntax (`when`/`whenNot`/`let` on edits; see `reference.md` for templates/maps/variables)
+- `codemod-yaml-dsl` — YAML syntax (`when`/`whenNot`/`let` on edits; see `reference.md` for templates/maps/variables)
 - `codemod-recipe-design-patterns` — create vs modify taxonomy (see `reference.md`)
 - `codemod-mcp-playbook` — MCP tool reference
 - `codemod-languages` — multi-language support, `language:` field, SQL dialects (see `reference.md`)
@@ -33,7 +33,7 @@ Skills use SKILL.md routers; read `reference.md` in a skill directory when you n
 Codemod workflows work best with **codebase-memory-mcp** for locate → impact → edit:
 
 1. Find target symbols/files with codebase-memory
-2. Craft or select a v2 recipe (tree-sitter `query` + `capture`; see `codemod-tree-sitter-queries`; set `language:` for non-Dart files — see `codemod-languages`)
+2. Craft or select a recipe (tree-sitter `query` + `capture`; see `codemod-tree-sitter-queries`; set `language:` for non-Dart files — see `codemod-languages`)
 3. `preview_recipe` then `apply_recipe`
 
 If `codebase-memory-mcp` is not configured, suggest the user install it. Do not attempt to install it automatically from codemod-recipe.

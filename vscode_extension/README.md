@@ -34,7 +34,7 @@ flowchart LR
 1. Create a `.codemod/` directory in your workspace root — or run
    **Codemod Recipe: Scaffold Project** (also offered when `.codemod` is missing).
 2. Add YAML recipe files (`.yaml` or `.yml`) under `.codemod/` (conventionally
-   `.codemod/recipes/`). Each recipe must have `id:` and `steps:` (`dslVersion: 2`).
+   `.codemod/recipes/`). Each recipe must have `id:` and `steps:`.
    Optional `group:` (dotted path) organizes the Recipes tab tree.
 3. Optionally add maps (`id` + `map:`), variables (`id` + `values:`), and templates
    (e.g. under `.codemod/maps/`, `.codemod/variables/`, `.codemod/templates/`).

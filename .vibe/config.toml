@@ -43,7 +43,7 @@ command = "dart mcp-server"
 [[mcp_servers]]
 name = "codemod-mcp"
 transport = "stdio"
-command = "dart run bin/codemod_mcp.dart"
-args = ["--workspace-root", "."]
+command = "cargo"
+args = ["run", "-q", "--manifest-path", "rust/Cargo.toml", "-p", "codemod_recipe_host", "--bin", "codemod_mcp", "--", "--workspace-root", "."]
 disabled = false
 disabled_tools = []

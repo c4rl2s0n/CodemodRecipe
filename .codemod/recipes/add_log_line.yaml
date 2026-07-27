@@ -1,4 +1,3 @@
-dslVersion: 2
 id: add_log_line
 name: add_log_line
 description: Inserts a log line at the end of a method

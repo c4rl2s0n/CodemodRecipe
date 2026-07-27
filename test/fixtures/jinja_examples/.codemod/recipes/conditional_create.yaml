@@ -1,4 +1,3 @@
-dslVersion: 2
 id: conditional_create
 name: conditional_create
 description: File-backed template with {% if %} on a bool arg

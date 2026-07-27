@@ -1,6 +1,6 @@
 ---
 name: codemod-recipe-authoring
-description: Practical guide for authoring codemod-recipe YAML v2 recipes — tree-sitter queries, captures, anchors, idempotency, and testing. Dart examples use language-pack grammar (class_definition).
+description: Practical guide for authoring codemod-recipe YAML recipes — tree-sitter queries, captures, anchors, idempotency, and testing. Dart examples use language-pack grammar (class_definition).
 ---
 
 # Recipe Authoring Guide
@@ -13,7 +13,7 @@ description: Practical guide for authoring codemod-recipe YAML v2 recipes — tr
 4. `validate_recipes` → `preview_recipe` → inspect patches → `apply_recipe`.
 
 For recipe organization (create vs modify, scaffolds), see skill `codemod-recipe-design-patterns`.
-For YAML syntax and templates, see skill `codemod-yaml-dsl-v2`.
+For YAML syntax and templates, see skill `codemod-yaml-dsl`.
 For query language syntax (captures, predicates, operators), see skill `codemod-tree-sitter-queries`.
 
 ## Crafting tree-sitter queries (Dart — language-pack grammar)
@@ -95,7 +95,7 @@ Declare all dynamic values as `args` and reference via `{{name}}` in path, query
 
 Use `inputKind: file` for paths, `inputKind: symbol` for class/method names.
 
-For template helpers and maps, see `codemod-yaml-dsl-v2` reference.md.
+For template helpers and maps, see `codemod-yaml-dsl` reference.md.
 
 ## Multi-file recipes
 
@@ -139,6 +139,6 @@ Or compose with `- recipe: other_recipe_id`, or bind child args via
 | `codemod-tree-sitter-queries` | query syntax, captures, predicates, `.scm` files |
 | `codemod-languages` | language ids, SQL dialects, extension inference |
 | `codemod-recipe-design-patterns` | create vs modify taxonomy |
-| `codemod-yaml-dsl-v2` | YAML syntax, templates, maps |
+| `codemod-yaml-dsl` | YAML syntax, templates, maps |
 | `codemod-mcp-playbook` | preview/apply workflow |
 | `recipe-generation` | Generate recipes from `@` code refs |

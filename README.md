@@ -19,8 +19,7 @@ preview/apply with selective patches.
 3. Use the **Codemod Recipe** activity bar: pick a recipe, fill args, preview
    diffs, select patches, apply.
 
-The extension talks to the **Rust host** over JSON stdio. Set
-`codemodRecipe.useDartRun: true` only when debugging the legacy Dart host.
+The extension talks to the **Rust host** over JSON stdio.
 
 ### Rust CLI / MCP
 
@@ -36,35 +35,22 @@ cargo run -q --manifest-path rust/Cargo.toml -p codemod_recipe_host --bin codemo
 
 See [docs/codemod-mcp.md](docs/codemod-mcp.md) for Cursor MCP setup.
 
-### Dart library (reference / legacy host)
-
-```bash
-dart pub get
-dart run bin/codemod_host.dart --stdio-server --workspace-root . --codemod-root .codemod
-```
-
-The Dart implementation uses `package:analyzer` and the navigate/anchor DSL.
-The Rust engine is the target for new development.
-
 ## Project layout
 
 | Path | Purpose |
 |------|---------|
-| `lib/` | Dart package: analyzer transforms, YAML compiler, VS Code host |
 | `rust/` | Rust workspace: tree-sitter engine, YAML model, stdio host, MCP |
-| `.codemod/recipes/` | Shipped YAML recipes (query DSL v2; schema: `steps`) |
+| `.codemod/recipes/` | Shipped YAML recipes (schema: `id` + `steps`) |
 | `.codemod/maps/` | Recommended location for maps (`id` + `map:`) |
 | `.codemod/variables/` | Recommended location for variables (`id` + `values:`) |
 | `vscode_extension/` | VS Code / Codium extension |
-| `test/fixtures/rust_oracle/` | Golden fixtures for the Rust engine |
-| `example/` | Runnable Dart examples |
+| `test/fixtures/` | Integration and golden fixtures for the Rust engine |
 
-## YAML recipe format (v2 — Rust engine)
+## YAML recipe format
 
 Recipes declare tree-sitter queries directly under `edit.ops`:
 
 ```yaml
-dslVersion: 2
 id: add_log_line
 args:
   - name: file
@@ -147,9 +133,7 @@ steps:
 
 **Inline recipes** — pass a full recipe object to the host/MCP as `inlineRecipe` (no file on disk required).
 
-**Dart** — `CodemodRecipe.compose(steps: [...])` merges recipes, inline
-operations, and post-execution actions. The Rust YAML layer provides the same
-semantics for `recipe:` steps and a `compose_recipe` API in `codemod_recipe_yaml`.
+Recipe composition (`recipe:` steps) is implemented in `codemod_recipe_yaml` (`compose.rs`).
 
 ## Rust engine status
 
@@ -171,8 +155,8 @@ semantics for `recipe:` steps and a `compose_recipe` API in `codemod_recipe_yaml
 | `create:` / `delete:` file steps | Done |
 | `inlineRecipe` (host + MCP) | Done |
 | Full MCP tool parity (minus `generate_astPath`) | Done |
-| `generateAstPath` | Not planned (v1) |
-| Legacy navigate+anchor DSL | Not planned |
+| `generateAstPath` | Not planned |
+| Legacy navigate+anchor DSL | Removed |
 | TypeScript grammar | Planned |
 
 ### Multi-language support
@@ -203,13 +187,12 @@ node vscode_extension/scripts/smoke.mjs
 
 ## Documentation
 
-- [ARCHITECTURE.md](ARCHITECTURE.md) — design decisions (Dart-centric; being updated)
+- [ARCHITECTURE.md](ARCHITECTURE.md) — design overview
 - [docs/new-project-rust-mcp.md](docs/new-project-rust-mcp.md) — Rust MCP quickstart for new projects
 - [docs/tree-sitter-queries.md](docs/tree-sitter-queries.md) — tree-sitter query language for recipes
 - [docs/language-support.md](docs/language-support.md) — multi-language tree-sitter support
 - [docs/codemod-mcp.md](docs/codemod-mcp.md) — MCP tools and agent workflow
 - [vscode_extension/README.md](vscode_extension/README.md) — extension setup
-- [example/README.md](example/README.md) — Dart API examples
 
 ## License
 

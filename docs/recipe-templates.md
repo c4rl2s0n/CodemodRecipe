@@ -196,4 +196,4 @@ Child template uses `{% extends "templates/layouts/base.template" %}` and
 
 - [codemod-mcp.md](codemod-mcp.md) — MCP tools and host protocol
 - [recipe-design-patterns.md](recipe-design-patterns.md) — scaffold orchestrators
-- Skill `codemod-yaml-dsl-v2` — full YAML DSL reference
+- Skill `codemod-yaml-dsl` — full YAML DSL reference

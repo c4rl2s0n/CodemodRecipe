@@ -1,4 +1,4 @@
-# codemod-mcp Playbook (Rust + YAML v2)
+# codemod-mcp Playbook (Rust + YAML)
 
 MCP server `codemod-mcp` wraps the Rust host and returns JSON text.
 Always parse tool output and branch on `ok`.
@@ -90,7 +90,7 @@ Optional:
 
 ## v2 inlineRecipe schema (Rust model)
 
-Inline recipe mirrors YAML v2 shape:
+Inline recipe mirrors the standard YAML recipe shape:
 
 ```json
 {

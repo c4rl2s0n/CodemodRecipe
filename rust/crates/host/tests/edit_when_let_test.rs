@@ -50,7 +50,6 @@ fn when_not_skips_edit_when_forbidden_pattern_matches() {
     std::fs::write(workspace.join("lib/a.dart"), dart).unwrap();
 
     let yaml = r#"
-dslVersion: 2
 id: when_not_test
 steps:
   - edit:
@@ -86,7 +85,6 @@ fn when_not_allows_edit_when_pattern_absent() {
     )
     .unwrap();
     let yaml = r#"
-dslVersion: 2
 id: t
 steps:
   - edit:
@@ -115,7 +113,6 @@ fn when_skips_edit_when_required_pattern_missing() {
     let workspace = temp_workspace("when_skip");
     std::fs::write(workspace.join("lib/a.dart"), "class Other {\n}\n").unwrap();
     let yaml = r#"
-dslVersion: 2
 id: t
 steps:
   - edit:
@@ -143,7 +140,6 @@ fn when_applies_edit_when_pattern_present() {
     let workspace = temp_workspace("when_run");
     std::fs::write(workspace.join("lib/a.dart"), "class Target {\n}\n").unwrap();
     let yaml = r#"
-dslVersion: 2
 id: t
 steps:
   - edit:
@@ -172,7 +168,6 @@ fn when_list_requires_all_guards() {
     let workspace = temp_workspace("when_all");
     std::fs::write(workspace.join("lib/a.dart"), "class Target {\n}\n").unwrap();
     let yaml = r#"
-dslVersion: 2
 id: t
 steps:
   - edit:
@@ -208,7 +203,6 @@ fn when_and_when_not_both_must_pass() {
     )
     .unwrap();
     let yaml = r#"
-dslVersion: 2
 id: t
 steps:
   - edit:
@@ -246,7 +240,6 @@ fn when_with_recipe_arg_in_deferred_op_render() {
     let workspace = temp_workspace("when_defer_render");
     std::fs::write(workspace.join("lib/a.dart"), "class Target {\n}\n").unwrap();
     let yaml = r#"
-dslVersion: 2
 id: t
 args:
   - name: marker
@@ -284,7 +277,6 @@ fn let_exists_drives_insert_text_per_op() {
     std::fs::write(workspace.join("lib/foo.dart"), dart).unwrap();
 
     let yaml = r#"
-dslVersion: 2
 id: let_test
 steps:
   - edit:
@@ -320,7 +312,6 @@ fn let_as_with_numeric_filters_in_recipe() {
     let workspace = temp_workspace("let_as");
     std::fs::write(workspace.join("lib/a.dart"), "class N {\n}\n").unwrap();
     let yaml = r#"
-dslVersion: 2
 id: t
 args:
   - name: version
@@ -353,7 +344,6 @@ fn let_ordered_bindings_second_uses_first() {
     let workspace = temp_workspace("let_ordered");
     std::fs::write(workspace.join("lib/a.dart"), "class X {\n}\n").unwrap();
     let yaml = r#"
-dslVersion: 2
 id: t
 steps:
   - edit:
@@ -386,7 +376,6 @@ fn let_rereads_source_before_each_op() {
     let workspace = temp_workspace("let_per_op");
     std::fs::write(workspace.join("lib/a.dart"), "class Grow {\n}\n").unwrap();
     let yaml = r#"
-dslVersion: 2
 id: t
 steps:
   - edit:
@@ -436,7 +425,6 @@ fn let_chained_query_extracts_field_in_class() {
     )
     .unwrap();
     let yaml = r#"
-dslVersion: 2
 id: t
 steps:
   - edit:
@@ -490,7 +478,6 @@ fn let_local_in_query_predicate_via_template() {
     )
     .unwrap();
     let yaml = r#"
-dslVersion: 2
 id: t
 args:
   - name: method

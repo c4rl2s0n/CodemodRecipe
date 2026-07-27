@@ -1,4 +1,3 @@
-dslVersion: 2
 id: insert_log_line_scm
 name: insert_log_line_scm
 description: Insert a log line using an external .scm query file

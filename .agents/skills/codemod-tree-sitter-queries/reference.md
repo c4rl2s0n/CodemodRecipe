@@ -440,5 +440,5 @@ Recipe:
 |-------|---------|
 | `codemod-languages` | language ids, per-grammar node names, SQL dialects |
 | `codemod-recipe-authoring` | Dart patterns, idempotency, testing checklist |
-| `codemod-yaml-dsl-v2` | `edit.ops` schema, templates, maps |
+| `codemod-yaml-dsl` | `edit.ops` schema, templates, maps |
 | `codemod-mcp-playbook` | MCP preview/apply workflow |

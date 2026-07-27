@@ -19,7 +19,6 @@ fn chained_query_inserts_into_method_body() {
     assert!(registry.queries_by_id().contains_key("dart_queries"));
 
     let inline = serde_json::json!({
-        "dslVersion": 2,
         "id": "chain_test",
         "args": [
             { "name": "className", "required": true },
@@ -73,7 +72,6 @@ fn chained_query_mixed_library_ref_and_inline_step() {
     registry.reload();
 
     let inline = serde_json::json!({
-        "dslVersion": 2,
         "id": "chain_mixed",
         "args": [
             { "name": "className", "required": true },

@@ -1,4 +1,3 @@
-dslVersion: 2
 id: remove_count_field
 name: remove_count_field
 description: Remove the count field from Settings

@@ -1,4 +1,3 @@
-dslVersion: 2
 id: defaults_child
 name: defaults_child
 description: Child recipe with defaultsTo on a required arg

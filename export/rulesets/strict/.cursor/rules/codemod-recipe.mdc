@@ -19,4 +19,4 @@ Layout: `.codemod/recipes/`, `.codemod/maps/`, `.codemod/templates/`.
 
 ## Skills
 
-Read under `.agents/skills/` as needed: `codemod-overview`, `codemod-yaml-dsl-v2` (edit `when`/`whenNot`/`let` — `reference.md`), `codemod-recipe-design-patterns`, `codemod-mcp-playbook`, `codemod-languages`, `codemod-tree-sitter-queries`, `codemod-recipe-authoring`, `recipe-generation`. Skills use SKILL.md routers; open `reference.md` for full detail.
+Read under `.agents/skills/` as needed: `codemod-overview`, `codemod-yaml-dsl` (edit `when`/`whenNot`/`let` — `reference.md`), `codemod-recipe-design-patterns`, `codemod-mcp-playbook`, `codemod-languages`, `codemod-tree-sitter-queries`, `codemod-recipe-authoring`, `recipe-generation`. Skills use SKILL.md routers; open `reference.md` for full detail.

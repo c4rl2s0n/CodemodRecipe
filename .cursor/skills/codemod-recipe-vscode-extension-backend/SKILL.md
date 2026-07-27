@@ -126,11 +126,11 @@ In `recipeRunnerViewProvider.ts`:
 When modifying backend behavior:
 
 1. Update protocol/types in `vscode_extension/src/types.ts` and message unions.
-2. Update Dart host JSON encoding/parsing if needed:
-   - `lib/src/vscode/codemod_host.dart` (+ helpers in `lib/src/vscode/*`)
+2. Update Rust host JSON encoding/parsing if needed:
+   - `rust/crates/host/src/dispatch.rs`, `protocol.rs`
 3. Update extension message handler:
-   - `vscode_extension/src/views/recipeRunnerViewProvider.ts`
+   - `vscode_extension/src/extension/views/recipeRunnerHandlers.ts`
 4. Update webview controller:
-   - `vscode_extension/webview-ui/src/composables/useRunnerController.ts`
+   - `vscode_extension/src/webview/src/composables/useRunnerController.ts`
 5. Only then adjust UI components (Vue).
 

@@ -1,6 +1,6 @@
 ---
 name: codemod-mcp
-description: Use when applying deterministic Dart AST edits via the Rust codemod-mcp MCP server — preview/apply recipes and inline YAML v2 edits (insert/remove/replace). Read the playbook before calling tools.
+description: Use when applying deterministic codemod edits via the Rust codemod-mcp MCP server — preview/apply recipes and inline YAML edits (insert/remove/replace). Read the playbook before calling tools.
 ---
 
 # Codemod MCP
@@ -25,7 +25,7 @@ description: Use when applying deterministic Dart AST edits via the Rust codemod
    - `cargo run -q --manifest-path rust/Cargo.toml -p codemod_recipe_host --bin codemod_mcp -- --workspace-root . --codemod-root .codemod`
 3. Pair with **codebase-memory** for locate → impact → edit workflows (see playbook § Agent workflow).
 4. Always **preview before apply**; pass `previewToken` from preview to `apply_recipe`.
-5. For inline edits, use YAML v2 `edit.ops` with tree-sitter `query` + `capture`.
+5. For inline edits, use YAML `edit.ops` with tree-sitter `query` + `capture`.
 
 ## Quick tool map
 

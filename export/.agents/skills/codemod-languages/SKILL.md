@@ -15,7 +15,7 @@ description: Multi-language tree-sitter support in codemod-recipe — language I
 
 ## When not to use
 
-- YAML step syntax → `codemod-yaml-dsl-v2`
+- YAML step syntax → `codemod-yaml-dsl`
 - Dart-specific query patterns → `codemod-recipe-authoring`
 - Running preview/apply → `codemod-mcp-playbook`
 
@@ -80,7 +80,7 @@ description: Multi-language tree-sitter support in codemod-recipe — language I
 
 | Skill | Use for |
 |-------|---------|
-| `codemod-yaml-dsl-v2` | `edit.language` field and step shape |
+| `codemod-yaml-dsl` | `edit.language` field and step shape |
 | `codemod-tree-sitter-queries` | query syntax, captures, predicates |
 | `codemod-recipe-authoring` | tree-sitter queries (Dart pack grammar) |
 | `codemod-mcp-playbook` | preview/apply workflow |
