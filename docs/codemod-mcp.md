@@ -276,7 +276,8 @@ You can combine file creation/deletion with edit ops in one recipe:
 | `Missing previewToken` | Call `preview_recipe` first and pass token to apply |
 | `Stale previewToken` | Re-run preview after any file change |
 | `Invalid node type "class_declaration"` | Use `class_definition` in Dart queries — see [language-support.md](language-support.md) |
-| `unknown language` | Set valid `language:` id; see skill `codemod-languages` |
+| `language not supported` | Set valid `language:` id; see skill `codemod-languages` |
+| `file type not supported` | Set `language:` or use a known extension; see skill `codemod-languages` |
 | Empty `files` in preview | Query/capture matched nothing, or recipe already applied |
 | `Missing required arguments: ...` | Supply required args from `describe_recipe` |
 

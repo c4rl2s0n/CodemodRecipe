@@ -1,5 +1,6 @@
 use std::collections::BTreeMap;
 use codemod_recipe_yaml::model::{EditOp, EditStep, Recipe, Step};
+use codemod_recipe_yaml::QuerySpec;
 use codemod_recipe_yaml::validate::{validate_recipe, validate_recipe_with, ValidationError};
 use serde_yaml::Value;
 
@@ -9,13 +10,15 @@ fn rejects_insert_missing_capture() {
         id: "bad".to_string(),
         name: None,
         description: None,
+        group: None,
         args: vec![],
         maps: BTreeMap::new(),
+        queries: BTreeMap::new(),
         steps: vec![Step::Edit(EditStep {
             path: "a.dart".to_string(),
             language: None,
             ops: vec![EditOp::Insert(codemod_recipe_yaml::model::InsertOp {
-                query: "(identifier) @x".to_string(),
+                query: QuerySpec::single("(identifier) @x"),
                 capture: "".to_string(),
                 anchor: codemod_recipe_yaml::model::InsertAnchor::End,
                 text: "x".to_string(),
@@ -40,8 +43,10 @@ fn rejects_empty_edit_ops() {
         id: "bad".to_string(),
         name: None,
         description: None,
+        group: None,
         args: vec![],
         maps: BTreeMap::new(),
+        queries: BTreeMap::new(),
         steps: vec![Step::Edit(EditStep {
             path: "a.dart".to_string(),
             language: None,
@@ -60,6 +65,7 @@ fn rejects_duplicate_arg_names() {
         id: "bad".to_string(),
         name: None,
         description: None,
+        group: None,
         args: vec![
             codemod_recipe_yaml::model::Arg {
                 name: "file".to_string(),
@@ -85,11 +91,12 @@ fn rejects_duplicate_arg_names() {
             },
         ],
         maps: BTreeMap::new(),
+        queries: BTreeMap::new(),
         steps: vec![Step::Edit(EditStep {
             path: "a.dart".to_string(),
             language: None,
             ops: vec![EditOp::Insert(codemod_recipe_yaml::model::InsertOp {
-                query: "(identifier) @x".to_string(),
+                query: QuerySpec::single("(identifier) @x"),
                 capture: "x".to_string(),
                 anchor: codemod_recipe_yaml::model::InsertAnchor::End,
                 text: "x".to_string(),
@@ -110,8 +117,10 @@ fn rejects_unknown_edit_op_kind() {
         id: "bad".to_string(),
         name: None,
         description: None,
+        group: None,
         args: vec![],
         maps: BTreeMap::new(),
+        queries: BTreeMap::new(),
         steps: vec![Step::Edit(EditStep {
             path: "a.dart".to_string(),
             language: None,
@@ -132,13 +141,15 @@ fn rejects_unknown_language() {
         id: "bad".to_string(),
         name: None,
         description: None,
+        group: None,
         args: vec![],
         maps: BTreeMap::new(),
+        queries: BTreeMap::new(),
         steps: vec![Step::Edit(EditStep {
             path: "a.rs".to_string(),
             language: Some("not_a_real_language_xyz".to_string()),
             ops: vec![EditOp::Insert(codemod_recipe_yaml::model::InsertOp {
-                query: "(identifier) @x".to_string(),
+                query: QuerySpec::single("(identifier) @x"),
                 capture: "x".to_string(),
                 anchor: codemod_recipe_yaml::model::InsertAnchor::End,
                 text: "x".to_string(),
@@ -150,7 +161,7 @@ fn rejects_unknown_language() {
     let errors = validate_recipe_with(&recipe, |_| false).unwrap_err();
     assert!(errors
         .iter()
-        .any(|e| matches!(e, ValidationError::UnknownLanguage(id) if id == "not_a_real_language_xyz")));
+        .any(|e| matches!(e, ValidationError::LanguageNotSupported(id) if id == "not_a_real_language_xyz")));
 }
 
 #[test]

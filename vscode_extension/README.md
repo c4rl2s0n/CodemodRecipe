@@ -4,6 +4,9 @@ A GUI for the [`codemod_recipe`](../README.md) toolkit. Browse recipes, fill in
 placeholder values through a form, preview changes as a native diff, and choose
 exactly which edits to keep before applying.
 
+Supports **multi-language** recipes (Dart, Rust, Java, Kotlin, SQL, TypeScript,
+JavaScript, Python, and 300+ tree-sitter grammars via the Rust host).
+
 ## How it works
 
 The extension does not parse source files itself. It launches the **Rust
@@ -28,10 +31,11 @@ flowchart LR
 
 ### YAML recipes
 
-1. Create a `.codemod/` directory in your workspace root.
+1. Create a `.codemod/` directory in your workspace root — or run
+   **Codemod Recipe: Scaffold Project** (also offered when `.codemod` is missing).
 2. Add YAML recipe files (`.yaml` or `.yml`) under `.codemod/` (conventionally
    `.codemod/recipes/`). Each recipe must have `id:` and `steps:` (`dslVersion: 2`).
-   Discovery is schema-based under the codemod root (not by directory name).
+   Optional `group:` (dotted path) organizes the Recipes tab tree.
 3. Optionally add maps (`id` + `map:`), variables (`id` + `values:`), and templates
    (e.g. under `.codemod/maps/`, `.codemod/variables/`, `.codemod/templates/`).
 4. Build and install the extension from `vscode_extension/` (`./build.sh`, or
@@ -42,14 +46,19 @@ flowchart LR
 // .vscode/settings.json
 {
   "codemodRecipe.codemodRoot": ".codemod",
+  "codemodRecipe.workspaceRoot": "",
   "codemodRecipe.autoPreviewDebounceMs": 400,
   "codemodRecipe.previewSnippetLines": 5
 }
 ```
 
 All YAML and `.template` files in the codemod root are automatically discovered
-and reloaded when changed; recipe load errors (e.g. duplicate ids) appear in the
-Recipes tab.
+and reloaded when changed; recipe load errors appear in the Recipes tab and the
+Problems panel.
+
+JSON Schema files under `schemas/` validate recipe/map/variable YAML (via
+`contributes.jsonValidation`, and Red Hat YAML `yaml.schemas` when that extension
+is installed).
 
 ### Custom codemod root
 
@@ -60,9 +69,8 @@ settings or use **Codemod Recipe: Set Codemod Root Directory**.
 
 1. Open the **Codemod Recipe** view in the activity bar. The side view has
    **Recipes** and **Recipe Runner** tabs.
-2. Click a recipe in the **Recipes** tab to switch to the runner tab and open the
-   argument form. Required fields are marked with `*`; file and directory args
-   get picker buttons; enum-like args can use editable suggestions.
+2. Search or expand group folders in the **Recipes** tab, then click a recipe to
+   open the runner. Right-click a recipe and choose **Show Recipe** when the host reports a `sourceFile`.
 3. The **Recipe Runner** tab shows parameter metadata and runs live preview
    automatically as form values change.
 4. The review panel shows changed files with short snippets and per-file/per-patch
@@ -70,12 +78,23 @@ settings or use **Codemod Recipe: Set Codemod Root Directory**.
 5. Use **Previous Change**, **Next Change**, or click a patch row to step through
    changes and open the native side-by-side diff for that file.
 6. Uncheck any files or patches you do not want, then click **Apply Selected**.
-   Only the selected patches are written, and recipe post-execution (e.g.
-   formatting) runs afterwards.
+
+### Editor navigation
+
+In `.codemod/**` YAML files the extension provides:
+
+- **Go to Definition** on `recipe:` / nested `id:` references and `templateFile:`
+- **Completions** for recipe ids, `with:` child args, `{{` template args / `var.` /
+  `map.`, and `language:` ids from the host catalog
+- **Hover** on recipe ids (args list) and template files (preview)
+- **CodeLens** “Open in Recipe Runner” on top-level `id:` lines
 
 You can also run **Codemod Recipe: Run From Cursor Context** (`Cmd+Alt+R` on
-macOS, `Ctrl+Alt+R` elsewhere). Recipes whose args declare context keys are
-shown in a picker and opened with values derived from the active editor.
+macOS, `Ctrl+Alt+R` elsewhere). Context keys include `file`, `selection`, `word`,
+`dartClass`, and generic `className`.
+
+**Codemod Recipe: Restart Host** restarts the Rust host process.
+**Codemod Recipe: Scaffold Project** writes skills/rules and `.codemod/` scaffolding.
 
 ## Protocol reference
 
@@ -85,6 +104,8 @@ Commands accepted by the host (one JSON object per line on stdin):
 { "command": "list" }
 
 { "command": "validate" }
+
+{ "command": "bootstrap", "force": false }
 
 { "command": "preview", "recipe": "add_log_line",
   "args": { "file": "lib/foo.dart", "className": "Foo", "methodName": "bar" },
@@ -133,7 +154,7 @@ Development Host for manual testing.
 
 ### Manual smoke checklist (webview)
 
-1. Open **Codemod Recipe** — **Recipes** tab lists recipes from the host.
+1. Open **Codemod Recipe** — **Recipes** tab lists recipes from the host (grouped/searchable).
 2. Select a recipe — **Recipe Runner** tab opens with the argument form.
 3. Edit args — preview status updates; review panel appears when the host returns files.
 4. **Previous Change** / **Next Change** — active patch highlights; native diff opens.

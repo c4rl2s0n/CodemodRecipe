@@ -2,6 +2,7 @@ use codemod_recipe_engine::{
     ensure_language_downloaded, is_known_language, language_from_extension, LanguageRegistry,
     RegistryConfig,
 };
+use codemod_recipe_yaml::QuerySpec;
 use codemod_recipe_yaml::model::{EditOp, EditStep, InsertAnchor, InsertOp, Recipe, Step};
 use codemod_recipe_yaml::validate::{validate_recipe_with, ValidationError};
 use std::collections::BTreeMap;
@@ -61,18 +62,68 @@ fn registry_resolves_explicit_language_over_extension() {
 }
 
 #[test]
+fn resolves_dart_from_extension_without_explicit_language() {
+    let registry = LanguageRegistry::new();
+    let id = registry
+        .resolve_language_id(None, "lib/main.dart")
+        .unwrap();
+    assert_eq!(id, "dart");
+}
+
+#[test]
+fn rejects_unsupported_file_type_when_extension_unknown() {
+    let registry = LanguageRegistry::new();
+    match registry.resolve_language_id(None, "weird.xyz") {
+        Err(err) => {
+            let msg = err.to_string();
+            assert!(msg.contains("file type not supported"), "{msg}");
+            assert!(msg.contains("weird.xyz"), "{msg}");
+        }
+        Ok(id) => panic!("expected unsupported file type, got {id}"),
+    }
+}
+
+#[test]
+fn rejects_unsupported_file_type_when_no_extension() {
+    let registry = LanguageRegistry::new();
+    match registry.resolve_language_id(None, "noext") {
+        Err(err) => {
+            let msg = err.to_string();
+            assert!(msg.contains("file type not supported"), "{msg}");
+            assert!(msg.contains("noext"), "{msg}");
+        }
+        Ok(id) => panic!("expected unsupported file type, got {id}"),
+    }
+}
+
+#[test]
+fn rejects_unsupported_explicit_language() {
+    let registry = LanguageRegistry::new();
+    match registry.resolve_language_id(Some("not_a_real_language_xyz"), "main.rs") {
+        Err(err) => {
+            let msg = err.to_string();
+            assert!(msg.contains("language not supported"), "{msg}");
+            assert!(msg.contains("not_a_real_language_xyz"), "{msg}");
+        }
+        Ok(id) => panic!("expected unsupported language, got {id}"),
+    }
+}
+
+#[test]
 fn validates_unknown_explicit_language() {
     let recipe = Recipe {
         id: "bad".to_string(),
         name: None,
         description: None,
+        group: None,
         args: vec![],
         maps: BTreeMap::new(),
+        queries: BTreeMap::new(),
         steps: vec![Step::Edit(EditStep {
             path: "a.rs".to_string(),
             language: Some("not_a_real_language_xyz".to_string()),
             ops: vec![EditOp::Insert(InsertOp {
-                query: "(identifier) @x".to_string(),
+                query: QuerySpec::single("(identifier) @x"),
                 capture: "x".to_string(),
                 anchor: InsertAnchor::End,
                 text: "x".to_string(),
@@ -84,7 +135,7 @@ fn validates_unknown_explicit_language() {
     let errors = validate_recipe_with(&recipe, is_known_language).unwrap_err();
     assert!(errors
         .iter()
-        .any(|e| matches!(e, ValidationError::UnknownLanguage(id) if id == "not_a_real_language_xyz")));
+        .any(|e| matches!(e, ValidationError::LanguageNotSupported(id) if id == "not_a_real_language_xyz")));
 }
 
 #[test]
@@ -114,13 +165,15 @@ fn rust_insert_at_function_item_end() {
         id: "rust_insert".to_string(),
         name: None,
         description: None,
+        group: None,
         args: vec![],
         maps: BTreeMap::new(),
+        queries: BTreeMap::new(),
         steps: vec![Step::Edit(EditStep {
             path: "main.rs".to_string(),
             language: Some("rust".to_string()),
             ops: vec![EditOp::Insert(InsertOp {
-                query: "(function_item) @fn".to_string(),
+                query: QuerySpec::single("(function_item) @fn"),
                 capture: "fn".to_string(),
                 anchor: InsertAnchor::End,
                 text: "\n// inserted".to_string(),
@@ -157,13 +210,15 @@ fn smoke_sqlite_parses_create_table() {
         id: "sqlite_create".to_string(),
         name: None,
         description: None,
+        group: None,
         args: vec![],
         maps: BTreeMap::new(),
+        queries: BTreeMap::new(),
         steps: vec![Step::Edit(EditStep {
             path: "schema.sql".to_string(),
             language: Some("sqlite".to_string()),
             ops: vec![EditOp::Insert(InsertOp {
-                query: "(create_table_statement) @stmt".to_string(),
+                query: QuerySpec::single("(create_table_statement) @stmt"),
                 capture: "stmt".to_string(),
                 anchor: InsertAnchor::End,
                 text: "\n-- codemod".to_string(),

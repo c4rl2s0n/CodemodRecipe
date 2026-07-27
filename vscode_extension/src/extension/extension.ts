@@ -1,34 +1,48 @@
+import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { COMMANDS, VIEWS } from './constants';
 import { ExtensionConfig } from './config/extensionConfig';
 import { DiffContentProvider } from './diff/diffContentProvider';
 import { HostBridge } from './host/hostBridge';
+import { RecipeDiagnostics } from './language/diagnostics';
+import { registerRecipeLanguageSupport } from './language/recipeLanguage';
 import { prefillArgs, resolveEditorContext } from './recipes/recipeContext';
 import { RecipeRepository } from './recipes/recipeRepository';
 import type { RecipeSchema } from '../shared';
 import { RecipeRunnerViewProvider } from './views/recipeRunnerViewProvider';
 
 export function activate(context: vscode.ExtensionContext): void {
-  const workspaceRoot = vscode.workspace.workspaceFolders?.[0]?.uri.fsPath;
-  if (!workspaceRoot) {
-    return;
-  }
-
   const config = new ExtensionConfig();
-  const bridge = new HostBridge(workspaceRoot, config, context.extensionUri);
+  const bridge = new HostBridge(config, context.extensionUri);
   const diffProvider = new DiffContentProvider();
   const repository = new RecipeRepository(bridge);
+  const diagnostics = new RecipeDiagnostics();
   const runner = new RecipeRunnerViewProvider(
     bridge,
     config,
     diffProvider,
-    workspaceRoot,
     context.extensionUri
   );
 
   let recipeReloadTimer: NodeJS.Timeout | undefined;
   let codemodWatcher: vscode.FileSystemWatcher | undefined;
+  let scaffoldOfferShown = false;
+
+  const hasUsableWorkspaceRoot = (): boolean => {
+    const root = config.workspaceRoot;
+    if (!root || root === '.') {
+      return false;
+    }
+    return Boolean(
+      vscode.workspace.workspaceFolders?.length || configHasAbsoluteWorkspaceRoot()
+    );
+  };
+
+  registerYamlSchemas(context);
+  if (hasUsableWorkspaceRoot()) {
+    registerRecipeLanguageSupport(context, repository, bridge, config);
+  }
 
   const syncRunnerFromRepository = async (): Promise<void> => {
     await runner.refreshRecipes(
@@ -36,6 +50,29 @@ export function activate(context: vscode.ExtensionContext): void {
       repository.getLastError(),
       repository.getDiagnostics()
     );
+    diagnostics.publish(repository.getDiagnostics(), config.workspaceRoot);
+  };
+
+  const maybeOfferScaffold = async (): Promise<void> => {
+    if (scaffoldOfferShown) {
+      return;
+    }
+    const root = config.workspaceRoot;
+    const codemodDir = path.join(root, config.codemodRoot);
+    const missingOrEmpty =
+      !fs.existsSync(codemodDir) || isEmptyCodemodDir(codemodDir);
+    if (!missingOrEmpty) {
+      return;
+    }
+    scaffoldOfferShown = true;
+    const choice = await vscode.window.showInformationMessage(
+      `Codemod Recipe: no recipes found under ${config.codemodRoot}. Scaffold .codemod now?`,
+      'Scaffold .codemod',
+      'Not now'
+    );
+    if (choice === 'Scaffold .codemod') {
+      await scaffoldProject(false);
+    }
   };
 
   const reloadRecipesFromHost = async (showError = false): Promise<void> => {
@@ -52,8 +89,15 @@ export function activate(context: vscode.ExtensionContext): void {
       await syncRunnerFromRepository();
       if (showError && repository.getLastError()) {
         vscode.window.showWarningMessage(
-          `Codemod Recipe: ${repository.getLastError()}`
+          formatHostError(repository.getLastError()!)
         );
+      }
+      if (
+        !repository.getLastError() &&
+        repository.getRecipes().length === 0 &&
+        repository.getDiagnostics().length === 0
+      ) {
+        await maybeOfferScaffold();
       }
     } finally {
       runner.setRecipesRefreshing(false);
@@ -69,11 +113,35 @@ export function activate(context: vscode.ExtensionContext): void {
       await syncRunnerFromRepository();
       if (showError && repository.getLastError()) {
         vscode.window.showWarningMessage(
-          `Codemod Recipe: ${repository.getLastError()}`
+          formatHostError(repository.getLastError()!)
         );
       }
     } finally {
       runner.setRecipesRefreshing(false);
+    }
+  };
+
+  const scaffoldProject = async (force: boolean): Promise<void> => {
+    try {
+      await bridge.ensureHost();
+      const result = await bridge.bootstrapProject(force);
+      if (!result.ok) {
+        vscode.window.showErrorMessage(
+          `Codemod Recipe scaffold failed: ${result.error ?? 'unknown error'}`
+        );
+        return;
+      }
+      const written = result.written?.length ?? 0;
+      const skipped = result.skipped?.length ?? 0;
+      vscode.window.showInformationMessage(
+        `Codemod Recipe: scaffolded project (${written} written, ${skipped} skipped).`
+      );
+      await reloadRecipesFromHost(true);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      vscode.window.showErrorMessage(
+        formatHostError(`Scaffold failed: ${message}`)
+      );
     }
   };
 
@@ -93,14 +161,10 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const createCodemodWatcher = (): void => {
     disposeCodemodWatcher();
-    const codemodRootDir = path.join(workspaceRoot, config.codemodRoot);
+    const codemodRootDir = path.join(config.workspaceRoot, config.codemodRoot);
 
-    // Watch for YAML files (recipes and maps) and .template files
     codemodWatcher = vscode.workspace.createFileSystemWatcher(
-      new vscode.RelativePattern(
-        codemodRootDir,
-        '**/*.{yaml,yml,template}'
-      )
+      new vscode.RelativePattern(codemodRootDir, '**/*.{yaml,yml,template}')
     );
     codemodWatcher.onDidChange(scheduleRecipeReload);
     codemodWatcher.onDidCreate(scheduleRecipeReload);
@@ -108,23 +172,47 @@ export function activate(context: vscode.ExtensionContext): void {
   };
 
   const bootstrap = async (showError = false): Promise<void> => {
+    if (!hasUsableWorkspaceRoot()) {
+      runner.setBootstrap({
+        inFlight: false,
+        phase: 'error',
+        error:
+          'Open a workspace folder (or set codemodRecipe.workspaceRoot to an absolute path), then click Retry.',
+      });
+      return;
+    }
+
     runner.setBootstrap({ inFlight: true, phase: 'startingHost' });
     try {
       createCodemodWatcher();
       runner.setBootstrap({ inFlight: true, phase: 'loadingRecipes' });
       await restartHostAndRefresh(showError);
       runner.setBootstrap({ inFlight: false, phase: 'ready' });
+      if (
+        !repository.getLastError() &&
+        repository.getRecipes().length === 0
+      ) {
+        await maybeOfferScaffold();
+      }
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      runner.setBootstrap({ inFlight: false, phase: 'error', error: message });
+      runner.setBootstrap({
+        inFlight: false,
+        phase: 'error',
+        error: formatHostError(message),
+      });
     }
   };
 
   context.subscriptions.push(
     { dispose: () => bridge.dispose() },
     { dispose: () => disposeCodemodWatcher() },
+    diagnostics.disposable,
     vscode.workspace.onDidChangeConfiguration((event) => {
-      if (event.affectsConfiguration('codemodRecipe.codemodRoot')) {
+      if (
+        event.affectsConfiguration('codemodRecipe.codemodRoot') ||
+        event.affectsConfiguration('codemodRecipe.workspaceRoot')
+      ) {
         bridge.dispose();
         void bootstrap(true);
       }
@@ -133,11 +221,9 @@ export function activate(context: vscode.ExtensionContext): void {
       DiffContentProvider.scheme,
       diffProvider
     ),
-    vscode.window.registerWebviewViewProvider(
-      VIEWS.runner,
-      runner,
-      { webviewOptions: { retainContextWhenHidden: true } }
-    ),
+    vscode.window.registerWebviewViewProvider(VIEWS.runner, runner, {
+      webviewOptions: { retainContextWhenHidden: true },
+    }),
     vscode.commands.registerCommand(COMMANDS.refresh, () =>
       reloadRecipesFromHost(true)
     ),
@@ -147,9 +233,9 @@ export function activate(context: vscode.ExtensionContext): void {
         const result = await bridge.validateRecipes();
         await repository.reload();
         await syncRunnerFromRepository();
-        const diagnostics = result.diagnostics ?? [];
-        const errors = diagnostics.filter((d) => d.severity === 'error');
-        const warnings = diagnostics.filter((d) => d.severity === 'warning');
+        const diags = result.diagnostics ?? [];
+        const errors = diags.filter((d) => d.severity === 'error');
+        const warnings = diags.filter((d) => d.severity === 'warning');
         if (result.ok) {
           const suffix =
             warnings.length > 0 ? ` (${warnings.length} warning(s))` : '';
@@ -167,13 +253,18 @@ export function activate(context: vscode.ExtensionContext): void {
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);
-        vscode.window.showErrorMessage(`Codemod Recipe validate failed: ${message}`);
+        vscode.window.showErrorMessage(
+          formatHostError(`Codemod Recipe validate failed: ${message}`)
+        );
       }
     }),
     vscode.commands.registerCommand(COMMANDS.bootstrap, () => bootstrap(true)),
+    vscode.commands.registerCommand(COMMANDS.scaffoldProject, () =>
+      scaffoldProject(false)
+    ),
     vscode.commands.registerCommand(
       COMMANDS.runRecipe,
-      async (recipe?: RecipeSchema) => {
+      async (recipe?: RecipeSchema, initialArgs?: Record<string, string>) => {
         if (!recipe) {
           const picked = await vscode.window.showQuickPick(
             repository.getRecipes().map((item) => ({
@@ -186,66 +277,175 @@ export function activate(context: vscode.ExtensionContext): void {
           recipe = picked?.recipe;
         }
         if (recipe) {
-          runner.run(recipe);
+          runner.run(recipe, initialArgs ?? {});
         }
       }
     ),
-    vscode.commands.registerCommand(
-      COMMANDS.runFromCursorContext,
-      async () => {
-        const recipes = repository.getRecipes();
-        const editorContext = resolveEditorContext(workspaceRoot);
-        const candidates = recipes
-          .map((recipe) => ({
-            recipe,
-            args: prefillArgs(recipe, editorContext.values),
-          }))
-          .filter((candidate) => Object.keys(candidate.args).length > 0);
+    vscode.commands.registerCommand(COMMANDS.runFromCursorContext, async () => {
+      const recipes = repository.getRecipes();
+      const editorContext = resolveEditorContext(config.workspaceRoot);
+      const candidates = recipes
+        .map((recipe) => ({
+          recipe,
+          args: prefillArgs(recipe, editorContext.values),
+        }))
+        .filter((candidate) => Object.keys(candidate.args).length > 0);
 
-        if (candidates.length === 0) {
-          vscode.window.showInformationMessage(
-            'No recipes declare arguments that match the current editor context.'
-          );
-          return;
-        }
-
-        const picked = await vscode.window.showQuickPick(
-          candidates.map((candidate) => ({
-            label: candidate.recipe.name,
-            description: candidate.recipe.description,
-            detail: Object.entries(candidate.args)
-              .map(([key, value]) => `${key}: ${value}`)
-              .join(', '),
-            candidate,
-          })),
-          { placeHolder: 'Run recipe using values from the current cursor context' }
+      if (candidates.length === 0) {
+        vscode.window.showInformationMessage(
+          'No recipes declare arguments that match the current editor context.'
         );
+        return;
+      }
 
-        if (picked) {
-          runner.run(picked.candidate.recipe, picked.candidate.args);
+      const picked = await vscode.window.showQuickPick(
+        candidates.map((candidate) => ({
+          label: candidate.recipe.name,
+          description: candidate.recipe.description,
+          detail: Object.entries(candidate.args)
+            .map(([key, value]) => `${key}: ${value}`)
+            .join(', '),
+          candidate,
+        })),
+        {
+          placeHolder:
+            'Run recipe using values from the current cursor context',
         }
+      );
+
+      if (picked) {
+        runner.run(picked.candidate.recipe, picked.candidate.args);
       }
-    ),
-    vscode.commands.registerCommand(
-      COMMANDS.configureCodemodRoot,
-      async () => {
-        const value = await vscode.window.showInputBox({
-          prompt:
-            'Path (relative to workspace) of the codemod root directory',
-          placeHolder: '.codemod',
-        });
-        if (value !== undefined) {
-          await config.updateCodemodRoot(value);
-          bridge.dispose();
-          await bootstrap(true);
-        }
+    }),
+    vscode.commands.registerCommand(COMMANDS.configureCodemodRoot, async () => {
+      const value = await vscode.window.showInputBox({
+        prompt: 'Path (relative to workspace) of the codemod root directory',
+        placeHolder: '.codemod',
+      });
+      if (value !== undefined) {
+        await config.updateCodemodRoot(value);
+        bridge.dispose();
+        await bootstrap(true);
       }
-    )
+    })
   );
 
+  // Allow webview scaffold messages to reach the same handler.
+  runner.setScaffoldHandler(() => scaffoldProject(false));
+
+  // Keep loading overlay until bootstrap finishes (state starts inFlight=true).
   void bootstrap();
 }
 
 export function deactivate(): void {
   // No-op: child processes are short-lived and exit on their own.
+}
+
+function configHasAbsoluteWorkspaceRoot(): boolean {
+  const configured =
+    vscode.workspace
+      .getConfiguration('codemodRecipe')
+      .get<string>('workspaceRoot') || '';
+  return Boolean(configured && path.isAbsolute(configured));
+}
+
+function isEmptyCodemodDir(dir: string): boolean {
+  try {
+    const entries = fs.readdirSync(dir);
+    if (entries.length === 0) {
+      return true;
+    }
+    // Treat a tree with only empty recipe/map dirs as empty.
+    const hasYaml = walkHasYaml(dir);
+    return !hasYaml;
+  } catch {
+    return true;
+  }
+}
+
+function walkHasYaml(dir: string, depth = 0): boolean {
+  if (depth > 6) {
+    return false;
+  }
+  let entries: string[];
+  try {
+    entries = fs.readdirSync(dir);
+  } catch {
+    return false;
+  }
+  for (const entry of entries) {
+    const full = path.join(dir, entry);
+    let stat: fs.Stats;
+    try {
+      stat = fs.statSync(full);
+    } catch {
+      continue;
+    }
+    if (stat.isFile() && /\.(ya?ml|template)$/i.test(entry)) {
+      return true;
+    }
+    if (stat.isDirectory() && walkHasYaml(full, depth + 1)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function formatHostError(message: string): string {
+  const prefixed = message.startsWith('Codemod Recipe')
+    ? message
+    : `Codemod Recipe: ${message}`;
+  if (/build\.sh|cargo build|codemod_host|Failed to spawn|failed to start|Persistent host/i.test(message)) {
+    if (/build\.sh|cargo/i.test(message)) {
+      return prefixed;
+    }
+    return `${prefixed}\n\nIf the host failed to start, build it via vscode_extension/build.sh or cargo build -p codemod_recipe_host --bin codemod_host.`;
+  }
+  return prefixed;
+}
+
+function registerYamlSchemas(context: vscode.ExtensionContext): void {
+  const recipeSchema = vscode.Uri.joinPath(
+    context.extensionUri,
+    'schemas',
+    'recipe.schema.json'
+  ).toString();
+  const mapSchema = vscode.Uri.joinPath(
+    context.extensionUri,
+    'schemas',
+    'map.schema.json'
+  ).toString();
+  const variablesSchema = vscode.Uri.joinPath(
+    context.extensionUri,
+    'schemas',
+    'variables.schema.json'
+  ).toString();
+
+  try {
+    const yamlConfig = vscode.workspace.getConfiguration('yaml');
+    const current = yamlConfig.get<Record<string, string | string[]>>('schemas') ?? {};
+    const next: Record<string, string | string[]> = { ...current };
+    let changed = false;
+    const ensure = (schemaUri: string, patterns: string[]) => {
+      if (next[schemaUri] === undefined) {
+        next[schemaUri] = patterns;
+        changed = true;
+      }
+    };
+    ensure(recipeSchema, ['.codemod/**/*.yaml', '.codemod/**/*.yml']);
+    ensure(mapSchema, ['.codemod/maps/**/*.yaml', '.codemod/maps/**/*.yml']);
+    ensure(variablesSchema, [
+      '.codemod/variables/**/*.yaml',
+      '.codemod/variables/**/*.yml',
+    ]);
+    if (changed) {
+      void yamlConfig.update(
+        'schemas',
+        next,
+        vscode.ConfigurationTarget.Workspace
+      );
+    }
+  } catch {
+    // Red Hat YAML extension may be absent; jsonValidation still contributes.
+  }
 }

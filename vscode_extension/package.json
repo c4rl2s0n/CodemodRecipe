@@ -43,6 +43,16 @@
         "icon": "$(refresh)"
       },
       {
+        "command": "codemodRecipe.bootstrap",
+        "title": "Codemod Recipe: Restart Host",
+        "icon": "$(debug-restart)"
+      },
+      {
+        "command": "codemodRecipe.scaffoldProject",
+        "title": "Codemod Recipe: Scaffold Project",
+        "icon": "$(file-directory-create)"
+      },
+      {
         "command": "codemodRecipe.runRecipe",
         "title": "Codemod Recipe: Run Recipe",
         "icon": "$(play)"
@@ -60,6 +70,28 @@
         "command": "codemodRecipe.validateRecipes",
         "title": "Codemod Recipe: Validate Recipes",
         "icon": "$(check-all)"
+      },
+      {
+        "command": "codemodRecipe.openInRecipeRunner",
+        "title": "Codemod Recipe: Open in Recipe Runner"
+      },
+      {
+        "command": "codemodRecipe.testQueryOnFile",
+        "title": "Codemod Recipe: Test Query on File"
+      }
+    ],
+    "jsonValidation": [
+      {
+        "fileMatch": [".codemod/**/*.yaml", ".codemod/**/*.yml"],
+        "url": "./schemas/recipe.schema.json"
+      },
+      {
+        "fileMatch": [".codemod/maps/**/*.yaml", ".codemod/maps/**/*.yml"],
+        "url": "./schemas/map.schema.json"
+      },
+      {
+        "fileMatch": [".codemod/variables/**/*.yaml", ".codemod/variables/**/*.yml"],
+        "url": "./schemas/variables.schema.json"
       }
     ],
     "keybindings": [

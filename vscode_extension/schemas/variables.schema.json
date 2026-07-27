@@ -1,0 +1,28 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://codemod-recipe.dev/schemas/variables.schema.json",
+  "title": "Codemod Recipe Variables",
+  "type": "object",
+  "required": ["id", "values"],
+  "additionalProperties": true,
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Variables document identifier; values are referenced as var.<name>."
+    },
+    "description": {
+      "type": "string"
+    },
+    "values": {
+      "type": "object",
+      "additionalProperties": {
+        "oneOf": [
+          { "type": "string" },
+          { "type": "number" },
+          { "type": "boolean" }
+        ]
+      }
+    }
+  }
+}

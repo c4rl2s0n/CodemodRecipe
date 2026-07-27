@@ -17,6 +17,10 @@ export interface RecipeSchema {
   id: string;
   name: string;
   description: string;
+  /** Optional dotted catalog path (e.g. `rust.data`). */
+  group?: string | null;
+  /** Workspace-relative path to the recipe YAML file. */
+  sourceFile?: string | null;
   args: RecipeArg[];
   templatesLoaded?: boolean;
   previewTemplates?: { label: string; path: string; content?: string }[];
@@ -59,6 +63,18 @@ export interface RecipeCatalogResponse {
   diagnostics?: RecipeDiagnostic[];
   /** Number of YAML maps loaded from `.codemod/maps/`. */
   mapsLoaded?: number;
+  mapIds?: string[];
+  varIds?: string[];
+  languageIds?: string[];
+}
+
+export interface BootstrapResponse {
+  ok: boolean;
+  error?: string;
+  edit_policy?: string;
+  companions?: string[];
+  written?: string[];
+  skipped?: string[];
 }
 
 /** @deprecated Use {@link RecipeCatalogResponse} */
@@ -119,6 +135,12 @@ export type HostCommand =
       args: Record<string, string>;
       previewToken: string;
       selection: SelectionPayload;
+    }
+  | {
+      command: 'bootstrap';
+      force?: boolean;
+      editPolicy?: string;
+      companions?: string[];
     };
 
 

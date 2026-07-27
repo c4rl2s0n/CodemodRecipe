@@ -70,7 +70,7 @@ fn template_renders_camel_field_name_in_recipe_text() {
     };
     assert!(insert.text.contains("myCounter"));
     assert_eq!(
-        render_string(&insert.query, &args).expect("render").matches("Settings").count(),
+        render_string(&insert.query.step_strings().join("\n"), &args).expect("render").matches("Settings").count(),
         1
     );
 }

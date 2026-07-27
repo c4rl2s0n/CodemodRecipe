@@ -1,5 +1,6 @@
+use crate::diag_source::{source_file_only, source_with_needle};
 use crate::map_registry::{load_codemod_assets, merge_maps, warn_on_missing_map_ids};
-use crate::protocol::{DiagnosticSource, RecipeArg, RecipeDiagnostic, RecipeSchema};
+use crate::protocol::{RecipeArg, RecipeDiagnostic, RecipeSchema};
 use crate::template::{render_template, render_template_file};
 use codemod_recipe_engine::engine::parse_recipe_yaml;
 use codemod_recipe_yaml::compose::{expand_recipe_references, recipe_ref_id};
@@ -14,6 +15,10 @@ pub struct RecipeRegistry {
     pub language_config: codemod_recipe_engine::RegistryConfig,
     maps_by_id: BTreeMap<String, BTreeMap<String, String>>,
     vars_by_id: BTreeMap<String, BTreeMap<String, String>>,
+    queries_by_id: BTreeMap<
+        String,
+        BTreeMap<String, codemod_recipe_yaml::model::QueryDefinition>,
+    >,
     recipes_by_id: BTreeMap<String, (PathBuf, RecipeSchema)>,
     recipes_ast: BTreeMap<String, Recipe>,
     diagnostics: Vec<RecipeDiagnostic>,
@@ -27,6 +32,7 @@ impl RecipeRegistry {
             language_config: codemod_recipe_engine::RegistryConfig::default(),
             maps_by_id: BTreeMap::new(),
             vars_by_id: BTreeMap::new(),
+            queries_by_id: BTreeMap::new(),
             recipes_by_id: BTreeMap::new(),
             recipes_ast: BTreeMap::new(),
             diagnostics: Vec::new(),
@@ -38,11 +44,13 @@ impl RecipeRegistry {
         self.recipes_ast.clear();
         self.maps_by_id.clear();
         self.vars_by_id.clear();
+        self.queries_by_id.clear();
         self.diagnostics.clear();
 
         let assets = load_codemod_assets(&self.workspace_root, &self.codemod_root);
         self.maps_by_id = assets.maps_by_id;
         self.vars_by_id = assets.vars_by_id;
+        self.queries_by_id = assets.queries_by_id;
         self.diagnostics.extend(assets.diagnostics);
 
         let mut seen_ids: BTreeMap<String, PathBuf> = BTreeMap::new();
@@ -59,26 +67,18 @@ impl RecipeRegistry {
                     "error",
                     "E_RECIPE_PARSE",
                     format!("Failed to parse recipe: {}", path.display()),
-                    vec![DiagnosticSource {
-                        file: relative.clone(),
-                        line: None,
-                        column: None,
-                    }],
+                    vec![source_file_only(&relative)],
                 ));
                 continue;
             };
 
-            let schema = recipe_to_schema(&recipe);
+            let schema = recipe_to_schema(&recipe, Some(&relative));
             if seen_ids.contains_key(&schema.id) {
                 self.diagnostics.push(RecipeDiagnostic::simple(
                     "error",
                     "E_DUPLICATE_ID",
                     format!("Duplicate recipe id: {}", schema.id),
-                    vec![DiagnosticSource {
-                        file: relative,
-                        line: None,
-                        column: None,
-                    }],
+                    vec![source_with_needle(&relative, Some(&text), &format!("id: {}", schema.id))],
                 ));
                 continue;
             }
@@ -104,10 +104,10 @@ impl RecipeRegistry {
             self.recipes_ast.insert(recipe.id.clone(), recipe.clone());
         }
 
-        for (path, _relative, recipe) in &parsed_recipes {
+        for (path, relative, recipe) in &parsed_recipes {
             let schema = match expand_recipe_references(recipe, &self.recipes_ast) {
-                Ok(expanded) => recipe_to_schema(&expanded),
-                Err(_) => recipe_to_schema(recipe),
+                Ok(expanded) => recipe_to_schema(&expanded, Some(relative)),
+                Err(_) => recipe_to_schema(recipe, Some(relative)),
             };
             self.recipes_by_id
                 .insert(schema.id.clone(), (path.clone(), schema));
@@ -151,6 +151,24 @@ impl RecipeRegistry {
 
     pub fn vars_by_id(&self) -> &BTreeMap<String, BTreeMap<String, String>> {
         &self.vars_by_id
+    }
+
+    pub fn maps_by_id(&self) -> &BTreeMap<String, BTreeMap<String, String>> {
+        &self.maps_by_id
+    }
+
+    pub fn queries_by_id(
+        &self,
+    ) -> &BTreeMap<String, BTreeMap<String, codemod_recipe_yaml::model::QueryDefinition>> {
+        &self.queries_by_id
+    }
+
+    pub fn map_ids(&self) -> Vec<String> {
+        self.maps_by_id.keys().cloned().collect()
+    }
+
+    pub fn var_ids(&self) -> Vec<String> {
+        self.vars_by_id.keys().cloned().collect()
     }
 
     pub fn get(&self, id: &str) -> Option<RecipeSchema> {
@@ -204,11 +222,11 @@ fn collect_reserved_arg_errors(
                     "Argument name '{}' shadows reserved template namespace",
                     arg.name
                 ),
-                vec![DiagnosticSource {
-                    file: file_path.to_string(),
-                    line: None,
-                    column: None,
-                }],
+                vec![source_with_needle(
+                    file_path,
+                    None,
+                    &format!("name: {}", arg.name),
+                )],
             ));
         }
     }
@@ -259,11 +277,7 @@ fn validate_one_recipe_ref(
             "error",
             "E_SCHEMA",
             "recipe step must have a non-empty id".to_string(),
-            vec![DiagnosticSource {
-                file: file_path.to_string(),
-                line: None,
-                column: None,
-            }],
+            vec![source_with_needle(file_path, None, "recipe:")],
         ));
         return;
     }
@@ -272,11 +286,7 @@ fn validate_one_recipe_ref(
             "error",
             "E_RECIPE_REF",
             format!("Unknown recipe reference: {ref_id}"),
-            vec![DiagnosticSource {
-                file: file_path.to_string(),
-                line: None,
-                column: None,
-            }],
+            vec![source_with_needle(file_path, None, ref_id)],
         ));
     }
 }
@@ -288,15 +298,12 @@ fn collect_schema_errors(
 ) {
     if let Err(errors) = validate_recipe_with(recipe, codemod_recipe_engine::is_known_language) {
         for error in errors {
+            let needle = error.to_string();
             diagnostics.push(RecipeDiagnostic::simple(
                 "error",
                 "E_SCHEMA",
-                error.to_string(),
-                vec![DiagnosticSource {
-                    file: file_path.to_string(),
-                    line: None,
-                    column: None,
-                }],
+                needle.clone(),
+                vec![source_file_only(file_path)],
             ));
         }
     }
@@ -321,20 +328,26 @@ fn collect_map_warnings_in_steps(
         match step {
             Step::Edit(edit) => {
                 warn_on_missing_map_ids(&edit.path, file_path, maps, diagnostics);
-                for op in &edit.ops {
-                    match op {
-                        EditOp::Insert(insert) => {
-                            warn_on_missing_map_ids(&insert.query, file_path, maps, diagnostics);
+            for op in &edit.ops {
+                match op {
+                    EditOp::Insert(insert) => {
+                        for q in insert.query.step_strings() {
+                            warn_on_missing_map_ids(q, file_path, maps, diagnostics);
+                        }
                             warn_on_missing_map_ids(&insert.capture, file_path, maps, diagnostics);
                             warn_on_missing_map_ids(&insert.text, file_path, maps, diagnostics);
                         }
                         EditOp::Replace(replace) => {
-                            warn_on_missing_map_ids(&replace.query, file_path, maps, diagnostics);
+                        for q in replace.query.step_strings() {
+                            warn_on_missing_map_ids(q, file_path, maps, diagnostics);
+                        }
                             warn_on_missing_map_ids(&replace.capture, file_path, maps, diagnostics);
                             warn_on_missing_map_ids(&replace.text, file_path, maps, diagnostics);
                         }
                         EditOp::Remove(remove) => {
-                            warn_on_missing_map_ids(&remove.query, file_path, maps, diagnostics);
+                        for q in remove.query.step_strings() {
+                            warn_on_missing_map_ids(q, file_path, maps, diagnostics);
+                        }
                             warn_on_missing_map_ids(&remove.capture, file_path, maps, diagnostics);
                         }
                         EditOp::Unknown(_, _) => {}
@@ -383,11 +396,13 @@ fn relative_path(workspace_root: &Path, absolute: &Path) -> String {
     }
 }
 
-pub fn recipe_to_schema(recipe: &Recipe) -> RecipeSchema {
+pub fn recipe_to_schema(recipe: &Recipe, source_file: Option<&str>) -> RecipeSchema {
     RecipeSchema {
         id: recipe.id.clone(),
         name: recipe.name.clone().unwrap_or_else(|| recipe.id.clone()),
         description: recipe.description.clone().unwrap_or_default(),
+        group: recipe.group.clone(),
+        source_file: source_file.map(str::to_string),
         args: recipe.args.iter().map(arg_to_schema).collect(),
     }
 }
@@ -412,7 +427,7 @@ pub fn render_recipe_templates(
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     vars: &BTreeMap<String, BTreeMap<String, String>>,
 ) -> Result<Recipe, String> {
-    render_recipe_templates_with_root(recipe, args, maps, vars, None)
+    render_recipe_templates_with_root(recipe, args, maps, vars, None, None, None)
 }
 
 /// Like [`render_recipe_templates`], and when `codemod_root` is set, materializes
@@ -424,18 +439,32 @@ pub fn render_recipe_templates_with_root(
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     vars: &BTreeMap<String, BTreeMap<String, String>>,
     codemod_root: Option<&Path>,
+    registry: Option<&RecipeRegistry>,
+    recipe_file: Option<&Path>,
 ) -> Result<Recipe, String> {
     let mut out = recipe.clone();
-    out.steps = render_steps(&recipe.steps, args, maps, vars, codemod_root)?;
+    out.steps = render_steps(
+        &recipe.steps,
+        recipe,
+        args,
+        maps,
+        vars,
+        codemod_root,
+        registry,
+        recipe_file,
+    )?;
     Ok(out)
 }
 
 fn render_steps(
     steps: &[Step],
+    recipe: &Recipe,
     args: &BTreeMap<String, String>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     vars: &BTreeMap<String, BTreeMap<String, String>>,
     codemod_root: Option<&Path>,
+    registry: Option<&RecipeRegistry>,
+    recipe_file: Option<&Path>,
 ) -> Result<Vec<Step>, String> {
     let mut out = Vec::new();
     for step in steps {
@@ -444,14 +473,26 @@ fn render_steps(
                 let local = apply_with_overlay(args, &scoped.with, maps, vars)?;
                 out.extend(render_steps(
                     &scoped.steps,
+                    recipe,
                     &local,
                     maps,
                     vars,
                     codemod_root,
+                    registry,
+                    recipe_file,
                 )?);
             }
             Step::Edit(edit) => {
-                out.push(Step::Edit(render_edit(edit, args, maps, vars)?));
+                out.push(Step::Edit(render_edit(
+                    edit,
+                    recipe,
+                    args,
+                    maps,
+                    vars,
+                    codemod_root,
+                    registry,
+                    recipe_file,
+                )?));
             }
             Step::Create(create) => {
                 out.push(Step::Create(render_create(
@@ -490,9 +531,13 @@ fn apply_with_overlay(
 
 fn render_edit(
     edit: &codemod_recipe_yaml::model::EditStep,
+    recipe: &Recipe,
     args: &BTreeMap<String, String>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     vars: &BTreeMap<String, BTreeMap<String, String>>,
+    codemod_root: Option<&Path>,
+    registry: Option<&RecipeRegistry>,
+    recipe_file: Option<&Path>,
 ) -> Result<codemod_recipe_yaml::model::EditStep, String> {
     let mut edit = edit.clone();
     edit.path = render_template(&edit.path, args, maps, vars)?;
@@ -502,23 +547,105 @@ fn render_edit(
     for op in &mut edit.ops {
         match op {
             EditOp::Insert(insert) => {
-                insert.query = render_template(&insert.query, args, maps, vars)?;
+                insert.query = render_query_op(
+                    &insert.query,
+                    recipe,
+                    registry,
+                    recipe_file,
+                    codemod_root,
+                    args,
+                    maps,
+                    vars,
+                )?;
                 insert.capture = render_template(&insert.capture, args, maps, vars)?;
                 insert.text = render_template(&insert.text, args, maps, vars)?;
             }
             EditOp::Replace(replace) => {
-                replace.query = render_template(&replace.query, args, maps, vars)?;
+                replace.query = render_query_op(
+                    &replace.query,
+                    recipe,
+                    registry,
+                    recipe_file,
+                    codemod_root,
+                    args,
+                    maps,
+                    vars,
+                )?;
                 replace.capture = render_template(&replace.capture, args, maps, vars)?;
                 replace.text = render_template(&replace.text, args, maps, vars)?;
             }
             EditOp::Remove(remove) => {
-                remove.query = render_template(&remove.query, args, maps, vars)?;
+                remove.query = render_query_op(
+                    &remove.query,
+                    recipe,
+                    registry,
+                    recipe_file,
+                    codemod_root,
+                    args,
+                    maps,
+                    vars,
+                )?;
                 remove.capture = render_template(&remove.capture, args, maps, vars)?;
             }
             EditOp::Unknown(_, _) => {}
         }
     }
     Ok(edit)
+}
+
+fn render_query_op(
+    spec: &codemod_recipe_yaml::model::QuerySpec,
+    recipe: &Recipe,
+    registry: Option<&RecipeRegistry>,
+    recipe_file: Option<&Path>,
+    codemod_root: Option<&Path>,
+    args: &BTreeMap<String, String>,
+    maps: &BTreeMap<String, BTreeMap<String, String>>,
+    vars: &BTreeMap<String, BTreeMap<String, String>>,
+) -> Result<codemod_recipe_yaml::model::QuerySpec, String> {
+    if let Some(reg) = registry {
+        return crate::query_resolver::render_query_spec(
+            spec,
+            recipe,
+            reg,
+            recipe_file,
+            args,
+            maps,
+            vars,
+        );
+    }
+    // No registry: Jinja-render inline/path steps only.
+    let steps: Vec<String> = match spec {
+        codemod_recipe_yaml::model::QuerySpec::Single(s) => vec![s.clone()],
+        codemod_recipe_yaml::model::QuerySpec::Chain(v) => v.clone(),
+    };
+    let mut out = Vec::new();
+    for step in steps {
+        let loaded = if codemod_root.is_some() && looks_like_query_file_path(&step) {
+            codemod_recipe_engine::query::resolve_query_source(
+                &step,
+                recipe_file,
+                codemod_root.unwrap(),
+            )
+            .map_err(|e| e.to_string())?
+        } else {
+            step
+        };
+        out.push(render_template(&loaded, args, maps, vars)?);
+    }
+    Ok(if out.len() == 1 {
+        codemod_recipe_yaml::model::QuerySpec::Single(out.into_iter().next().unwrap())
+    } else {
+        codemod_recipe_yaml::model::QuerySpec::Chain(out)
+    })
+}
+
+fn looks_like_query_file_path(query: &str) -> bool {
+    let trimmed = query.trim();
+    trimmed.ends_with(".scm")
+        || trimmed.contains('/')
+        || trimmed.contains('\\')
+        || (trimmed.ends_with(".yaml") && !trimmed.contains('('))
 }
 
 fn render_create(

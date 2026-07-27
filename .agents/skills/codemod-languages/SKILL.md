@@ -11,7 +11,7 @@ description: Multi-language tree-sitter support in codemod-recipe — language I
 - Editing non-Dart files with tree-sitter queries
 - Configuring SQL dialect defaults (`.sql` → `sqlite` vs generic `sql`)
 - Understanding first-use grammar download or offline/CI setup
-- Debugging `unknown language` or `Invalid node type` query errors
+- Debugging `language not supported`, `file type not supported`, or `Invalid node type` query errors
 
 ## When not to use
 

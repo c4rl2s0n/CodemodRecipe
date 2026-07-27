@@ -127,7 +127,8 @@ Or compose with `- recipe: other_recipe_id`, or bind child args via
 | `Invalid node type "class_declaration"` | Use `class_definition` (pack Dart grammar) |
 | `query matched no nodes` | Wrong class/method name, wrong language, or query structure |
 | `query matched multiple nodes` | Tighten predicates with `#eq?` |
-| `unknown language` | Set valid `language:` id (see `codemod-languages`) |
+| `language not supported` | Set valid `language:` id (see `codemod-languages`) |
+| `file type not supported` | Set `language:` or use a known extension |
 | Empty preview after apply | Expected if idempotent |
 | `Stale previewToken` | Preview again after manual edits |
 

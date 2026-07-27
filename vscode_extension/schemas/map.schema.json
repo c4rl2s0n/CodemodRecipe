@@ -1,0 +1,23 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://codemod-recipe.dev/schemas/map.schema.json",
+  "title": "Codemod Recipe Map",
+  "type": "object",
+  "required": ["id", "map"],
+  "additionalProperties": true,
+  "properties": {
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Map identifier referenced as map.<id> in templates."
+    },
+    "description": {
+      "type": "string"
+    },
+    "map": {
+      "type": "object",
+      "additionalProperties": { "type": "string" },
+      "description": "Key/value lookup table."
+    }
+  }
+}

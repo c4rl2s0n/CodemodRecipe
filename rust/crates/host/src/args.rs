@@ -76,8 +76,10 @@ mod tests {
             id: "r".to_string(),
             name: None,
             description: None,
+            group: None,
             args: vec![arg("flag", true, Some("false"))],
             maps: BTreeMap::new(),
+        queries: BTreeMap::new(),
             steps: vec![],
             post_execution: vec![],
         };
@@ -91,8 +93,10 @@ mod tests {
             id: "r".to_string(),
             name: None,
             description: None,
+            group: None,
             args: vec![arg("flag", false, Some("false"))],
             maps: BTreeMap::new(),
+        queries: BTreeMap::new(),
             steps: vec![],
             post_execution: vec![],
         };
@@ -112,8 +116,10 @@ mod tests {
             id: "child".to_string(),
             name: None,
             description: None,
+            group: None,
             args: vec![arg("includeRepo", true, Some("false"))],
             maps: BTreeMap::new(),
+        queries: BTreeMap::new(),
             steps: vec![],
             post_execution: vec![],
         };
@@ -123,8 +129,10 @@ mod tests {
             id: "parent".to_string(),
             name: None,
             description: None,
+            group: None,
             args: vec![],
             maps: BTreeMap::new(),
+        queries: BTreeMap::new(),
             steps: vec![Step::RecipeRef(codemod_recipe_yaml::model::RecipeRef {
                 id: "child".to_string(),
                 with: BTreeMap::new(),

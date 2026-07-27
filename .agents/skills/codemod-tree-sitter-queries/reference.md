@@ -272,6 +272,23 @@ query: settings_update_body.scm
 
 Search order (engine): recipe directory → `queries/` under recipe → `.codemod/` → `.codemod/queries/`.
 
+**Jinja on file-backed queries:** `.scm` (and query library entries) are rendered with the same MiniJinja context as inline `query` before tree-sitter parses them.
+
+### Query chains
+
+`query` may be a **list** of steps (registry refs, inline text, or paths). Each step runs on the **match roots** from the previous step (fan-out when multiple matches). The last step uses op `capture:` for the edit span.
+
+```yaml
+query:
+  - dart_queries.class_named
+  - dart_queries.method_body
+  - |
+    (function_body (block) @body)
+capture: body
+```
+
+Global libraries live under `.codemod/queries/*.yaml` (`id` + `queries:`). Recipe-local definitions use top-level `queries:` on the recipe and short refs in the list.
+
 ### Template substitution
 
 Recipe args (`{{ name }}`, `{{ field | camel_case }}`, maps) are expanded into `query`, `capture`, and `text` **before** the query is parsed. Use predicates with rendered literals:

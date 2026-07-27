@@ -1,5 +1,6 @@
-use tree_sitter::Language;
+use tree_sitter::{Language, Node, Tree};
 
+use crate::leading_trivia::leading_trivia_start;
 use crate::span;
 
 pub trait LanguageAdapter: Send + Sync {
@@ -8,14 +9,16 @@ pub trait LanguageAdapter: Send + Sync {
     fn expand_remove_span(
         &self,
         source: &str,
+        _tree: &Tree,
+        node: Node<'_>,
         start: usize,
         end: usize,
         include_leading_trivia: bool,
     ) -> (usize, usize) {
-        let (start, end) = if include_leading_trivia {
-            span::expand_declaration_span(source, start, end)
+        let start = if include_leading_trivia {
+            leading_trivia_start(source, node, start)
         } else {
-            (span::line_start_offset(source, start), end)
+            span::line_start_offset(source, start)
         };
         (start, span::expand_trailing_semicolon(source, end))
     }
@@ -55,21 +58,6 @@ impl CStyleLanguageAdapter {
 impl LanguageAdapter for CStyleLanguageAdapter {
     fn language(&self) -> Language {
         self.language.clone()
-    }
-
-    fn expand_remove_span(
-        &self,
-        source: &str,
-        start: usize,
-        end: usize,
-        include_leading_trivia: bool,
-    ) -> (usize, usize) {
-        let (start, end) = if include_leading_trivia {
-            span::expand_cstyle_declaration_span(source, start, end)
-        } else {
-            (span::line_start_offset(source, start), end)
-        };
-        (start, span::expand_trailing_semicolon(source, end))
     }
 }
 

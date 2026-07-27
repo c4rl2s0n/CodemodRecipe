@@ -5,10 +5,13 @@ export const EXTENSION = {
 export const COMMANDS = {
   refresh: 'codemodRecipe.refresh',
   bootstrap: 'codemodRecipe.bootstrap',
+  scaffoldProject: 'codemodRecipe.scaffoldProject',
   runRecipe: 'codemodRecipe.runRecipe',
   runFromCursorContext: 'codemodRecipe.runFromCursorContext',
   configureCodemodRoot: 'codemodRecipe.configureHost',
   validateRecipes: 'codemodRecipe.validateRecipes',
+  openInRecipeRunner: 'codemodRecipe.openInRecipeRunner',
+  testQueryOnFile: 'codemodRecipe.testQueryOnFile',
 } as const;
 
 export const VIEWS = {

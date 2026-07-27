@@ -12,14 +12,15 @@ Human-oriented copy also lives in [docs/language-support.md](../../../../docs/la
 
 For each `edit` step the host picks a language id in this order:
 
-1. **`edit.language`** when set (trimmed, non-empty)
+1. **`edit.language`** when set (trimmed, non-empty; must be a known id)
 2. **File extension** via language-pack’s extension table (with overrides below)
-3. **Default `dart`** when extension is unknown
+
+If neither yields a known language, preview/apply fails (`language not supported` or `file type not supported`). There is no default language.
 
 Then `LanguageRegistry` loads the grammar (once per process per id) and runs all `ops` in that step.
 
 ```text
-edit.language?  →  extension map  →  "dart"
+edit.language?  →  extension map  →  error if unresolved
        ↓
 native override? (sqlite, postgres)
        ↓
@@ -214,7 +215,8 @@ Set `includeLeadingTrivia: true` on `remove` / `replace` to expand spans over do
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| `unknown language: foo` | Invalid `language:` id | Pick id from pack catalog or native list |
+| `language not supported: foo` | Invalid `language:` id | Pick id from pack catalog or native list |
+| `file type not supported: path` | No `language:` and extension unknown | Set `language:` or use a known extension |
 | `Invalid node type "class_declaration"` | Old Dart query on pack grammar | Use `class_definition` (see above) |
 | `failed to load language` / download error | Network blocked on first use | Pre-download/cache grammars in CI |
 | `query matched no nodes` | Wrong language id or query for grammar | Set `language:` explicitly; fix node names |

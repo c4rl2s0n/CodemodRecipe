@@ -85,7 +85,8 @@ Optional host flags: `--sql-default` (default `sqlite` for `.sql` files). See sk
 - Empty `files` — query matched nothing or already applied
 - `Missing required arguments` — check `describe_recipe`
 - `Invalid node type "class_declaration"` — use `class_definition` (pack Dart); see `codemod-languages`
-- `unknown language` — set valid `language:` id; see `codemod-languages`
+- `language not supported` — set valid `language:` id; see `codemod-languages`
+- `file type not supported` — set `language:` or use a known file extension; see `codemod-languages`
 
 ## Related skills
 

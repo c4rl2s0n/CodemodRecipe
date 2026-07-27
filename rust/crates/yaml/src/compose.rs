@@ -1,4 +1,5 @@
 use crate::model::*;
+use crate::QueryDefinition;
 use std::collections::{BTreeMap, BTreeSet};
 use thiserror::Error;
 
@@ -69,8 +70,10 @@ pub fn compose_recipe(
         id,
         name,
         description,
+        group: None,
         args: merged_args.into_values().collect(),
         maps,
+        queries: BTreeMap::new(),
         steps: out_steps,
         post_execution,
     }
@@ -105,6 +108,7 @@ fn expand_recipe_references_inner(
         .collect();
     let mut steps: Vec<Step> = Vec::new();
     let mut maps = recipe.maps.clone();
+    let mut queries = recipe.queries.clone();
 
     for step in &recipe.steps {
         match step {
@@ -142,6 +146,7 @@ fn expand_recipe_references_inner(
                     }));
                 }
                 merge_maps_into(&mut maps, &expanded.maps);
+                merge_queries_into(&mut queries, &expanded.queries);
             }
             Step::Create(create) => steps.push(Step::Create(create.clone())),
             Step::Delete(delete) => steps.push(Step::Delete(delete.clone())),
@@ -156,11 +161,22 @@ fn expand_recipe_references_inner(
         id: recipe.id.clone(),
         name: recipe.name.clone(),
         description: recipe.description.clone(),
+        group: recipe.group.clone(),
         args: merged_args.into_values().collect(),
         maps,
+        queries,
         steps,
         post_execution: recipe.post_execution.clone(),
     })
+}
+
+fn merge_queries_into(
+    target: &mut BTreeMap<String, QueryDefinition>,
+    source: &BTreeMap<String, QueryDefinition>,
+) {
+    for (key, def) in source {
+        target.entry(key.clone()).or_insert_with(|| def.clone());
+    }
 }
 
 fn merge_maps_into(
@@ -198,7 +214,7 @@ mod tests {
             path: path.to_string(),
             language: None,
             ops: vec![EditOp::Insert(InsertOp {
-                query: "(identifier) @x".to_string(),
+                query: QuerySpec::single("(identifier) @x"),
                 capture: "x".to_string(),
                 anchor: InsertAnchor::End,
                 text: "x".to_string(),
@@ -211,8 +227,10 @@ mod tests {
             id: id.to_string(),
             name: None,
             description: None,
+            group: None,
             args,
             maps: BTreeMap::new(),
+        queries: BTreeMap::new(),
             steps: vec![Step::Edit(edit_step(path))],
             post_execution: vec![],
         }
@@ -292,8 +310,10 @@ mod tests {
             id: "r".to_string(),
             name: None,
             description: None,
+            group: None,
             args: vec![],
             maps: BTreeMap::new(),
+        queries: BTreeMap::new(),
             steps: vec![],
             post_execution: vec![PostExecution::String("dartFormat".to_string())],
         };
@@ -321,8 +341,10 @@ mod tests {
             id: "parent".to_string(),
             name: None,
             description: None,
+            group: None,
             args: vec![],
             maps: BTreeMap::new(),
+        queries: BTreeMap::new(),
             steps: vec![recipe_ref("child")],
             post_execution: vec![],
         };
@@ -341,8 +363,10 @@ mod tests {
             id: "a".to_string(),
             name: None,
             description: None,
+            group: None,
             args: vec![],
             maps: BTreeMap::new(),
+        queries: BTreeMap::new(),
             steps: vec![recipe_ref("b")],
             post_execution: vec![],
         };
@@ -350,8 +374,10 @@ mod tests {
             id: "b".to_string(),
             name: None,
             description: None,
+            group: None,
             args: vec![],
             maps: BTreeMap::new(),
+        queries: BTreeMap::new(),
             steps: vec![recipe_ref("a")],
             post_execution: vec![],
         };
@@ -374,8 +400,10 @@ mod tests {
             id: "parent".to_string(),
             name: None,
             description: None,
+            group: None,
             args: vec![sample_arg("featureName"), sample_arg("fieldName")],
             maps: BTreeMap::new(),
+        queries: BTreeMap::new(),
             steps: vec![recipe_ref_with("child", with)],
             post_execution: vec![],
         };
@@ -403,8 +431,10 @@ mod tests {
             id: "parent".to_string(),
             name: None,
             description: None,
+            group: None,
             args: vec![sample_arg("featureName")],
             maps: BTreeMap::new(),
+        queries: BTreeMap::new(),
             steps: vec![recipe_ref_with("child", with)],
             post_execution: vec![],
         };
@@ -423,8 +453,10 @@ mod tests {
             id: "parent".to_string(),
             name: None,
             description: None,
+            group: None,
             args: vec![],
             maps: BTreeMap::new(),
+        queries: BTreeMap::new(),
             steps: vec![recipe_ref_with("child", BTreeMap::new())],
             post_execution: vec![],
         };

@@ -24,6 +24,7 @@ description: YAML DSL v2 for codemod-recipe — recipe structure, step types, tr
 ```yaml
 dslVersion: 2
 id: recipe_id
+group: optional.dotted.path   # catalog grouping in the VS Code extension
 args: []
 maps: {}
 steps: []

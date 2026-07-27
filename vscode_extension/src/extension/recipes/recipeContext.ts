@@ -16,7 +16,7 @@ export function resolveEditorContext(workspaceRoot: string): EditorContext {
   const word = wordRange ? document.getText(wordRange) : '';
   const relativePath = path.relative(workspaceRoot, document.uri.fsPath);
   const file = relativePath.startsWith('..') ? document.uri.fsPath : relativePath;
-  const dartClass = findEnclosingDartClass(
+  const className = findEnclosingClassName(
     document.getText(),
     document.offsetAt(editor.selection.active)
   );
@@ -26,7 +26,8 @@ export function resolveEditorContext(workspaceRoot: string): EditorContext {
       file,
       selection,
       word,
-      dartClass: dartClass ?? '',
+      dartClass: className ?? '',
+      className: className ?? '',
     },
   };
 }
@@ -47,7 +48,8 @@ export function prefillArgs(
   return args;
 }
 
-function findEnclosingDartClass(source: string, offset: number): string | undefined {
+/** Finds enclosing `class Name { ... }` for Dart/Java/Kotlin/Rust-ish sources. */
+function findEnclosingClassName(source: string, offset: number): string | undefined {
   const classPattern = /\bclass\s+([A-Za-z_]\w*)[^{]*\{/g;
   let match: RegExpExecArray | null;
   let best: string | undefined;

@@ -1,7 +1,8 @@
 <script setup lang="ts">
-import { computed } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { WEBVIEW_TO_EXTENSION, type RecipeDiagnostic, type RecipeSchema } from '../shared';
 import { postToExtension } from '../vsCodeApi';
+import RecipeGroupNode, { type RecipeTreeNode } from './RecipeGroupNode.vue';
 
 const props = defineProps<{
   recipes: readonly RecipeSchema[];
@@ -10,6 +11,17 @@ const props = defineProps<{
   refreshing: boolean;
 }>();
 
+const searchQuery = ref('');
+const collapsedGroups = ref<Record<string, boolean>>({});
+
+type RecipeContextMenuState = {
+  recipeId: string;
+  x: number;
+  y: number;
+};
+
+const recipeContextMenu = ref<RecipeContextMenuState | null>(null);
+
 const errorDiagnostics = computed(() =>
   props.diagnostics.filter((item) => item.severity === 'error')
 );
@@ -17,9 +29,128 @@ const warningDiagnostics = computed(() =>
   props.diagnostics.filter((item) => item.severity === 'warning')
 );
 
+const filteredRecipes = computed(() => {
+  const q = searchQuery.value.trim().toLowerCase();
+  if (!q) {
+    return props.recipes;
+  }
+  return props.recipes.filter((recipe) => {
+    const haystack = [
+      recipe.id,
+      recipe.name,
+      recipe.description,
+      recipe.group ?? '',
+    ]
+      .join(' ')
+      .toLowerCase();
+    return haystack.includes(q);
+  });
+});
+
+const recipeTree = computed((): RecipeTreeNode[] => {
+  const root: RecipeTreeNode = {
+    key: '',
+    label: '',
+    recipes: [],
+    children: [],
+  };
+
+  const ensureChild = (parent: RecipeTreeNode, segment: string, key: string) => {
+    let child = parent.children.find((item) => item.label === segment);
+    if (!child) {
+      child = { key, label: segment, recipes: [], children: [] };
+      parent.children.push(child);
+    }
+    return child;
+  };
+
+  for (const recipe of filteredRecipes.value) {
+    const group = (recipe.group ?? '').trim();
+    if (!group) {
+      const ungrouped = ensureChild(root, '(ungrouped)', '(ungrouped)');
+      ungrouped.recipes.push(recipe);
+      continue;
+    }
+    const parts = group.split('.').filter(Boolean);
+    let node = root;
+    let pathKey = '';
+    for (const part of parts) {
+      pathKey = pathKey ? `${pathKey}.${part}` : part;
+      node = ensureChild(node, part, pathKey);
+    }
+    node.recipes.push(recipe);
+  }
+
+  const sortNode = (node: RecipeTreeNode) => {
+    node.children.sort((a, b) => {
+      if (a.label === '(ungrouped)') return 1;
+      if (b.label === '(ungrouped)') return -1;
+      return a.label.localeCompare(b.label);
+    });
+    node.recipes.sort((a, b) => a.name.localeCompare(b.name));
+    for (const child of node.children) {
+      sortNode(child);
+    }
+  };
+  sortNode(root);
+  return root.children;
+});
+
+function countRecipes(node: RecipeTreeNode): number {
+  return (
+    node.recipes.length +
+    node.children.reduce((sum, child) => sum + countRecipes(child), 0)
+  );
+}
+
+function isCollapsed(key: string): boolean {
+  return collapsedGroups.value[key] === true;
+}
+
+function toggleGroup(key: string) {
+  collapsedGroups.value = {
+    ...collapsedGroups.value,
+    [key]: !isCollapsed(key),
+  };
+}
+
 function selectRecipe(id: string) {
   postToExtension({ type: WEBVIEW_TO_EXTENSION.selectRecipe, id });
 }
+
+function closeRecipeContextMenu(): void {
+  recipeContextMenu.value = null;
+}
+
+function onRecipeContextMenu(recipe: RecipeSchema, event: MouseEvent): void {
+  if (!recipe.sourceFile) {
+    return;
+  }
+  event.preventDefault();
+  recipeContextMenu.value = {
+    recipeId: recipe.id,
+    x: event.clientX,
+    y: event.clientY,
+  };
+}
+
+function showRecipeFromContextMenu(): void {
+  const id = recipeContextMenu.value?.recipeId;
+  if (id) {
+    postToExtension({ type: WEBVIEW_TO_EXTENSION.openRecipeFile, id });
+  }
+  closeRecipeContextMenu();
+}
+
+onMounted(() => {
+  window.addEventListener('click', closeRecipeContextMenu);
+  window.addEventListener('scroll', closeRecipeContextMenu, true);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('click', closeRecipeContextMenu);
+  window.removeEventListener('scroll', closeRecipeContextMenu, true);
+});
 
 function refresh() {
   postToExtension({ type: WEBVIEW_TO_EXTENSION.refreshRecipes });
@@ -27,6 +158,10 @@ function refresh() {
 
 function configureHost() {
   postToExtension({ type: WEBVIEW_TO_EXTENSION.configureHost });
+}
+
+function scaffoldProject() {
+  postToExtension({ type: WEBVIEW_TO_EXTENSION.scaffoldProject });
 }
 
 function recipeSubtitle(recipe: RecipeSchema): string {
@@ -99,21 +234,60 @@ function formatSource(diagnostic: RecipeDiagnostic): string {
           {{ refreshing ? 'Refreshing…' : 'Refresh' }}
         </button>
         <button type="button" class="secondary" @click="configureHost">
-          Set Host Entry Point
+          Set Codemod Root Directory
+        </button>
+        <button type="button" class="secondary" @click="scaffoldProject">
+          Scaffold .codemod
         </button>
       </div>
     </div>
-    <div v-else class="recipe-list">
-      <button
-        v-for="item in recipes"
-        :key="item.id"
-        type="button"
-        class="recipe-button secondary"
-        @click="selectRecipe(item.id)"
-      >
-        <span class="recipe-title">{{ item.name }}</span>
-        <span class="recipe-desc">{{ recipeSubtitle(item) }}</span>
-      </button>
+    <div v-else class="recipe-browser">
+      <input
+        v-model="searchQuery"
+        type="text"
+        class="recipe-search"
+        placeholder="Search recipes…"
+        aria-label="Search recipes"
+      />
+      <div v-if="!filteredRecipes.length" class="empty-state">
+        <p class="desc">No recipes match “{{ searchQuery }}”.</p>
+      </div>
+      <div v-else class="recipe-tree">
+        <RecipeGroupNode
+          v-for="node in recipeTree"
+          :key="node.key"
+          :node="node"
+          :depth="0"
+          :is-collapsed="isCollapsed"
+          :toggle-group="toggleGroup"
+          :count-recipes="countRecipes"
+          :select-recipe="selectRecipe"
+          :on-recipe-context-menu="onRecipeContextMenu"
+          :recipe-subtitle="recipeSubtitle"
+        />
+      </div>
     </div>
+
+    <Teleport to="body">
+      <div
+        v-if="recipeContextMenu"
+        class="recipe-context-menu"
+        :style="{
+          left: `${recipeContextMenu.x}px`,
+          top: `${recipeContextMenu.y}px`,
+        }"
+        role="menu"
+        @click.stop
+      >
+        <button
+          type="button"
+          class="recipe-context-menu-item"
+          role="menuitem"
+          @click="showRecipeFromContextMenu"
+        >
+          Show Recipe
+        </button>
+      </div>
+    </Teleport>
   </div>
 </template>

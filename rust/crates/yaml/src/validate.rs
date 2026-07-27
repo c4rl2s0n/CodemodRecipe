@@ -18,8 +18,8 @@ pub enum ValidationError {
     #[error("duplicate arg name: {0}")]
     DuplicateArgName(String),
 
-    #[error("unknown language: {0}")]
-    UnknownLanguage(String),
+    #[error("language not supported: {0}")]
+    LanguageNotSupported(String),
 
     #[error("create step requires template or templateFile")]
     CreateMissingTemplate,
@@ -79,7 +79,7 @@ fn validate_step(
                         field: "language",
                     });
                 } else if !is_known_language(lang) {
-                    errors.push(ValidationError::UnknownLanguage(lang.to_string()));
+                    errors.push(ValidationError::LanguageNotSupported(lang.to_string()));
                 }
             }
         }
@@ -117,7 +117,7 @@ fn validate_edit(edit: &EditStep, errors: &mut Vec<ValidationError>) {
     for op in &edit.ops {
         match op {
             EditOp::Insert(insert) => {
-                if insert.query.trim().is_empty() {
+                if insert.query.is_empty() {
                     errors.push(ValidationError::MissingRequiredField {
                         op: "insert",
                         field: "query",
@@ -131,7 +131,7 @@ fn validate_edit(edit: &EditStep, errors: &mut Vec<ValidationError>) {
                 }
             }
             EditOp::Replace(replace) => {
-                if replace.query.trim().is_empty() {
+                if replace.query.is_empty() {
                     errors.push(ValidationError::MissingRequiredField {
                         op: "replace",
                         field: "query",
@@ -151,7 +151,7 @@ fn validate_edit(edit: &EditStep, errors: &mut Vec<ValidationError>) {
                 }
             }
             EditOp::Remove(remove) => {
-                if remove.query.trim().is_empty() {
+                if remove.query.is_empty() {
                     errors.push(ValidationError::MissingRequiredField {
                         op: "remove",
                         field: "query",

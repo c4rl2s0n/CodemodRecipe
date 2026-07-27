@@ -6,6 +6,8 @@ export const WEBVIEW_TO_EXTENSION = {
   selectRecipe: 'selectRecipe',
   refreshRecipes: 'refreshRecipes',
   configureHost: 'configureHost',
+  scaffoldProject: 'scaffoldProject',
+  openRecipeFile: 'openRecipeFile',
   pickFile: 'pickFile',
   pickDirectory: 'pickDirectory',
   preview: 'preview',
@@ -28,6 +30,8 @@ export type WebviewToExtensionMessage =
   | { type: typeof WEBVIEW_TO_EXTENSION.selectRecipe; id: string }
   | { type: typeof WEBVIEW_TO_EXTENSION.refreshRecipes }
   | { type: typeof WEBVIEW_TO_EXTENSION.configureHost }
+  | { type: typeof WEBVIEW_TO_EXTENSION.scaffoldProject }
+  | { type: typeof WEBVIEW_TO_EXTENSION.openRecipeFile; id: string }
   | { type: typeof WEBVIEW_TO_EXTENSION.pickFile; arg: string }
   | { type: typeof WEBVIEW_TO_EXTENSION.pickDirectory; arg: string }
   | {

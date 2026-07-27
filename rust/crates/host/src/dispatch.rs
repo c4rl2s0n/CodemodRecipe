@@ -48,6 +48,14 @@ fn catalog_response(registry: &RecipeRegistry) -> serde_json::Value {
             Some(diagnostics)
         },
         maps_loaded: Some(registry.maps_count()),
+        map_ids: Some(registry.map_ids()),
+        var_ids: Some(registry.var_ids()),
+        language_ids: Some(
+            codemod_recipe_engine::native::native_language_ids()
+                .iter()
+                .map(|s| (*s).to_string())
+                .collect(),
+        ),
     })
 }
 
@@ -81,6 +89,28 @@ pub fn handle_command(registry: &mut RecipeRegistry, cmd: HostCommand) -> serde_
             ok: false,
             error: Some("generateAstPath is not supported by the Rust host (v1)".to_string()),
         }),
+        HostCommand::Bootstrap {
+            force,
+            edit_policy,
+            companions,
+        } => {
+            let policy = match crate::bootstrap::EditPolicy::parse(
+                edit_policy.as_deref().unwrap_or("recommend"),
+            ) {
+                Ok(p) => p,
+                Err(e) => return serde_json::json!({ "ok": false, "error": e }),
+            };
+            let companions = match crate::bootstrap::parse_companions(&companions) {
+                Ok(c) => c,
+                Err(e) => return serde_json::json!({ "ok": false, "error": e }),
+            };
+            crate::bootstrap::bootstrap_project(
+                &registry.workspace_root,
+                force,
+                policy,
+                &companions,
+            )
+        }
         HostCommand::Preview {
             recipe,
             inline_recipe,

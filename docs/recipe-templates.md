@@ -7,7 +7,7 @@ The Rust host renders recipe strings and file-backed templates with
 
 | Location | Render path |
 |----------|-------------|
-| `edit.path`, `edit.ops[].query/capture/text` | Inline `render_str` |
+| `edit.path`, `edit.ops[].query/capture/text` | Inline `render_str`; each `query` step (string or list item) after file load |
 | `create.path`, `create.template` | Inline `render_str` |
 | `create.templateFile` | File loader (`extends` / `include` supported) |
 | `delete.path` | Inline `render_str` |

@@ -65,14 +65,20 @@ impl LanguageRegistry {
                     "edit.language must not be empty".to_string(),
                 ));
             }
+            if !is_known_language(lang) {
+                return Err(EngineError::LanguageNotSupported(lang.to_string()));
+            }
             return Ok(lang.to_string());
         }
 
         if let Some(lang) = language_from_extension(file_path, &self.config) {
+            if !is_known_language(&lang) {
+                return Err(EngineError::LanguageNotSupported(lang));
+            }
             return Ok(lang);
         }
 
-        Ok("dart".to_string())
+        Err(EngineError::FileTypeNotSupported(file_path.to_string()))
     }
 
     pub fn resolve_for_edit(

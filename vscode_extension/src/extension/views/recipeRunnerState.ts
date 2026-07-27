@@ -12,7 +12,7 @@ export class RecipeRunnerState {
   discoveryError: string | undefined;
   diagnostics: readonly RecipeDiagnostic[] = [];
   recipesRefreshing = false;
-  bootstrapInFlight = false;
+  bootstrapInFlight = true;
   bootstrapPhase: 'startingHost' | 'loadingRecipes' | 'ready' | 'error' = 'startingHost';
   bootstrapError: string | undefined;
   currentRecipe: RecipeSchema | undefined;

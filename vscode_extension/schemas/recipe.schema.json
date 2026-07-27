@@ -1,0 +1,203 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://codemod-recipe.dev/schemas/recipe.schema.json",
+  "title": "Codemod Recipe YAML",
+  "type": "object",
+  "required": ["id", "steps"],
+  "additionalProperties": true,
+  "properties": {
+    "dslVersion": {
+      "type": "integer",
+      "const": 2,
+      "description": "YAML DSL version (must be 2)."
+    },
+    "id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Unique recipe identifier."
+    },
+    "name": {
+      "type": "string",
+      "description": "Human-readable recipe name."
+    },
+    "description": {
+      "type": "string",
+      "description": "Short recipe description."
+    },
+    "group": {
+      "type": "string",
+      "description": "Optional dotted catalog path (e.g. rust.data)."
+    },
+    "args": {
+      "type": "array",
+      "items": { "$ref": "#/definitions/arg" }
+    },
+    "maps": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "additionalProperties": { "type": "string" }
+      }
+    },
+    "queries": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["query"],
+        "properties": {
+          "query": { "type": "string" }
+        }
+      }
+    },
+    "steps": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/definitions/step" }
+    },
+    "postExecution": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          { "type": "string" },
+          { "type": "object" }
+        ]
+      }
+    }
+  },
+  "definitions": {
+    "arg": {
+      "type": "object",
+      "required": ["name"],
+      "additionalProperties": true,
+      "properties": {
+        "name": { "type": "string" },
+        "required": { "type": "boolean" },
+        "inputKind": {
+          "type": "string",
+          "enum": ["text", "file", "directory", "choice"]
+        },
+        "abbr": { "type": ["string", "null"] },
+        "help": { "type": ["string", "null"] },
+        "defaultsTo": { "type": ["string", "null"] },
+        "options": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "allowCustomValue": { "type": "boolean" },
+        "contextKey": { "type": ["string", "null"] }
+      }
+    },
+    "step": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "edit": { "$ref": "#/definitions/editStep" },
+        "create": { "$ref": "#/definitions/createStep" },
+        "delete": { "$ref": "#/definitions/deleteStep" },
+        "recipe": { "$ref": "#/definitions/recipeRef" }
+      }
+    },
+    "editStep": {
+      "type": "object",
+      "required": ["path", "ops"],
+      "additionalProperties": true,
+      "properties": {
+        "path": { "type": "string" },
+        "language": { "type": "string" },
+        "ops": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/editOp" }
+        }
+      }
+    },
+    "editOp": {
+      "type": "object",
+      "minProperties": 1,
+      "maxProperties": 1,
+      "additionalProperties": false,
+      "properties": {
+        "insert": { "$ref": "#/definitions/insertOp" },
+        "replace": { "$ref": "#/definitions/replaceOp" },
+        "remove": { "$ref": "#/definitions/removeOp" }
+      }
+    },
+    "insertOp": {
+      "type": "object",
+      "required": ["query", "capture", "anchor", "text"],
+      "properties": {
+        "query": { "$ref": "#/definitions/queryField" },
+        "capture": { "type": "string" },
+        "anchor": { "type": "string", "enum": ["start", "end"] },
+        "text": { "type": "string" }
+      }
+    },
+    "replaceOp": {
+      "type": "object",
+      "required": ["query", "capture", "text"],
+      "properties": {
+        "query": { "$ref": "#/definitions/queryField" },
+        "capture": { "type": "string" },
+        "text": { "type": "string" },
+        "includeLeadingTrivia": { "type": "boolean" }
+      }
+    },
+    "removeOp": {
+      "type": "object",
+      "required": ["query", "capture"],
+      "properties": {
+        "query": { "$ref": "#/definitions/queryField" },
+        "capture": { "type": "string" },
+        "includeLeadingTrivia": { "type": "boolean" }
+      }
+    },
+    "createStep": {
+      "type": "object",
+      "required": ["path"],
+      "additionalProperties": true,
+      "properties": {
+        "path": { "type": "string" },
+        "template": { "type": "string" },
+        "templateFile": { "type": "string" },
+        "ifExists": { "type": "string", "enum": ["fail", "skip"] },
+        "format": { "type": "boolean" }
+      }
+    },
+    "deleteStep": {
+      "type": "object",
+      "required": ["path"],
+      "properties": {
+        "path": { "type": "string" },
+        "ifMissing": { "type": "string", "enum": ["fail", "skip"] }
+      }
+    },
+    "recipeRef": {
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        {
+          "type": "object",
+          "required": ["id"],
+          "additionalProperties": false,
+          "properties": {
+            "id": { "type": "string", "minLength": 1 },
+            "with": {
+              "type": "object",
+              "additionalProperties": { "type": "string" }
+            }
+          }
+        }
+      ]
+    },
+    "queryField": {
+      "oneOf": [
+        { "type": "string" },
+        {
+          "type": "array",
+          "minItems": 1,
+          "items": { "type": "string" }
+        }
+      ]
+    }
+  }
+}

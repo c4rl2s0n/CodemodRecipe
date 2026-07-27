@@ -21,7 +21,7 @@ import {
   ValidateResponse,
   parseHostResponse,
 } from './hostProtocol';
-import type { RecipeSchema, SelectionPayload } from '../../shared';
+import type { RecipeSchema, SelectionPayload, BootstrapResponse } from '../../shared';
 import type { RecipeLoadResult } from '../recipes/recipeRepository';
 
 type PendingRequest = {
@@ -32,6 +32,9 @@ type PendingRequest = {
   resolve: (value: unknown) => void;
   reject: (error: Error) => void;
 };
+
+const HOST_BUILD_HINT =
+  'Build the host with `vscode_extension/build.sh` (or `cargo build -p codemod_recipe_host --bin codemod_host` from `rust/`).';
 
 export class HostBridge {
   private static readonly perfPrefix = '[codemod-recipe/perf]';
@@ -45,10 +48,13 @@ export class HostBridge {
   private queue = Promise.resolve();
 
   constructor(
-    private readonly workspaceRoot: string,
     private readonly config: ExtensionConfig,
     private readonly extensionUri: vscode.Uri
   ) {}
+
+  private get workspaceRoot(): string {
+    return this.config.workspaceRoot;
+  }
 
   /**
    * Returns the path to the bundled codemod_host binary for the current platform.
@@ -77,7 +83,8 @@ export class HostBridge {
 
   /**
    * Returns the command and arguments to spawn the Rust host process.
-   * Prefer the bundled binary; fall back to `cargo run` for development.
+   * Prefer the bundled binary; fall back to `cargo run` only when developing
+   * inside a checkout that contains `rust/Cargo.toml`.
    */
   private getSpawnCommand(): { command: string; args: string[] } {
     if (this.hasBundledBinary()) {
@@ -89,6 +96,11 @@ export class HostBridge {
 
     const hostConfig = this.currentHostSpawnConfig();
     const manifestPath = path.join(this.workspaceRoot, 'rust', 'Cargo.toml');
+    if (!fs.existsSync(manifestPath)) {
+      throw new Error(
+        `Bundled codemod_host not found at ${this.getBinaryPath()}, and no ${manifestPath} for cargo fallback. ${HOST_BUILD_HINT}`
+      );
+    }
     return {
       command: 'cargo',
       args: [
@@ -174,6 +186,18 @@ export class HostBridge {
     });
   }
 
+  async bootstrapProject(
+    force = false,
+    options?: { editPolicy?: string; companions?: string[] }
+  ): Promise<BootstrapResponse> {
+    return this.send<BootstrapResponse>({
+      command: 'bootstrap',
+      force,
+      ...(options?.editPolicy ? { editPolicy: options.editPolicy } : {}),
+      ...(options?.companions ? { companions: options.companions } : {}),
+    });
+  }
+
   dispose(): void {
     this.stopPersistentHost();
   }
@@ -188,6 +212,9 @@ export class HostBridge {
     return {
       recipes: response.recipes ?? [],
       diagnostics: response.diagnostics ?? [],
+      mapIds: response.mapIds ?? [],
+      varIds: response.varIds ?? [],
+      languageIds: response.languageIds ?? [],
     };
   }
 
@@ -260,12 +287,20 @@ export class HostBridge {
     this.stderrBuffer = '';
 
     const { command, args } = this.getSpawnCommand();
+    const usingCargo = command === 'cargo';
     return new Promise<ChildProcessWithoutNullStreams>((resolve, reject) => {
       const child = spawn(command, args, {
         cwd: this.workspaceRoot,
       });
 
       let startupResolved = false;
+      const failStartup = (err: Error) => {
+        if (!startupResolved) {
+          startupResolved = true;
+          reject(err);
+        }
+      };
+
       child.stdout.on('data', (chunk) => {
         this.stdoutBuffer += chunk.toString();
         this.flushFrames();
@@ -278,27 +313,34 @@ export class HostBridge {
         this.stderrBuffer += chunk.toString();
       });
       child.on('error', (err) => {
-        if (!startupResolved) {
-          reject(err);
-        }
+        const hint = usingCargo
+          ? ` Failed to spawn cargo (${err.message}). Ensure Rust/cargo is on PATH, or ${HOST_BUILD_HINT}`
+          : ` Failed to spawn host binary (${err.message}). ${HOST_BUILD_HINT}`;
+        failStartup(new Error(hint.trim()));
         this.rejectPending(
           new Error(`Persistent host process error: ${err.message}`)
         );
         this.child = undefined;
       });
       child.on('close', (code) => {
+        const stderr = this.stderrBuffer.trim();
+        const hint =
+          usingCargo || code !== 0
+            ? `\n${HOST_BUILD_HINT}`
+            : '';
         const error = new Error(
-          `Persistent host exited with code ${code}\n${this.stderrBuffer.trim()}`
+          `Persistent host exited with code ${code}${stderr ? `\n${stderr}` : ''}${hint}`
         );
+        failStartup(error);
         this.rejectPending(error);
         this.child = undefined;
       });
 
       const startupTimer = setTimeout(() => {
         if (!startupResolved) {
-          reject(
+          failStartup(
             new Error(
-              `Persistent host failed to start within ${HostBridge.requestTimeoutMs}ms`
+              `Persistent host failed to start within ${HostBridge.requestTimeoutMs}ms.\n${HOST_BUILD_HINT}`
             )
           );
           this.stopPersistentHost();

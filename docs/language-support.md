@@ -26,9 +26,10 @@ codemod-recipe applies tree-sitter queries per **`edit` step** using a lazy-load
 
 | Priority | Source |
 |----------|--------|
-| 1 | `edit.language` if set |
-| 2 | File extension (`.rs` → `rust`, `.java` → `java`, …) |
-| 3 | Default `dart` |
+| 1 | `edit.language` if set (must be a known id) |
+| 2 | File extension (`.rs` → `rust`, `.java` → `java`, `.dart` → `dart`, …) |
+
+If `language:` is omitted and the extension cannot be mapped, preview/apply fails with `file type not supported`. An unknown explicit `language:` fails with `language not supported`.
 
 **`.sql` files:** default dialect is **`sqlite`** (native grammar). Override with `language: sql` or host flag `--sql-default sql`.
 

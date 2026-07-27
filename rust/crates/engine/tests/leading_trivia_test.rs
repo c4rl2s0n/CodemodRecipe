@@ -1,4 +1,5 @@
 use codemod_recipe_engine::engine::QueryContext;
+use codemod_recipe_yaml::QuerySpec;
 use codemod_recipe_yaml::model::{EditOp, EditStep, Recipe, RemoveOp, Step};
 
 use std::collections::BTreeMap;
@@ -20,13 +21,15 @@ fn remove_with_leading_trivia_strips_doc_comment() {
         id: "remove_doc_field".to_string(),
         name: None,
         description: None,
+        group: None,
         args: vec![],
         maps: BTreeMap::new(),
+        queries: BTreeMap::new(),
         steps: vec![Step::Edit(EditStep {
             path: "test.dart".to_string(),
             language: None,
             ops: vec![EditOp::Remove(RemoveOp {
-                query: r#"(class_definition
+                query: QuerySpec::single(r#"(class_definition
   name: (identifier) @className
   body: (class_body
     (declaration
@@ -34,8 +37,7 @@ fn remove_with_leading_trivia_strips_doc_comment() {
         (initialized_identifier
           (identifier) @fieldName))) @member)
   (#eq? @className "Settings")
-  (#eq? @fieldName "count"))"#
-                    .to_string(),
+  (#eq? @fieldName "count"))"#),
                 capture: "member".to_string(),
                 include_leading_trivia: true,
             })],

@@ -1,3 +1,4 @@
+use crate::diag_source::source_with_needle;
 use crate::protocol::{DiagnosticSource, RecipeDiagnostic};
 use serde_yaml::Value;
 use std::collections::{BTreeMap, BTreeSet};
@@ -6,6 +7,7 @@ use std::path::{Path, PathBuf};
 pub struct AssetLoadResult {
     pub maps_by_id: BTreeMap<String, BTreeMap<String, String>>,
     pub vars_by_id: BTreeMap<String, BTreeMap<String, String>>,
+    pub queries_by_id: BTreeMap<String, BTreeMap<String, codemod_recipe_yaml::model::QueryDefinition>>,
     /// Absolute paths of YAML files classified as recipes.
     pub recipe_paths: Vec<PathBuf>,
     pub diagnostics: Vec<RecipeDiagnostic>,
@@ -16,11 +18,17 @@ enum AssetKind {
     Recipe,
     Map,
     Variables,
+    QueryLibrary,
 }
 
 /// Recursively scan `codemod_root` for YAML and classify by schema (not by directory).
 pub fn load_codemod_assets(workspace_root: &Path, codemod_root: &Path) -> AssetLoadResult {
     let mut maps_by_id: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
+    let mut queries_by_id: BTreeMap<
+        String,
+        BTreeMap<String, codemod_recipe_yaml::model::QueryDefinition>,
+    > = BTreeMap::new();
+    let mut query_id_sources: BTreeMap<String, Vec<DiagnosticSource>> = BTreeMap::new();
     let mut vars_by_id: BTreeMap<String, BTreeMap<String, String>> = BTreeMap::new();
     let mut recipe_paths = Vec::new();
     let mut diagnostics = Vec::new();
@@ -31,6 +39,7 @@ pub fn load_codemod_assets(workspace_root: &Path, codemod_root: &Path) -> AssetL
         return AssetLoadResult {
             maps_by_id,
             vars_by_id,
+            queries_by_id,
             recipe_paths,
             diagnostics,
         };
@@ -131,6 +140,24 @@ pub fn load_codemod_assets(workspace_root: &Path, codemod_root: &Path) -> AssetL
                     Err(diagnostic) => diagnostics.push(diagnostic),
                 }
             }
+            Ok(Some(AssetKind::QueryLibrary)) => {
+                match crate::query_resolver::parse_query_library(root) {
+                    Ok((id, entries)) => {
+                        query_id_sources
+                            .entry(id.clone())
+                            .or_default()
+                            .push(DiagnosticSource {
+                                file: relative,
+                                line: None,
+                                column: None,
+                            });
+                        queries_by_id.insert(id, entries);
+                    }
+                    Err(message) => {
+                        diagnostics.push(schema_error(&message, &relative));
+                    }
+                }
+            }
             Err(diagnostic) => diagnostics.push(diagnostic),
         }
     }
@@ -149,10 +176,16 @@ pub fn load_codemod_assets(workspace_root: &Path, codemod_root: &Path) -> AssetL
         "Duplicate variables id",
         &mut diagnostics,
     );
+    reject_duplicate_query_ids(
+        &mut queries_by_id,
+        &query_id_sources,
+        &mut diagnostics,
+    );
 
     AssetLoadResult {
         maps_by_id,
         vars_by_id,
+        queries_by_id,
         recipe_paths,
         diagnostics,
     }
@@ -165,17 +198,18 @@ fn classify_root(
     let has_steps = root.contains_key("steps");
     let has_map = root.contains_key("map");
     let has_values = root.contains_key("values");
+    let has_queries = root.contains_key("queries");
     let source = vec![DiagnosticSource {
         file: relative.to_string(),
         line: None,
         column: None,
     }];
 
-    if has_steps && (has_map || has_values) {
+    if has_steps && (has_map || has_values || has_queries) {
         return Err(RecipeDiagnostic::simple(
             "error",
             "E_AMBIGUOUS_ASSET",
-            "YAML asset cannot combine steps with map or values".to_string(),
+            "YAML asset cannot combine steps with map, values, or queries".to_string(),
             source,
         ));
     }
@@ -187,8 +221,27 @@ fn classify_root(
             source,
         ));
     }
+    if has_map && has_queries {
+        return Err(RecipeDiagnostic::simple(
+            "error",
+            "E_AMBIGUOUS_ASSET",
+            "YAML asset cannot define both map and queries".to_string(),
+            source,
+        ));
+    }
+    if has_values && has_queries {
+        return Err(RecipeDiagnostic::simple(
+            "error",
+            "E_AMBIGUOUS_ASSET",
+            "YAML asset cannot define both values and queries".to_string(),
+            source,
+        ));
+    }
     if has_steps {
         return Ok(Some(AssetKind::Recipe));
+    }
+    if has_queries {
+        return Ok(Some(AssetKind::QueryLibrary));
     }
     if has_map {
         return Ok(Some(AssetKind::Map));
@@ -345,16 +398,39 @@ fn reject_duplicate_ids(
     }
 }
 
+fn reject_duplicate_query_ids(
+    by_id: &mut BTreeMap<
+        String,
+        BTreeMap<String, codemod_recipe_yaml::model::QueryDefinition>,
+    >,
+    id_sources: &BTreeMap<String, Vec<DiagnosticSource>>,
+    diagnostics: &mut Vec<RecipeDiagnostic>,
+) {
+    let rejected: Vec<String> = id_sources
+        .iter()
+        .filter(|(_, sources)| sources.len() > 1)
+        .map(|(id, _)| id.clone())
+        .collect();
+
+    for id in &rejected {
+        by_id.remove(id);
+        if let Some(sources) = id_sources.get(id) {
+            diagnostics.push(RecipeDiagnostic::simple(
+                "error",
+                "E_DUPLICATE_QUERY_ID",
+                format!("Duplicate query library id: {id}"),
+                sources.clone(),
+            ));
+        }
+    }
+}
+
 fn schema_error(message: &str, file: &str) -> RecipeDiagnostic {
     RecipeDiagnostic::simple(
         "error",
         "E_ASSET_SCHEMA",
         message.to_string(),
-        vec![DiagnosticSource {
-            file: file.to_string(),
-            line: None,
-            column: None,
-        }],
+        vec![source_with_needle(file, None, "id:")],
     )
 }
 

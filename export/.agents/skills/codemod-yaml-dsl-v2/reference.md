@@ -19,6 +19,7 @@ dslVersion: 2
 id: recipe_id
 name: Human-readable name
 description: What this recipe does
+group: optional.dotted.path
 
 args: []
 maps: {}
@@ -32,6 +33,7 @@ postExecution:
 - `id` (required in practice): unique recipe id
 - `name` (optional): display name
 - `description` (optional)
+- `group` (optional): dotted catalog path for the VS Code Recipes tab (e.g. `rust.data`, `dart.feature.states`)
 - `args` (optional): list of argument definitions
 - `maps` (optional): recipe-local map entries
 - `steps` (required): ordered list of operations
@@ -82,7 +84,7 @@ Each entry in `steps` must be a single-key object of one of:
 ```
 
 - `path`: file path (often templated, e.g. `{{file}}`)
-- `language` (optional): tree-sitter language id (`dart`, `rust`, `java`, `kotlin`, `sqlite`, `sql`, …). When omitted, inferred from extension (default `dart`; `.sql` → `sqlite` unless host config overrides).
+- `language` (optional): tree-sitter language id (`dart`, `rust`, `java`, `kotlin`, `sqlite`, `sql`, …). When omitted, inferred from extension (`.sql` → `sqlite` unless host config overrides). Unknown extensions require an explicit `language:`; unresolved types fail with `file type not supported`.
 - `ops`: list of edit operations (must not be empty)
 
 ### Sequential staging

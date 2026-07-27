@@ -4,6 +4,8 @@ use std::fmt;
 
 use std::collections::BTreeMap;
 
+pub use crate::query_spec::{QueryDefinition, QuerySpec};
+
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct Recipe {
     pub id: String,
@@ -11,10 +13,15 @@ pub struct Recipe {
     pub name: Option<String>,
     #[serde(default)]
     pub description: Option<String>,
+    /// Optional dotted catalog path (e.g. `rust.data`, `dart.feature.states`).
+    #[serde(default)]
+    pub group: Option<String>,
     #[serde(default)]
     pub args: Vec<Arg>,
     #[serde(default)]
     pub maps: BTreeMap<String, BTreeMap<String, String>>,
+    #[serde(default)]
+    pub queries: BTreeMap<String, QueryDefinition>,
     pub steps: Vec<Step>,
     #[serde(default, rename = "postExecution")]
     pub post_execution: Vec<PostExecution>,
@@ -306,7 +313,7 @@ impl<'de> Deserialize<'de> for EditOp {
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct InsertOp {
-    pub query: String,
+    pub query: QuerySpec,
     pub capture: String,
     pub anchor: InsertAnchor,
     pub text: String,
@@ -321,7 +328,7 @@ pub enum InsertAnchor {
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct ReplaceOp {
-    pub query: String,
+    pub query: QuerySpec,
     pub capture: String,
     pub text: String,
     #[serde(default, rename = "includeLeadingTrivia")]
@@ -330,7 +337,7 @@ pub struct ReplaceOp {
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 pub struct RemoveOp {
-    pub query: String,
+    pub query: QuerySpec,
     pub capture: String,
     #[serde(default, rename = "includeLeadingTrivia")]
     pub include_leading_trivia: bool,

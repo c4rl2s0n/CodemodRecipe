@@ -4,8 +4,9 @@ use std::path::Path;
 use codemod_recipe_yaml::compose::expand_recipe_references;
 use codemod_recipe_yaml::model::{CreateStep, EditOp, Recipe, Step};
 
+use crate::diag_source::source_with_needle;
 use crate::map_registry::warn_on_missing_map_ids;
-use crate::protocol::{DiagnosticSource, RecipeDiagnostic, ValidateResponse};
+use crate::protocol::{RecipeDiagnostic, ValidateResponse};
 use crate::registry::RecipeRegistry;
 use crate::template::convert_legacy_syntax;
 
@@ -31,6 +32,7 @@ pub fn validate_recipe(registry: &RecipeRegistry, recipe_id: &str) -> ValidateRe
             "",
             Some(format!("Call list_recipes or check .codemod/recipes/{recipe_id}.yaml")),
             Some(recipe_id.to_string()),
+            recipe_id,
         ));
         return build_validate_response(&diagnostics);
     };
@@ -83,6 +85,7 @@ fn validate_expanded_recipe(
                 file_path,
                 Some("Break recipe reference cycles in scaffold orchestrators".to_string()),
                 Some(recipe_id.to_string()),
+                "recipe:",
             ));
             return;
         }
@@ -146,6 +149,7 @@ fn validate_with_bindings_in_steps(
                                 recipe_ref.id
                             )),
                             Some(recipe_ref.id.clone()),
+                            key,
                         ));
                     }
                 }
@@ -198,10 +202,10 @@ fn check_undeclared_args_in_steps(
             }
             _ => {
                 for (field, text) in templated_fields_for_step(step) {
-                    warn_on_missing_map_ids(text, file_path, maps, diagnostics);
+                    warn_on_missing_map_ids(&text, file_path, maps, diagnostics);
                     report_legacy_and_undeclared(
                         field,
-                        text,
+                        &text,
                         declared,
                         recipe_id,
                         file_path,
@@ -230,6 +234,7 @@ fn report_legacy_and_undeclared(
             file_path,
             Some("See docs/recipe-templates.md for canonical Jinja2 syntax".to_string()),
             Some(recipe_id.to_string()),
+            text,
         ));
     }
     for var in extract_template_variables(text) {
@@ -246,6 +251,7 @@ fn report_legacy_and_undeclared(
                 "Add `- name: {var}` to {file_path} or a referenced child recipe"
             )),
             Some(recipe_id.to_string()),
+            &var,
         ));
     }
 }
@@ -262,49 +268,58 @@ fn visit_create_steps(step: &Step, f: &mut impl FnMut(&CreateStep)) {
     }
 }
 
-fn templated_fields_for_step(step: &Step) -> Vec<(&'static str, &str)> {
+fn templated_fields_for_step(step: &Step) -> Vec<(&'static str, String)> {
     let mut out = Vec::new();
     match step {
         Step::Edit(edit) => {
-            out.push(("edit.path", edit.path.as_str()));
+            out.push(("edit.path", edit.path.clone()));
             if let Some(lang) = &edit.language {
-                out.push(("edit.language", lang.as_str()));
+                out.push(("edit.language", lang.clone()));
             }
             for op in &edit.ops {
                 match op {
                     EditOp::Insert(insert) => {
-                        out.push(("insert.query", insert.query.as_str()));
-                        out.push(("insert.capture", insert.capture.as_str()));
-                        out.push(("insert.text", insert.text.as_str()));
+                        out.push((
+                            "insert.query",
+                            insert.query.step_strings().join("\n"),
+                        ));
+                        out.push(("insert.capture", insert.capture.clone()));
+                        out.push(("insert.text", insert.text.clone()));
                     }
                     EditOp::Replace(replace) => {
-                        out.push(("replace.query", replace.query.as_str()));
-                        out.push(("replace.capture", replace.capture.as_str()));
-                        out.push(("replace.text", replace.text.as_str()));
+                        out.push((
+                            "replace.query",
+                            replace.query.step_strings().join("\n"),
+                        ));
+                        out.push(("replace.capture", replace.capture.clone()));
+                        out.push(("replace.text", replace.text.clone()));
                     }
                     EditOp::Remove(remove) => {
-                        out.push(("remove.query", remove.query.as_str()));
-                        out.push(("remove.capture", remove.capture.as_str()));
+                        out.push((
+                            "remove.query",
+                            remove.query.step_strings().join("\n"),
+                        ));
+                        out.push(("remove.capture", remove.capture.clone()));
                     }
                     EditOp::Unknown(_, _) => {}
                 }
             }
         }
         Step::Create(create) => {
-            out.push(("create.path", create.path.as_str()));
+            out.push(("create.path", create.path.clone()));
             if let Some(text) = &create.template {
-                out.push(("create.template", text.as_str()));
+                out.push(("create.template", text.clone()));
             }
             if let Some(file) = &create.template_file {
-                out.push(("create.templateFile", file.as_str()));
+                out.push(("create.templateFile", file.clone()));
             }
         }
         Step::Delete(delete) => {
-            out.push(("delete.path", delete.path.as_str()));
+            out.push(("delete.path", delete.path.clone()));
         }
         Step::RecipeRef(recipe_ref) => {
             for value in recipe_ref.with.values() {
-                out.push(("recipe.with", value.as_str()));
+                out.push(("recipe.with", value.clone()));
             }
         }
         Step::Scoped(_) | Step::Unknown(_, _) => {}
@@ -331,6 +346,7 @@ fn validate_create_step(
                     template_file
                 )),
                 Some(recipe_id.to_string()),
+                template_file,
             ));
             return;
         }
@@ -343,6 +359,7 @@ fn validate_create_step(
                     template_file,
                     None,
                     Some(recipe_id.to_string()),
+                    "",
                 ));
             }
         }
@@ -418,16 +435,13 @@ fn error(
     file: &str,
     hint: Option<String>,
     related_recipe: Option<String>,
+    needle: &str,
 ) -> RecipeDiagnostic {
     RecipeDiagnostic {
         severity: "error",
         code,
         message,
-        sources: vec![DiagnosticSource {
-            file: file.to_string(),
-            line: None,
-            column: None,
-        }],
+        sources: vec![source_with_needle(file, None, needle)],
         hint,
         related_recipe,
     }
@@ -439,16 +453,13 @@ fn warning(
     file: &str,
     hint: Option<String>,
     related_recipe: Option<String>,
+    needle: &str,
 ) -> RecipeDiagnostic {
     RecipeDiagnostic {
         severity: "warning",
         code,
         message,
-        sources: vec![DiagnosticSource {
-            file: file.to_string(),
-            line: None,
-            column: None,
-        }],
+        sources: vec![source_with_needle(file, None, needle)],
         hint,
         related_recipe,
     }
@@ -472,6 +483,7 @@ pub fn check_template_file_exists(
             "Create .codemod/{template_file} or update templateFile"
         )),
         Some(recipe_id.to_string()),
+        template_file,
     ))
 }
 

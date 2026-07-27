@@ -62,6 +62,8 @@ pub fn collect_recipe_changes(
         &merged_maps,
         vars,
         Some(registry.codemod_root()),
+        Some(registry),
+        recipe_path,
     )?;
 
     let sandbox = PathSandbox::new(registry.workspace_root.clone());
@@ -228,6 +230,8 @@ pub fn planned_snapshot_paths(
         &merged_maps,
         registry.vars_by_id(),
         Some(registry.codemod_root()),
+        Some(registry),
+        None,
     )?;
     let sandbox = PathSandbox::new(registry.workspace_root.clone());
     let mut paths = Vec::new();

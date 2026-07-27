@@ -22,14 +22,22 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
   private webviewHtmlLoaded = false;
   private previewInFlight = false;
   private readonly state = new RecipeRunnerState();
+  private scaffoldHandler: (() => Promise<void>) | undefined;
 
   constructor(
     private readonly bridge: HostBridge,
     private readonly config: ExtensionConfig,
     private readonly diffProvider: DiffContentProvider,
-    private readonly workspaceRoot: string,
     private readonly extensionUri: vscode.Uri
   ) { }
+
+  private get workspaceRoot(): string {
+    return this.config.workspaceRoot;
+  }
+
+  setScaffoldHandler(handler: () => Promise<void>): void {
+    this.scaffoldHandler = handler;
+  }
 
   resolveWebviewView(webviewView: vscode.WebviewView): void {
     this.view = webviewView;
@@ -109,6 +117,16 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
       case WEBVIEW_TO_EXTENSION.configureHost:
         await vscode.commands.executeCommand(COMMANDS.configureCodemodRoot);
         break;
+      case WEBVIEW_TO_EXTENSION.scaffoldProject:
+        if (this.scaffoldHandler) {
+          await this.scaffoldHandler();
+        } else {
+          await vscode.commands.executeCommand(COMMANDS.scaffoldProject);
+        }
+        break;
+      case WEBVIEW_TO_EXTENSION.openRecipeFile:
+        await this.openRecipeFile(message.id);
+        break;
       case WEBVIEW_TO_EXTENSION.pickFile:
         await this.pickPath(message.arg, false);
         break;
@@ -154,13 +172,42 @@ export class RecipeRunnerViewProvider implements vscode.WebviewViewProvider {
     }
   }
 
+  private async openRecipeFile(recipeId: string): Promise<void> {
+    const recipe = this.state.recipes.find((item) => item.id === recipeId);
+    const sourceFile = recipe?.sourceFile;
+    if (!sourceFile) {
+      vscode.window.showInformationMessage(
+        `Codemod Recipe: no source file recorded for "${recipeId}".`
+      );
+      return;
+    }
+    const abs = path.isAbsolute(sourceFile)
+      ? sourceFile
+      : path.join(this.workspaceRoot, sourceFile);
+    const uri = vscode.Uri.file(abs);
+    try {
+      const doc = await vscode.workspace.openTextDocument(uri);
+      await vscode.window.showTextDocument(doc, { preview: true });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      vscode.window.showErrorMessage(
+        `Codemod Recipe: failed to open ${sourceFile}: ${message}`
+      );
+    }
+  }
+
   private async pickPath(arg: string, directory: boolean): Promise<void> {
     const picked = await vscode.window.showOpenDialog({
-      defaultUri: vscode.Uri.parse(this.workspaceRoot),
+      defaultUri: vscode.Uri.file(this.workspaceRoot),
       canSelectMany: false,
       canSelectFiles: !directory,
       canSelectFolders: directory,
-      filters: {"Dart": ["dart"]},
+      filters: directory
+        ? undefined
+        : {
+            Source: ['dart', 'rs', 'java', 'kt', 'kts', 'sql', 'ts', 'js', 'py'],
+            All: ['*'],
+          },
       openLabel: 'Select',
     });
     if (!picked?.[0]) return;

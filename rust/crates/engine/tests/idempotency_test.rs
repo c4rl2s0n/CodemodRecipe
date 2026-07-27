@@ -1,4 +1,5 @@
 use codemod_recipe_engine::engine::{parse_recipe_yaml, QueryContext};
+use codemod_recipe_yaml::QuerySpec;
 use codemod_recipe_yaml::model::{EditOp, EditStep, Recipe, RemoveOp, ReplaceOp, Step};
 use std::collections::BTreeMap;
 
@@ -30,13 +31,15 @@ fn remove_count_recipe() -> Recipe {
         id: "remove_count".to_string(),
         name: None,
         description: None,
+        group: None,
         args: vec![],
         maps: BTreeMap::new(),
+        queries: BTreeMap::new(),
         steps: vec![Step::Edit(EditStep {
             path: "test.dart".to_string(),
             language: None,
             ops: vec![EditOp::Remove(RemoveOp {
-                query: FIELD_QUERY.to_string(),
+                query: QuerySpec::single(FIELD_QUERY),
                 capture: "member".to_string(),
                 include_leading_trivia: false,
             })],
@@ -50,13 +53,15 @@ fn replace_count_recipe(text: &str) -> Recipe {
         id: "replace_count".to_string(),
         name: None,
         description: None,
+        group: None,
         args: vec![],
         maps: BTreeMap::new(),
+        queries: BTreeMap::new(),
         steps: vec![Step::Edit(EditStep {
             path: "test.dart".to_string(),
             language: None,
             ops: vec![EditOp::Replace(ReplaceOp {
-                query: FIELD_QUERY.to_string(),
+                query: QuerySpec::single(FIELD_QUERY),
                 capture: "member".to_string(),
                 text: text.to_string(),
                 include_leading_trivia: false,

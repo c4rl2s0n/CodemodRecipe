@@ -51,6 +51,15 @@ pub enum HostCommand {
     },
     #[serde(rename = "generateAstPath")]
     GenerateAstPath { path: String, offset: u64 },
+    #[serde(rename = "bootstrap")]
+    Bootstrap {
+        #[serde(default)]
+        force: bool,
+        #[serde(default, rename = "editPolicy")]
+        edit_policy: Option<String>,
+        #[serde(default)]
+        companions: Vec<String>,
+    },
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -68,10 +77,16 @@ pub struct RecipeArg {
 }
 
 #[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct RecipeSchema {
     pub id: String,
     pub name: String,
     pub description: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub group: Option<String>,
+    /// Workspace-relative path to the recipe YAML file.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_file: Option<String>,
     pub args: Vec<RecipeArg>,
 }
 
@@ -124,6 +139,12 @@ pub struct RecipeCatalogResponse {
     pub diagnostics: Option<Vec<RecipeDiagnostic>>,
     #[serde(skip_serializing_if = "Option::is_none", rename = "mapsLoaded")]
     pub maps_loaded: Option<usize>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "mapIds")]
+    pub map_ids: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "varIds")]
+    pub var_ids: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "languageIds")]
+    pub language_ids: Option<Vec<String>>,
 }
 
 #[derive(Debug, Serialize, Clone)]

@@ -1,5 +1,6 @@
 pub mod args;
 pub mod bootstrap;
+pub mod diag_source;
 pub mod map_registry;
 pub mod naming;
 pub mod config;
@@ -10,6 +11,7 @@ pub mod path_sandbox;
 pub mod post_execution;
 pub mod preview_token;
 pub mod protocol;
+pub mod query_resolver;
 pub mod registry;
 pub mod runner;
 pub mod template;
