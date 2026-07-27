@@ -53,4 +53,43 @@ mod tests {
         let gap_end = source.find("int").unwrap();
         assert!(gap_has_blank_line(source, gap_start, gap_end));
     }
+
+    #[test]
+    fn extends_over_line_and_block_comment_siblings() {
+        use crate::registry::{ensure_language_downloaded, LanguageRegistry};
+        use tree_sitter::Parser;
+
+        ensure_language_downloaded("dart");
+        let mut registry = LanguageRegistry::new();
+        let language = registry
+            .get("dart")
+            .expect("dart")
+            .adapter_language();
+
+        let source = "class C {\n  // line\n  /* block */\n  final int x = 0;\n}\n";
+        let mut parser = Parser::new();
+        parser.set_language(&language).unwrap();
+        let tree = parser.parse(source, None).unwrap();
+        let root = tree.root_node();
+        let class = root
+            .named_child(0)
+            .expect("class");
+        let body = class.child_by_field_name("body").expect("body");
+        let mut field_decl = None;
+        let mut i = 0;
+        while let Some(child) = body.named_child(i) {
+            if child.kind() == "declaration" {
+                field_decl = Some(child);
+                break;
+            }
+            i += 1;
+        }
+        let field_decl = field_decl.expect("field declaration");
+
+        let start = field_decl.start_byte();
+        let expanded = leading_trivia_start(source, field_decl, start);
+        let prefix = &source[expanded..start];
+        assert!(prefix.contains("// line"));
+        assert!(prefix.contains("/* block */"));
+    }
 }

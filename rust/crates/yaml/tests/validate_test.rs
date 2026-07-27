@@ -1,8 +1,32 @@
 use std::collections::BTreeMap;
+use codemod_recipe_yaml::let_binding::LetBinding;
 use codemod_recipe_yaml::model::{EditOp, EditStep, Recipe, Step};
+use codemod_recipe_yaml::LetBindings;
 use codemod_recipe_yaml::QuerySpec;
 use codemod_recipe_yaml::validate::{validate_recipe, validate_recipe_with, ValidationError};
 use serde_yaml::Value;
+
+fn minimal_insert_edit(mut edit: EditStep) -> Recipe {
+    if edit.ops.is_empty() {
+        edit.ops = vec![EditOp::Insert(codemod_recipe_yaml::model::InsertOp {
+            query: QuerySpec::single("(identifier) @x"),
+            capture: "x".to_string(),
+            anchor: codemod_recipe_yaml::model::InsertAnchor::End,
+            text: "x".to_string(),
+        })];
+    }
+    Recipe {
+        id: "bad".to_string(),
+        name: None,
+        description: None,
+        group: None,
+        args: vec![],
+        maps: BTreeMap::new(),
+        queries: BTreeMap::new(),
+        steps: vec![Step::Edit(edit)],
+        post_execution: vec![],
+    }
+}
 
 #[test]
 fn rejects_insert_missing_capture() {
@@ -183,6 +207,72 @@ fn parses_codemod_insert_log_line_recipe() {
     assert_eq!(recipe.id, "insert_log_line");
     assert_eq!(recipe.args.len(), 1);
     assert_eq!(recipe.args[0].name, "file");
+}
+
+#[test]
+fn rejects_let_name_colliding_with_recipe_arg() {
+    let mut recipe = minimal_insert_edit(EditStep {
+        path: "a.dart".to_string(),
+        let_bindings: LetBindings(vec![LetBinding {
+            name: "file".to_string(),
+            query: Some(QuerySpec::single("(identifier) @x")),
+            ..Default::default()
+        }]),
+        ..Default::default()
+    });
+    recipe.args = vec![codemod_recipe_yaml::model::Arg {
+        name: "file".to_string(),
+        required: true,
+        input_kind: None,
+        abbr: None,
+        help: None,
+        defaults_to: None,
+        options: vec![],
+        allow_custom_value: None,
+        context_key: None,
+    }];
+    let errors = validate_recipe(&recipe).unwrap_err();
+    assert!(errors.iter().any(|e| matches!(
+        e,
+        ValidationError::LetNameCollidesWithArg(name) if name == "file"
+    )));
+}
+
+#[test]
+fn rejects_let_binding_without_query_or_as() {
+    let recipe = minimal_insert_edit(EditStep {
+        path: "a.dart".to_string(),
+        let_bindings: LetBindings(vec![LetBinding {
+            name: "n".to_string(),
+            query: None,
+            r#as: None,
+            ..Default::default()
+        }]),
+        ..Default::default()
+    });
+    let errors = validate_recipe(&recipe).unwrap_err();
+    assert!(errors.iter().any(|e| matches!(
+        e,
+        ValidationError::LetBindingMissingQuery { name } if name == "n"
+    )));
+}
+
+#[test]
+fn rejects_empty_let_binding_name() {
+    let recipe = minimal_insert_edit(EditStep {
+        path: "a.dart".to_string(),
+        let_bindings: LetBindings(vec![LetBinding {
+            name: "   ".to_string(),
+            query: Some(QuerySpec::single("(identifier) @x")),
+            ..Default::default()
+        }]),
+        ..Default::default()
+    });
+    let errors = validate_recipe(&recipe).unwrap_err();
+    assert!(errors.iter().any(|e| matches!(
+        e,
+        ValidationError::MissingRequiredField { op: "let", field: "name" }
+    )));
 }
 
 #[test]

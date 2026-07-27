@@ -44,3 +44,32 @@ fn lowest_common_ancestor<'a>(mut left: Node<'a>, mut right: Node<'a>) -> Option
     }
     None
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::registry::{ensure_language_downloaded, LanguageRegistry};
+    use tree_sitter::{Parser, Query, QueryCursor};
+    use tree_sitter::StreamingIterator;
+
+    #[test]
+    fn match_root_is_outermost_common_ancestor() {
+        ensure_language_downloaded("dart");
+        let mut registry = LanguageRegistry::new();
+        let engine = registry.get("dart").expect("dart engine");
+        let language = engine.adapter_language();
+
+        let source = "class Foo { void bar() {} }";
+        let mut parser = Parser::new();
+        parser.set_language(&language).unwrap();
+        let tree = parser.parse(source, None).unwrap();
+
+        let query_text = "(class_definition name: (identifier) @className) @class";
+        let query = Query::new(&language, query_text).unwrap();
+        let mut cursor = QueryCursor::new();
+        let mut matches = cursor.matches(&query, tree.root_node(), source.as_bytes());
+        let m = matches.next().expect("one match");
+        let root = match_root_node(m).expect("match root");
+        assert_eq!(root.kind(), "class_definition");
+    }
+}

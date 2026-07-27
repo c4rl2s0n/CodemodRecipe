@@ -145,6 +145,9 @@ pub fn parse_query_library(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::registry::RecipeRegistry;
+    use codemod_recipe_yaml::QuerySpec;
+    use std::path::PathBuf;
 
     #[test]
     fn splits_dotted_query_ref() {
@@ -153,5 +156,128 @@ mod tests {
             Some(("dart_queries", "class_named"))
         );
         assert_eq!(split_query_ref("no_dot"), None);
+    }
+
+    #[test]
+    fn parse_query_library_reads_id_and_entries() {
+        let yaml = r#"
+id: test_lib
+queries:
+  one:
+    query: "(identifier) @x"
+"#;
+        let root: serde_yaml::Mapping = serde_yaml::from_str(yaml).unwrap();
+        let (id, entries) = parse_query_library(&root).unwrap();
+        assert_eq!(id, "test_lib");
+        assert_eq!(entries.len(), 1);
+        assert!(entries["one"].query.contains("@x"));
+    }
+
+    #[test]
+    fn parse_query_library_rejects_empty_entry() {
+        let yaml = r#"
+id: test_lib
+queries:
+  bad:
+    query: "   "
+"#;
+        let root: serde_yaml::Mapping = serde_yaml::from_str(yaml).unwrap();
+        let err = parse_query_library(&root).unwrap_err();
+        assert!(err.contains("must not be empty"));
+    }
+
+    #[test]
+    fn render_query_spec_applies_jinja_to_scm_file() {
+        use codemod_recipe_yaml::model::Recipe;
+        use std::collections::BTreeMap;
+
+        let dir = std::env::temp_dir().join(format!(
+            "codemod_query_jinja_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let queries_dir = dir.join(".codemod").join("queries");
+        std::fs::create_dir_all(&queries_dir).unwrap();
+        std::fs::write(
+            queries_dir.join("named_class.scm"),
+            r#"(class_definition
+  name: (identifier) @className
+  (#eq? @className "{{className}}"))"#,
+        )
+        .unwrap();
+
+        let registry = RecipeRegistry::new(dir.clone(), dir.join(".codemod"));
+        let recipe = Recipe {
+            id: "jinja_scm".to_string(),
+            name: None,
+            description: None,
+            group: None,
+            args: vec![],
+            maps: BTreeMap::new(),
+            queries: BTreeMap::new(),
+            steps: vec![],
+            post_execution: vec![],
+        };
+        let args = BTreeMap::from([("className".to_string(), "Settings".to_string())]);
+        let rendered = render_query_spec(
+            &QuerySpec::single("queries/named_class.scm"),
+            &recipe,
+            &registry,
+            None,
+            &args,
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+        )
+        .unwrap();
+        let text = match rendered {
+            QuerySpec::Single(s) => s,
+            QuerySpec::Chain(_) => panic!("expected single"),
+        };
+        assert!(text.contains(r#"(#eq? @className "Settings")"#));
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn render_query_spec_resolves_recipe_local_query_key() {
+        use codemod_recipe_yaml::model::{QueryDefinition, Recipe};
+        use std::collections::BTreeMap;
+
+        let dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..");
+        let registry = RecipeRegistry::new(dir.clone(), dir.join(".codemod"));
+        let mut queries = BTreeMap::new();
+        queries.insert(
+            "local_class".to_string(),
+            QueryDefinition {
+                query: "(class_definition) @c".to_string(),
+            },
+        );
+        let recipe = Recipe {
+            id: "local_queries".to_string(),
+            name: None,
+            description: None,
+            group: None,
+            args: vec![],
+            maps: BTreeMap::new(),
+            queries,
+            steps: vec![],
+            post_execution: vec![],
+        };
+        let rendered = render_query_spec(
+            &QuerySpec::single("local_class"),
+            &recipe,
+            &registry,
+            None,
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+        )
+        .unwrap();
+        assert_eq!(
+            rendered,
+            QuerySpec::single("(class_definition) @c")
+        );
     }
 }

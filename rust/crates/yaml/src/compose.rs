@@ -179,6 +179,30 @@ fn merge_queries_into(
     }
 }
 
+#[cfg(test)]
+mod merge_queries_tests {
+    use super::*;
+    use crate::QueryDefinition;
+
+    #[test]
+    fn merge_queries_does_not_override_existing_keys() {
+        let mut target = BTreeMap::from([(
+            "a".to_string(),
+            QueryDefinition {
+                query: "first".to_string(),
+            },
+        )]);
+        let source = BTreeMap::from([(
+            "a".to_string(),
+            QueryDefinition {
+                query: "second".to_string(),
+            },
+        )]);
+        merge_queries_into(&mut target, &source);
+        assert_eq!(target["a"].query, "first");
+    }
+}
+
 fn merge_maps_into(
     target: &mut BTreeMap<String, BTreeMap<String, String>>,
     source: &BTreeMap<String, BTreeMap<String, String>>,
