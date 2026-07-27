@@ -7,7 +7,7 @@ The Rust host renders recipe strings and file-backed templates with
 
 | Location | Render path |
 |----------|-------------|
-| `edit.path`, `edit.ops[].query/capture/text` | Inline `render_str`; each `query` step (string or list item) after file load |
+| `edit.path`, `edit.when` / `edit.whenNot`, `edit.let[].query` / `capture` / `as`, `edit.ops[].query/capture/text` | Inline `render_str`; guard queries and `let` bindings use the same query resolution as ops. Op `text`/`query`/`capture` re-render **per op** when `let` or guards are present (locals merged with recipe args). Each `query` step (string or list item) after file load |
 | `create.path`, `create.template` | Inline `render_str` |
 | `create.templateFile` | File loader (`extends` / `include` supported) |
 | `delete.path` | Inline `render_str` |
@@ -34,6 +34,17 @@ All templated fields share the same argument namespace (`args` + merged `maps`).
 {{ feature | screaming_snake }}
 {{ feature | kebab_case }}
 ```
+
+### Numeric helpers (edit `let` / `as` templates)
+
+Use on string locals from `extract: text` or recipe args:
+
+```jinja
+{{ count | int | add(1) | string }}
+{{ offset | int | sub(2) | string }}
+```
+
+Also available: `trim`, `string` / `str` (alias).
 
 ### Maps
 

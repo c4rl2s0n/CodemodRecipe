@@ -34,10 +34,14 @@ pub fn resolve_query_source(
 }
 
 fn looks_like_file_path(query: &str) -> bool {
-    query.ends_with(".scm")
-        || query.contains('/')
-        || query.contains('\\')
-        || (query.ends_with(".yaml") && !query.contains('('))
+    let trimmed = query.trim();
+    if trimmed.contains('(') {
+        return false;
+    }
+    trimmed.ends_with(".scm")
+        || trimmed.contains('/')
+        || trimmed.contains('\\')
+        || (trimmed.ends_with(".yaml") && !trimmed.contains('('))
 }
 
 fn candidate_paths(

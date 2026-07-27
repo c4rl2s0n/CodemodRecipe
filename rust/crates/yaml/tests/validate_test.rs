@@ -16,13 +16,13 @@ fn rejects_insert_missing_capture() {
         queries: BTreeMap::new(),
         steps: vec![Step::Edit(EditStep {
             path: "a.dart".to_string(),
-            language: None,
             ops: vec![EditOp::Insert(codemod_recipe_yaml::model::InsertOp {
                 query: QuerySpec::single("(identifier) @x"),
                 capture: "".to_string(),
                 anchor: codemod_recipe_yaml::model::InsertAnchor::End,
                 text: "x".to_string(),
             })],
+            ..Default::default()
         })],
         post_execution: vec![],
     };
@@ -49,8 +49,8 @@ fn rejects_empty_edit_ops() {
         queries: BTreeMap::new(),
         steps: vec![Step::Edit(EditStep {
             path: "a.dart".to_string(),
-            language: None,
             ops: vec![],
+            ..Default::default()
         })],
         post_execution: vec![],
     };
@@ -94,13 +94,13 @@ fn rejects_duplicate_arg_names() {
         queries: BTreeMap::new(),
         steps: vec![Step::Edit(EditStep {
             path: "a.dart".to_string(),
-            language: None,
             ops: vec![EditOp::Insert(codemod_recipe_yaml::model::InsertOp {
                 query: QuerySpec::single("(identifier) @x"),
                 capture: "x".to_string(),
                 anchor: codemod_recipe_yaml::model::InsertAnchor::End,
                 text: "x".to_string(),
             })],
+            ..Default::default()
         })],
         post_execution: vec![],
     };
@@ -123,8 +123,8 @@ fn rejects_unknown_edit_op_kind() {
         queries: BTreeMap::new(),
         steps: vec![Step::Edit(EditStep {
             path: "a.dart".to_string(),
-            language: None,
             ops: vec![EditOp::Unknown("rename".to_string(), Value::Null)],
+            ..Default::default()
         })],
         post_execution: vec![],
     };
@@ -154,6 +154,7 @@ fn rejects_unknown_language() {
                 anchor: codemod_recipe_yaml::model::InsertAnchor::End,
                 text: "x".to_string(),
             })],
+            ..Default::default()
         })],
         post_execution: vec![],
     };

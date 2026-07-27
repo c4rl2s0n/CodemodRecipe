@@ -1,4 +1,5 @@
 use crate::diag_source::{source_file_only, source_with_needle};
+use crate::render_context::RecipeRenderContext;
 use crate::map_registry::{load_codemod_assets, merge_maps, warn_on_missing_map_ids};
 use crate::protocol::{RecipeArg, RecipeDiagnostic, RecipeSchema};
 use crate::template::{render_template, render_template_file};
@@ -541,80 +542,86 @@ fn render_edit(
     registry: Option<&RecipeRegistry>,
     recipe_file: Option<&Path>,
 ) -> Result<codemod_recipe_yaml::model::EditStep, String> {
+    let render = RecipeRenderContext {
+        recipe,
+        registry,
+        recipe_file,
+        codemod_root,
+        args,
+        maps,
+        vars,
+    };
     let mut edit = edit.clone();
     edit.path = render_template(&edit.path, args, maps, vars)?;
     if let Some(lang) = &edit.language {
         edit.language = Some(render_template(lang, args, maps, vars)?);
     }
-    for op in &mut edit.ops {
-        match op {
-            EditOp::Insert(insert) => {
-                insert.query = render_query_op(
-                    &insert.query,
-                    recipe,
-                    registry,
-                    recipe_file,
-                    codemod_root,
-                    args,
-                    maps,
-                    vars,
-                )?;
-                insert.capture = render_template(&insert.capture, args, maps, vars)?;
-                insert.text = render_template(&insert.text, args, maps, vars)?;
+    if let Some(when) = &mut edit.when {
+        render_guard_list(when, &render)?;
+    }
+    if let Some(when_not) = &mut edit.when_not {
+        render_guard_list(when_not, &render)?;
+    }
+    let defer_op_render = !edit.let_bindings.0.is_empty()
+        || edit.when.is_some()
+        || edit.when_not.is_some();
+    if !defer_op_render {
+        for op in &mut edit.ops {
+            match op {
+                EditOp::Insert(insert) => {
+                    insert.query = render_query_op(&insert.query, &render, args)?;
+                    insert.capture = render_template(&insert.capture, args, maps, vars)?;
+                    insert.text = render_template(&insert.text, args, maps, vars)?;
+                }
+                EditOp::Replace(replace) => {
+                    replace.query = render_query_op(&replace.query, &render, args)?;
+                    replace.capture = render_template(&replace.capture, args, maps, vars)?;
+                    replace.text = render_template(&replace.text, args, maps, vars)?;
+                }
+                EditOp::Remove(remove) => {
+                    remove.query = render_query_op(&remove.query, &render, args)?;
+                    remove.capture = render_template(&remove.capture, args, maps, vars)?;
+                }
+                EditOp::Unknown(_, _) => {}
             }
-            EditOp::Replace(replace) => {
-                replace.query = render_query_op(
-                    &replace.query,
-                    recipe,
-                    registry,
-                    recipe_file,
-                    codemod_root,
-                    args,
-                    maps,
-                    vars,
-                )?;
-                replace.capture = render_template(&replace.capture, args, maps, vars)?;
-                replace.text = render_template(&replace.text, args, maps, vars)?;
-            }
-            EditOp::Remove(remove) => {
-                remove.query = render_query_op(
-                    &remove.query,
-                    recipe,
-                    registry,
-                    recipe_file,
-                    codemod_root,
-                    args,
-                    maps,
-                    vars,
-                )?;
-                remove.capture = render_template(&remove.capture, args, maps, vars)?;
-            }
-            EditOp::Unknown(_, _) => {}
         }
     }
     Ok(edit)
 }
 
-#[allow(clippy::too_many_arguments)]
+fn render_guard_list(
+    list: &mut codemod_recipe_yaml::GuardList,
+    render: &RecipeRenderContext<'_>,
+) -> Result<(), String> {
+    for spec in &mut list.guards {
+        *spec = render_query_op(spec, render, render.args)?;
+    }
+    Ok(())
+}
+
+/// Public wrapper for query rendering (guards / per-op let).
+pub fn render_query_op_public(
+    spec: &codemod_recipe_yaml::model::QuerySpec,
+    render: &RecipeRenderContext<'_>,
+    args: &BTreeMap<String, String>,
+) -> Result<codemod_recipe_yaml::model::QuerySpec, String> {
+    render_query_op(spec, render, args)
+}
+
 fn render_query_op(
     spec: &codemod_recipe_yaml::model::QuerySpec,
-    recipe: &Recipe,
-    registry: Option<&RecipeRegistry>,
-    recipe_file: Option<&Path>,
-    codemod_root: Option<&Path>,
+    render: &RecipeRenderContext<'_>,
     args: &BTreeMap<String, String>,
-    maps: &BTreeMap<String, BTreeMap<String, String>>,
-    vars: &BTreeMap<String, BTreeMap<String, String>>,
 ) -> Result<codemod_recipe_yaml::model::QuerySpec, String> {
-    if let Some(reg) = registry {
+    if let Some(reg) = render.registry {
         return crate::query_resolver::render_query_spec(
             spec,
-            recipe,
+            render.recipe,
             reg,
-            recipe_file,
+            render.recipe_file,
             args,
-            maps,
-            vars,
+            render.maps,
+            render.vars,
         );
     }
     // No registry: Jinja-render inline/path steps only.
@@ -624,9 +631,9 @@ fn render_query_op(
     };
     let mut out = Vec::new();
     for step in steps {
-        let loaded = if let Some(root) = codemod_root {
+        let loaded = if let Some(root) = render.codemod_root {
             if looks_like_query_file_path(&step) {
-                codemod_recipe_engine::query::resolve_query_source(&step, recipe_file, root)
+                codemod_recipe_engine::query::resolve_query_source(&step, render.recipe_file, root)
                     .map_err(|e| e.to_string())?
             } else {
                 step
@@ -634,7 +641,7 @@ fn render_query_op(
         } else {
             step
         };
-        out.push(render_template(&loaded, args, maps, vars)?);
+        out.push(render_template(&loaded, args, render.maps, render.vars)?);
     }
     Ok(if out.len() == 1 {
         codemod_recipe_yaml::model::QuerySpec::Single(out.into_iter().next().unwrap())
@@ -645,6 +652,9 @@ fn render_query_op(
 
 fn looks_like_query_file_path(query: &str) -> bool {
     let trimmed = query.trim();
+    if trimmed.contains('(') {
+        return false;
+    }
     trimmed.ends_with(".scm")
         || trimmed.contains('/')
         || trimmed.contains('\\')

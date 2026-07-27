@@ -26,6 +26,12 @@ pub enum ValidationError {
 
     #[error("create step cannot have both template and templateFile")]
     CreateConflictingTemplate,
+
+    #[error("let binding name collides with recipe arg: {0}")]
+    LetNameCollidesWithArg(String),
+
+    #[error("let binding '{name}' requires query or as")]
+    LetBindingMissingQuery { name: String },
 }
 
 pub fn validate_recipe(recipe: &Recipe) -> Result<(), Vec<ValidationError>> {
@@ -52,8 +58,11 @@ pub fn validate_recipe_with(
         });
     }
 
+    let arg_names: std::collections::BTreeSet<String> =
+        recipe.args.iter().map(|a| a.name.clone()).collect();
+
     for step in &recipe.steps {
-        validate_step(step, &is_known_language, &mut errors);
+        validate_step(step, &is_known_language, &arg_names, &mut errors);
     }
 
     if errors.is_empty() {
@@ -66,11 +75,12 @@ pub fn validate_recipe_with(
 fn validate_step(
     step: &Step,
     is_known_language: &impl Fn(&str) -> bool,
+    arg_names: &std::collections::BTreeSet<String>,
     errors: &mut Vec<ValidationError>,
 ) {
     match step {
         Step::Edit(edit) => {
-            validate_edit(edit, errors);
+            validate_edit(edit, arg_names, errors);
             if let Some(lang) = edit.language.as_deref() {
                 let lang = lang.trim();
                 if lang.is_empty() {
@@ -95,7 +105,7 @@ fn validate_step(
         }
         Step::Scoped(scoped) => {
             for inner in &scoped.steps {
-                validate_step(inner, is_known_language, errors);
+                validate_step(inner, is_known_language, arg_names, errors);
             }
         }
         Step::Unknown(kind, _) => {
@@ -104,7 +114,11 @@ fn validate_step(
     }
 }
 
-fn validate_edit(edit: &EditStep, errors: &mut Vec<ValidationError>) {
+fn validate_edit(
+    edit: &EditStep,
+    arg_names: &std::collections::BTreeSet<String>,
+    errors: &mut Vec<ValidationError>,
+) {
     if edit.path.trim().is_empty() {
         errors.push(ValidationError::MissingRequiredField {
             op: "edit",
@@ -113,6 +127,27 @@ fn validate_edit(edit: &EditStep, errors: &mut Vec<ValidationError>) {
     }
     if edit.ops.is_empty() {
         errors.push(ValidationError::EmptyEditOps);
+    }
+    for binding in &edit.let_bindings.0 {
+        if binding.name.trim().is_empty() {
+            errors.push(ValidationError::MissingRequiredField {
+                op: "let",
+                field: "name",
+            });
+        } else if arg_names.contains(&binding.name) {
+            errors.push(ValidationError::LetNameCollidesWithArg(binding.name.clone()));
+        }
+        if binding.query.is_none() && binding.r#as.is_none() {
+            errors.push(ValidationError::LetBindingMissingQuery {
+                name: binding.name.clone(),
+            });
+        }
+        if binding.query.as_ref().is_some_and(|q| q.is_empty()) {
+            errors.push(ValidationError::MissingRequiredField {
+                op: "let",
+                field: "query",
+            });
+        }
     }
     for op in &edit.ops {
         match op {

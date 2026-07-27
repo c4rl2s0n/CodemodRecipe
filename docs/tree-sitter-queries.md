@@ -38,6 +38,12 @@ codemod-recipe uses [tree-sitter](https://tree-sitter.github.io/) queries to mat
 | Insert position | `anchor: start\|end` | Byte offset in capture span — **not** tree-sitter `.` anchor |
 | External query | `query: path/to/file.scm` | Resolved under recipe or `.codemod/queries/` |
 | Args in queries | `{{className}}` | Expanded before tree-sitter parses the query |
+| Edit guards | `edit.when`, `edit.whenNot` | Same query specs as ops; evaluated once before the edit (skip step if guards fail) |
+| Step locals | `edit.let[].query` | Per-op bindings; `capture` + `extract` (`text`, `kind`, `exists`, `count`) feed Jinja in later ops |
+
+## Edit-level `when` / `let`
+
+Use tree-sitter queries on the **current file text** to gate an entire `edit` step or to bind locals that change between sequential ops. Guard queries use the same composition rules as op `query` (inline, `.scm`, library refs, chains). See `codemod-yaml-dsl-v2` `reference.md` for YAML shape and template filters on `let.as`.
 
 ## Two kinds of “anchor”
 

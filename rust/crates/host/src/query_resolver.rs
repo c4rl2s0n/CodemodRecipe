@@ -97,6 +97,9 @@ fn load_and_render_query_body(
 
 fn looks_like_query_file_path(query: &str) -> bool {
     let trimmed = query.trim();
+    if trimmed.contains('(') {
+        return false;
+    }
     trimmed.ends_with(".scm")
         || trimmed.contains('/')
         || trimmed.contains('\\')

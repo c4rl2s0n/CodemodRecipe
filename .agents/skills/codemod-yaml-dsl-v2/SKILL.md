@@ -36,7 +36,7 @@ postExecution:
 
 Each `steps[]` entry is a single-key object:
 
-- `edit` — patch existing files (insert/replace/remove)
+- `edit` — patch existing files (insert/replace/remove); optional `when` / `whenNot` guards and `let` step locals (see `reference.md`)
 - `create` — new files from template
 - `delete` — remove files
 - `recipe` — compose another recipe by id (optional `with:` call-site arg bindings)

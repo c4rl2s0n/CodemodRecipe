@@ -76,6 +76,23 @@ fn build_environment(
         to_screaming_snake(&value)
     });
     env.add_filter("kebab_case", |value: String| -> String { to_kebab_case(&value) });
+    env.add_filter("trim", |value: String| -> String { value.trim().to_string() });
+
+    env.add_filter("int", |value: Value| -> Result<i64, minijinja::Error> {
+        value_to_i64(&value).map_err(|e| minijinja::Error::new(minijinja::ErrorKind::InvalidOperation, e))
+    });
+    env.add_filter("add", |value: i64, n: i64| -> Result<i64, minijinja::Error> {
+        value.checked_add(n).ok_or_else(|| {
+            minijinja::Error::new(minijinja::ErrorKind::InvalidOperation, "integer overflow in add")
+        })
+    });
+    env.add_filter("sub", |value: i64, n: i64| -> Result<i64, minijinja::Error> {
+        value.checked_sub(n).ok_or_else(|| {
+            minijinja::Error::new(minijinja::ErrorKind::InvalidOperation, "integer overflow in sub")
+        })
+    });
+    env.add_filter("string", |value: i64| -> String { value.to_string() });
+    env.add_filter("str", |value: i64| -> String { value.to_string() });
 
     let maps = Arc::new(maps.clone());
     env.add_filter(
@@ -113,6 +130,19 @@ fn coerce_value(raw: &str) -> Value {
         "false" => Value::from(false),
         other => Value::from(other.to_string()),
     }
+}
+
+fn value_to_i64(value: &Value) -> Result<i64, String> {
+    if let Some(n) = value.as_i64() {
+        return Ok(n);
+    }
+    if let Some(s) = value.as_str() {
+        let trimmed = s.trim();
+        return trimmed
+            .parse::<i64>()
+            .map_err(|_| format!("expected integer, got '{s}'"));
+    }
+    Err("expected integer value".to_string())
 }
 
 /// True when the template still uses legacy `{{$…}}` helpers.
@@ -362,6 +392,16 @@ mod tests {
                 &maps
             ),
             "int"
+        );
+    }
+
+    #[test]
+    fn numeric_filters_for_let_locals() {
+        let mut args = BTreeMap::new();
+        args.insert("schemaVersion".to_string(), "7".to_string());
+        assert_eq!(
+            render_ok("{{ schemaVersion | int | add(1) | string }}", &args),
+            "8"
         );
     }
 

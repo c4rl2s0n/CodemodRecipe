@@ -128,6 +128,7 @@ fn validates_unknown_explicit_language() {
                 anchor: InsertAnchor::End,
                 text: "x".to_string(),
             })],
+            ..Default::default()
         })],
         post_execution: vec![],
     };
@@ -178,6 +179,7 @@ fn rust_insert_at_function_item_end() {
                 anchor: InsertAnchor::End,
                 text: "\n// inserted".to_string(),
             })],
+            ..Default::default()
         })],
         post_execution: vec![],
     };
@@ -223,6 +225,7 @@ fn smoke_sqlite_parses_create_table() {
                 anchor: InsertAnchor::End,
                 text: "\n-- codemod".to_string(),
             })],
+            ..Default::default()
         })],
         post_execution: vec![],
     };

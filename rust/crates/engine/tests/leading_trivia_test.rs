@@ -27,7 +27,6 @@ fn remove_with_leading_trivia_strips_doc_comment() {
         queries: BTreeMap::new(),
         steps: vec![Step::Edit(EditStep {
             path: "test.dart".to_string(),
-            language: None,
             ops: vec![EditOp::Remove(RemoveOp {
                 query: QuerySpec::single(r#"(class_definition
   name: (identifier) @className
@@ -41,6 +40,7 @@ fn remove_with_leading_trivia_strips_doc_comment() {
                 capture: "member".to_string(),
                 include_leading_trivia: true,
             })],
+            ..Default::default()
         })],
         post_execution: vec![],
     };

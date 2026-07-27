@@ -37,12 +37,12 @@ fn remove_count_recipe() -> Recipe {
         queries: BTreeMap::new(),
         steps: vec![Step::Edit(EditStep {
             path: "test.dart".to_string(),
-            language: None,
             ops: vec![EditOp::Remove(RemoveOp {
                 query: QuerySpec::single(FIELD_QUERY),
                 capture: "member".to_string(),
                 include_leading_trivia: false,
             })],
+            ..Default::default()
         })],
         post_execution: vec![],
     }
@@ -59,13 +59,13 @@ fn replace_count_recipe(text: &str) -> Recipe {
         queries: BTreeMap::new(),
         steps: vec![Step::Edit(EditStep {
             path: "test.dart".to_string(),
-            language: None,
             ops: vec![EditOp::Replace(ReplaceOp {
                 query: QuerySpec::single(FIELD_QUERY),
                 capture: "member".to_string(),
                 text: text.to_string(),
                 include_leading_trivia: false,
             })],
+            ..Default::default()
         })],
         post_execution: vec![],
     }

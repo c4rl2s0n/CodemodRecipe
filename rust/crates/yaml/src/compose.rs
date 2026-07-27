@@ -212,13 +212,13 @@ mod tests {
     fn edit_step(path: &str) -> EditStep {
         EditStep {
             path: path.to_string(),
-            language: None,
             ops: vec![EditOp::Insert(InsertOp {
                 query: QuerySpec::single("(identifier) @x"),
                 capture: "x".to_string(),
                 anchor: InsertAnchor::End,
                 text: "x".to_string(),
             })],
+            ..Default::default()
         }
     }
 

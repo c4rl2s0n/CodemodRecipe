@@ -4,6 +4,7 @@ pub mod leading_trivia;
 pub mod native;
 pub mod query;
 pub mod query_chain;
+mod query_eval;
 pub mod registry;
 pub mod span;
 

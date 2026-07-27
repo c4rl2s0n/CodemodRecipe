@@ -87,6 +87,31 @@ Each entry in `steps` must be a single-key object of one of:
 - `language` (optional): tree-sitter language id (`dart`, `rust`, `java`, `kotlin`, `sqlite`, `sql`, …). When omitted, inferred from extension (`.sql` → `sqlite` unless host config overrides). Unknown extensions require an explicit `language:`; unresolved types fail with `file type not supported`.
 - `ops`: list of edit operations (must not be empty)
 
+### `when` / `whenNot` (optional guards)
+
+Evaluated **once** on the file before any op. If guards fail, the edit is **skipped** (no error in batch preview).
+
+- `when`: one query or list of queries (each a [`query`](#query--capture-semantics) spec). **All** must match.
+- `whenNot`: forbidden patterns; edit runs only if **none** match.
+
+Queries support the same composition as op `query` (inline, `.scm`, `libId.key`, chains).
+
+### `let` (optional step locals)
+
+Bindings recomputed **before each op** on the current source. Names are available in op `text` / `query` / `capture` templates (with recipe args; locals must not collide with recipe arg names).
+
+```yaml
+let:
+  - name: needsBraces
+    query: |
+      (constructor_body) @body
+      (#match? @body "^\\s*$")
+    capture: body
+    extract: exists   # text | kind | exists | count
+```
+
+Optional `as:` template (Jinja) to derive a value from prior locals. Numeric transforms use filters: `{{ n | int | add(1) | string }}`.
+
 ### Sequential staging
 
 Steps (and ops within one `edit`) run **in order** against an in-memory working tree.

@@ -1,3 +1,4 @@
+pub mod edit_apply;
 pub mod args;
 pub mod bootstrap;
 pub mod diag_source;
@@ -13,6 +14,7 @@ pub mod preview_token;
 pub mod protocol;
 pub mod query_resolver;
 pub mod registry;
+pub mod render_context;
 pub mod runner;
 pub mod template;
 pub mod validate;

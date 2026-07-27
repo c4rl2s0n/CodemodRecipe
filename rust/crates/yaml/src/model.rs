@@ -4,6 +4,8 @@ use std::fmt;
 
 use std::collections::BTreeMap;
 
+use crate::guard_list::GuardList;
+use crate::let_binding::LetBindings;
 pub use crate::query_spec::{QueryDefinition, QuerySpec};
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -244,11 +246,18 @@ fn default_true() -> bool {
     true
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
 pub struct EditStep {
     pub path: String,
     #[serde(default)]
     pub language: Option<String>,
+    #[serde(default)]
+    pub when: Option<GuardList>,
+    #[serde(default, rename = "whenNot")]
+    pub when_not: Option<GuardList>,
+    #[serde(default, rename = "let")]
+    pub let_bindings: LetBindings,
     pub ops: Vec<EditOp>,
 }
 

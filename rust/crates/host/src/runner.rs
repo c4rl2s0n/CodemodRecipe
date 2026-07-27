@@ -9,6 +9,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use crate::args;
+use crate::render_context::RecipeRenderContext;
 use crate::path_sandbox::PathSandbox;
 use crate::registry::{render_recipe_templates_with_root, RecipeRegistry};
 use crate::template::render_template_file;
@@ -74,6 +75,14 @@ pub fn collect_recipe_changes(
         recipe_file: recipe_path,
         codemod_root: registry.codemod_root(),
     };
+    let render_ctx = RecipeRenderContext::with_registry(
+        &rendered,
+        registry,
+        recipe_path,
+        &effective,
+        &merged_maps,
+        vars,
+    );
 
     for step in &rendered.steps {
         match step {
@@ -83,9 +92,14 @@ pub fn collect_recipe_changes(
                     .resolve_for_edit(edit.language.as_deref(), &relative)
                     .map_err(engine_error_to_string)?;
                 tree.apply_edit(&sandbox, &relative, |source| {
-                    engine
-                        .apply_edit_ops_sequential(&ctx, edit, source)
-                        .map_err(engine_error_to_string)
+                    crate::edit_apply::apply_edit_step_with_guards(
+                        engine,
+                        &ctx,
+                        edit,
+                        &render_ctx,
+                        source,
+                    )
+                    .map(|opt| opt.unwrap_or_else(|| source.to_string()))
                 })?;
             }
             Step::Create(create) => {

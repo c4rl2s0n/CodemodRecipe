@@ -60,10 +60,10 @@ pub struct ApplyResult {
 }
 
 #[derive(Debug, Clone, Copy)]
-struct CaptureSpan {
-    start: usize,
-    end: usize,
-    is_block: bool,
+pub(crate) struct CaptureSpan {
+    pub start: usize,
+    pub end: usize,
+    pub is_block: bool,
 }
 
 impl Engine {
@@ -73,6 +73,10 @@ impl Engine {
             .set_language(&adapter.language())
             .map_err(|e| EngineError::Query(format!("set_language failed: {e:?}")))?;
         Ok(Self { parser, adapter })
+    }
+
+    pub(crate) fn adapter_language(&self) -> tree_sitter::Language {
+        self.adapter.language()
     }
 
     /// Collect patches for a single edit op against `source`.
@@ -222,7 +226,7 @@ impl Engine {
         })
     }
 
-    fn parse_tree(&mut self, source: &str) -> Result<Tree, EngineError> {
+    pub(crate) fn parse_tree(&mut self, source: &str) -> Result<Tree, EngineError> {
         let tree = self
             .parser
             .parse(source, None)
@@ -288,7 +292,7 @@ impl Engine {
         Ok(None)
     }
 
-    fn collect_match_root_spans(
+    pub(crate) fn collect_match_root_spans(
         &self,
         source: &str,
         tree: &Tree,
@@ -370,14 +374,14 @@ impl Engine {
     }
 }
 
-fn node_for_byte_range(tree: &Tree, start: usize, end: usize) -> Node<'_> {
+pub(crate) fn node_for_byte_range(tree: &Tree, start: usize, end: usize) -> Node<'_> {
     tree.root_node()
         .named_descendant_for_byte_range(start, end.max(start + 1))
         .or_else(|| tree.root_node().descendant_for_byte_range(start, end.max(start + 1)))
         .unwrap_or_else(|| tree.root_node())
 }
 
-fn resolve_step_text(ctx: &QueryContext<'_>, raw: &str) -> Result<String, EngineError> {
+pub(crate) fn resolve_step_text(ctx: &QueryContext<'_>, raw: &str) -> Result<String, EngineError> {
     crate::query::resolve_query_source(raw, ctx.recipe_file, ctx.codemod_root)
 }
 
