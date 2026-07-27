@@ -4,9 +4,10 @@ import type { FilePreview } from '../shared';
 import type { FileCardSelection } from '../lib/selection';
 import { allPatchRows } from '../lib/selection';
 import FileCard from './FileCard.vue';
-import { WEBVIEW_TO_EXTENSION } from '../shared';
-import { postToExtension } from '../vsCodeApi';
+import { useExtensionClient } from '../composables/useExtensionClient';
 import { buildSelection } from '../lib/selection';
+
+const client = useExtensionClient();
 
 const props = defineProps<{
   files: FilePreview[];
@@ -18,7 +19,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:fileSelections': [value: FileCardSelection[]];
   'update:activeChangeIndex': [value: number];
-  apply: [];
 }>();
 
 const activePatchKey = computed(() => {
@@ -38,7 +38,7 @@ function selectPatch(path: string, index: number) {
   const idx = rows.findIndex((r) => r.path === path && r.index === index);
   if (idx >= 0) {
     emit('update:activeChangeIndex', idx);
-    postToExtension({ type: WEBVIEW_TO_EXTENSION.openDiff, path });
+    client.openDiff(path, index);
   }
 }
 
@@ -47,7 +47,7 @@ function previousChange() {
   if (!rows.length) return;
   const next = Math.max(0, props.activeChangeIndex - 1);
   emit('update:activeChangeIndex', next);
-  postToExtension({ type: WEBVIEW_TO_EXTENSION.openDiff, path: rows[next].path });
+  client.openDiff(rows[next].path, rows[next].index);
 }
 
 function nextChange() {
@@ -55,15 +55,11 @@ function nextChange() {
   if (!rows.length) return;
   const next = Math.min(rows.length - 1, props.activeChangeIndex + 1);
   emit('update:activeChangeIndex', next);
-  postToExtension({ type: WEBVIEW_TO_EXTENSION.openDiff, path: rows[next].path });
+  client.openDiff(rows[next].path, rows[next].index);
 }
 
 function applySelected() {
-  postToExtension({
-    type: WEBVIEW_TO_EXTENSION.apply,
-    selection: buildSelection(props.fileSelections),
-  });
-  emit('apply');
+  client.apply(buildSelection(props.fileSelections));
 }
 </script>
 

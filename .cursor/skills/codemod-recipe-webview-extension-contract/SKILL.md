@@ -14,107 +14,54 @@ Use this skill when you:
 - Debug cases where the UI shows stale preview results or mismatched error messages
 - Update shared types and need to keep both TS sides consistent
 
-## Source of truth: message constants + typed unions
+## Source of truth
 
-### Webview → Extension
-- `vscode_extension/src/constants.ts`
-  - `WEBVIEW_TO_EXTENSION` string constants
-- `vscode_extension/src/views/recipeRunnerMessages.ts`
-  - `WebviewToExtensionMessage` typed union
-  - `isWebviewToExtensionMessage(...)` runtime guard
+All protocol types live in **`vscode_extension/src/shared/messages.ts`** (re-exported from `src/shared/index.ts`).
 
-### Extension → Webview
-- `vscode_extension/src/constants.ts`
-  - `EXTENSION_TO_WEBVIEW` string constants
-- `vscode_extension/src/webview/extensionToWebviewMessages.ts`
-  - `ExtensionToWebviewMessage` typed union
+- `WEBVIEW_TO_EXTENSION` / `WebviewToExtensionMessage` / `isWebviewToExtensionMessage`
+- `EXTENSION_TO_WEBVIEW` / `ExtensionToWebviewMessage` / `isExtensionToWebviewMessage`
 
-### Webview UI message types (mirrored)
-- `vscode_extension/webview-ui/src/messages.ts`
-  - `WEBVIEW_TO_EXTENSION` / `EXTENSION_TO_WEBVIEW` constants
-  - `WebviewToExtensionMessage` / `ExtensionToWebviewMessage` equivalents
+Domain types (`RecipeViewState`, `FilePreview`, …): **`vscode_extension/src/shared/types.ts`**.
 
-## Shared state shape (big picture)
+## Webview interface layers
 
-State is pushed as `EXTENSION_TO_WEBVIEW.state` and stored as `RecipeViewState`.
+| Layer | File |
+|-------|------|
+| Transport | `vscode_extension/src/webview/src/vsCodeApi.ts` |
+| Outbound API | `vscode_extension/src/webview/src/extensionClient.ts` |
+| Inbound router | `vscode_extension/src/webview/src/extensionInbound.ts` |
+| Host state | `vscode_extension/src/webview/src/composables/useHostState.ts` |
+| Runner session | `vscode_extension/src/webview/src/composables/useRunnerController.ts` |
 
-- Extension-side state type:
-  - `vscode_extension/src/webview/webviewState.ts` (`RecipeViewState`)
-- Webview-side state type:
-  - `vscode_extension/webview-ui/src/types.ts` (`RecipeViewState`)
+See **`vscode_extension/src/webview/ARCHITECTURE.md`** for state ownership and dev workflow.
 
-Webview controller updates its local state based on:
-- `vscode_extension/webview-ui/src/App.vue` (bootstraps and routes tab changes)
-- `vscode_extension/webview-ui/src/composables/useRunnerController.ts`
-  - `handleExtensionMessage(msg, state?)`
-  - applies `previewResult`, `error`, `previewState`, and `applyResult` updates
+Vue components must use **`useExtensionClient()`** — not `postToExtension` directly.
+
+## Extension dispatch
+
+- Orchestration: `vscode_extension/src/extension/views/recipeRunnerViewProvider.ts`
+- Per-message handlers: `vscode_extension/src/extension/views/recipeRunnerHandlers.ts`
 
 ## requestId + stale ordering (critical)
 
-This repo uses `requestId` for preview ordering and stale suppression.
+- Webview: `useRunnerController.ts` → `client.requestPreview(args, requestId)`
+- Extension: `recipeRunnerHandlers.ts` → `handlePreview` echoes `requestId` on `previewState`, `previewResult`, `error`
+- Stale drop: `latestHandledRequestId` in `useRunnerController.ts`
 
-Where requestId is carried:
-- Webview sends `preview` and includes optional `requestId`:
-  - `vscode_extension/webview-ui/src/messages.ts` (`WEBVIEW_TO_EXTENSION.preview`)
-  - webview controller sends it:
-    - `vscode_extension/webview-ui/src/composables/useRunnerController.ts`
-      - `triggerPreview(...)` increments and passes `requestId`
+## Checklist: add or change a capability
 
-- Extension forwards `requestId` back in responses:
-  - `vscode_extension/src/views/recipeRunnerViewProvider.ts`
-    - `preview(...)` posts:
-      - `previewState` (`inFlight: true/false`)
-      - `previewResult` on success
-      - `error` on failure
+1. **`src/shared/messages.ts`** — constants, union arms, guards (`messages.test.ts`)
+2. **`recipeRunnerHandlers.ts`** — extension behavior
+3. **`extensionClient.ts`** — one new method per webview → extension action
+4. **`useHostState` or `useRunnerController`** — subscribe via `extensionInbound` for new extension → webview events
+5. **UI** — `useExtensionClient()` only
+6. **Tests** — guard + client unit tests when non-trivial
 
-Where stale results are handled:
-- Webview controller ignores older requests:
-  - `vscode_extension/webview-ui/src/composables/useRunnerController.ts`
-    - tracks `latestRequestId` vs `latestHandledRequestId`
-    - drops messages with `requestId < latestHandledRequestId.value`
+Host-state-only features may only extend `RecipeViewState` and `postState()` without new webview → extension messages.
 
-Red flag:
-- If you add `requestId` to a new message type, you must also implement stale suppression logic on the webview side (and/or extension side) as appropriate.
+## Red flags
 
-## UI request in-flight signaling
-
-Even with `requestId`, the extension also emits an `inFlight` signal to support UI feedback:
-- `EXTENSION_TO_WEBVIEW.previewState` with `inFlight: true|false`
-
-Webview uses this to:
-- set `previewInFlight`
-- when `inFlight` ends, it may trigger another queued preview:
-  - `useRunnerController.ts` (`pendingAutoPreview`)
-
-## Checklist: when you change the protocol
-
-When adding/changing any message type or payload:
-
-1. Update both sides’ constants:
-   - `vscode_extension/src/constants.ts`
-   - `vscode_extension/webview-ui/src/messages.ts`
-2. Update union types + guards:
-   - `vscode_extension/src/views/recipeRunnerMessages.ts`
-   - `vscode_extension/src/webview/extensionToWebviewMessages.ts`
-   - `vscode_extension/webview-ui/src/messages.ts`
-3. Update extension handler and response serialization:
-   - `vscode_extension/src/views/recipeRunnerViewProvider.ts`
-4. Update webview controller state handling:
-   - `vscode_extension/webview-ui/src/composables/useRunnerController.ts`
-5. Update any message validators:
-   - `isWebviewToExtensionMessage(...)`
-6. Update UI components that depend on state/events:
-   - `vscode_extension/webview-ui/src/App.vue`
-   - `vscode_extension/webview-ui/src/views/*`
-   - `vscode_extension/webview-ui/src/components/*`
-
-## Red flags (stop and fix)
-
-- Updating only one side’s message union/constants.
-- Changing preview/diff/apply payload keys without updating:
-  - extension types
-  - webview types
-  - UI controller mappings
+- Updating protocol in only one of extension vs webview (single `messages.ts` — but still update client, handlers, composables).
+- Calling `postToExtension` from Vue components.
 - Removing stale suppression in `useRunnerController.ts`.
-- Changing marker strings or typed union discriminators without frame extraction updates.
-
+- Weak guards that accept any `type` string (guards must whitelist discriminants).

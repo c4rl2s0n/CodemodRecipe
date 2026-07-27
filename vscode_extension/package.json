@@ -82,15 +82,24 @@
     ],
     "jsonValidation": [
       {
-        "fileMatch": [".codemod/**/*.yaml", ".codemod/**/*.yml"],
+        "fileMatch": [
+          ".codemod/**/*.yaml",
+          ".codemod/**/*.yml"
+        ],
         "url": "./schemas/recipe.schema.json"
       },
       {
-        "fileMatch": [".codemod/maps/**/*.yaml", ".codemod/maps/**/*.yml"],
+        "fileMatch": [
+          ".codemod/maps/**/*.yaml",
+          ".codemod/maps/**/*.yml"
+        ],
         "url": "./schemas/map.schema.json"
       },
       {
-        "fileMatch": [".codemod/variables/**/*.yaml", ".codemod/variables/**/*.yml"],
+        "fileMatch": [
+          ".codemod/variables/**/*.yaml",
+          ".codemod/variables/**/*.yml"
+        ],
         "url": "./schemas/variables.schema.json"
       }
     ],

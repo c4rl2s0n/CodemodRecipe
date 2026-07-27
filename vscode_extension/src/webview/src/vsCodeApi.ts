@@ -2,6 +2,7 @@ import {
   isExtensionToWebviewMessage,
   type ExtensionToWebviewMessage,
   type PersistedWebviewState,
+  type WebviewToExtensionMessage,
 } from './shared';
 
 const vscode = acquireVsCodeApi();
@@ -27,7 +28,7 @@ window.addEventListener('message', (event) => {
   dispatchExtensionMessage(data);
 });
 
-export function postToExtension(message: Record<string, unknown>): void {
+export function postToExtension(message: WebviewToExtensionMessage): void {
   vscode.postMessage(message);
 }
 

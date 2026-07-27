@@ -1,65 +1,37 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { onMounted, onUnmounted, provide, ref } from 'vue';
 import BootstrapView from './views/BootstrapView.vue';
 import RecipesView from './views/RecipesView.vue';
 import RunnerView from './views/RunnerView.vue';
 import { useRunnerController } from './composables/useRunnerController.js';
-import {
-  BOOTSTRAP_PHASES,
-  EXTENSION_TO_WEBVIEW,
-  RUNNER_TABS,
-  WEBVIEW_TO_EXTENSION,
-  type RecipeViewState,
-  type RunnerTab,
-} from './shared.js';
-import { onExtensionMessage, postToExtension } from './vsCodeApi.js';
+import { useHostState } from './composables/useHostState.js';
+import { createExtensionInbound } from './extensionInbound.js';
+import { createExtensionClient } from './extensionClient.js';
+import { postToExtension } from './vsCodeApi.js';
+import { extensionClientKey } from './composables/useExtensionClient.js';
+import { BOOTSTRAP_PHASES, RUNNER_TABS, type RunnerTab } from './shared.js';
 
-const boot = window.__CODEMOD_RECIPE_BOOT__ ?? { autoPreviewDebounceMs: 400 };
+const inbound = createExtensionInbound();
+const client = createExtensionClient({ post: postToExtension, inbound });
+provide(extensionClientKey, client);
 
-const hostState = ref<RecipeViewState>({
-  recipes: [],
-  diagnostics: [],
-  initialArgs: {},
-  activeTab: RUNNER_TABS.recipes,
-  autoPreviewDebounceMs: boot.autoPreviewDebounceMs,
-  recipesRefreshing: false,
-  bootstrapInFlight: true,
-  bootstrapPhase: BOOTSTRAP_PHASES.startingHost,
-});
+const {
+  recipe,
+  recipes,
+  discoveryError,
+  diagnostics,
+  recipesRefreshing,
+  showBlockingOverlay,
+  showBootstrapOverlay,
+  bootstrapInFlight,
+  bootstrapPhase,
+  bootstrapError,
+  runnerTitle,
+  runnerDescription,
+  autoPreviewDebounceMs,
+} = useHostState(inbound);
 
 const activeTab = ref<RunnerTab>(RUNNER_TABS.recipes);
-
-const recipe = computed(() => hostState.value.recipe);
-const recipes = computed(() => hostState.value.recipes);
-const discoveryError = computed(() => hostState.value.discoveryError);
-const diagnostics = computed(() => hostState.value.diagnostics ?? []);
-const recipesRefreshing = computed(() => hostState.value.recipesRefreshing);
-const bootstrapInFlight = computed(() => hostState.value.bootstrapInFlight);
-const bootstrapPhase = computed(() => hostState.value.bootstrapPhase);
-const bootstrapError = computed(() => hostState.value.bootstrapError);
-
-const showBootstrapOverlay = computed(
-  () => bootstrapInFlight.value || bootstrapPhase.value === BOOTSTRAP_PHASES.error
-);
-
-const showReloadOverlay = computed(
-  () => recipesRefreshing.value && !showBootstrapOverlay.value
-);
-
-const showBlockingOverlay = computed(
-  () => showBootstrapOverlay.value || showReloadOverlay.value
-);
-
-const runnerTitle = computed(() => recipe.value?.name ?? 'Recipe Runner');
-const runnerDescription = computed(
-  () =>
-    recipe.value?.description ??
-    'Select a recipe to configure and preview changes.'
-);
-
-const autoPreviewDebounceMs = computed(
-  () => hostState.value.autoPreviewDebounceMs ?? boot.autoPreviewDebounceMs
-);
 
 const {
   argValues,
@@ -72,10 +44,11 @@ const {
   previewStatusKind,
   canApply,
   restorePersistedOnMount,
-  handleExtensionMessage: handleRunnerExtensionMessage,
   onArgsChanged,
   persistUiState,
 } = useRunnerController({
+  client,
+  inbound,
   recipe,
   autoPreviewDebounceMs,
   activeTab,
@@ -84,42 +57,26 @@ const {
   },
 });
 
-let unsubscribe: (() => void) | undefined;
-
 function switchTab(tab: RunnerTab) {
   activeTab.value = tab;
   persistUiState();
 }
 
 function retryBootstrap(): void {
-  postToExtension({ type: WEBVIEW_TO_EXTENSION.bootstrapRetry });
-}
-
-function handleExtensionMessage(msg: import('./messages.js').ExtensionToWebviewMessage) {
-  switch (msg.type) {
-    case EXTENSION_TO_WEBVIEW.state:
-      hostState.value = msg.state;
-      handleRunnerExtensionMessage(msg, msg.state);
-      break;
-    default:
-      handleRunnerExtensionMessage(msg);
-      break;
-  }
+  client.retryBootstrap();
 }
 
 onMounted(() => {
-  postToExtension({ type: WEBVIEW_TO_EXTENSION.ready });
+  client.notifyReady();
   restorePersistedOnMount();
-  unsubscribe = onExtensionMessage(handleExtensionMessage);
   if (recipe.value) {
     onArgsChanged(false);
   }
 });
 
 onUnmounted(() => {
-  unsubscribe?.();
+  inbound.dispose();
 });
-
 </script>
 
 <template>
@@ -186,7 +143,6 @@ onUnmounted(() => {
         @args-changed="onArgsChanged($event)"
         @update:file-selections="fileSelections = $event"
         @update:active-change-index="activeChangeIndex = $event"
-        @apply="showReview = false"
       />
     </div>
   </template>

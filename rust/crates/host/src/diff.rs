@@ -8,11 +8,7 @@ pub fn patches_to_patch_info(patches: &[SourcePatch], include_replacement: bool)
         .enumerate()
         .map(|(index, patch)| {
             let length = patch.end.saturating_sub(patch.start);
-            let preview = if include_replacement {
-                Some(preview_replacement(&patch.replacement))
-            } else {
-                None
-            };
+            let preview = Some(preview_replacement(&patch.replacement));
             PatchInfo {
                 index,
                 offset: patch.start,

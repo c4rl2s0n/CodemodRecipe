@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import { WEBVIEW_TO_EXTENSION, type RecipeDiagnostic, type RecipeSchema } from '../shared';
-import { postToExtension } from '../vsCodeApi';
+import type { RecipeDiagnostic, RecipeSchema } from '../shared';
+import { useExtensionClient } from '../composables/useExtensionClient';
 import RecipeGroupNode, { type RecipeTreeNode } from './RecipeGroupNode.vue';
+
+const client = useExtensionClient();
 
 const props = defineProps<{
   recipes: readonly RecipeSchema[];
@@ -115,7 +117,7 @@ function toggleGroup(key: string) {
 }
 
 function selectRecipe(id: string) {
-  postToExtension({ type: WEBVIEW_TO_EXTENSION.selectRecipe, id });
+  client.selectRecipe(id);
 }
 
 function closeRecipeContextMenu(): void {
@@ -137,7 +139,7 @@ function onRecipeContextMenu(recipe: RecipeSchema, event: MouseEvent): void {
 function showRecipeFromContextMenu(): void {
   const id = recipeContextMenu.value?.recipeId;
   if (id) {
-    postToExtension({ type: WEBVIEW_TO_EXTENSION.openRecipeFile, id });
+    client.openRecipeFile(id);
   }
   closeRecipeContextMenu();
 }
@@ -153,15 +155,15 @@ onUnmounted(() => {
 });
 
 function refresh() {
-  postToExtension({ type: WEBVIEW_TO_EXTENSION.refreshRecipes });
+  client.refreshRecipes();
 }
 
 function configureHost() {
-  postToExtension({ type: WEBVIEW_TO_EXTENSION.configureHost });
+  client.configureHost();
 }
 
 function scaffoldProject() {
-  postToExtension({ type: WEBVIEW_TO_EXTENSION.scaffoldProject });
+  client.scaffoldProject();
 }
 
 function recipeSubtitle(recipe: RecipeSchema): string {

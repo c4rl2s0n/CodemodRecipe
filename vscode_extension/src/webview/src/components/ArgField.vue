@@ -1,8 +1,10 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { ARG_INPUT_KIND, WEBVIEW_TO_EXTENSION, type RecipeArg } from '../shared';
+import { ARG_INPUT_KIND, type RecipeArg } from '../shared';
 import { effectiveInputKind } from '../lib/args';
-import { postToExtension } from '../vsCodeApi';
+import { useExtensionClient } from '../composables/useExtensionClient';
+
+const client = useExtensionClient();
 
 const props = defineProps<{
   arg: RecipeArg;
@@ -21,12 +23,10 @@ const isChecked = computed({
   },
 });
 
-function pickPath() {
-  const type =
-    inputKind.value === ARG_INPUT_KIND.directory
-      ? WEBVIEW_TO_EXTENSION.pickDirectory
-      : WEBVIEW_TO_EXTENSION.pickFile;
-  postToExtension({ type, arg: props.arg.name });
+async function pickPath() {
+  const directory = inputKind.value === ARG_INPUT_KIND.directory;
+  const value = await client.pickPath(props.arg.name, directory);
+  model.value = value;
 }
 </script>
 

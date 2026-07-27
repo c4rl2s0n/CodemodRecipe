@@ -1,5 +1,6 @@
 /// Converts a Dart-style identifier to snake_case.
 pub fn to_snake_case(input: &str) -> String {
+    let input = normalize_phrase_separators(input);
     if input.is_empty() {
         return String::new();
     }
@@ -26,7 +27,47 @@ pub fn to_snake_case(input: &str) -> String {
         previous_was_upper = is_upper;
     }
 
+    buffer = collapse_underscores(&buffer);
     buffer
+}
+
+fn collapse_underscores(input: &str) -> String {
+    let mut out = String::with_capacity(input.len());
+    let mut prev_underscore = false;
+    for ch in input.chars() {
+        if ch == '_' {
+            if !prev_underscore && !out.is_empty() {
+                out.push('_');
+            }
+            prev_underscore = true;
+        } else {
+            out.push(ch);
+            prev_underscore = false;
+        }
+    }
+    while out.ends_with('_') {
+        out.pop();
+    }
+    out
+}
+
+/// Trim and map whitespace/hyphen runs to underscores for phrase-style inputs.
+fn normalize_phrase_separators(input: &str) -> String {
+    let trimmed = input.trim();
+    let mut out = String::with_capacity(trimmed.len());
+    let mut last_was_sep = false;
+    for ch in trimmed.chars() {
+        if ch.is_whitespace() || ch == '-' {
+            if !last_was_sep && !out.is_empty() {
+                out.push('_');
+            }
+            last_was_sep = true;
+        } else {
+            out.push(ch);
+            last_was_sep = false;
+        }
+    }
+    out
 }
 
 pub fn to_pascal_case(input: &str) -> String {
@@ -94,5 +135,14 @@ mod tests {
     fn screaming_snake_and_kebab() {
         assert_eq!(to_screaming_snake("FeedList"), "FEED_LIST");
         assert_eq!(to_kebab_case("FeedList"), "feed-list");
+    }
+
+    #[test]
+    fn phrase_with_spaces_and_hyphens() {
+        assert_eq!(to_snake_case("test name"), "test_name");
+        assert_eq!(to_snake_case("Test Name"), "test_name");
+        assert_eq!(to_snake_case("test-name"), "test_name");
+        assert_eq!(to_camel_case("test name"), "testName");
+        assert_eq!(to_pascal_case("test name"), "TestName");
     }
 }

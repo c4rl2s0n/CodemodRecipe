@@ -3,8 +3,9 @@ import type { FilePreview, RecipeSchema } from '../shared';
 import type { FileCardSelection } from '../lib/selection';
 import RecipeArgForm from '../components/RecipeArgForm.vue';
 import ReviewPanel from '../components/ReviewPanel.vue';
+import { useExtensionClient } from '../composables/useExtensionClient';
 
-defineProps<{
+const props = defineProps<{
   recipe?: RecipeSchema;
   runnerTitle: string;
   runnerDescription: string;
@@ -24,22 +25,41 @@ const emit = defineEmits<{
   argsChanged: [immediate: boolean];
   'update:fileSelections': [value: FileCardSelection[]];
   'update:activeChangeIndex': [value: number];
-  apply: [];
 }>();
+
+const client = useExtensionClient();
+
+function showRecipe() {
+  if (props.recipe?.sourceFile) {
+    client.openRecipeFile(props.recipe.id);
+  }
+}
 </script>
 
 <template>
-  <h2>{{ runnerTitle }}</h2>
+  <div class="runner-header">
+    <h2>{{ runnerTitle }}</h2>
+    <button
+      v-if="recipe?.sourceFile"
+      type="button"
+      class="secondary show-recipe-btn"
+      @click="showRecipe"
+    >
+      Show recipe
+    </button>
+  </div>
   <div class="desc">{{ runnerDescription }}</div>
 
-  <h3>Parameters</h3>
-  <RecipeArgForm
-    :arg-values="argValues"
-    :recipe="recipe"
-    @update:arg-values="emit('update:argValues', $event)"
-    @args-changed="emit('argsChanged', false)"
-    @submit-preview="emit('argsChanged', true)"
-  />
+  <template v-if="recipe?.args?.length">
+    <h3>Parameters</h3>
+    <RecipeArgForm
+      :arg-values="argValues"
+      :recipe="recipe"
+      @update:arg-values="emit('update:argValues', $event)"
+      @args-changed="emit('argsChanged', false)"
+      @submit-preview="emit('argsChanged', true)"
+    />
+  </template>
 
   <div
     class="preview-status"
@@ -58,7 +78,5 @@ const emit = defineEmits<{
     :can-apply="canApply"
     @update:file-selections="emit('update:fileSelections', $event)"
     @update:active-change-index="emit('update:activeChangeIndex', $event)"
-    @apply="emit('apply')"
   />
 </template>
-

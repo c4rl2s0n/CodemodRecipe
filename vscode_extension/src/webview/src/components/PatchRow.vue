@@ -1,40 +1,37 @@
 <script setup lang="ts">
-import { computed } from 'vue';
-import type { PatchInfo } from '../shared';
+import type { LineChangeStats } from '../lib/diffStats';
 
-const props = defineProps<{
-  patch: PatchInfo;
+defineProps<{
+  label: string;
+  stats: LineChangeStats;
   active: boolean;
   include: boolean;
-  isWholeFile: boolean;
+  compact?: boolean;
 }>();
 
 const emit = defineEmits<{
   select: [];
   'update:include': [value: boolean];
 }>();
-
-const replacementText = computed(() => {
-  const text =
-    props.patch.replacement || props.patch.replacementPreview || '';
-  const desc = props.patch.description ? props.patch.description + '\n' : '';
-  return desc + text.trim();
-});
 </script>
 
 <template>
   <div
     class="patch"
-    :class="{ active }"
+    :class="{ active, compact }"
     @click="emit('select')"
   >
     <input
       type="checkbox"
       :checked="include"
-      :class="isWholeFile ? 'whole-file-toggle' : 'patch-toggle'"
+      class="patch-toggle"
       @click.stop
       @change="emit('update:include', ($event.target as HTMLInputElement).checked)"
     />
-    <code>{{ replacementText }}</code>
+    <span class="patch-label">{{ label }}</span>
+    <span class="diff-stats">
+      <span v-if="stats.additions > 0" class="diff-stat-add">+{{ stats.additions }}</span>
+      <span v-if="stats.deletions > 0" class="diff-stat-del">-{{ stats.deletions }}</span>
+    </span>
   </div>
 </template>

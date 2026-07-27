@@ -87,8 +87,7 @@ fn load_and_render_query_body(
     vars: &BTreeMap<String, BTreeMap<String, String>>,
 ) -> Result<String, String> {
     let loaded = if looks_like_query_file_path(body) {
-        resolve_query_source(body, recipe_file, codemod_root)
-            .map_err(|e| e.to_string())?
+        resolve_query_source(body, recipe_file, codemod_root).map_err(|e| e.to_string())?
     } else {
         body.to_string()
     };
@@ -275,9 +274,6 @@ queries:
             &BTreeMap::new(),
         )
         .unwrap();
-        assert_eq!(
-            rendered,
-            QuerySpec::single("(class_definition) @c")
-        );
+        assert_eq!(rendered, QuerySpec::single("(class_definition) @c"));
     }
 }

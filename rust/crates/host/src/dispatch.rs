@@ -123,7 +123,7 @@ pub fn handle_command(registry: &mut RecipeRegistry, cmd: HostCommand) -> serde_
                 inline_recipe: inline_recipe.as_ref(),
                 args: &args,
             },
-            false,
+            true,
             snippet_lines,
         ),
         HostCommand::Apply {

@@ -37,7 +37,7 @@ function paramMeta(arg: RecipeArg): string {
 </script>
 
 <template>
-  <div v-if="recipe" class="param-list">
+  <div v-if="recipe?.args?.length" class="param-list">
     <div v-for="arg in recipe.args" :key="arg.name" class="param">
       <span class="param-name">{{ arg.name }}{{ arg.required ? ' *' : '' }}</span>
       <span>{{ paramMeta(arg) }}</span>

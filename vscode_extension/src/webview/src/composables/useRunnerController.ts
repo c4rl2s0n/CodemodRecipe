@@ -1,4 +1,4 @@
-import { computed, ref, watch } from 'vue';
+import { computed, onUnmounted, ref, watch } from 'vue';
 import {
   argsKey,
   collectArgs,
@@ -9,16 +9,19 @@ import {
 import { defaultFileSelections, type FileCardSelection } from '../lib/selection';
 import {
   EXTENSION_TO_WEBVIEW,
-  WEBVIEW_TO_EXTENSION,
   type ExtensionToWebviewMessage,
   type FilePreview,
   type PersistedWebviewState,
   type RecipeSchema,
   type RecipeViewState,
 } from '../shared';
-import { getPersistedState, postToExtension, setPersistedState } from '../vsCodeApi';
+import type { ExtensionClient } from '../extensionClient';
+import type { ExtensionInbound } from '../extensionInbound';
+import { getPersistedState, setPersistedState } from '../vsCodeApi';
 
 export function useRunnerController(params: {
+  client: ExtensionClient;
+  inbound: ExtensionInbound;
   recipe: Readonly<{ value: RecipeSchema | undefined }>;
   autoPreviewDebounceMs: Readonly<{ value: number }>;
   activeTab: Readonly<{ value: string }>;
@@ -120,11 +123,10 @@ export function useRunnerController(params: {
       clearError();
       previewInFlight.value = true;
       setPreviewStatus('Previewing…');
-      postToExtension({
-        type: WEBVIEW_TO_EXTENSION.preview,
-        args: collectArgs(params.recipe.value, argValues.value),
-        requestId,
-      });
+      params.client.requestPreview(
+        collectArgs(params.recipe.value, argValues.value),
+        requestId
+      );
     };
     if (immediate) {
       run();
@@ -175,79 +177,86 @@ export function useRunnerController(params: {
     wasRecipesRefreshing.value = state.recipesRefreshing;
   }
 
-  function handleExtensionMessage(msg: ExtensionToWebviewMessage, state?: RecipeViewState) {
-    switch (msg.type) {
-      case EXTENSION_TO_WEBVIEW.state:
-        if (state) applyHostState(state);
-        break;
-      case EXTENSION_TO_WEBVIEW.filePicked:
-        argValues.value = { ...argValues.value, [msg.arg]: msg.value };
-        onArgsChanged(false);
-        break;
-      case EXTENSION_TO_WEBVIEW.previewResult:
-        if (
-          typeof msg.requestId === 'number' &&
-          msg.requestId < latestHandledRequestId.value
-        ) {
-          return;
-        }
-        if (typeof msg.requestId === 'number') {
-          latestHandledRequestId.value = msg.requestId;
-        }
-        files.value = msg.files;
-        fileSelections.value = defaultFileSelections(msg.files);
-        activeChangeIndex.value = 0;
-        lastPreviewSuccess.value = true;
-        lastPreviewArgsKey.value =
-          typeof msg.argsKey === 'string'
-            ? msg.argsKey
-            : argsKey(collectArgs(params.recipe.value, argValues.value));
-        previewInFlight.value = false;
-        if (!msg.files.length) {
-          setPreviewStatus('');
-          showError('No changes produced by this recipe.');
-          showReview.value = false;
-        } else {
-          setPreviewStatus('');
-          clearError();
-          showReview.value = true;
-        }
-        persistUiState();
-        break;
-      case EXTENSION_TO_WEBVIEW.applyResult:
-        showReview.value = false;
-        files.value = [];
-        fileSelections.value = [];
-        persistUiState();
-        break;
-      case EXTENSION_TO_WEBVIEW.error:
-        if (
-          typeof msg.requestId === 'number' &&
-          msg.requestId < latestHandledRequestId.value
-        ) {
-          return;
-        }
-        previewInFlight.value = false;
-        lastPreviewSuccess.value = false;
-        setPreviewStatus('Host error', 'warn');
-        showError(msg.message);
-        persistUiState();
-        break;
-      case EXTENSION_TO_WEBVIEW.previewState:
-        if (
-          typeof msg.requestId === 'number' &&
-          msg.requestId < latestHandledRequestId.value
-        ) {
-          return;
-        }
-        previewInFlight.value = Boolean(msg.inFlight);
-        if (!msg.inFlight && pendingAutoPreview.value) {
-          pendingAutoPreview.value = false;
-          triggerPreview(false);
-        }
-        break;
+  function handlePreviewResult(
+    msg: Extract<
+      ExtensionToWebviewMessage,
+      { type: typeof EXTENSION_TO_WEBVIEW.previewResult }
+    >
+  ) {
+    if (
+      typeof msg.requestId === 'number' &&
+      msg.requestId < latestHandledRequestId.value
+    ) {
+      return;
     }
+    if (typeof msg.requestId === 'number') {
+      latestHandledRequestId.value = msg.requestId;
+    }
+    files.value = msg.files;
+    fileSelections.value = defaultFileSelections(msg.files);
+    activeChangeIndex.value = 0;
+    lastPreviewSuccess.value = true;
+    lastPreviewArgsKey.value =
+      typeof msg.argsKey === 'string'
+        ? msg.argsKey
+        : argsKey(collectArgs(params.recipe.value, argValues.value));
+    previewInFlight.value = false;
+    if (!msg.files.length) {
+      setPreviewStatus('');
+      showError('No changes produced by this recipe.');
+      showReview.value = false;
+    } else {
+      setPreviewStatus('');
+      clearError();
+      showReview.value = true;
+    }
+    persistUiState();
   }
+
+  const unsubscribers = [
+    params.inbound.on(EXTENSION_TO_WEBVIEW.state, (msg) => {
+      applyHostState(msg.state);
+    }),
+    params.inbound.on(EXTENSION_TO_WEBVIEW.previewResult, handlePreviewResult),
+    params.inbound.on(EXTENSION_TO_WEBVIEW.applyResult, () => {
+      showReview.value = false;
+      files.value = [];
+      fileSelections.value = [];
+      persistUiState();
+    }),
+    params.inbound.on(EXTENSION_TO_WEBVIEW.error, (msg) => {
+      if (
+        typeof msg.requestId === 'number' &&
+        msg.requestId < latestHandledRequestId.value
+      ) {
+        return;
+      }
+      previewInFlight.value = false;
+      lastPreviewSuccess.value = false;
+      setPreviewStatus('Host error', 'warn');
+      showError(msg.message);
+      persistUiState();
+    }),
+    params.inbound.on(EXTENSION_TO_WEBVIEW.previewState, (msg) => {
+      if (
+        typeof msg.requestId === 'number' &&
+        msg.requestId < latestHandledRequestId.value
+      ) {
+        return;
+      }
+      previewInFlight.value = Boolean(msg.inFlight);
+      if (!msg.inFlight && pendingAutoPreview.value) {
+        pendingAutoPreview.value = false;
+        triggerPreview(false);
+      }
+    }),
+  ];
+
+  onUnmounted(() => {
+    for (const off of unsubscribers) {
+      off();
+    }
+  });
 
   function restorePersistedOnMount() {
     const persisted = getPersistedState();
@@ -279,9 +288,7 @@ export function useRunnerController(params: {
     previewInFlight,
     canApply,
     restorePersistedOnMount,
-    handleExtensionMessage,
     onArgsChanged,
     persistUiState,
   };
 }
-
