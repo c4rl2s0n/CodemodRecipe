@@ -456,6 +456,7 @@ pub fn render_recipe_templates_with_root(
     Ok(out)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn render_steps(
     steps: &[Step],
     recipe: &Recipe,
@@ -529,6 +530,7 @@ fn apply_with_overlay(
     Ok(local)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn render_edit(
     edit: &codemod_recipe_yaml::model::EditStep,
     recipe: &Recipe,
@@ -593,6 +595,7 @@ fn render_edit(
     Ok(edit)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn render_query_op(
     spec: &codemod_recipe_yaml::model::QuerySpec,
     recipe: &Recipe,
@@ -621,13 +624,13 @@ fn render_query_op(
     };
     let mut out = Vec::new();
     for step in steps {
-        let loaded = if codemod_root.is_some() && looks_like_query_file_path(&step) {
-            codemod_recipe_engine::query::resolve_query_source(
-                &step,
-                recipe_file,
-                codemod_root.unwrap(),
-            )
-            .map_err(|e| e.to_string())?
+        let loaded = if let Some(root) = codemod_root {
+            if looks_like_query_file_path(&step) {
+                codemod_recipe_engine::query::resolve_query_source(&step, recipe_file, root)
+                    .map_err(|e| e.to_string())?
+            } else {
+                step
+            }
         } else {
             step
         };

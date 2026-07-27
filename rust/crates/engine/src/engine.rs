@@ -304,7 +304,7 @@ impl Engine {
             let scope = node_for_byte_range(tree, start, end);
             let mut matches = cursor.matches(&query, scope, source.as_bytes());
             while let Some(m) = matches.next() {
-                if let Some(root) = match_root_node(&m) {
+                if let Some(root) = match_root_node(m) {
                     let span = (root.start_byte(), root.end_byte());
                     if !roots.contains(&span) {
                         roots.push(span);
@@ -315,6 +315,7 @@ impl Engine {
         Ok(roots)
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn collect_capture_spans(
         &self,
         source: &str,

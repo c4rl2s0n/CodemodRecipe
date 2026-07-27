@@ -191,6 +191,7 @@ pub fn load_codemod_assets(workspace_root: &Path, codemod_root: &Path) -> AssetL
     }
 }
 
+#[allow(clippy::result_large_err)]
 fn classify_root(
     root: &serde_yaml::Mapping,
     relative: &str,
@@ -252,6 +253,7 @@ fn classify_root(
     Ok(None)
 }
 
+#[allow(clippy::result_large_err)]
 fn parse_keyed_string_map(
     text: &str,
     root: &serde_yaml::Mapping,
