@@ -77,6 +77,7 @@ pub fn load_codemod_assets(workspace_root: &Path, codemod_root: &Path) -> AssetL
                 diagnostics.push(schema_error(
                     &format!("Duplicate key \"{dup}\" in \"{field}\""),
                     &relative,
+                    Some(&text),
                 ));
                 duplicate_keys = true;
             }
@@ -157,7 +158,7 @@ pub fn load_codemod_assets(workspace_root: &Path, codemod_root: &Path) -> AssetL
                         queries_by_id.insert(id, entries);
                     }
                     Err(message) => {
-                        diagnostics.push(schema_error(&message, &relative));
+                        diagnostics.push(schema_error(&message, &relative, Some(&text)));
                     }
                 }
             }
@@ -267,6 +268,7 @@ fn parse_keyed_string_map(
             schema_error(
                 &format!("Asset with \"{field}\" missing required \"id\""),
                 relative,
+                Some(text),
             )
         })?
         .to_string();
@@ -275,6 +277,7 @@ fn parse_keyed_string_map(
         return Err(schema_error(
             &format!("Duplicate key \"{dup}\" in \"{field}\" of \"{id}\""),
             relative,
+            Some(text),
         ));
     }
 
@@ -282,6 +285,7 @@ fn parse_keyed_string_map(
         schema_error(
             &format!("Asset \"{id}\" missing required \"{field}\" map"),
             relative,
+            Some(text),
         )
     })?;
 
@@ -289,6 +293,7 @@ fn parse_keyed_string_map(
         return Err(schema_error(
             &format!("Asset \"{id}\" field \"{field}\" must be a map"),
             relative,
+            Some(text),
         ));
     };
 
@@ -427,12 +432,12 @@ fn reject_duplicate_query_ids(
     }
 }
 
-fn schema_error(message: &str, file: &str) -> RecipeDiagnostic {
+fn schema_error(message: &str, file: &str, text: Option<&str>) -> RecipeDiagnostic {
     RecipeDiagnostic::simple(
         "error",
         "E_ASSET_SCHEMA",
         message.to_string(),
-        vec![source_with_needle(file, None, "id:")],
+        vec![source_with_needle(file, text, "id:")],
     )
 }
 

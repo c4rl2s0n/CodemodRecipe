@@ -51,6 +51,9 @@ Discovery is schema-based under `.codemod/` (directory names are convention only
 - Put recipes in `.codemod/recipes/*.yaml` (or elsewhere under `.codemod/` if they have `steps`).
 - Put shared maps as YAML with `id` + `map:` (e.g. `.codemod/maps/*.yaml`).
 - Put shared variables as YAML with `id` + `values:` (e.g. `.codemod/variables/*.yaml`).
+- File-backed recipe resources are resolved by the shared safe resolver in
+  `rust/crates/core/src/resource_path.rs`: recipe-local first, then `.codemod/`.
+  Avoid adding ad hoc path joins/checks in host or engine code.
 
 ## 4) Add your first YAML recipe
 
@@ -104,6 +107,9 @@ Reference recipes:
 
 Create-file example (`templateFile`):
 - [`test/fixtures/scaffold_project/.codemod/recipes/create_repository.yaml`](../test/fixtures/scaffold_project/.codemod/recipes/create_repository.yaml)
+
+Query-file example (`.scm`, same safe resolver):
+- [`test/fixtures/rust_oracle/insert_log_line_scm.recipe.yaml`](../test/fixtures/rust_oracle/insert_log_line_scm.recipe.yaml)
 
 Delete-file example (`ifMissing`):
 - [`test/fixtures/rust_oracle/delete_legacy.recipe.yaml`](../test/fixtures/rust_oracle/delete_legacy.recipe.yaml)

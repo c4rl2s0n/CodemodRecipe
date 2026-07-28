@@ -1,6 +1,7 @@
 use std::path::Path;
 
 use crate::engine::EngineError;
+use codemod_recipe_core::resource_path::resolve_existing_resource;
 use codemod_recipe_yaml::query_conventions;
 
 /// Resolve unified `query:` field — inline text or path to a `.scm` file.
@@ -18,15 +19,20 @@ pub fn resolve_query_source(
         return Ok(trimmed.to_string());
     }
 
-    for candidate in query_conventions::candidate_query_paths(trimmed, recipe_file, codemod_root) {
-        if candidate.is_file() {
-            return std::fs::read_to_string(&candidate).map_err(|e| {
-                EngineError::Query(format!(
-                    "failed to read query file {}: {e}",
-                    candidate.display()
-                ))
-            });
-        }
+    if let Some(candidate) = resolve_existing_resource(
+        trimmed,
+        recipe_file,
+        codemod_root,
+        Some(query_conventions::QUERIES_DIR),
+    )
+    .map_err(|e| EngineError::Query(e.message))?
+    {
+        return std::fs::read_to_string(&candidate).map_err(|e| {
+            EngineError::Query(format!(
+                "failed to read query file {}: {e}",
+                candidate.display()
+            ))
+        });
     }
 
     Err(EngineError::Query(format!(
@@ -52,6 +58,13 @@ mod tests {
             resolve_query_source("settings_update_body.scm", Some(&recipe), &codemod).unwrap();
         assert!(text.contains("class_definition"));
         assert!(text.contains("@body"));
+    }
+
+    #[test]
+    fn does_not_treat_yaml_path_as_query_file() {
+        assert!(!query_conventions::looks_like_query_path(
+            "queries/shared.yaml"
+        ));
     }
 
     #[test]

@@ -70,6 +70,7 @@ Each `steps[]` entry is a single-key object:
 3. When adjusting Rust parsing/validation/preview handling for YAML vocabulary, update the centralized owners first:
    - `rust/crates/yaml/src/keywords.rs` for DSL keys, query path conventions, and preview kinds
    - `rust/crates/host/src/protocol_keys.rs` for host transport keys like `inlineRecipe` and `previewToken`
+4. When adjusting how YAML-referenced files resolve, update `rust/crates/core/src/resource_path.rs` first instead of adding per-crate path logic. Resource-backed YAML paths resolve recipe-local first, then `.codemod/`; workspace mutation paths resolve exactly under the workspace root.
 
 ## Related skills
 

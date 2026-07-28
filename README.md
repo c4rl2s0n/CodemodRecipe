@@ -109,6 +109,20 @@ See [docs/recipe-templates.md](docs/recipe-templates.md) for the full Jinja guid
 Query values can be inline (above) or a path to a `.scm` file relative to the
 recipe or `.codemod/queries/`.
 
+### Centralized path resolution
+
+File-backed recipe resources use the shared resolver in
+`rust/crates/core/src/resource_path.rs`.
+
+- Workspace mutation targets (`edit.path`, `create.path`, `delete.path`) are
+  resolved exactly under the workspace root.
+- Recipe resources (`query` `.scm` files, `create.templateFile`,
+  `postExecution` scripts, and template `extends` / `include`) resolve
+  relative to the referencing recipe first, then fall back to `.codemod/`.
+- Bare query file names also check `queries/` under each root as a convention.
+- YAML query libraries remain id-based under `.codemod/queries/*.yaml`; they
+  are not loaded directly via `query: path/to/file.yaml`.
+
 ### Composing recipes
 
 **YAML** — reference other recipes by id:

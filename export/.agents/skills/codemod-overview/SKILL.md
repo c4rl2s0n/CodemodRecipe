@@ -38,6 +38,14 @@ description: Orientation for codemod-recipe — what it is, when to use MCP tool
 Asset discovery is **schema-based** anywhere under `.codemod/` (dirs are convention only).
 Template access: `{{ map.<id>.<key> }}`, `{{ var.<id>.<key> }}`, `{{ key | map('id') }}`.
 
+Centralized path/resource resolution lives in `rust/crates/core/src/resource_path.rs`:
+
+- workspace file targets resolve exactly under the workspace root
+- recipe resources (`query` `.scm`, `create.templateFile`, `postExecution`,
+  template `extends` / `include`) resolve recipe-local first, then `.codemod/`
+- bare query names also try `queries/` under each root
+- YAML query libraries stay id-based under `.codemod/queries/*.yaml`
+
 For recipe organization (create vs modify, scaffolds), invoke skill `codemod-recipe-design-patterns`.
 
 Skills use thin SKILL.md routers; read `reference.md` in a skill directory when you need full detail.

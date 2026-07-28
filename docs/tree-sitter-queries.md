@@ -36,7 +36,7 @@ codemod-recipe uses [tree-sitter](https://tree-sitter.github.io/) queries to mat
 | Capture | `@name` in query, `capture:` on op | One edit target per op |
 | Filter | `#eq?`, `#match?`, `#any-of?` | Predicates inside the pattern |
 | Insert position | `anchor: start\|end` | Byte offset in capture span — **not** tree-sitter `.` anchor |
-| External query | `query: path/to/file.scm` | Resolved under recipe or `.codemod/queries/` |
+| External query | `query: path/to/file.scm` | Shared path resolver: recipe-local first, `.codemod/` fallback; bare names also check `queries/` under each root |
 | Args in queries | `{{className}}` | Expanded before tree-sitter parses the query |
 | Edit guards | `edit.when`, `edit.whenNot` | Same query specs as ops; evaluated once before the edit (skip step if guards fail) |
 | Step locals | `edit.let[].query` | Per-op bindings; `capture` + `extract` (`text`, `kind`, `exists`, `count`) feed Jinja in later ops |
@@ -59,6 +59,18 @@ Node type names are **per grammar**. Dart pack grammar uses `class_definition`, 
 1. Inspect AST (tree-sitter playground) for node kinds.
 2. `validate_recipes` → `preview_recipe` → inspect patches.
 3. Tighten predicates if preview is empty or matches multiple nodes.
+
+## Query file resolution
+
+External `.scm` files use the shared resolver in
+`rust/crates/core/src/resource_path.rs`.
+
+- Exact path lookup: referencing recipe directory first, `.codemod/` fallback.
+- Bare file names also try `queries/` under each root as a query-specific
+  convention.
+- Query-library YAML stays registry-loaded and id-based
+  (`.codemod/queries/*.yaml` + `library_id.query_key`), not direct
+  `query: path/to/file.yaml`.
 
 ## Further reading
 

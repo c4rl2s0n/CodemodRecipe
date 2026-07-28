@@ -1,13 +1,8 @@
 use crate::protocol::{DiagnosticSource, RecipeDiagnostic};
+use codemod_recipe_core::resource_path::{resolve_under_root, ResourcePathError};
 use std::path::PathBuf;
-use thiserror::Error;
 
-#[derive(Debug, Error, PartialEq, Eq)]
-#[error("{message}")]
-pub struct PathSandboxError {
-    pub code: &'static str,
-    pub message: String,
-}
+pub type PathSandboxError = ResourcePathError;
 
 /// Validates that relative paths resolve inside the workspace root.
 pub struct PathSandbox {
@@ -23,29 +18,7 @@ impl PathSandbox {
         &self,
         relative_path: &str,
     ) -> Result<PathBuf, PathSandboxError> {
-        let normalized = normalize(relative_path)?;
-        if normalized.starts_with('/') {
-            return Err(PathSandboxError {
-                code: "E_PATH_TRAVERSAL",
-                message: format!("Absolute paths are not allowed: {relative_path}"),
-            });
-        }
-
-        let resolved = self.workspace_root.join(&normalized);
-        let resolved = resolved.canonicalize().unwrap_or(resolved);
-        let root = self
-            .workspace_root
-            .canonicalize()
-            .unwrap_or_else(|_| self.workspace_root.clone());
-
-        if !resolved.starts_with(&root) {
-            return Err(PathSandboxError {
-                code: "E_PATH_TRAVERSAL",
-                message: format!("Path escapes workspace: {relative_path}"),
-            });
-        }
-
-        Ok(resolved)
+        resolve_under_root(&self.workspace_root, relative_path)
     }
 
     pub fn resolve_template_relative(
@@ -69,23 +42,6 @@ pub fn diagnostic_from_sandbox(error: PathSandboxError, file: &str) -> RecipeDia
             column: None,
         }],
     )
-}
-
-fn normalize(path: &str) -> Result<String, PathSandboxError> {
-    let normalized = path.replace('\\', "/");
-    let segments: Vec<&str> = normalized
-        .split('/')
-        .filter(|segment| !segment.is_empty() && *segment != ".")
-        .collect();
-
-    if segments.contains(&"..") {
-        return Err(PathSandboxError {
-            code: "E_PATH_TRAVERSAL",
-            message: format!("Path must not contain \"..\": {path}"),
-        });
-    }
-
-    Ok(segments.join("/"))
 }
 
 #[cfg(test)]

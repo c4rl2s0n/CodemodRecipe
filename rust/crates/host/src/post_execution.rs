@@ -4,6 +4,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use crate::template::render_template;
+use codemod_recipe_core::resource_path::resolve_existing_resource;
 
 /// Run post-apply actions after a successful apply.
 ///
@@ -18,6 +19,7 @@ pub fn run_post_execution(
     vars: &BTreeMap<String, BTreeMap<String, String>>,
     workspace_root: &Path,
     codemod_root: &Path,
+    recipe_file: Option<&Path>,
 ) -> Result<(), String> {
     for action in actions {
         match action {
@@ -28,7 +30,7 @@ pub fn run_post_execution(
                     return Err("postExecution entry rendered to an empty string".to_string());
                 }
                 if let Some(script_path) =
-                    resolve_existing_script(workspace_root, codemod_root, trimmed)?
+                    resolve_existing_script(workspace_root, codemod_root, recipe_file, trimmed)?
                 {
                     run_script_file(&script_path, args, maps, vars, workspace_root)?;
                 } else {
@@ -49,31 +51,25 @@ pub fn run_post_execution(
 fn resolve_existing_script(
     workspace_root: &Path,
     codemod_root: &Path,
+    recipe_file: Option<&Path>,
     rendered: &str,
 ) -> Result<Option<PathBuf>, String> {
     // Shell commands typically contain whitespace; skip script resolution for those.
     if rendered.chars().any(char::is_whitespace) {
         return Ok(None);
     }
-    let normalized = rendered.replace('\\', "/");
-    if normalized.starts_with('/') {
-        return Err(format!("Absolute paths are not allowed: {rendered}"));
+    let resolved = resolve_existing_resource(rendered, recipe_file, codemod_root, None)
+        .map_err(|e| e.message)?;
+    if let Some(path) = resolved {
+        let root = workspace_root
+            .canonicalize()
+            .unwrap_or_else(|_| workspace_root.to_path_buf());
+        if !path.starts_with(&root) {
+            return Err(format!("Path escapes workspace: {rendered}"));
+        }
+        return Ok(Some(path));
     }
-    if normalized.split('/').any(|s| s == "..") {
-        return Err(format!("Path must not contain \"..\": {rendered}"));
-    }
-    let path = codemod_root.join(rendered);
-    if !path.is_file() {
-        return Ok(None);
-    }
-    let resolved = path.canonicalize().unwrap_or_else(|_| path.clone());
-    let root = workspace_root
-        .canonicalize()
-        .unwrap_or_else(|_| workspace_root.to_path_buf());
-    if !resolved.starts_with(&root) {
-        return Err(format!("Path escapes workspace: {rendered}"));
-    }
-    Ok(Some(resolved))
+    Ok(None)
 }
 
 fn run_script_file(
@@ -165,6 +161,7 @@ mod tests {
             &BTreeMap::new(),
             &ws,
             &ws.join(".codemod"),
+            None,
         )
         .unwrap();
         assert_eq!(std::fs::read_to_string(marker).unwrap(), "world");
@@ -185,6 +182,7 @@ mod tests {
             &BTreeMap::new(),
             &ws,
             &ws.join(".codemod"),
+            None,
         )
         .unwrap();
         assert_eq!(
@@ -206,6 +204,7 @@ mod tests {
             &BTreeMap::new(),
             &ws,
             &ws.join(".codemod"),
+            None,
         )
         .unwrap_err();
         assert!(err.contains("map/object"));
@@ -222,9 +221,41 @@ mod tests {
             &BTreeMap::new(),
             &ws,
             &ws.join(".codemod"),
+            None,
         )
         .unwrap_err();
         assert!(err.contains("Absolute"));
+        let _ = std::fs::remove_dir_all(ws);
+    }
+
+    #[test]
+    fn prefers_recipe_local_script_over_codemod_fallback() {
+        let ws = temp_ws("local_script");
+        let recipe_dir = ws.join(".codemod/recipes");
+        std::fs::create_dir_all(recipe_dir.join("scripts")).unwrap();
+        std::fs::write(
+            ws.join(".codemod/scripts/hi.sh"),
+            "printf shared > out.txt\n",
+        )
+        .unwrap();
+        std::fs::write(recipe_dir.join("scripts/hi.sh"), "printf local > out.txt\n").unwrap();
+        let recipe_file = recipe_dir.join("demo.yaml");
+
+        run_post_execution(
+            &[PostExecution::String("scripts/hi.sh".into())],
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+            &ws,
+            &ws.join(".codemod"),
+            Some(&recipe_file),
+        )
+        .unwrap();
+
+        assert_eq!(
+            std::fs::read_to_string(ws.join("out.txt")).unwrap(),
+            "local"
+        );
         let _ = std::fs::remove_dir_all(ws);
     }
 }

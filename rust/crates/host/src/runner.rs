@@ -105,6 +105,7 @@ pub fn collect_recipe_changes(
                     registry,
                     &sandbox,
                     create,
+                    recipe_path,
                     &effective,
                     &merged_maps,
                     vars,
@@ -136,6 +137,7 @@ fn apply_create_to_tree(
     registry: &RecipeRegistry,
     sandbox: &PathSandbox,
     create: &CreateStep,
+    recipe_file: Option<&Path>,
     args: &BTreeMap<String, String>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     vars: &BTreeMap<String, BTreeMap<String, String>>,
@@ -159,7 +161,7 @@ fn apply_create_to_tree(
     let content = if let Some(inline) = &create.template {
         inline.clone()
     } else if let Some(file) = &create.template_file {
-        render_template_file(file, args, maps, vars, registry.codemod_root())?
+        render_template_file(file, args, maps, vars, registry.codemod_root(), recipe_file)?
     } else {
         return Err("create step missing template".to_string());
     };

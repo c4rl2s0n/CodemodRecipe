@@ -116,6 +116,10 @@ In `.codemod/**` YAML files the extension provides:
 - **Hover** on recipe ids (args list) and template files (preview)
 - **CodeLens** “Open in Recipe Runner” on top-level `id:` lines
 
+Template-file and query-file paths follow the host's shared safe resolver:
+recipe-local first, then `.codemod/`, with query bare names also checking
+`queries/` under each root.
+
 You can also run **Codemod Recipe: Run From Cursor Context** (`Cmd+Alt+R` on
 macOS, `Ctrl+Alt+R` elsewhere). Context keys include `file`, `selection`, `word`,
 `dartClass`, and generic `className`.

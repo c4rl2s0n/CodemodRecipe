@@ -152,7 +152,10 @@
       "properties": {
         "path": { "type": "string" },
         "template": { "type": "string" },
-        "templateFile": { "type": "string" },
+        "templateFile": {
+          "type": "string",
+          "description": "File-backed template path resolved safely relative to the referencing recipe first, then under .codemod."
+        },
         "ifExists": { "type": "string", "enum": ["fail", "skip"] }
       }
     },
@@ -183,7 +186,10 @@
     },
     "queryField": {
       "oneOf": [
-        { "type": "string" },
+        {
+          "type": "string",
+          "description": "Inline tree-sitter query text, a .scm path resolved recipe-local first then under .codemod, or an id-based query-library ref."
+        },
         {
           "type": "array",
           "minItems": 1,

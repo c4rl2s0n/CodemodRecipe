@@ -49,6 +49,15 @@ Discovery is schema-based under `.codemod/` (dirs are convention only).
 
 You can also use inline-only workflows with `inlineRecipe`.
 
+File-backed recipe resources use the shared safe resolver in
+`rust/crates/core/src/resource_path.rs`:
+
+- workspace mutation targets resolve exactly under the workspace root
+- recipe resources (`query` `.scm`, `create.templateFile`, `postExecution`,
+  template `extends` / `include`) resolve recipe-local first, then `.codemod/`
+- bare query names also try `queries/` under each root
+- YAML query libraries remain id-based under `.codemod/queries/*.yaml`
+
 ## Setup in Cursor
 
 Create `.cursor/mcp.json` in the target workspace:

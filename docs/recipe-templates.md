@@ -82,7 +82,17 @@ import '{{ feature | snake_case }}_repository.dart';
 
 ### File-backed templates (`create.templateFile`)
 
-Paths are relative to `.codemod/` (codemod root). Supports inheritance:
+File-backed templates use the shared resolver in
+`rust/crates/core/src/resource_path.rs`.
+
+- First try the path relative to the referencing recipe file.
+- If not found, fall back to `.codemod/`.
+- `extends` / `include` use the same policy.
+
+This keeps template lookup consistent with query-file and `postExecution`
+resource resolution while preserving strict traversal checks.
+
+Supports inheritance:
 
 ```jinja
 {% extends "layouts/base.template" %}
@@ -190,7 +200,8 @@ steps:
 ```
 
 Child template uses `{% extends "templates/layouts/base.template" %}` and
-`{% include "templates/partials/header.template" %}` (paths relative to `.codemod/`).
+`{% include "templates/partials/header.template" %}`. These paths resolve
+recipe-local first, then fall back to `.codemod/`.
 
 ## Related docs
 

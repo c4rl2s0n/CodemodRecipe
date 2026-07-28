@@ -46,7 +46,7 @@ text: "    print('codemod');\n"
 1. Node type names come from the **grammar** for `edit.language` — see `codemod-languages`.
 2. Each op edits **one** capture; tighten predicates until exactly one match.
 3. `{{args}}` are expanded into `query` before tree-sitter parses it.
-4. `query:` may be inline text or a path to a `.scm` file under the recipe or `.codemod/queries/`.
+4. `query:` may be inline text or a path to a `.scm` file resolved by the shared safe resolver in `rust/crates/core/src/resource_path.rs`: recipe-local first, then `.codemod/`, with bare names also trying `queries/` under each root. YAML query libraries remain id-based under `.codemod/queries/*.yaml`.
 
 ## Instructions
 

@@ -264,13 +264,16 @@ query: |
     (#eq? @className "{{className}}"))
 ```
 
-Or path to a `.scm` file (resolved relative to recipe dir, `queries/` subdir, or `.codemod/`):
+Or path to a `.scm` file (using the shared resolver in
+`rust/crates/core/src/resource_path.rs`):
 
 ```yaml
 query: settings_update_body.scm
 ```
 
-Search order (engine): recipe directory → `queries/` under recipe → `.codemod/` → `.codemod/queries/`.
+Search order (engine): recipe directory → `queries/` under recipe →
+`.codemod/` → `.codemod/queries/`. YAML query libraries remain id-based under
+`.codemod/queries/*.yaml`; they are not loaded directly via `query: file.yaml`.
 
 ### Template substitution
 

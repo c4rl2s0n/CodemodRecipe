@@ -10,8 +10,10 @@ For Rust maintenance, recipe/YAML vocabulary is centralized instead of being sca
 
 - `rust/crates/yaml/src/keywords.rs`
   - `recipe_keys`: canonical DSL/schema strings such as `id`, `steps`, `edit`, `create`, `delete`, `recipe`, `queries`
-  - `query_conventions`: shared query path detection and candidate lookup paths, including `queries/`, `.scm`, and `.yaml`
+  - `query_conventions`: shared query path detection for `.scm` file-backed queries and id-based query-library references
   - `preview_kinds`: serialized file preview kinds used by the host
+- `rust/crates/core/src/resource_path.rs`
+  - shared safe resolver for file-backed resources; update this instead of adding ad hoc `join`, `canonicalize`, or traversal checks in host/engine
 - `rust/crates/host/src/protocol_keys.rs`
   - host-only request/response keys such as `inlineRecipe`, `previewToken`, `snippetLines`, `ok`, and `error`
 
@@ -43,8 +45,9 @@ postExecution:
 - `steps` (required): ordered list of operations
 - `postExecution` (optional): list of strings run in order after a successful apply.
   Each entry is Jinja-rendered with recipe args. If the result is a path to an
-  existing file under the **codemod root**, the script body is Jinja-rendered and
-  executed via bash; otherwise the string is run with `sh -c` (cwd = workspace).
+  existing file, it is resolved safely recipe-local first and then under
+  `.codemod/`; the script body is Jinja-rendered and executed via bash.
+  Otherwise the string is run with `sh -c` (cwd = workspace).
   No builtins and no automatic per-file expansion — recipes own their commands/scripts.
 
 ## Arguments (`args`)
@@ -104,7 +107,7 @@ Evaluated **once** on the file before any op. If guards fail, the edit is **skip
 
 Queries support the same composition as op `query` (inline, `.scm`, `libId.key`, chains).
 
-Rust query-path handling is shared via `query_conventions`, so changes to file-extension or `queries/` lookup behavior should be made there rather than duplicated in engine/host code.
+Rust query-path detection lives in `query_conventions`, while safe file lookup lives in `rust/crates/core/src/resource_path.rs`. Update those shared owners instead of duplicating query/resource path logic in engine/host code.
 
 ### `let` (optional step locals)
 
@@ -209,6 +212,10 @@ Rules:
 - Exactly one of `template` or `templateFile`
 - `ifExists`: `fail` (default) or `skip`
 - Formatting is not a create-step flag — use top-level `postExecution` (e.g. `"dart format ."` or a script under the codemod root)
+
+`create.templateFile` uses the shared resolver in
+`rust/crates/core/src/resource_path.rs`: first relative to the referencing
+recipe, then falling back to `.codemod/`.
 
 ## Delete steps (`delete`)
 

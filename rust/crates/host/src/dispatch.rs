@@ -413,6 +413,7 @@ fn apply(
         registry.vars_by_id(),
         &registry.workspace_root,
         registry.codemod_root(),
+        collected.recipe_path.as_deref(),
     ) {
         return to_value(ApplyResponse {
             ok: false,

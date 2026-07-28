@@ -1,5 +1,3 @@
-use std::path::{Path, PathBuf};
-
 pub mod recipe_keys {
     pub const ID: &str = "id";
     pub const WITH: &str = "with";
@@ -36,39 +34,20 @@ pub mod recipe_keys {
 }
 
 pub mod query_conventions {
-    use super::*;
-
-    pub const QUERIES_DIR: &str = "queries";
     pub const QUERY_FILE_EXT: &str = ".scm";
     pub const YAML_FILE_EXT: &str = ".yaml";
+    pub const YML_FILE_EXT: &str = ".yml";
+    pub const QUERIES_DIR: &str = "queries";
 
     pub fn looks_like_query_path(query: &str) -> bool {
         let trimmed = query.trim();
         if trimmed.contains('(') {
             return false;
         }
-        trimmed.ends_with(QUERY_FILE_EXT)
-            || trimmed.contains('/')
-            || trimmed.contains('\\')
-            || (trimmed.ends_with(YAML_FILE_EXT) && !trimmed.contains('('))
-    }
-
-    pub fn candidate_query_paths(
-        query: &str,
-        recipe_file: Option<&Path>,
-        codemod_root: &Path,
-    ) -> Vec<PathBuf> {
-        let mut paths = Vec::new();
-        if let Some(recipe_dir) = recipe_file.and_then(|p| p.parent()) {
-            paths.push(recipe_dir.join(query));
-            paths.push(recipe_dir.join(QUERIES_DIR).join(query));
+        if trimmed.ends_with(YAML_FILE_EXT) || trimmed.ends_with(YML_FILE_EXT) {
+            return false;
         }
-        paths.push(codemod_root.join(query));
-        if let Some(recipe_dir) = recipe_file.and_then(|p| p.parent()) {
-            paths.push(recipe_dir.join("..").join(query));
-        }
-        paths.push(codemod_root.join(QUERIES_DIR).join(query));
-        paths
+        trimmed.ends_with(QUERY_FILE_EXT) || trimmed.contains('/') || trimmed.contains('\\')
     }
 }
 

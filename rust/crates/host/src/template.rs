@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 use std::sync::Arc;
 
+use codemod_recipe_core::resource_path::resolve_existing_resource;
 use minijinja::value::Value;
 use minijinja::{Environment, UndefinedBehavior};
 
@@ -36,11 +37,20 @@ pub fn render_template_file(
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     vars: &BTreeMap<String, BTreeMap<String, String>>,
     templates_root: &Path,
+    recipe_file: Option<&Path>,
 ) -> Result<String, String> {
     let root = templates_root.to_path_buf();
+    let recipe_file = recipe_file.map(|path| path.to_path_buf());
     let mut env = build_environment(maps)?;
     env.set_loader(move |name| -> Result<Option<String>, minijinja::Error> {
-        let path = root.join(name);
+        let path = resolve_existing_resource(name, recipe_file.as_deref(), &root, None)
+            .map_err(|e| minijinja::Error::new(minijinja::ErrorKind::InvalidOperation, e.message))?
+            .ok_or_else(|| {
+                minijinja::Error::new(
+                    minijinja::ErrorKind::InvalidOperation,
+                    format!("failed to read template {name}: not found"),
+                )
+            })?;
         let content = std::fs::read_to_string(&path).map_err(|e| {
             minijinja::Error::new(
                 minijinja::ErrorKind::InvalidOperation,
@@ -434,10 +444,62 @@ mod tests {
             &BTreeMap::new(),
             &BTreeMap::new(),
             &root,
+            None,
         )
         .expect("render");
         assert!(rendered.contains("// Generated for FeedList"));
         assert!(rendered.contains("class FeedListWidget {}"));
+    }
+
+    #[test]
+    fn prefers_recipe_local_template_over_codemod_fallback() {
+        let workspace = std::env::temp_dir().join(format!(
+            "codemod_template_local_{}_{}",
+            std::process::id(),
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        let codemod_root = workspace.join(".codemod");
+        let recipe_dir = codemod_root.join("recipes");
+        let recipe_file = recipe_dir.join("feature.yaml");
+        std::fs::create_dir_all(recipe_dir.join("templates/partials")).unwrap();
+        std::fs::create_dir_all(codemod_root.join("templates/partials")).unwrap();
+        std::fs::write(
+            recipe_dir.join("templates/widget.template"),
+            "{% include \"templates/partials/body.template\" %}\n",
+        )
+        .unwrap();
+        std::fs::write(
+            recipe_dir.join("templates/partials/body.template"),
+            "local {{ className }}",
+        )
+        .unwrap();
+        std::fs::write(
+            codemod_root.join("templates/widget.template"),
+            "shared {{ className }}",
+        )
+        .unwrap();
+        std::fs::write(
+            codemod_root.join("templates/partials/body.template"),
+            "shared-body {{ className }}",
+        )
+        .unwrap();
+
+        let args = BTreeMap::from([("className".to_string(), "FeedList".to_string())]);
+        let rendered = render_template_file(
+            "templates/widget.template",
+            &args,
+            &BTreeMap::new(),
+            &BTreeMap::new(),
+            &codemod_root,
+            Some(&recipe_file),
+        )
+        .unwrap();
+
+        assert_eq!(rendered.trim(), "local FeedList");
+        let _ = std::fs::remove_dir_all(workspace);
     }
 
     #[test]

@@ -53,7 +53,7 @@ impl RecipeRegistry {
         self.diagnostics.extend(assets.diagnostics);
 
         let mut seen_ids: BTreeMap<String, PathBuf> = BTreeMap::new();
-        let mut parsed_recipes: Vec<(PathBuf, String, Recipe)> = Vec::new();
+        let mut parsed_recipes: Vec<(PathBuf, String, Recipe, String)> = Vec::new();
 
         for path in assets.recipe_paths {
             let relative = relative_path(&self.workspace_root, &path);
@@ -89,16 +89,16 @@ impl RecipeRegistry {
                 continue;
             }
             seen_ids.insert(schema.id.clone(), path.clone());
-            parsed_recipes.push((path, relative, recipe));
+            parsed_recipes.push((path, relative, recipe, text));
         }
 
         let known_ids: BTreeMap<String, ()> = parsed_recipes
             .iter()
-            .map(|(_, _, r)| (r.id.clone(), ()))
+            .map(|(_, _, r, _)| (r.id.clone(), ()))
             .collect();
 
-        for (_path, relative, recipe) in &parsed_recipes {
-            collect_reserved_arg_errors(recipe, relative, &mut self.diagnostics);
+        for (_path, relative, recipe, text) in &parsed_recipes {
+            collect_reserved_arg_errors(recipe, relative, text, &mut self.diagnostics);
             collect_map_warnings(
                 recipe,
                 relative,
@@ -106,11 +106,11 @@ impl RecipeRegistry {
                 &mut self.diagnostics,
             );
             collect_schema_errors(recipe, relative, &mut self.diagnostics);
-            collect_recipe_ref_errors(recipe, relative, &known_ids, &mut self.diagnostics);
+            collect_recipe_ref_errors(recipe, relative, text, &known_ids, &mut self.diagnostics);
             self.recipes_ast.insert(recipe.id.clone(), recipe.clone());
         }
 
-        for (path, relative, recipe) in &parsed_recipes {
+        for (path, relative, recipe, _text) in &parsed_recipes {
             let schema = match expand_recipe_references(recipe, &self.recipes_ast) {
                 Ok(expanded) => recipe_to_schema(&expanded, Some(relative)),
                 Err(_) => recipe_to_schema(recipe, Some(relative)),
@@ -220,6 +220,7 @@ impl RecipeRegistry {
 fn collect_reserved_arg_errors(
     recipe: &Recipe,
     file_path: &str,
+    file_text: &str,
     diagnostics: &mut Vec<RecipeDiagnostic>,
 ) {
     for arg in &recipe.args {
@@ -233,7 +234,7 @@ fn collect_reserved_arg_errors(
                 ),
                 vec![source_with_needle(
                     file_path,
-                    None,
+                    Some(file_text),
                     &format!("name: {}", arg.name),
                 )],
             ));
@@ -244,27 +245,30 @@ fn collect_reserved_arg_errors(
 fn collect_recipe_ref_errors(
     recipe: &Recipe,
     file_path: &str,
+    file_text: &str,
     known_ids: &BTreeMap<String, ()>,
     diagnostics: &mut Vec<RecipeDiagnostic>,
 ) {
-    collect_recipe_ref_errors_in_steps(&recipe.steps, file_path, known_ids, diagnostics);
+    collect_recipe_ref_errors_in_steps(&recipe.steps, file_path, file_text, known_ids, diagnostics);
 }
 
 fn collect_recipe_ref_errors_in_steps(
     steps: &[Step],
     file_path: &str,
+    file_text: &str,
     known_ids: &BTreeMap<String, ()>,
     diagnostics: &mut Vec<RecipeDiagnostic>,
 ) {
     for step in steps {
         match step {
             Step::RecipeRef(recipe_ref) => {
-                validate_one_recipe_ref(recipe_ref, file_path, known_ids, diagnostics);
+                validate_one_recipe_ref(recipe_ref, file_path, file_text, known_ids, diagnostics);
             }
             Step::Scoped(scoped) => {
                 collect_recipe_ref_errors_in_steps(
                     &scoped.steps,
                     file_path,
+                    file_text,
                     known_ids,
                     diagnostics,
                 );
@@ -277,6 +281,7 @@ fn collect_recipe_ref_errors_in_steps(
 fn validate_one_recipe_ref(
     recipe_ref: &RecipeRef,
     file_path: &str,
+    file_text: &str,
     known_ids: &BTreeMap<String, ()>,
     diagnostics: &mut Vec<RecipeDiagnostic>,
 ) {
@@ -286,7 +291,7 @@ fn validate_one_recipe_ref(
             "error",
             "E_SCHEMA",
             "recipe step must have a non-empty id".to_string(),
-            vec![source_with_needle(file_path, None, "recipe:")],
+            vec![source_with_needle(file_path, Some(file_text), "recipe:")],
         ));
         return;
     }
@@ -295,7 +300,7 @@ fn validate_one_recipe_ref(
             "error",
             "E_RECIPE_REF",
             format!("Unknown recipe reference: {ref_id}"),
-            vec![source_with_needle(file_path, None, ref_id)],
+            vec![source_with_needle(file_path, Some(file_text), ref_id)],
         ));
     }
 }
@@ -510,6 +515,7 @@ fn render_steps(
                     maps,
                     vars,
                     codemod_root,
+                    recipe_file,
                 )?));
             }
             Step::Delete(delete) => {
@@ -662,6 +668,7 @@ fn render_create(
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     vars: &BTreeMap<String, BTreeMap<String, String>>,
     codemod_root: Option<&Path>,
+    recipe_file: Option<&Path>,
 ) -> Result<CreateStep, String> {
     let mut create = create.clone();
     create.path = render_template(&create.path, args, maps, vars)?;
@@ -671,7 +678,8 @@ fn render_create(
     if let Some(file) = create.template_file.clone() {
         let rendered_name = render_template(&file, args, maps, vars)?;
         if let Some(root) = codemod_root {
-            let content = render_template_file(&rendered_name, args, maps, vars, root)?;
+            let content =
+                render_template_file(&rendered_name, args, maps, vars, root, recipe_file)?;
             create.template = Some(content);
             create.template_file = None;
         } else {

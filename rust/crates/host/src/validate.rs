@@ -1,10 +1,11 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
+use codemod_recipe_core::resource_path::resolve_existing_resource;
 use codemod_recipe_yaml::compose::{expand_recipe_references, ComposeError};
 use codemod_recipe_yaml::model::{CreateStep, EditOp, Recipe, Step};
 
-use crate::diag_source::source_with_needle;
+use crate::diag_source::{source_with_needle, source_with_needle_in_workspace};
 use crate::map_registry::warn_on_missing_map_ids;
 use crate::protocol::{RecipeDiagnostic, ValidateResponse};
 use crate::registry::RecipeRegistry;
@@ -54,6 +55,7 @@ pub fn validate_recipe(registry: &RecipeRegistry, recipe_id: &str) -> ValidateRe
     let mut diagnostics = Vec::new();
     let Some(recipe) = registry.recipes_ast().get(recipe_id) else {
         diagnostics.push(error(
+            Some(&registry.workspace_root),
             "E_RECIPE_NOT_FOUND",
             format!("Recipe not found: {recipe_id}"),
             "",
@@ -117,6 +119,7 @@ fn validate_expanded_recipe(
                 ),
             };
             diagnostics.push(error(
+                Some(&registry.workspace_root),
                 code,
                 err.to_string(),
                 file_path,
@@ -132,6 +135,7 @@ fn validate_expanded_recipe(
     check_undeclared_args_in_steps(
         &expanded.steps,
         &declared,
+        &registry.workspace_root,
         recipe_id,
         file_path,
         maps,
@@ -175,6 +179,7 @@ fn validate_with_bindings_in_steps(
                 for key in recipe_ref.with.keys() {
                     if !child_args.contains(key) {
                         diagnostics.push(error(
+                            Some(&registry.workspace_root),
                             "E_RECIPE_WITH",
                             format!(
                                 "recipe '{}' with.{} does not match any argument on the referenced recipe",
@@ -202,6 +207,7 @@ fn validate_with_bindings_in_steps(
 fn check_undeclared_args_in_steps(
     steps: &[Step],
     declared: &BTreeSet<String>,
+    workspace_root: &Path,
     recipe_id: &str,
     file_path: &str,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
@@ -216,6 +222,7 @@ fn check_undeclared_args_in_steps(
                         "recipe.with",
                         value,
                         declared,
+                        workspace_root,
                         recipe_id,
                         file_path,
                         diagnostics,
@@ -226,6 +233,7 @@ fn check_undeclared_args_in_steps(
                 check_undeclared_args_in_steps(
                     &scoped.steps,
                     &inner,
+                    workspace_root,
                     recipe_id,
                     file_path,
                     maps,
@@ -239,6 +247,7 @@ fn check_undeclared_args_in_steps(
                         field,
                         &text,
                         declared,
+                        workspace_root,
                         recipe_id,
                         file_path,
                         diagnostics,
@@ -253,12 +262,14 @@ fn report_legacy_and_undeclared(
     field: &str,
     text: &str,
     declared: &BTreeSet<String>,
+    workspace_root: &Path,
     recipe_id: &str,
     file_path: &str,
     diagnostics: &mut Vec<RecipeDiagnostic>,
 ) {
     if crate::template::contains_legacy_syntax(text) {
         diagnostics.push(warning(
+            Some(workspace_root),
             "W_LEGACY_TEMPLATE",
             format!(
                 "Legacy template helper in {field} of recipe '{recipe_id}' — use Jinja filters (e.g. {{ arg | snake_case }})"
@@ -274,6 +285,7 @@ fn report_legacy_and_undeclared(
             continue;
         }
         diagnostics.push(error(
+            Some(workspace_root),
             "E_UNDECLARED_ARG",
             format!(
                 "Variable '{var}' is referenced in recipe '{recipe_id}' but not declared in args"
@@ -382,25 +394,46 @@ fn validate_create_step(
     diagnostics: &mut Vec<RecipeDiagnostic>,
 ) {
     if let Some(template_file) = &create.template_file {
-        let path = registry.codemod_root().join(template_file);
-        if !path.is_file() {
-            diagnostics.push(error(
-                "E_MISSING_TEMPLATE",
-                format!("Template file not found: {template_file}"),
-                file_path,
-                Some(format!(
-                    "Create {} under .codemod/ or fix templateFile path",
-                    template_file
-                )),
-                Some(recipe_id.to_string()),
-                template_file,
-            ));
-            return;
-        }
+        let resolved = resolve_existing_resource(
+            template_file,
+            Some(Path::new(file_path)),
+            registry.codemod_root(),
+            None,
+        );
+        let path = match resolved {
+            Ok(Some(path)) => path,
+            Ok(None) => {
+                diagnostics.push(error(
+                    Some(&registry.workspace_root),
+                    "E_MISSING_TEMPLATE",
+                    format!("Template file not found: {template_file}"),
+                    file_path,
+                    Some(format!(
+                        "Create {template_file} next to the recipe or under .codemod/"
+                    )),
+                    Some(recipe_id.to_string()),
+                    template_file,
+                ));
+                return;
+            }
+            Err(err) => {
+                diagnostics.push(error(
+                    Some(&registry.workspace_root),
+                    err.code,
+                    err.message,
+                    file_path,
+                    None,
+                    Some(recipe_id.to_string()),
+                    template_file,
+                ));
+                return;
+            }
+        };
         if let Ok(text) = std::fs::read_to_string(&path) {
             let converted = convert_legacy_syntax(&text);
             if let Err(err) = minijinja::Environment::new().template_from_str(&converted) {
                 diagnostics.push(error(
+                    None,
                     "E_TEMPLATE_SYNTAX",
                     format!("Template syntax error in {template_file}: {err}"),
                     template_file,
@@ -477,6 +510,7 @@ pub fn build_validate_response(diagnostics: &[RecipeDiagnostic]) -> ValidateResp
 }
 
 fn error(
+    workspace_root: Option<&Path>,
     code: &'static str,
     message: String,
     file: &str,
@@ -488,13 +522,17 @@ fn error(
         severity: "error",
         code,
         message,
-        sources: vec![source_with_needle(file, None, needle)],
+        sources: vec![match workspace_root {
+            Some(root) => source_with_needle_in_workspace(root, file, None, needle),
+            None => source_with_needle(file, None, needle),
+        }],
         hint,
         related_recipe,
     }
 }
 
 fn warning(
+    workspace_root: Option<&Path>,
     code: &'static str,
     message: String,
     file: &str,
@@ -506,7 +544,10 @@ fn warning(
         severity: "warning",
         code,
         message,
-        sources: vec![source_with_needle(file, None, needle)],
+        sources: vec![match workspace_root {
+            Some(root) => source_with_needle_in_workspace(root, file, None, needle),
+            None => source_with_needle(file, None, needle),
+        }],
         hint,
         related_recipe,
     }
@@ -514,24 +555,34 @@ fn warning(
 
 pub fn check_template_file_exists(
     codemod_root: &Path,
+    referrer_file: Option<&Path>,
     template_file: &str,
     recipe_file: &str,
     recipe_id: &str,
 ) -> Option<RecipeDiagnostic> {
-    let path = codemod_root.join(template_file);
-    if path.is_file() {
-        return None;
-    }
-    Some(error(
-        "E_MISSING_TEMPLATE",
-        format!("Template file not found: {template_file}"),
-        recipe_file,
-        Some(format!(
-            "Create .codemod/{template_file} or update templateFile"
+    match resolve_existing_resource(template_file, referrer_file, codemod_root, None) {
+        Ok(Some(_)) => None,
+        Ok(None) => Some(error(
+            None,
+            "E_MISSING_TEMPLATE",
+            format!("Template file not found: {template_file}"),
+            recipe_file,
+            Some(format!(
+                "Create {template_file} next to the recipe or under .codemod/"
+            )),
+            Some(recipe_id.to_string()),
+            template_file,
         )),
-        Some(recipe_id.to_string()),
-        template_file,
-    ))
+        Err(err) => Some(error(
+            None,
+            err.code,
+            err.message,
+            recipe_file,
+            None,
+            Some(recipe_id.to_string()),
+            template_file,
+        )),
+    }
 }
 
 #[cfg(test)]

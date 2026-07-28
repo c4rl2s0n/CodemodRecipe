@@ -41,6 +41,25 @@ When changing Rust handling of recipe/YAML vocabulary, prefer the centralized ke
 
 Update these modules first when adding or renaming Rust-owned keywords. Keep serde rename attributes and external wire compatibility unchanged unless the user explicitly requests a protocol/schema change.
 
+## Centralized path/resource resolution
+
+When changing how recipe-backed files are resolved, use the shared resolver in:
+
+- `rust/crates/core/src/resource_path.rs`
+
+Prefer updating that module over adding new ad hoc `join`, `canonicalize`, or
+`..`/absolute-path checks in individual crates.
+
+Current policy:
+
+- Workspace file targets resolve exactly under the workspace root.
+- Recipe resources (`query` `.scm`, `create.templateFile`, `postExecution`,
+  template `extends` / `include`) resolve recipe-local first, then fall back to
+  `.codemod/`.
+- Bare query names additionally try `queries/` under each root.
+- YAML query libraries are id-based under `.codemod/queries/*.yaml`, not
+  direct query-file paths.
+
 ## Recommended companion: codebase-memory-mcp
 
 Codemod workflows work best with **codebase-memory-mcp** for locate → impact → edit:
