@@ -1,0 +1,493 @@
+[
+  {
+    "kind": "TopLevelField",
+    "wire": "id",
+    "schemaPath": "#/properties/id",
+    "description": "Unique recipe identifier."
+  },
+  {
+    "kind": "TopLevelField",
+    "wire": "name",
+    "schemaPath": "#/properties/name",
+    "description": "Human-readable recipe name."
+  },
+  {
+    "kind": "TopLevelField",
+    "wire": "description",
+    "schemaPath": "#/properties/description",
+    "description": "Short recipe description."
+  },
+  {
+    "kind": "TopLevelField",
+    "wire": "args",
+    "schemaPath": "#/properties/args",
+    "description": "Recipe argument definitions shown in the runner UI."
+  },
+  {
+    "kind": "TopLevelField",
+    "wire": "maps",
+    "schemaPath": "#/properties/maps",
+    "description": "Recipe-local map entries merged with workspace maps."
+  },
+  {
+    "kind": "TopLevelField",
+    "wire": "queries",
+    "schemaPath": "#/properties/queries",
+    "description": "Recipe-local named query definitions."
+  },
+  {
+    "kind": "TopLevelField",
+    "wire": "steps",
+    "schemaPath": "#/properties/steps",
+    "description": "Ordered list of edit, create, delete, or recipe reference steps."
+  },
+  {
+    "kind": "TopLevelField",
+    "wire": "postExecution",
+    "schemaPath": "#/properties/postExecution",
+    "description": "Post-apply shell commands or script paths under the codemod root (Jinja-rendered)."
+  },
+  {
+    "kind": "AssetRootField",
+    "wire": "id",
+    "schemaPath": "map#/properties/id",
+    "description": "Unique map asset identifier."
+  },
+  {
+    "kind": "AssetRootField",
+    "wire": "description",
+    "schemaPath": "map#/properties/description",
+    "description": "Short map asset description."
+  },
+  {
+    "kind": "AssetRootField",
+    "wire": "map",
+    "schemaPath": "map#/properties/map",
+    "description": "Map lookup table for a workspace map YAML asset (requires id)."
+  },
+  {
+    "kind": "AssetRootField",
+    "wire": "id",
+    "schemaPath": "variables#/properties/id",
+    "description": "Unique variables asset identifier."
+  },
+  {
+    "kind": "AssetRootField",
+    "wire": "description",
+    "schemaPath": "variables#/properties/description",
+    "description": "Short variables asset description."
+  },
+  {
+    "kind": "AssetRootField",
+    "wire": "values",
+    "schemaPath": "variables#/properties/values",
+    "description": "Constant values for a workspace variables YAML asset (requires id)."
+  },
+  {
+    "kind": "StepKind",
+    "wire": "edit",
+    "description": "Patch an existing file with tree-sitter insert, replace, or remove ops."
+  },
+  {
+    "kind": "StepKind",
+    "wire": "create",
+    "description": "Create a new file from inline template or templateFile."
+  },
+  {
+    "kind": "StepKind",
+    "wire": "delete",
+    "description": "Delete a file from the workspace."
+  },
+  {
+    "kind": "StepKind",
+    "wire": "recipe",
+    "description": "Inline another recipe by id, optionally with call-site with bindings."
+  },
+  {
+    "kind": "OpKind",
+    "wire": "insert",
+    "description": "Insert text at a capture anchor (start or end)."
+  },
+  {
+    "kind": "OpKind",
+    "wire": "replace",
+    "description": "Replace the span of a query capture with new text."
+  },
+  {
+    "kind": "OpKind",
+    "wire": "remove",
+    "description": "Remove the span matched by a query capture."
+  },
+  {
+    "kind": "Field",
+    "wire": "path",
+    "schemaPath": "#/definitions/editStep/properties/path",
+    "description": "Workspace-relative file path (often templated)."
+  },
+  {
+    "kind": "Field",
+    "wire": "language",
+    "schemaPath": "#/definitions/editStep/properties/language",
+    "description": "Tree-sitter language id when extension inference is ambiguous."
+  },
+  {
+    "kind": "Field",
+    "wire": "when",
+    "schemaPath": "#/definitions/editStep/properties/when",
+    "description": "Guard queries; all must match before the edit runs."
+  },
+  {
+    "kind": "Field",
+    "wire": "whenNot",
+    "schemaPath": "#/definitions/editStep/properties/whenNot",
+    "description": "Forbidden guard queries; edit runs only if none match."
+  },
+  {
+    "kind": "Field",
+    "wire": "let",
+    "schemaPath": "#/definitions/editStep/properties/let",
+    "description": "Step-local bindings recomputed before each op."
+  },
+  {
+    "kind": "Field",
+    "wire": "ops",
+    "schemaPath": "#/definitions/editStep/properties/ops",
+    "description": "Ordered edit operations applied sequentially on the same file."
+  },
+  {
+    "kind": "Field",
+    "wire": "query",
+    "schemaPath": "#/definitions/insertOp/properties/query",
+    "description": "Inline tree-sitter query, .scm path, query-library ref, or chain."
+  },
+  {
+    "kind": "Field",
+    "wire": "capture",
+    "schemaPath": "#/definitions/insertOp/properties/capture",
+    "description": "Capture name from the query whose span is edited."
+  },
+  {
+    "kind": "Field",
+    "wire": "anchor",
+    "schemaPath": "#/definitions/insertOp/properties/anchor",
+    "description": "Insertion anchor relative to the capture (start or end)."
+  },
+  {
+    "kind": "Field",
+    "wire": "text",
+    "schemaPath": "#/definitions/insertOp/properties/text",
+    "description": "Replacement or inserted source text (Jinja-rendered)."
+  },
+  {
+    "kind": "Field",
+    "wire": "query",
+    "schemaPath": "#/definitions/replaceOp/properties/query",
+    "description": "Inline tree-sitter query, .scm path, query-library ref, or chain."
+  },
+  {
+    "kind": "Field",
+    "wire": "capture",
+    "schemaPath": "#/definitions/replaceOp/properties/capture",
+    "description": "Capture name from the query whose span is edited."
+  },
+  {
+    "kind": "Field",
+    "wire": "text",
+    "schemaPath": "#/definitions/replaceOp/properties/text",
+    "description": "Replacement or inserted source text (Jinja-rendered)."
+  },
+  {
+    "kind": "Field",
+    "wire": "includeLeadingTrivia",
+    "schemaPath": "#/definitions/replaceOp/properties/includeLeadingTrivia",
+    "description": "Include leading trivia when replacing or removing a capture."
+  },
+  {
+    "kind": "Field",
+    "wire": "query",
+    "schemaPath": "#/definitions/removeOp/properties/query",
+    "description": "Inline tree-sitter query, .scm path, query-library ref, or chain."
+  },
+  {
+    "kind": "Field",
+    "wire": "capture",
+    "schemaPath": "#/definitions/removeOp/properties/capture",
+    "description": "Capture name from the query whose span is edited."
+  },
+  {
+    "kind": "Field",
+    "wire": "includeLeadingTrivia",
+    "schemaPath": "#/definitions/removeOp/properties/includeLeadingTrivia",
+    "description": "Include leading trivia when replacing or removing a capture."
+  },
+  {
+    "kind": "Field",
+    "wire": "path",
+    "schemaPath": "#/definitions/createStep/properties/path",
+    "description": "Workspace-relative file path (often templated)."
+  },
+  {
+    "kind": "Field",
+    "wire": "template",
+    "schemaPath": "#/definitions/createStep/properties/template",
+    "description": "Inline file content for a create step."
+  },
+  {
+    "kind": "Field",
+    "wire": "templateFile",
+    "schemaPath": "#/definitions/createStep/properties/templateFile",
+    "description": "Template path resolved recipe-local first, then under .codemod."
+  },
+  {
+    "kind": "Field",
+    "wire": "ifExists",
+    "schemaPath": "#/definitions/createStep/properties/ifExists",
+    "description": "Behavior when create target path already exists."
+  },
+  {
+    "kind": "Field",
+    "wire": "path",
+    "schemaPath": "#/definitions/deleteStep/properties/path",
+    "description": "Workspace-relative file path (often templated)."
+  },
+  {
+    "kind": "Field",
+    "wire": "ifMissing",
+    "schemaPath": "#/definitions/deleteStep/properties/ifMissing",
+    "description": "Behavior when delete target path is missing."
+  },
+  {
+    "kind": "Field",
+    "wire": "with",
+    "schemaPath": "#/definitions/recipeRef/properties/with",
+    "description": "Call-site arg bindings when referencing a child recipe."
+  },
+  {
+    "kind": "Field",
+    "wire": "required",
+    "schemaPath": "#/definitions/arg/properties/required",
+    "description": "Whether the recipe arg must be provided."
+  },
+  {
+    "kind": "Field",
+    "wire": "inputKind",
+    "schemaPath": "#/definitions/arg/properties/inputKind",
+    "description": "Runner input widget kind for a recipe arg."
+  },
+  {
+    "kind": "Field",
+    "wire": "abbr",
+    "schemaPath": "#/definitions/arg/properties/abbr",
+    "description": "Short CLI abbreviation for a recipe arg."
+  },
+  {
+    "kind": "Field",
+    "wire": "help",
+    "schemaPath": "#/definitions/arg/properties/help",
+    "description": "Help text shown in the recipe runner."
+  },
+  {
+    "kind": "Field",
+    "wire": "defaultsTo",
+    "schemaPath": "#/definitions/arg/properties/defaultsTo",
+    "description": "Default value when the arg is omitted."
+  },
+  {
+    "kind": "Field",
+    "wire": "options",
+    "schemaPath": "#/definitions/arg/properties/options",
+    "description": "Allowed values for choice-style args."
+  },
+  {
+    "kind": "Field",
+    "wire": "allowCustomValue",
+    "schemaPath": "#/definitions/arg/properties/allowCustomValue",
+    "description": "Allow values outside options for choice args."
+  },
+  {
+    "kind": "Field",
+    "wire": "contextKey",
+    "schemaPath": "#/definitions/arg/properties/contextKey",
+    "description": "Editor context key used to prefill this arg."
+  },
+  {
+    "kind": "Field",
+    "wire": "id",
+    "schemaPath": "#/definitions/recipeRef/properties/id",
+    "description": "Unique recipe identifier for an inlined recipe reference."
+  },
+  {
+    "kind": "Field",
+    "wire": "name",
+    "schemaPath": "#/definitions/arg/properties/name",
+    "description": "Recipe argument name."
+  },
+  {
+    "kind": "Field",
+    "wire": "extract",
+    "schemaPath": "#/definitions/letBinding/properties/extract",
+    "description": "How to derive a let binding value from query captures."
+  },
+  {
+    "kind": "Field",
+    "wire": "onNoMatch",
+    "schemaPath": "#/definitions/letBinding/properties/onNoMatch",
+    "description": "Behavior when a let binding query matches nothing."
+  },
+  {
+    "kind": "Field",
+    "wire": "onManyMatches",
+    "schemaPath": "#/definitions/letBinding/properties/onManyMatches",
+    "description": "Behavior when a let binding query matches multiple nodes."
+  },
+  {
+    "kind": "Field",
+    "wire": "join",
+    "schemaPath": "#/definitions/letBinding/properties/join",
+    "description": "Separator when onManyMatches is join."
+  },
+  {
+    "kind": "Field",
+    "wire": "as",
+    "schemaPath": "#/definitions/letBinding/properties/as",
+    "description": "Jinja template to compute a let value from prior locals."
+  },
+  {
+    "kind": "Field",
+    "wire": "name",
+    "schemaPath": "#/definitions/letBinding/properties/name",
+    "description": "Let binding local name."
+  },
+  {
+    "kind": "Field",
+    "wire": "query",
+    "schemaPath": "#/definitions/letBinding/properties/query",
+    "description": "Inline tree-sitter query, .scm path, query-library ref, or chain."
+  },
+  {
+    "kind": "Field",
+    "wire": "capture",
+    "schemaPath": "#/definitions/letBinding/properties/capture",
+    "description": "Capture name from the query whose span is edited."
+  },
+  {
+    "kind": "Field",
+    "wire": "query",
+    "schemaPath": "#/properties/queries/additionalProperties/query",
+    "description": "Inline tree-sitter query, .scm path, query-library ref, or chain."
+  },
+  {
+    "kind": "EnumValue",
+    "wire": "fail",
+    "parent": "ifExists",
+    "description": "Abort the recipe when the create path already exists."
+  },
+  {
+    "kind": "EnumValue",
+    "wire": "skip",
+    "parent": "ifExists",
+    "description": "Skip the create step when the path already exists."
+  },
+  {
+    "kind": "EnumValue",
+    "wire": "fail",
+    "parent": "ifMissing",
+    "description": "Abort when deleting a missing file."
+  },
+  {
+    "kind": "EnumValue",
+    "wire": "skip",
+    "parent": "ifMissing",
+    "description": "Skip delete when the file is already absent."
+  },
+  {
+    "kind": "EnumValue",
+    "wire": "start",
+    "parent": "anchor",
+    "description": "Insert before the capture span."
+  },
+  {
+    "kind": "EnumValue",
+    "wire": "end",
+    "parent": "anchor",
+    "description": "Insert after the capture span."
+  },
+  {
+    "kind": "EnumValue",
+    "wire": "text",
+    "parent": "extract",
+    "description": "Capture source text."
+  },
+  {
+    "kind": "EnumValue",
+    "wire": "kind",
+    "parent": "extract",
+    "description": "Tree-sitter node kind name."
+  },
+  {
+    "kind": "EnumValue",
+    "wire": "exists",
+    "parent": "extract",
+    "description": "True when the capture matched."
+  },
+  {
+    "kind": "EnumValue",
+    "wire": "count",
+    "parent": "extract",
+    "description": "Number of capture matches."
+  },
+  {
+    "kind": "EnumValue",
+    "wire": "error",
+    "parent": "onNoMatch",
+    "description": "Fail the edit when no match."
+  },
+  {
+    "kind": "EnumValue",
+    "wire": "use",
+    "parent": "onNoMatch",
+    "description": "Use an empty value when no match."
+  },
+  {
+    "kind": "EnumValue",
+    "wire": "error",
+    "parent": "onManyMatches",
+    "description": "Fail when multiple matches."
+  },
+  {
+    "kind": "EnumValue",
+    "wire": "first",
+    "parent": "onManyMatches",
+    "description": "Use the first matching capture."
+  },
+  {
+    "kind": "EnumValue",
+    "wire": "join",
+    "parent": "onManyMatches",
+    "description": "Join all matches with join separator."
+  },
+  {
+    "kind": "EnumValue",
+    "wire": "text",
+    "parent": "inputKind",
+    "description": "Free-text arg input."
+  },
+  {
+    "kind": "EnumValue",
+    "wire": "file",
+    "parent": "inputKind",
+    "description": "File path arg input."
+  },
+  {
+    "kind": "EnumValue",
+    "wire": "directory",
+    "parent": "inputKind",
+    "description": "Directory path arg input."
+  },
+  {
+    "kind": "EnumValue",
+    "wire": "choice",
+    "parent": "inputKind",
+    "description": "Pick from options list."
+  }
+]

@@ -6,6 +6,7 @@ import type { ExtensionConfig } from '../config/extensionConfig';
 import type { HostBridge } from '../host/hostBridge';
 import type { RecipeRepository } from '../recipes/recipeRepository';
 import { collectRecipeIdCompletions, recipeIdCompletionContext } from '../../shared';
+import { loadKeywordDocs, lookupKeywordHover } from './keywordDocs';
 
 const YAML_SELECTOR: vscode.DocumentSelector = [
   { language: 'yaml', pattern: '**/.codemod/**/*.{yaml,yml}' },
@@ -43,7 +44,7 @@ export function registerRecipeLanguageSupport(
     ),
     vscode.languages.registerHoverProvider(
       YAML_SELECTOR,
-      new RecipeHoverProvider(repository, config, isUnderCodemod)
+      new RecipeHoverProvider(context.extensionUri, repository, config, isUnderCodemod)
     ),
     vscode.languages.registerCodeLensProvider(
       YAML_SELECTOR,
@@ -287,11 +288,16 @@ class RecipeCompletionProvider implements vscode.CompletionItemProvider {
 }
 
 class RecipeHoverProvider implements vscode.HoverProvider {
+  private readonly keywordDocs;
+
   constructor(
+    extensionUri: vscode.Uri,
     private readonly repository: RecipeRepository,
     private readonly config: ExtensionConfig,
     private readonly isUnderCodemod: (uri: vscode.Uri) => boolean
-  ) {}
+  ) {
+    this.keywordDocs = loadKeywordDocs(extensionUri);
+  }
 
   async provideHover(
     document: vscode.TextDocument,
@@ -301,6 +307,16 @@ class RecipeHoverProvider implements vscode.HoverProvider {
       return;
     }
     const line = document.lineAt(position.line).text;
+
+    const keywordDesc = lookupKeywordHover(
+      this.keywordDocs,
+      line,
+      position.character
+    );
+    if (keywordDesc) {
+      return new vscode.Hover(new vscode.MarkdownString(keywordDesc));
+    }
+
     const recipeRef = matchRecipeReference(line, position.character);
     if (recipeRef) {
       const described =

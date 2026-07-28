@@ -1,228 +1,465 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://codemod-recipe.dev/schemas/recipe.schema.json",
-  "title": "Codemod Recipe YAML",
-  "type": "object",
-  "required": ["id", "steps"],
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
-  "properties": {
-    "id": {
-      "type": "string",
-      "minLength": 1,
-      "description": "Unique recipe identifier."
-    },
-    "name": {
-      "type": "string",
-      "description": "Human-readable recipe name."
-    },
-    "description": {
-      "type": "string",
-      "description": "Short recipe description."
-    },
-    "args": {
-      "type": "array",
-      "items": { "$ref": "#/definitions/arg" }
-    },
-    "maps": {
-      "type": "object",
-      "additionalProperties": {
-        "type": "object",
-        "additionalProperties": { "type": "string" }
-      }
-    },
-    "queries": {
-      "type": "object",
-      "additionalProperties": {
-        "type": "object",
-        "required": ["query"],
-        "properties": {
-          "query": { "type": "string" }
-        }
-      }
-    },
-    "steps": {
-      "type": "array",
-      "minItems": 1,
-      "items": { "$ref": "#/definitions/step" }
-    },
-    "postExecution": {
-      "type": "array",
-      "description": "Post-apply shell commands or script paths (relative to codemod root). Each entry is Jinja-rendered; scripts are Jinja-rendered then executed via bash. No builtins.",
-      "items": { "type": "string" }
-    }
-  },
   "definitions": {
     "arg": {
-      "type": "object",
-      "required": ["name"],
       "additionalProperties": true,
       "properties": {
-        "name": { "type": "string" },
-        "required": { "type": "boolean" },
+        "abbr": {
+          "description": "Short CLI abbreviation for a recipe arg.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "allowCustomValue": {
+          "description": "Allow values outside options for choice args.",
+          "type": "boolean"
+        },
+        "contextKey": {
+          "description": "Editor context key used to prefill this arg.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "defaultsTo": {
+          "description": "Default value when the arg is omitted.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "help": {
+          "description": "Help text shown in the recipe runner.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
         "inputKind": {
-          "type": "string",
-          "enum": ["text", "file", "directory", "choice"]
+          "description": "Runner input widget kind for a recipe arg.",
+          "enum": [
+            "text",
+            "file",
+            "directory",
+            "choice"
+          ],
+          "type": "string"
         },
-        "abbr": { "type": ["string", "null"] },
-        "help": { "type": ["string", "null"] },
-        "defaultsTo": { "type": ["string", "null"] },
+        "name": {
+          "description": "Human-readable recipe name.",
+          "type": "string"
+        },
         "options": {
-          "type": "array",
-          "items": { "type": "string" }
+          "description": "Allowed values for choice-style args.",
+          "items": {
+            "type": "string"
+          },
+          "type": "array"
         },
-        "allowCustomValue": { "type": "boolean" },
-        "contextKey": { "type": ["string", "null"] }
-      }
-    },
-    "step": {
-      "type": "object",
-      "minProperties": 1,
-      "maxProperties": 1,
-      "additionalProperties": false,
-      "properties": {
-        "edit": { "$ref": "#/definitions/editStep" },
-        "create": { "$ref": "#/definitions/createStep" },
-        "delete": { "$ref": "#/definitions/deleteStep" },
-        "recipe": { "$ref": "#/definitions/recipeRef" }
-      }
-    },
-    "editStep": {
-      "type": "object",
-      "required": ["path", "ops"],
-      "additionalProperties": true,
-      "properties": {
-        "path": { "type": "string" },
-        "language": { "type": "string" },
-        "when": { "$ref": "#/definitions/guardQueryField" },
-        "whenNot": { "$ref": "#/definitions/guardQueryField" },
-        "let": {
-          "type": "array",
-          "items": { "$ref": "#/definitions/letBinding" }
-        },
-        "ops": {
-          "type": "array",
-          "items": { "$ref": "#/definitions/editOp" }
+        "required": {
+          "description": "Whether the recipe arg must be provided.",
+          "type": "boolean"
         }
-      }
-    },
-    "editOp": {
-      "type": "object",
-      "minProperties": 1,
-      "maxProperties": 1,
-      "additionalProperties": false,
-      "properties": {
-        "insert": { "$ref": "#/definitions/insertOp" },
-        "replace": { "$ref": "#/definitions/replaceOp" },
-        "remove": { "$ref": "#/definitions/removeOp" }
-      }
-    },
-    "insertOp": {
-      "type": "object",
-      "required": ["query", "capture", "anchor", "text"],
-      "properties": {
-        "query": { "$ref": "#/definitions/queryField" },
-        "capture": { "type": "string" },
-        "anchor": { "type": "string", "enum": ["start", "end"] },
-        "text": { "type": "string" }
-      }
-    },
-    "replaceOp": {
-      "type": "object",
-      "required": ["query", "capture", "text"],
-      "properties": {
-        "query": { "$ref": "#/definitions/queryField" },
-        "capture": { "type": "string" },
-        "text": { "type": "string" },
-        "includeLeadingTrivia": { "type": "boolean" }
-      }
-    },
-    "removeOp": {
-      "type": "object",
-      "required": ["query", "capture"],
-      "properties": {
-        "query": { "$ref": "#/definitions/queryField" },
-        "capture": { "type": "string" },
-        "includeLeadingTrivia": { "type": "boolean" }
-      }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
     },
     "createStep": {
-      "type": "object",
-      "required": ["path"],
       "additionalProperties": true,
       "properties": {
-        "path": { "type": "string" },
-        "template": { "type": "string" },
-        "templateFile": {
-          "type": "string",
-          "description": "File-backed template path resolved safely relative to the referencing recipe first, then under .codemod."
+        "ifExists": {
+          "description": "Behavior when create target path already exists.",
+          "enum": [
+            "fail",
+            "skip"
+          ],
+          "type": "string"
         },
-        "ifExists": { "type": "string", "enum": ["fail", "skip"] }
-      }
+        "path": {
+          "description": "Workspace-relative file path (often templated).",
+          "type": "string"
+        },
+        "template": {
+          "description": "Inline file content for a create step.",
+          "type": "string"
+        },
+        "templateFile": {
+          "description": "Template path resolved recipe-local first, then under .codemod.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
     },
     "deleteStep": {
-      "type": "object",
-      "required": ["path"],
       "properties": {
-        "path": { "type": "string" },
-        "ifMissing": { "type": "string", "enum": ["fail", "skip"] }
-      }
+        "ifMissing": {
+          "description": "Behavior when delete target path is missing.",
+          "enum": [
+            "fail",
+            "skip"
+          ],
+          "type": "string"
+        },
+        "path": {
+          "description": "Workspace-relative file path (often templated).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "path"
+      ],
+      "type": "object"
     },
-    "recipeRef": {
+    "editOp": {
+      "additionalProperties": false,
+      "maxProperties": 1,
+      "minProperties": 1,
+      "properties": {
+        "insert": {
+          "$ref": "#/definitions/insertOp",
+          "description": "Insert text at a capture anchor (start or end)."
+        },
+        "remove": {
+          "$ref": "#/definitions/removeOp",
+          "description": "Remove the span matched by a query capture."
+        },
+        "replace": {
+          "$ref": "#/definitions/replaceOp",
+          "description": "Replace the span of a query capture with new text."
+        }
+      },
+      "type": "object"
+    },
+    "editStep": {
+      "additionalProperties": true,
+      "properties": {
+        "language": {
+          "description": "Tree-sitter language id when extension inference is ambiguous.",
+          "type": "string"
+        },
+        "let": {
+          "description": "Step-local bindings recomputed before each op.",
+          "items": {
+            "$ref": "#/definitions/letBinding"
+          },
+          "type": "array"
+        },
+        "ops": {
+          "description": "Ordered edit operations applied sequentially on the same file.",
+          "items": {
+            "$ref": "#/definitions/editOp"
+          },
+          "type": "array"
+        },
+        "path": {
+          "description": "Workspace-relative file path (often templated).",
+          "type": "string"
+        },
+        "when": {
+          "$ref": "#/definitions/guardQueryField",
+          "description": "Guard queries; all must match before the edit runs."
+        },
+        "whenNot": {
+          "$ref": "#/definitions/guardQueryField",
+          "description": "Forbidden guard queries; edit runs only if none match."
+        }
+      },
+      "required": [
+        "path",
+        "ops"
+      ],
+      "type": "object"
+    },
+    "guardQueryField": {
       "oneOf": [
-        { "type": "string", "minLength": 1 },
         {
-          "type": "object",
-          "required": ["id"],
-          "additionalProperties": false,
-          "properties": {
-            "id": { "type": "string", "minLength": 1 },
-            "with": {
-              "type": "object",
-              "additionalProperties": { "type": "string" }
-            }
-          }
+          "$ref": "#/definitions/queryField"
+        },
+        {
+          "items": {
+            "$ref": "#/definitions/queryField"
+          },
+          "minItems": 1,
+          "type": "array"
         }
       ]
+    },
+    "insertOp": {
+      "properties": {
+        "anchor": {
+          "description": "Insertion anchor relative to the capture (start or end).",
+          "enum": [
+            "start",
+            "end"
+          ],
+          "type": "string"
+        },
+        "capture": {
+          "description": "Capture name from the query whose span is edited.",
+          "type": "string"
+        },
+        "query": {
+          "$ref": "#/definitions/queryField",
+          "description": "Inline tree-sitter query, .scm path, query-library ref, or chain."
+        },
+        "text": {
+          "description": "Replacement or inserted source text (Jinja-rendered).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "query",
+        "capture",
+        "anchor",
+        "text"
+      ],
+      "type": "object"
+    },
+    "letBinding": {
+      "properties": {
+        "as": {
+          "description": "Jinja template to compute a let value from prior locals.",
+          "type": "string"
+        },
+        "capture": {
+          "description": "Capture name from the query whose span is edited.",
+          "type": "string"
+        },
+        "extract": {
+          "description": "How to derive a let binding value from query captures.",
+          "enum": [
+            "text",
+            "kind",
+            "exists",
+            "count"
+          ],
+          "type": "string"
+        },
+        "join": {
+          "description": "Separator when onManyMatches is join.",
+          "type": "string"
+        },
+        "name": {
+          "description": "Human-readable recipe name.",
+          "type": "string"
+        },
+        "onManyMatches": {
+          "description": "Behavior when a let binding query matches multiple nodes.",
+          "enum": [
+            "error",
+            "first",
+            "join"
+          ],
+          "type": "string"
+        },
+        "onNoMatch": {
+          "description": "Behavior when a let binding query matches nothing.",
+          "enum": [
+            "error",
+            "use"
+          ],
+          "type": "string"
+        },
+        "query": {
+          "$ref": "#/definitions/queryField",
+          "description": "Inline tree-sitter query, .scm path, query-library ref, or chain."
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
     },
     "queryField": {
       "oneOf": [
         {
-          "type": "string",
-          "description": "Inline tree-sitter query text, a .scm path resolved recipe-local first then under .codemod, or an id-based query-library ref."
+          "description": "Inline tree-sitter query text, a .scm path resolved recipe-local first then under .codemod, or an id-based query-library ref.",
+          "type": "string"
         },
         {
-          "type": "array",
+          "items": {
+            "type": "string"
+          },
           "minItems": 1,
-          "items": { "type": "string" }
+          "type": "array"
         }
       ]
     },
-    "guardQueryField": {
+    "recipeRef": {
       "oneOf": [
-        { "$ref": "#/definitions/queryField" },
         {
-          "type": "array",
-          "minItems": 1,
-          "items": { "$ref": "#/definitions/queryField" }
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "additionalProperties": false,
+          "properties": {
+            "id": {
+              "description": "Unique recipe identifier.",
+              "minLength": 1,
+              "type": "string"
+            },
+            "with": {
+              "additionalProperties": {
+                "type": "string"
+              },
+              "description": "Call-site arg bindings when referencing a child recipe.",
+              "type": "object"
+            }
+          },
+          "required": [
+            "id"
+          ],
+          "type": "object"
         }
       ]
     },
-    "letBinding": {
-      "type": "object",
-      "required": ["name"],
+    "removeOp": {
       "properties": {
-        "name": { "type": "string" },
-        "query": { "$ref": "#/definitions/queryField" },
-        "capture": { "type": "string" },
-        "extract": {
-          "type": "string",
-          "enum": ["text", "kind", "exists", "count"]
+        "capture": {
+          "description": "Capture name from the query whose span is edited.",
+          "type": "string"
         },
-        "onNoMatch": { "type": "string", "enum": ["error", "use"] },
-        "onManyMatches": { "type": "string", "enum": ["error", "first", "join"] },
-        "join": { "type": "string" },
-        "as": { "type": "string" }
-      }
+        "includeLeadingTrivia": {
+          "description": "Include leading trivia when replacing or removing a capture.",
+          "type": "boolean"
+        },
+        "query": {
+          "$ref": "#/definitions/queryField",
+          "description": "Inline tree-sitter query, .scm path, query-library ref, or chain."
+        }
+      },
+      "required": [
+        "query",
+        "capture"
+      ],
+      "type": "object"
+    },
+    "replaceOp": {
+      "properties": {
+        "capture": {
+          "description": "Capture name from the query whose span is edited.",
+          "type": "string"
+        },
+        "includeLeadingTrivia": {
+          "description": "Include leading trivia when replacing or removing a capture.",
+          "type": "boolean"
+        },
+        "query": {
+          "$ref": "#/definitions/queryField",
+          "description": "Inline tree-sitter query, .scm path, query-library ref, or chain."
+        },
+        "text": {
+          "description": "Replacement or inserted source text (Jinja-rendered).",
+          "type": "string"
+        }
+      },
+      "required": [
+        "query",
+        "capture",
+        "text"
+      ],
+      "type": "object"
+    },
+    "step": {
+      "additionalProperties": false,
+      "maxProperties": 1,
+      "minProperties": 1,
+      "properties": {
+        "create": {
+          "$ref": "#/definitions/createStep",
+          "description": "Create a new file from inline template or templateFile."
+        },
+        "delete": {
+          "$ref": "#/definitions/deleteStep",
+          "description": "Delete a file from the workspace."
+        },
+        "edit": {
+          "$ref": "#/definitions/editStep",
+          "description": "Patch an existing file with tree-sitter insert, replace, or remove ops."
+        },
+        "recipe": {
+          "$ref": "#/definitions/recipeRef",
+          "description": "Inline another recipe by id, optionally with call-site with bindings."
+        }
+      },
+      "type": "object"
     }
-  }
+  },
+  "properties": {
+    "args": {
+      "description": "Recipe argument definitions shown in the runner UI.",
+      "items": {
+        "$ref": "#/definitions/arg"
+      },
+      "type": "array"
+    },
+    "description": {
+      "description": "Short recipe description.",
+      "type": "string"
+    },
+    "id": {
+      "description": "Unique recipe identifier.",
+      "minLength": 1,
+      "type": "string"
+    },
+    "maps": {
+      "additionalProperties": {
+        "additionalProperties": {
+          "type": "string"
+        },
+        "type": "object"
+      },
+      "description": "Recipe-local map entries merged with workspace maps.",
+      "type": "object"
+    },
+    "name": {
+      "description": "Human-readable recipe name.",
+      "type": "string"
+    },
+    "postExecution": {
+      "description": "Post-apply shell commands or script paths under the codemod root (Jinja-rendered).",
+      "items": {
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "queries": {
+      "additionalProperties": {
+        "properties": {
+          "query": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "query"
+        ],
+        "type": "object"
+      },
+      "description": "Recipe-local named query definitions.",
+      "type": "object"
+    },
+    "steps": {
+      "description": "Ordered list of edit, create, delete, or recipe reference steps.",
+      "items": {
+        "$ref": "#/definitions/step"
+      },
+      "minItems": 1,
+      "type": "array"
+    }
+  },
+  "required": [
+    "id",
+    "steps"
+  ],
+  "title": "Codemod Recipe YAML",
+  "type": "object"
 }

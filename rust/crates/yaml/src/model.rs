@@ -4,8 +4,8 @@ use std::fmt;
 
 use std::collections::BTreeMap;
 
+use crate::dsl;
 use crate::guard_list::GuardList;
-use crate::keywords::recipe_keys;
 use crate::let_binding::LetBindings;
 pub use crate::query_spec::{QueryDefinition, QuerySpec};
 
@@ -108,22 +108,22 @@ impl<'de> Deserialize<'de> for Step {
                 }
 
                 match k.as_str() {
-                    recipe_keys::EDIT => {
+                    dsl::recipe::steps::edit::WIRE => {
                         let edit: EditStep = serde_yaml::from_value(v)
                             .map_err(|e| de::Error::custom(format!("invalid edit step: {e}")))?;
                         Ok(Step::Edit(edit))
                     }
-                    recipe_keys::CREATE => {
+                    dsl::recipe::steps::create::WIRE => {
                         let create: CreateStep = serde_yaml::from_value(v)
                             .map_err(|e| de::Error::custom(format!("invalid create step: {e}")))?;
                         Ok(Step::Create(create))
                     }
-                    recipe_keys::DELETE => {
+                    dsl::recipe::steps::delete::WIRE => {
                         let delete: DeleteStep = serde_yaml::from_value(v)
                             .map_err(|e| de::Error::custom(format!("invalid delete step: {e}")))?;
                         Ok(Step::Delete(delete))
                     }
-                    recipe_keys::RECIPE => {
+                    dsl::recipe::steps::recipe_ref::WIRE => {
                         let recipe_ref = parse_recipe_ref(v).map_err(de::Error::custom)?;
                         Ok(Step::RecipeRef(recipe_ref))
                     }
@@ -150,7 +150,9 @@ pub fn parse_recipe_ref(value: serde_yaml::Value) -> Result<RecipeRef, String> {
         }
         serde_yaml::Value::Mapping(map) => {
             let id = map
-                .get(serde_yaml::Value::String(recipe_keys::ID.to_string()))
+                .get(serde_yaml::Value::String(
+                    dsl::recipe::steps::recipe_ref::object::field::ID.to_string(),
+                ))
                 .and_then(|v| v.as_str())
                 .map(str::to_string)
                 .ok_or_else(|| "recipe step mapping requires string field 'id'".to_string())?;
@@ -159,7 +161,9 @@ pub fn parse_recipe_ref(value: serde_yaml::Value) -> Result<RecipeRef, String> {
             }
             let mut with = BTreeMap::new();
             if let Some(with_val) =
-                map.get(serde_yaml::Value::String(recipe_keys::WITH.to_string()))
+                map.get(serde_yaml::Value::String(
+                    dsl::recipe::steps::recipe_ref::object::field::WITH.to_string(),
+                ))
             {
                 let with_map = with_val.as_mapping().ok_or_else(|| {
                     "recipe step 'with' must be a mapping of arg name to template string"
@@ -180,7 +184,9 @@ pub fn parse_recipe_ref(value: serde_yaml::Value) -> Result<RecipeRef, String> {
                 let Some(name) = key.as_str() else {
                     continue;
                 };
-                if name != recipe_keys::ID && name != recipe_keys::WITH {
+                if name != dsl::recipe::steps::recipe_ref::object::field::ID
+                    && name != dsl::recipe::steps::recipe_ref::object::field::WITH
+                {
                     return Err(format!(
                         "unknown field '{name}' in recipe step (expected id, with)"
                     ));
@@ -288,17 +294,17 @@ impl<'de> Deserialize<'de> for EditOp {
                 }
 
                 match k.as_str() {
-                    recipe_keys::INSERT => {
+                    dsl::recipe::steps::edit::ops::insert::WIRE => {
                         let op: InsertOp = serde_yaml::from_value(v)
                             .map_err(|e| de::Error::custom(format!("invalid insert op: {e}")))?;
                         Ok(EditOp::Insert(op))
                     }
-                    recipe_keys::REPLACE => {
+                    dsl::recipe::steps::edit::ops::replace::WIRE => {
                         let op: ReplaceOp = serde_yaml::from_value(v)
                             .map_err(|e| de::Error::custom(format!("invalid replace op: {e}")))?;
                         Ok(EditOp::Replace(op))
                     }
-                    recipe_keys::REMOVE => {
+                    dsl::recipe::steps::edit::ops::remove::WIRE => {
                         let op: RemoveOp = serde_yaml::from_value(v)
                             .map_err(|e| de::Error::custom(format!("invalid remove op: {e}")))?;
                         Ok(EditOp::Remove(op))

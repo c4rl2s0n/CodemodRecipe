@@ -1,28 +1,39 @@
 {
-  "$schema": "http://json-schema.org/draft-07/schema#",
   "$id": "https://codemod-recipe.dev/schemas/variables.schema.json",
-  "title": "Codemod Recipe Variables",
-  "type": "object",
-  "required": ["id", "values"],
+  "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "properties": {
-    "id": {
-      "type": "string",
-      "minLength": 1,
-      "description": "Variables document identifier; values are referenced as var.<name>."
-    },
     "description": {
+      "description": "Short recipe description.",
+      "type": "string"
+    },
+    "id": {
+      "description": "Unique recipe identifier.",
+      "minLength": 1,
       "type": "string"
     },
     "values": {
-      "type": "object",
       "additionalProperties": {
         "oneOf": [
-          { "type": "string" },
-          { "type": "number" },
-          { "type": "boolean" }
+          {
+            "type": "string"
+          },
+          {
+            "type": "number"
+          },
+          {
+            "type": "boolean"
+          }
         ]
-      }
+      },
+      "description": "Constant values for a workspace variables YAML asset (requires id).",
+      "type": "object"
     }
-  }
+  },
+  "required": [
+    "id",
+    "values"
+  ],
+  "title": "Codemod Recipe Variables",
+  "type": "object"
 }

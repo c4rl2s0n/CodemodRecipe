@@ -8,10 +8,16 @@ Rust implementation: `rust/crates/yaml/src/model.rs`, `validate.rs`, `compose.rs
 
 For Rust maintenance, recipe/YAML vocabulary is centralized instead of being scattered across host and engine helpers:
 
+- `rust/crates/yaml/src/dsl/`
+  - schema-aligned modules: `recipe`, `map_asset`, `variables_asset` (step/op field trees mirror `recipe.schema.json` `$defs`)
+- `rust/crates/yaml/src/dsl_vocabulary.rs`
+  - `ENTRIES`: author descriptions, optional `schema_path`, enum parents; references `crate::dsl::…` wires
+  - `keyword_docs_json()`, `description_for_key`, `description_for_enum` for tooling
 - `rust/crates/yaml/src/keywords.rs`
-  - `recipe_keys`: canonical DSL/schema strings such as `id`, `steps`, `edit`, `create`, `delete`, `recipe`, `queries`
+  - re-exports `crate::dsl`; `preview_kinds` uses step `WIRE` constants
   - `query_conventions`: shared query path detection for `.scm` file-backed queries and id-based query-library references
   - `preview_kinds`: serialized file preview kinds used by the host
+- Codegen: `cargo run -p codemod_recipe_yaml --bin codemod_dsl_codegen` (or `scripts/generate-dsl-artifacts.sh`) writes `vscode_extension/schemas/generated-keyword-docs.json`, patches JSON Schema `description` fields, and refreshes TextMate keyword alternations. Run after changing `dsl_vocabulary`.
 - `rust/crates/core/src/resource_path.rs`
   - shared safe resolver for file-backed resources; update this instead of adding ad hoc `join`, `canonicalize`, or traversal checks in host/engine
 - `rust/crates/host/src/protocol_keys.rs`
@@ -107,7 +113,7 @@ Evaluated **once** on the file before any op. If guards fail, the edit is **skip
 
 Queries support the same composition as op `query` (inline, `.scm`, `libId.key`, chains).
 
-Rust query-path detection lives in `query_conventions`, while safe file lookup lives in `rust/crates/core/src/resource_path.rs`. Update those shared owners instead of duplicating query/resource path logic in engine/host code.
+Rust query-path detection lives in `keywords::query_conventions` (`.scm` paths and path-like strings; **not** `.yaml`/`.yml` query-library paths). Safe file lookup lives in `rust/crates/core/src/resource_path.rs`. Update those shared owners instead of duplicating query/resource path logic in engine/host code.
 
 ### `let` (optional step locals)
 
@@ -372,7 +378,7 @@ and `relatedRecipe`.
 
 Common errors: empty `ops`, missing `capture`, duplicate arg names.
 
-For Rust maintainers, these checks are implemented against the centralized `recipe_keys` constants in `rust/crates/yaml/src/keywords.rs`.
+For Rust maintainers, validation and parsing use scoped constants from `rust/crates/yaml/src/dsl/` (see `ENTRIES` in `dsl_vocabulary.rs` for hover text).
 
 ## Practical checklist
 

@@ -1,6 +1,6 @@
 use crate::diag_source::source_with_needle;
 use crate::protocol::{DiagnosticSource, RecipeDiagnostic};
-use codemod_recipe_yaml::recipe_keys;
+use codemod_recipe_yaml::dsl;
 use serde_yaml::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -72,7 +72,7 @@ pub fn load_codemod_assets(workspace_root: &Path, codemod_root: &Path) -> AssetL
         // Detect duplicate keys in map:/values: blocks from source text before YAML
         // parsers collapse them.
         let mut duplicate_keys = false;
-        for field in [recipe_keys::MAP, recipe_keys::VALUES] {
+        for field in [dsl::map_asset::field::MAP, dsl::variables_asset::field::VALUES] {
             if let Some(dup) = find_duplicate_keys_in_block(&text, field) {
                 diagnostics.push(schema_error(
                     &format!("Duplicate key \"{dup}\" in \"{field}\""),
@@ -113,7 +113,7 @@ pub fn load_codemod_assets(workspace_root: &Path, codemod_root: &Path) -> AssetL
                 recipe_paths.push(path);
             }
             Ok(Some(AssetKind::Map)) => {
-                match parse_keyed_string_map(&text, root, recipe_keys::MAP, &relative) {
+                match parse_keyed_string_map(&text, root, dsl::map_asset::field::MAP, &relative) {
                     Ok((id, entries)) => {
                         map_id_sources
                             .entry(id.clone())
@@ -129,7 +129,7 @@ pub fn load_codemod_assets(workspace_root: &Path, codemod_root: &Path) -> AssetL
                 }
             }
             Ok(Some(AssetKind::Variables)) => {
-                match parse_keyed_string_map(&text, root, recipe_keys::VALUES, &relative) {
+                match parse_keyed_string_map(&text, root, dsl::variables_asset::field::VALUES, &relative) {
                     Ok((id, entries)) => {
                         var_id_sources
                             .entry(id.clone())
@@ -196,10 +196,10 @@ fn classify_root(
     root: &serde_yaml::Mapping,
     relative: &str,
 ) -> Result<Option<AssetKind>, RecipeDiagnostic> {
-    let has_steps = root.contains_key(recipe_keys::STEPS);
-    let has_map = root.contains_key(recipe_keys::MAP);
-    let has_values = root.contains_key(recipe_keys::VALUES);
-    let has_queries = root.contains_key(recipe_keys::QUERIES);
+    let has_steps = root.contains_key(dsl::recipe::field::STEPS);
+    let has_map = root.contains_key(dsl::map_asset::field::MAP);
+    let has_values = root.contains_key(dsl::variables_asset::field::VALUES);
+    let has_queries = root.contains_key(dsl::recipe::field::QUERIES);
     let source = vec![DiagnosticSource {
         file: relative.to_string(),
         line: None,
@@ -261,7 +261,7 @@ fn parse_keyed_string_map(
     relative: &str,
 ) -> Result<(String, BTreeMap<String, String>), RecipeDiagnostic> {
     let id = root
-        .get(recipe_keys::ID)
+        .get(dsl::map_asset::field::ID)
         .and_then(Value::as_str)
         .filter(|s| !s.is_empty())
         .ok_or_else(|| {

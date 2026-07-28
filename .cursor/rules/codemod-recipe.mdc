@@ -30,16 +30,13 @@ Skills use SKILL.md routers; read `reference.md` in a skill directory when you n
 
 ## Rust keyword ownership
 
-When changing Rust handling of recipe/YAML vocabulary, prefer the centralized keyword modules over introducing new raw string literals:
+When changing Rust handling of recipe/YAML vocabulary, prefer the centralized owners over raw string literals:
 
-- `rust/crates/yaml/src/keywords.rs`
-  - `recipe_keys` — DSL/schema keys like `edit`, `create`, `queries`, `postExecution`
-  - `query_conventions` — query path heuristics and `queries/` lookup conventions
-  - `preview_kinds` — serialized preview kinds like `edit`, `create`, `delete`
-- `rust/crates/host/src/protocol_keys.rs`
-  - host-only transport keys like `inlineRecipe`, `previewToken`, `snippetLines`, `ok`, `error`
+- `rust/crates/yaml/src/dsl/` — schema-aligned wire constants (`dsl::recipe::…`, `map_asset`, `variables_asset`); enums under field modules; `//!` module docs for structure
+- `rust/crates/yaml/src/dsl_vocabulary.rs` — `ENTRIES` (author descriptions, optional `schema_path`); `query_conventions` in `keywords.rs`; `preview_kinds` uses step `WIRE` constants
+- `rust/crates/host/src/protocol_keys.rs` — host-only transport keys like `inlineRecipe`, `previewToken`, `snippetLines`, `ok`, `error`
 
-Update these modules first when adding or renaming Rust-owned keywords. Keep serde rename attributes and external wire compatibility unchanged unless the user explicitly requests a protocol/schema change.
+After changing vocabulary entries, run `scripts/generate-dsl-artifacts.sh` (or `cargo run -p codemod_recipe_yaml --bin codemod_dsl_codegen`) to refresh `vscode_extension/schemas/generated-keyword-docs.json`, schema descriptions, and TextMate keyword lists. CI verifies generated files are committed.
 
 ## Centralized path/resource resolution
 

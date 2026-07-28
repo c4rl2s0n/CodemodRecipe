@@ -100,16 +100,7 @@ pub fn collect_recipe_changes(
                 })?;
             }
             Step::Create(create) => {
-                apply_create_to_tree(
-                    &mut tree,
-                    registry,
-                    &sandbox,
-                    create,
-                    recipe_path,
-                    &effective,
-                    &merged_maps,
-                    vars,
-                )?;
+                apply_create_to_tree(&mut tree, &sandbox, create, &render_ctx)?;
             }
             Step::Delete(delete) => {
                 let if_missing = match delete.if_missing {
@@ -134,13 +125,9 @@ pub fn collect_recipe_changes(
 
 fn apply_create_to_tree(
     tree: &mut WorkingTree,
-    registry: &RecipeRegistry,
     sandbox: &PathSandbox,
     create: &CreateStep,
-    recipe_file: Option<&Path>,
-    args: &BTreeMap<String, String>,
-    maps: &BTreeMap<String, BTreeMap<String, String>>,
-    vars: &BTreeMap<String, BTreeMap<String, String>>,
+    ctx: &RecipeRenderContext<'_>,
 ) -> Result<(), String> {
     let if_exists = match create.if_exists {
         IfExistsStrategy::Fail => IfExists::Fail,
@@ -161,7 +148,18 @@ fn apply_create_to_tree(
     let content = if let Some(inline) = &create.template {
         inline.clone()
     } else if let Some(file) = &create.template_file {
-        render_template_file(file, args, maps, vars, registry.codemod_root(), recipe_file)?
+        let codemod_root = ctx
+            .codemod_root
+            .or_else(|| ctx.registry.map(RecipeRegistry::codemod_root))
+            .ok_or_else(|| "create step missing codemod root".to_string())?;
+        render_template_file(
+            file,
+            ctx.args,
+            ctx.maps,
+            ctx.vars,
+            codemod_root,
+            ctx.recipe_file,
+        )?
     } else {
         return Err("create step missing template".to_string());
     };

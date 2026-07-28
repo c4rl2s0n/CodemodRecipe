@@ -14,6 +14,13 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      - name: Generate DSL artifacts
+        working-directory: rust
+        run: cargo run -q -p codemod_recipe_yaml --bin codemod_dsl_codegen
+
+      - name: Verify generated DSL artifacts are committed
+        run: git diff --exit-code -- vscode_extension/schemas/generated-keyword-docs.json vscode_extension/schemas/recipe.schema.json vscode_extension/schemas/map.schema.json vscode_extension/schemas/variables.schema.json vscode_extension/syntaxes/codemod-recipe.tmLanguage.json
+
       - name: Run tests
         working-directory: rust
         run: cargo test --all

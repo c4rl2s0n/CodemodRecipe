@@ -48,6 +48,14 @@ Centralized path/resource resolution lives in `rust/crates/core/src/resource_pat
 
 For recipe organization (create vs modify, scaffolds), invoke skill `codemod-recipe-design-patterns`.
 
+## Rust DSL vocabulary (maintainers)
+
+- `rust/crates/yaml/src/dsl/` — wire constants aligned to JSON Schema (`dsl::recipe::steps::edit::…`, `map_asset`, `variables_asset`); step/op kinds use `WIRE`
+- `rust/crates/yaml/src/dsl_vocabulary.rs` — `ENTRIES` registry (markdown descriptions, optional `schema_path`); drives codegen and extension hovers
+- `rust/crates/yaml/src/keywords.rs` — re-exports `dsl`; `query_conventions`, `preview_kinds`
+
+Run `scripts/generate-dsl-artifacts.sh` after vocabulary changes (CI checks drift).
+
 Skills use thin SKILL.md routers; read `reference.md` in a skill directory when you need full detail.
 
 ## Core workflow

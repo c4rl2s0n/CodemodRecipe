@@ -1,4 +1,4 @@
-use crate::keywords::recipe_keys;
+use crate::dsl;
 use crate::model::*;
 use thiserror::Error;
 
@@ -57,8 +57,8 @@ pub fn validate_recipe_with(
 
     if recipe.steps.is_empty() {
         errors.push(ValidationError::MissingRequiredField {
-            op: recipe_keys::RECIPE,
-            field: recipe_keys::STEPS,
+            op: dsl::recipe::steps::recipe_ref::WIRE,
+            field: dsl::recipe::field::STEPS,
         });
     }
 
@@ -89,8 +89,8 @@ fn validate_step(
                 let lang = lang.trim();
                 if lang.is_empty() {
                     errors.push(ValidationError::MissingRequiredField {
-                        op: recipe_keys::EDIT,
-                        field: recipe_keys::LANGUAGE,
+                        op: dsl::recipe::steps::edit::WIRE,
+                        field: dsl::recipe::steps::edit::field::LANGUAGE,
                     });
                 } else if !is_known_language(lang) {
                     errors.push(ValidationError::LanguageNotSupported(lang.to_string()));
@@ -102,8 +102,8 @@ fn validate_step(
         Step::RecipeRef(recipe_ref) => {
             if recipe_ref.id.trim().is_empty() {
                 errors.push(ValidationError::MissingRequiredField {
-                    op: recipe_keys::RECIPE,
-                    field: recipe_keys::ID,
+                    op: dsl::recipe::steps::recipe_ref::WIRE,
+                    field: dsl::recipe::steps::recipe_ref::object::field::ID,
                 });
             }
         }
@@ -125,8 +125,8 @@ fn validate_edit(
 ) {
     if edit.path.trim().is_empty() {
         errors.push(ValidationError::MissingRequiredField {
-            op: recipe_keys::EDIT,
-            field: recipe_keys::PATH,
+            op: dsl::recipe::steps::edit::WIRE,
+            field: dsl::recipe::steps::edit::field::PATH,
         });
     }
     if edit.ops.is_empty() {
@@ -135,8 +135,8 @@ fn validate_edit(
     for binding in &edit.let_bindings.0 {
         if binding.name.trim().is_empty() {
             errors.push(ValidationError::MissingRequiredField {
-                op: recipe_keys::LET,
-                field: recipe_keys::NAME,
+                op: dsl::recipe::steps::edit::field::LET,
+                field: dsl::recipe::steps::edit::let_binding::field::NAME,
             });
         } else if arg_names.contains(&binding.name) {
             errors.push(ValidationError::LetNameCollidesWithArg(
@@ -150,8 +150,8 @@ fn validate_edit(
         }
         if binding.query.as_ref().is_some_and(|q| q.is_empty()) {
             errors.push(ValidationError::MissingRequiredField {
-                op: recipe_keys::LET,
-                field: recipe_keys::QUERY,
+                op: dsl::recipe::steps::edit::field::LET,
+                field: dsl::recipe::steps::edit::let_binding::field::QUERY,
             });
         }
     }
@@ -160,54 +160,54 @@ fn validate_edit(
             EditOp::Insert(insert) => {
                 if insert.query.is_empty() {
                     errors.push(ValidationError::MissingRequiredField {
-                        op: recipe_keys::INSERT,
-                        field: recipe_keys::QUERY,
+                        op: dsl::recipe::steps::edit::ops::insert::WIRE,
+                        field: dsl::recipe::steps::edit::ops::insert::field::QUERY,
                     });
                 }
                 if insert.capture.trim().is_empty() {
                     errors.push(ValidationError::MissingRequiredField {
-                        op: recipe_keys::INSERT,
-                        field: recipe_keys::CAPTURE,
+                        op: dsl::recipe::steps::edit::ops::insert::WIRE,
+                        field: dsl::recipe::steps::edit::ops::insert::field::CAPTURE,
                     });
                 }
                 if insert.text.is_empty() {
                     errors.push(ValidationError::MissingRequiredField {
-                        op: recipe_keys::INSERT,
-                        field: recipe_keys::TEXT,
+                        op: dsl::recipe::steps::edit::ops::insert::WIRE,
+                        field: dsl::recipe::steps::edit::ops::insert::field::TEXT,
                     });
                 }
             }
             EditOp::Replace(replace) => {
                 if replace.query.is_empty() {
                     errors.push(ValidationError::MissingRequiredField {
-                        op: recipe_keys::REPLACE,
-                        field: recipe_keys::QUERY,
+                        op: dsl::recipe::steps::edit::ops::replace::WIRE,
+                        field: dsl::recipe::steps::edit::ops::replace::field::QUERY,
                     });
                 }
                 if replace.capture.trim().is_empty() {
                     errors.push(ValidationError::MissingRequiredField {
-                        op: recipe_keys::REPLACE,
-                        field: recipe_keys::CAPTURE,
+                        op: dsl::recipe::steps::edit::ops::replace::WIRE,
+                        field: dsl::recipe::steps::edit::ops::replace::field::CAPTURE,
                     });
                 }
                 if replace.text.is_empty() {
                     errors.push(ValidationError::MissingRequiredField {
-                        op: recipe_keys::REPLACE,
-                        field: recipe_keys::TEXT,
+                        op: dsl::recipe::steps::edit::ops::replace::WIRE,
+                        field: dsl::recipe::steps::edit::ops::replace::field::TEXT,
                     });
                 }
             }
             EditOp::Remove(remove) => {
                 if remove.query.is_empty() {
                     errors.push(ValidationError::MissingRequiredField {
-                        op: recipe_keys::REMOVE,
-                        field: recipe_keys::QUERY,
+                        op: dsl::recipe::steps::edit::ops::remove::WIRE,
+                        field: dsl::recipe::steps::edit::ops::remove::field::QUERY,
                     });
                 }
                 if remove.capture.trim().is_empty() {
                     errors.push(ValidationError::MissingRequiredField {
-                        op: recipe_keys::REMOVE,
-                        field: recipe_keys::CAPTURE,
+                        op: dsl::recipe::steps::edit::ops::remove::WIRE,
+                        field: dsl::recipe::steps::edit::ops::remove::field::CAPTURE,
                     });
                 }
             }
@@ -221,8 +221,8 @@ fn validate_edit(
 fn validate_create(create: &CreateStep, errors: &mut Vec<ValidationError>) {
     if create.path.trim().is_empty() {
         errors.push(ValidationError::MissingRequiredField {
-            op: recipe_keys::CREATE,
-            field: recipe_keys::PATH,
+            op: dsl::recipe::steps::create::WIRE,
+            field: dsl::recipe::steps::create::field::PATH,
         });
     }
     let has_template = create.template.as_ref().is_some_and(|t| !t.is_empty());
@@ -237,8 +237,8 @@ fn validate_create(create: &CreateStep, errors: &mut Vec<ValidationError>) {
 fn validate_delete(delete: &DeleteStep, errors: &mut Vec<ValidationError>) {
     if delete.path.trim().is_empty() {
         errors.push(ValidationError::MissingRequiredField {
-            op: recipe_keys::DELETE,
-            field: recipe_keys::PATH,
+            op: dsl::recipe::steps::delete::WIRE,
+            field: dsl::recipe::steps::delete::field::PATH,
         });
     }
 }
