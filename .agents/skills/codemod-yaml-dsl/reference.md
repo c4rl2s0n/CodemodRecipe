@@ -4,6 +4,19 @@ Recipes live in `.codemod/recipes/*.yaml` and use tree-sitter queries under `edi
 
 Rust implementation: `rust/crates/yaml/src/model.rs`, `validate.rs`, `compose.rs`.
 
+## Rust ownership notes
+
+For Rust maintenance, recipe/YAML vocabulary is centralized instead of being scattered across host and engine helpers:
+
+- `rust/crates/yaml/src/keywords.rs`
+  - `recipe_keys`: canonical DSL/schema strings such as `id`, `steps`, `edit`, `create`, `delete`, `recipe`, `queries`
+  - `query_conventions`: shared query path detection and candidate lookup paths, including `queries/`, `.scm`, and `.yaml`
+  - `preview_kinds`: serialized file preview kinds used by the host
+- `rust/crates/host/src/protocol_keys.rs`
+  - host-only request/response keys such as `inlineRecipe`, `previewToken`, `snippetLines`, `ok`, and `error`
+
+When updating Rust behavior, change these keyword owners first and then update the consuming code. Avoid adding new ad hoc string literals for existing DSL or protocol concepts.
+
 ## Top-level structure
 
 ```yaml
@@ -90,6 +103,8 @@ Evaluated **once** on the file before any op. If guards fail, the edit is **skip
 - `whenNot`: forbidden patterns; edit runs only if **none** match.
 
 Queries support the same composition as op `query` (inline, `.scm`, `libId.key`, chains).
+
+Rust query-path handling is shared via `query_conventions`, so changes to file-extension or `queries/` lookup behavior should be made there rather than duplicated in engine/host code.
 
 ### `let` (optional step locals)
 
@@ -349,6 +364,8 @@ and `relatedRecipe`.
 - `delete.path` required
 
 Common errors: empty `ops`, missing `capture`, duplicate arg names.
+
+For Rust maintainers, these checks are implemented against the centralized `recipe_keys` constants in `rust/crates/yaml/src/keywords.rs`.
 
 ## Practical checklist
 

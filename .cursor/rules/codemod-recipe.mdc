@@ -28,6 +28,19 @@ Project skills live under `.agents/skills/`:
 
 Skills use SKILL.md routers; read `reference.md` in a skill directory when you need full detail.
 
+## Rust keyword ownership
+
+When changing Rust handling of recipe/YAML vocabulary, prefer the centralized keyword modules over introducing new raw string literals:
+
+- `rust/crates/yaml/src/keywords.rs`
+  - `recipe_keys` — DSL/schema keys like `edit`, `create`, `queries`, `postExecution`
+  - `query_conventions` — query path heuristics and `queries/` lookup conventions
+  - `preview_kinds` — serialized preview kinds like `edit`, `create`, `delete`
+- `rust/crates/host/src/protocol_keys.rs`
+  - host-only transport keys like `inlineRecipe`, `previewToken`, `snippetLines`, `ok`, `error`
+
+Update these modules first when adding or renaming Rust-owned keywords. Keep serde rename attributes and external wire compatibility unchanged unless the user explicitly requests a protocol/schema change.
+
 ## Recommended companion: codebase-memory-mcp
 
 Codemod workflows work best with **codebase-memory-mcp** for locate → impact → edit:

@@ -67,6 +67,9 @@ Each `steps[]` entry is a single-key object:
 
 1. **Read and follow** [reference.md](reference.md) for templates, maps, variables, args, composition, and validation.
 2. Call `validate_recipes` after editing recipe YAML.
+3. When adjusting Rust parsing/validation/preview handling for YAML vocabulary, update the centralized owners first:
+   - `rust/crates/yaml/src/keywords.rs` for DSL keys, query path conventions, and preview kinds
+   - `rust/crates/host/src/protocol_keys.rs` for host transport keys like `inlineRecipe` and `previewToken`
 
 ## Related skills
 
