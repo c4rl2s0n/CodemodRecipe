@@ -44,9 +44,6 @@ pub mod query_conventions {
         if trimmed.contains('(') {
             return false;
         }
-        if trimmed.ends_with(YAML_FILE_EXT) || trimmed.ends_with(YML_FILE_EXT) {
-            return false;
-        }
         trimmed.ends_with(QUERY_FILE_EXT) || trimmed.contains('/') || trimmed.contains('\\')
     }
 }
