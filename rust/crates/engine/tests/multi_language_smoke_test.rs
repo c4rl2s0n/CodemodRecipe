@@ -2,9 +2,9 @@ use codemod_recipe_engine::{
     ensure_language_downloaded, is_known_language, language_from_extension, LanguageRegistry,
     RegistryConfig,
 };
-use codemod_recipe_yaml::QuerySpec;
 use codemod_recipe_yaml::model::{EditOp, EditStep, InsertAnchor, InsertOp, Recipe, Step};
 use codemod_recipe_yaml::validate::{validate_recipe_with, ValidationError};
+use codemod_recipe_yaml::QuerySpec;
 use std::collections::BTreeMap;
 
 mod common;
@@ -64,9 +64,7 @@ fn registry_resolves_explicit_language_over_extension() {
 #[test]
 fn resolves_dart_from_extension_without_explicit_language() {
     let registry = LanguageRegistry::new();
-    let id = registry
-        .resolve_language_id(None, "lib/main.dart")
-        .unwrap();
+    let id = registry.resolve_language_id(None, "lib/main.dart").unwrap();
     assert_eq!(id, "dart");
 }
 
@@ -194,9 +192,7 @@ fn rust_insert_at_function_item_end() {
             Step::Edit(edit) => edit,
             _ => panic!("edit step"),
         };
-        engine
-            .collect_patches_for_edit(&ctx, edit, source)
-            .unwrap()
+        engine.collect_patches_for_edit(&ctx, edit, source).unwrap()
     });
 
     assert!(!out.is_empty());

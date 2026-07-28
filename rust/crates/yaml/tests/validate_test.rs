@@ -1,10 +1,10 @@
-use std::collections::BTreeMap;
 use codemod_recipe_yaml::let_binding::LetBinding;
 use codemod_recipe_yaml::model::{EditOp, EditStep, Recipe, Step};
+use codemod_recipe_yaml::validate::{validate_recipe, validate_recipe_with, ValidationError};
 use codemod_recipe_yaml::LetBindings;
 use codemod_recipe_yaml::QuerySpec;
-use codemod_recipe_yaml::validate::{validate_recipe, validate_recipe_with, ValidationError};
 use serde_yaml::Value;
+use std::collections::BTreeMap;
 
 fn minimal_insert_edit(mut edit: EditStep) -> Recipe {
     if edit.ops.is_empty() {
@@ -109,7 +109,9 @@ fn rejects_empty_edit_ops() {
     };
 
     let errors = validate_recipe(&recipe).unwrap_err();
-    assert!(errors.iter().any(|e| matches!(e, ValidationError::EmptyEditOps)));
+    assert!(errors
+        .iter()
+        .any(|e| matches!(e, ValidationError::EmptyEditOps)));
 }
 
 #[test]
@@ -297,7 +299,10 @@ fn rejects_empty_let_binding_name() {
     let errors = validate_recipe(&recipe).unwrap_err();
     assert!(errors.iter().any(|e| matches!(
         e,
-        ValidationError::MissingRequiredField { op: "let", field: "name" }
+        ValidationError::MissingRequiredField {
+            op: "let",
+            field: "name"
+        }
     )));
 }
 

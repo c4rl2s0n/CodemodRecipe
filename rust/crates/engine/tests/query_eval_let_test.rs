@@ -3,9 +3,7 @@
 mod common;
 
 use codemod_recipe_engine::engine::{EngineError, QueryContext};
-use codemod_recipe_yaml::let_binding::{
-    LetBinding, LetExtract, LetOnManyMatches, LetOnNoMatch,
-};
+use codemod_recipe_yaml::let_binding::{LetBinding, LetExtract, LetOnManyMatches, LetOnNoMatch};
 use codemod_recipe_yaml::QuerySpec;
 use std::path::PathBuf;
 
@@ -91,8 +89,18 @@ fn query_has_match_true_and_false() {
 #[test]
 fn let_extract_text_and_kind() {
     let ctx = ctx();
-    let b_text = binding(LetExtract::Text, LetOnNoMatch::Error, LetOnManyMatches::First, None);
-    let b_kind = binding(LetExtract::Kind, LetOnNoMatch::Error, LetOnManyMatches::First, None);
+    let b_text = binding(
+        LetExtract::Text,
+        LetOnNoMatch::Error,
+        LetOnManyMatches::First,
+        None,
+    );
+    let b_kind = binding(
+        LetExtract::Kind,
+        LetOnNoMatch::Error,
+        LetOnManyMatches::First,
+        None,
+    );
     common::with_engine("dart", |engine| {
         let text = engine.evaluate_let_binding(&ctx, SOURCE, &b_text).unwrap();
         assert_eq!(text, "alpha");
@@ -104,8 +112,18 @@ fn let_extract_text_and_kind() {
 #[test]
 fn let_extract_exists_and_count() {
     let ctx = ctx();
-    let exists = binding(LetExtract::Exists, LetOnNoMatch::Error, LetOnManyMatches::Error, None);
-    let count = binding(LetExtract::Count, LetOnNoMatch::Error, LetOnManyMatches::Error, None);
+    let exists = binding(
+        LetExtract::Exists,
+        LetOnNoMatch::Error,
+        LetOnManyMatches::Error,
+        None,
+    );
+    let count = binding(
+        LetExtract::Count,
+        LetOnNoMatch::Error,
+        LetOnManyMatches::Error,
+        None,
+    );
     common::with_engine("dart", |engine| {
         assert_eq!(
             engine.evaluate_let_binding(&ctx, SOURCE, &exists).unwrap(),
@@ -121,7 +139,12 @@ fn let_extract_exists_and_count() {
 #[test]
 fn let_on_no_match_use_empty() {
     let ctx = ctx();
-    let mut b = binding(LetExtract::Text, LetOnNoMatch::UseEmpty, LetOnManyMatches::First, None);
+    let mut b = binding(
+        LetExtract::Text,
+        LetOnNoMatch::UseEmpty,
+        LetOnManyMatches::First,
+        None,
+    );
     b.query = Some(QuerySpec::single(
         r#"(class_definition
   name: (identifier) @n
@@ -137,7 +160,12 @@ fn let_on_no_match_use_empty() {
 #[test]
 fn let_on_no_match_errors_by_default() {
     let ctx = ctx();
-    let mut b = binding(LetExtract::Text, LetOnNoMatch::Error, LetOnManyMatches::First, None);
+    let mut b = binding(
+        LetExtract::Text,
+        LetOnNoMatch::Error,
+        LetOnManyMatches::First,
+        None,
+    );
     b.query = Some(QuerySpec::single(
         r#"(class_definition
   name: (identifier) @n
@@ -153,7 +181,12 @@ fn let_on_no_match_errors_by_default() {
 #[test]
 fn let_on_many_matches_first_join_and_error() {
     let ctx = ctx();
-    let first = binding(LetExtract::Text, LetOnNoMatch::Error, LetOnManyMatches::First, None);
+    let first = binding(
+        LetExtract::Text,
+        LetOnNoMatch::Error,
+        LetOnManyMatches::First,
+        None,
+    );
     let join = binding(
         LetExtract::Text,
         LetOnNoMatch::Error,

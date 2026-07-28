@@ -101,7 +101,9 @@ pub fn apply_changes_with_selection(
         let absolute = registry_resolve(path)?;
 
         match change {
-            FileChange::Patch { source, patches, .. } => {
+            FileChange::Patch {
+                source, patches, ..
+            } => {
                 let (content, _) = match apply_selection(path, source, patches, selection) {
                     Ok(Some(result)) => result,
                     Ok(None) => continue,

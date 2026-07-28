@@ -49,8 +49,8 @@ fn lowest_common_ancestor<'a>(mut left: Node<'a>, mut right: Node<'a>) -> Option
 mod tests {
     use super::*;
     use crate::registry::{ensure_language_downloaded, LanguageRegistry};
-    use tree_sitter::{Parser, Query, QueryCursor};
     use tree_sitter::StreamingIterator;
+    use tree_sitter::{Parser, Query, QueryCursor};
 
     #[test]
     fn match_root_is_outermost_common_ancestor() {

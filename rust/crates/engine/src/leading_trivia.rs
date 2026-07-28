@@ -61,19 +61,14 @@ mod tests {
 
         ensure_language_downloaded("dart");
         let mut registry = LanguageRegistry::new();
-        let language = registry
-            .get("dart")
-            .expect("dart")
-            .adapter_language();
+        let language = registry.get("dart").expect("dart").adapter_language();
 
         let source = "class C {\n  // line\n  /* block */\n  final int x = 0;\n}\n";
         let mut parser = Parser::new();
         parser.set_language(&language).unwrap();
         let tree = parser.parse(source, None).unwrap();
         let root = tree.root_node();
-        let class = root
-            .named_child(0)
-            .expect("class");
+        let class = root.named_child(0).expect("class");
         let body = class.child_by_field_name("body").expect("body");
         let mut field_decl = None;
         let mut i = 0;

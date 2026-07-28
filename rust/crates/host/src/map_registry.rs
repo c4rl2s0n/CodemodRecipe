@@ -1,5 +1,6 @@
 use crate::diag_source::source_with_needle;
 use crate::protocol::{DiagnosticSource, RecipeDiagnostic};
+use codemod_recipe_yaml::recipe_keys;
 use serde_yaml::Value;
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::{Path, PathBuf};
@@ -7,7 +8,8 @@ use std::path::{Path, PathBuf};
 pub struct AssetLoadResult {
     pub maps_by_id: BTreeMap<String, BTreeMap<String, String>>,
     pub vars_by_id: BTreeMap<String, BTreeMap<String, String>>,
-    pub queries_by_id: BTreeMap<String, BTreeMap<String, codemod_recipe_yaml::model::QueryDefinition>>,
+    pub queries_by_id:
+        BTreeMap<String, BTreeMap<String, codemod_recipe_yaml::model::QueryDefinition>>,
     /// Absolute paths of YAML files classified as recipes.
     pub recipe_paths: Vec<PathBuf>,
     pub diagnostics: Vec<RecipeDiagnostic>,
@@ -70,7 +72,7 @@ pub fn load_codemod_assets(workspace_root: &Path, codemod_root: &Path) -> AssetL
         // Detect duplicate keys in map:/values: blocks from source text before YAML
         // parsers collapse them.
         let mut duplicate_keys = false;
-        for field in ["map", "values"] {
+        for field in [recipe_keys::MAP, recipe_keys::VALUES] {
             if let Some(dup) = find_duplicate_keys_in_block(&text, field) {
                 diagnostics.push(schema_error(
                     &format!("Duplicate key \"{dup}\" in \"{field}\""),
@@ -109,23 +111,24 @@ pub fn load_codemod_assets(workspace_root: &Path, codemod_root: &Path) -> AssetL
             Ok(Some(AssetKind::Recipe)) => {
                 recipe_paths.push(path);
             }
-            Ok(Some(AssetKind::Map)) => match parse_keyed_string_map(&text, root, "map", &relative)
-            {
-                Ok((id, entries)) => {
-                    map_id_sources
-                        .entry(id.clone())
-                        .or_default()
-                        .push(DiagnosticSource {
-                            file: relative,
-                            line: None,
-                            column: None,
-                        });
-                    maps_by_id.insert(id, entries);
+            Ok(Some(AssetKind::Map)) => {
+                match parse_keyed_string_map(&text, root, recipe_keys::MAP, &relative) {
+                    Ok((id, entries)) => {
+                        map_id_sources
+                            .entry(id.clone())
+                            .or_default()
+                            .push(DiagnosticSource {
+                                file: relative,
+                                line: None,
+                                column: None,
+                            });
+                        maps_by_id.insert(id, entries);
+                    }
+                    Err(diagnostic) => diagnostics.push(diagnostic),
                 }
-                Err(diagnostic) => diagnostics.push(diagnostic),
-            },
+            }
             Ok(Some(AssetKind::Variables)) => {
-                match parse_keyed_string_map(&text, root, "values", &relative) {
+                match parse_keyed_string_map(&text, root, recipe_keys::VALUES, &relative) {
                     Ok((id, entries)) => {
                         var_id_sources
                             .entry(id.clone())
@@ -176,11 +179,7 @@ pub fn load_codemod_assets(workspace_root: &Path, codemod_root: &Path) -> AssetL
         "Duplicate variables id",
         &mut diagnostics,
     );
-    reject_duplicate_query_ids(
-        &mut queries_by_id,
-        &query_id_sources,
-        &mut diagnostics,
-    );
+    reject_duplicate_query_ids(&mut queries_by_id, &query_id_sources, &mut diagnostics);
 
     AssetLoadResult {
         maps_by_id,
@@ -196,10 +195,10 @@ fn classify_root(
     root: &serde_yaml::Mapping,
     relative: &str,
 ) -> Result<Option<AssetKind>, RecipeDiagnostic> {
-    let has_steps = root.contains_key("steps");
-    let has_map = root.contains_key("map");
-    let has_values = root.contains_key("values");
-    let has_queries = root.contains_key("queries");
+    let has_steps = root.contains_key(recipe_keys::STEPS);
+    let has_map = root.contains_key(recipe_keys::MAP);
+    let has_values = root.contains_key(recipe_keys::VALUES);
+    let has_queries = root.contains_key(recipe_keys::QUERIES);
     let source = vec![DiagnosticSource {
         file: relative.to_string(),
         line: None,
@@ -261,7 +260,7 @@ fn parse_keyed_string_map(
     relative: &str,
 ) -> Result<(String, BTreeMap<String, String>), RecipeDiagnostic> {
     let id = root
-        .get("id")
+        .get(recipe_keys::ID)
         .and_then(Value::as_str)
         .filter(|s| !s.is_empty())
         .ok_or_else(|| {
@@ -363,7 +362,11 @@ fn key_from_yaml_line(trimmed: &str) -> Option<String> {
     }
     let without_comment = trimmed.split('#').next()?.trim();
     let (key_part, _) = without_comment.split_once(':')?;
-    let key = key_part.trim().trim_matches('"').trim_matches('\'').to_string();
+    let key = key_part
+        .trim()
+        .trim_matches('"')
+        .trim_matches('\'')
+        .to_string();
     if key.is_empty() {
         return None;
     }
@@ -401,10 +404,7 @@ fn reject_duplicate_ids(
 }
 
 fn reject_duplicate_query_ids(
-    by_id: &mut BTreeMap<
-        String,
-        BTreeMap<String, codemod_recipe_yaml::model::QueryDefinition>,
-    >,
+    by_id: &mut BTreeMap<String, BTreeMap<String, codemod_recipe_yaml::model::QueryDefinition>>,
     id_sources: &BTreeMap<String, Vec<DiagnosticSource>>,
     diagnostics: &mut Vec<RecipeDiagnostic>,
 ) {
@@ -540,17 +540,11 @@ fn parse_quoted_map_id(text: &str) -> Option<String> {
     Some(map_id)
 }
 
-fn push_map_id_warning(
-    file_path: &str,
-    map_id: &str,
-    diagnostics: &mut Vec<RecipeDiagnostic>,
-) {
+fn push_map_id_warning(file_path: &str, map_id: &str, diagnostics: &mut Vec<RecipeDiagnostic>) {
     if diagnostics.iter().any(|d| {
         d.code == "W_MAP_ID_NOT_FOUND"
             && d.message.contains(map_id)
-            && d.sources
-                .first()
-                .is_some_and(|s| s.file == file_path)
+            && d.sources.first().is_some_and(|s| s.file == file_path)
     }) {
         return;
     }
@@ -626,10 +620,7 @@ map:
 
         let result = load_codemod_assets(&workspace, &workspace.join(".codemod"));
         assert!(result.diagnostics.iter().all(|d| d.severity != "error"));
-        assert_eq!(
-            result.maps_by_id["columnType"]["int"].as_str(),
-            "intColumn"
-        );
+        assert_eq!(result.maps_by_id["columnType"]["int"].as_str(), "intColumn");
 
         let _ = std::fs::remove_dir_all(workspace);
     }
@@ -821,6 +812,9 @@ entries:
     #[test]
     fn detects_duplicate_keys_helper() {
         let text = "id: paths\nvalues:\n  a: 1\n  a: 2\n";
-        assert_eq!(find_duplicate_keys_in_block(text, "values").as_deref(), Some("a"));
+        assert_eq!(
+            find_duplicate_keys_in_block(text, "values").as_deref(),
+            Some("a")
+        );
     }
 }

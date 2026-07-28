@@ -13,10 +13,7 @@ use crate::naming::{
 const TEMPLATE_FUEL: usize = 50_000;
 
 /// Render a template string (recipe paths, queries, inline create.template).
-pub fn render_string(
-    template: &str,
-    args: &BTreeMap<String, String>,
-) -> Result<String, String> {
+pub fn render_string(template: &str, args: &BTreeMap<String, String>) -> Result<String, String> {
     render_template(template, args, &BTreeMap::new(), &BTreeMap::new())
 }
 
@@ -67,30 +64,53 @@ fn build_environment(
     env.set_fuel(Some(TEMPLATE_FUEL as u64));
     env.set_keep_trailing_newline(true);
 
-    env.add_filter("snake_case", |value: String| -> String { to_snake_case(&value) });
-    env.add_filter("camel_case", |value: String| -> String { to_camel_case(&value) });
-    env.add_filter("pascal_case", |value: String| -> String { to_pascal_case(&value) });
+    env.add_filter("snake_case", |value: String| -> String {
+        to_snake_case(&value)
+    });
+    env.add_filter("camel_case", |value: String| -> String {
+        to_camel_case(&value)
+    });
+    env.add_filter("pascal_case", |value: String| -> String {
+        to_pascal_case(&value)
+    });
     env.add_filter("lower", |value: String| -> String { to_lower(&value) });
     env.add_filter("upper", |value: String| -> String { to_upper(&value) });
     env.add_filter("screaming_snake", |value: String| -> String {
         to_screaming_snake(&value)
     });
-    env.add_filter("kebab_case", |value: String| -> String { to_kebab_case(&value) });
-    env.add_filter("trim", |value: String| -> String { value.trim().to_string() });
+    env.add_filter("kebab_case", |value: String| -> String {
+        to_kebab_case(&value)
+    });
+    env.add_filter("trim", |value: String| -> String {
+        value.trim().to_string()
+    });
 
     env.add_filter("int", |value: Value| -> Result<i64, minijinja::Error> {
-        value_to_i64(&value).map_err(|e| minijinja::Error::new(minijinja::ErrorKind::InvalidOperation, e))
+        value_to_i64(&value)
+            .map_err(|e| minijinja::Error::new(minijinja::ErrorKind::InvalidOperation, e))
     });
-    env.add_filter("add", |value: i64, n: i64| -> Result<i64, minijinja::Error> {
-        value.checked_add(n).ok_or_else(|| {
-            minijinja::Error::new(minijinja::ErrorKind::InvalidOperation, "integer overflow in add")
-        })
-    });
-    env.add_filter("sub", |value: i64, n: i64| -> Result<i64, minijinja::Error> {
-        value.checked_sub(n).ok_or_else(|| {
-            minijinja::Error::new(minijinja::ErrorKind::InvalidOperation, "integer overflow in sub")
-        })
-    });
+    env.add_filter(
+        "add",
+        |value: i64, n: i64| -> Result<i64, minijinja::Error> {
+            value.checked_add(n).ok_or_else(|| {
+                minijinja::Error::new(
+                    minijinja::ErrorKind::InvalidOperation,
+                    "integer overflow in add",
+                )
+            })
+        },
+    );
+    env.add_filter(
+        "sub",
+        |value: i64, n: i64| -> Result<i64, minijinja::Error> {
+            value.checked_sub(n).ok_or_else(|| {
+                minijinja::Error::new(
+                    minijinja::ErrorKind::InvalidOperation,
+                    "integer overflow in sub",
+                )
+            })
+        },
+    );
     env.add_filter("string", |value: i64| -> String { value.to_string() });
     env.add_filter("str", |value: i64| -> String { value.to_string() });
 
@@ -386,11 +406,7 @@ mod tests {
         entries.insert("tickCount".to_string(), "int".to_string());
         maps.insert("field_kind".to_string(), entries);
         assert_eq!(
-            render_tpl(
-                "{{ fieldName | map('field_kind') }}",
-                &args,
-                &maps
-            ),
+            render_tpl("{{ fieldName | map('field_kind') }}", &args, &maps),
             "int"
         );
     }

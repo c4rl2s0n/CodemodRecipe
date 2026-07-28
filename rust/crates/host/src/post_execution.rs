@@ -83,18 +83,17 @@ fn run_script_file(
     vars: &BTreeMap<String, BTreeMap<String, String>>,
     workspace_root: &Path,
 ) -> Result<(), String> {
-    let body = std::fs::read_to_string(script_path)
-        .map_err(|e| format!("Failed to read postExecution script {}: {e}", script_path.display()))?;
+    let body = std::fs::read_to_string(script_path).map_err(|e| {
+        format!(
+            "Failed to read postExecution script {}: {e}",
+            script_path.display()
+        )
+    })?;
     let rendered_body = render_template(&body, args, maps, vars)?;
     let tmp = tempfile_script(workspace_root, &rendered_body)?;
     let result = run_shell_command(&format!("bash {}", shell_quote(&tmp)), workspace_root);
     let _ = std::fs::remove_file(&tmp);
-    result.map_err(|e| {
-        format!(
-            "postExecution script {} failed: {e}",
-            script_path.display()
-        )
-    })
+    result.map_err(|e| format!("postExecution script {} failed: {e}", script_path.display()))
 }
 
 fn tempfile_script(workspace_root: &Path, body: &str) -> Result<PathBuf, String> {
@@ -188,7 +187,10 @@ mod tests {
             &ws.join(".codemod"),
         )
         .unwrap();
-        assert_eq!(std::fs::read_to_string(ws.join("out.txt")).unwrap(), "scripted");
+        assert_eq!(
+            std::fs::read_to_string(ws.join("out.txt")).unwrap(),
+            "scripted"
+        );
         let _ = std::fs::remove_dir_all(ws);
     }
 
@@ -226,4 +228,3 @@ mod tests {
         let _ = std::fs::remove_dir_all(ws);
     }
 }
-

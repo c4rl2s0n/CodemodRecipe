@@ -10,6 +10,7 @@ use crate::protocol::{
     ApplyResponse, AstPathResult, DescribeResponse, DiffResponse, HostCommand, PreviewResponse,
     RecipeCatalogResponse,
 };
+use crate::protocol_keys;
 use crate::registry::RecipeRegistry;
 use crate::runner::{collect_recipe_changes, planned_snapshot_paths, resolve_recipe};
 use crate::validate::{validate_recipe, validate_workspace};
@@ -26,14 +27,27 @@ impl<'a> RecipeRequest<'a> {
             id.to_string()
         } else if let Some(inline) = self.inline_recipe {
             inline
-                .get("id")
+                .get(protocol_keys::ID)
                 .and_then(|v| v.as_str())
-                .unwrap_or("inline")
+                .unwrap_or(protocol_keys::INLINE_RECIPE_ID)
                 .to_string()
         } else {
-            "unknown".to_string()
+            protocol_keys::UNKNOWN_RECIPE_ID.to_string()
         }
     }
+}
+
+fn error_json(message: impl Into<String>) -> serde_json::Value {
+    let mut value = serde_json::Map::new();
+    value.insert(
+        protocol_keys::OK.to_string(),
+        serde_json::Value::Bool(false),
+    );
+    value.insert(
+        protocol_keys::ERROR.to_string(),
+        serde_json::Value::String(message.into()),
+    );
+    serde_json::Value::Object(value)
 }
 
 fn catalog_response(registry: &RecipeRegistry) -> serde_json::Value {
@@ -98,11 +112,11 @@ pub fn handle_command(registry: &mut RecipeRegistry, cmd: HostCommand) -> serde_
                 edit_policy.as_deref().unwrap_or("recommend"),
             ) {
                 Ok(p) => p,
-                Err(e) => return serde_json::json!({ "ok": false, "error": e }),
+                Err(e) => return error_json(e),
             };
             let companions = match crate::bootstrap::parse_companions(&companions) {
                 Ok(c) => c,
-                Err(e) => return serde_json::json!({ "ok": false, "error": e }),
+                Err(e) => return error_json(e),
             };
             crate::bootstrap::bootstrap_project(
                 &registry.workspace_root,
@@ -163,14 +177,8 @@ fn collect(
     registry: &RecipeRegistry,
     request: RecipeRequest<'_>,
 ) -> Result<crate::runner::CollectedChanges, String> {
-    let (recipe, recipe_path) =
-        resolve_recipe(registry, request.recipe_id, request.inline_recipe)?;
-    collect_recipe_changes(
-        registry,
-        &recipe,
-        recipe_path.as_deref(),
-        request.args,
-    )
+    let (recipe, recipe_path) = resolve_recipe(registry, request.recipe_id, request.inline_recipe)?;
+    collect_recipe_changes(registry, &recipe, recipe_path.as_deref(), request.args)
 }
 
 fn snapshot_paths_for_request(
@@ -193,11 +201,14 @@ fn preview(
     let args = request.args.clone();
     match collect(registry, request) {
         Ok(collected) => {
-            let snapshot_paths = match snapshot_paths_for_request(registry, RecipeRequest {
-                recipe_id,
-                inline_recipe,
-                args: &args,
-            }) {
+            let snapshot_paths = match snapshot_paths_for_request(
+                registry,
+                RecipeRequest {
+                    recipe_id,
+                    inline_recipe,
+                    args: &args,
+                },
+            ) {
                 Ok(paths) => paths,
                 Err(error) => {
                     return to_value(PreviewResponse {
@@ -210,24 +221,15 @@ fn preview(
                 }
             };
             let path_refs: Vec<_> = snapshot_paths.iter().map(|p| p.as_path()).collect();
-            let preview_token = compute_preview_token(
-                recipe_id,
-                inline_recipe,
-                &args,
-                &path_refs,
-            );
+            let preview_token = compute_preview_token(recipe_id, inline_recipe, &args, &path_refs);
 
             let mut files = Vec::new();
             for change in &collected.changes {
                 if change.is_skipped() {
                     continue;
                 }
-                match build_file_preview_from_change(
-                    change,
-                    include_contents,
-                    false,
-                    snippet_lines,
-                ) {
+                match build_file_preview_from_change(change, include_contents, false, snippet_lines)
+                {
                     Ok(file) => files.push(file),
                     Err(error) => {
                         return to_value(PreviewResponse {
@@ -259,11 +261,7 @@ fn preview(
     }
 }
 
-fn diff(
-    registry: &RecipeRegistry,
-    request: RecipeRequest<'_>,
-    path: &str,
-) -> serde_json::Value {
+fn diff(registry: &RecipeRegistry, request: RecipeRequest<'_>, path: &str) -> serde_json::Value {
     let recipe_key = request.recipe_key();
     match collect(registry, request) {
         Ok(collected) => {
@@ -310,11 +308,14 @@ fn apply(
     let inline_recipe = request.inline_recipe;
     let args = request.args.clone();
 
-    let snapshot_paths = match snapshot_paths_for_request(registry, RecipeRequest {
-        recipe_id,
-        inline_recipe,
-        args: &args,
-    }) {
+    let snapshot_paths = match snapshot_paths_for_request(
+        registry,
+        RecipeRequest {
+            recipe_id,
+            inline_recipe,
+            args: &args,
+        },
+    ) {
         Ok(paths) => paths,
         Err(error) => {
             return to_value(ApplyResponse {
@@ -326,13 +327,9 @@ fn apply(
         }
     };
     let path_refs: Vec<_> = snapshot_paths.iter().map(|p| p.as_path()).collect();
-    if let Err(error) = validate_preview_token(
-        recipe_id,
-        inline_recipe,
-        &args,
-        preview_token,
-        &path_refs,
-    ) {
+    if let Err(error) =
+        validate_preview_token(recipe_id, inline_recipe, &args, preview_token, &path_refs)
+    {
         return to_value(ApplyResponse {
             ok: false,
             error: Some(error),
@@ -341,11 +338,14 @@ fn apply(
         });
     }
 
-    let collected = match collect(registry, RecipeRequest {
-        recipe_id,
-        inline_recipe,
-        args: &args,
-    }) {
+    let collected = match collect(
+        registry,
+        RecipeRequest {
+            recipe_id,
+            inline_recipe,
+            args: &args,
+        },
+    ) {
         Ok(c) => c,
         Err(error) => {
             return to_value(ApplyResponse {
@@ -431,7 +431,5 @@ fn apply(
 }
 
 fn to_value<T: serde::Serialize>(value: T) -> serde_json::Value {
-    serde_json::to_value(value).unwrap_or_else(
-        |e| serde_json::json!({ "ok": false, "error": format!("serialization failed: {e}") }),
-    )
+    serde_json::to_value(value).unwrap_or_else(|e| error_json(format!("serialization failed: {e}")))
 }

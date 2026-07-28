@@ -132,7 +132,9 @@ fn with_bindings_partial_fallthrough() {
     let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
     registry.reload();
 
-    let schema = registry.get("jinja.bind.orchestrator_partial").expect("schema");
+    let schema = registry
+        .get("jinja.bind.orchestrator_partial")
+        .expect("schema");
     let names: Vec<_> = schema.args.iter().map(|a| a.name.as_str()).collect();
     assert!(names.contains(&"featureName"));
     assert!(names.contains(&"suffix"));

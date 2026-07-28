@@ -251,7 +251,7 @@ mod tests {
             description: None,
             args,
             maps: BTreeMap::new(),
-        queries: BTreeMap::new(),
+            queries: BTreeMap::new(),
             steps: vec![Step::Edit(edit_step(path))],
             post_execution: vec![],
         }
@@ -282,10 +282,7 @@ mod tests {
             None,
             None,
             vec![],
-            vec![
-                ComposeStep::Recipe(first),
-                ComposeStep::Recipe(second),
-            ],
+            vec![ComposeStep::Recipe(first), ComposeStep::Recipe(second)],
         );
 
         assert_eq!(composed.args.len(), 1);
@@ -333,7 +330,7 @@ mod tests {
             description: None,
             args: vec![],
             maps: BTreeMap::new(),
-        queries: BTreeMap::new(),
+            queries: BTreeMap::new(),
             steps: vec![],
             post_execution: vec![PostExecution::String("echo a".to_string())],
         };
@@ -363,7 +360,7 @@ mod tests {
             description: None,
             args: vec![],
             maps: BTreeMap::new(),
-        queries: BTreeMap::new(),
+            queries: BTreeMap::new(),
             steps: vec![recipe_ref("child")],
             post_execution: vec![],
         };
@@ -384,7 +381,7 @@ mod tests {
             description: None,
             args: vec![],
             maps: BTreeMap::new(),
-        queries: BTreeMap::new(),
+            queries: BTreeMap::new(),
             steps: vec![recipe_ref("b")],
             post_execution: vec![],
         };
@@ -394,7 +391,7 @@ mod tests {
             description: None,
             args: vec![],
             maps: BTreeMap::new(),
-        queries: BTreeMap::new(),
+            queries: BTreeMap::new(),
             steps: vec![recipe_ref("a")],
             post_execution: vec![],
         };
@@ -419,7 +416,7 @@ mod tests {
             description: None,
             args: vec![sample_arg("featureName"), sample_arg("fieldName")],
             maps: BTreeMap::new(),
-        queries: BTreeMap::new(),
+            queries: BTreeMap::new(),
             steps: vec![recipe_ref_with("child", with)],
             post_execution: vec![],
         };
@@ -449,7 +446,7 @@ mod tests {
             description: None,
             args: vec![sample_arg("featureName")],
             maps: BTreeMap::new(),
-        queries: BTreeMap::new(),
+            queries: BTreeMap::new(),
             steps: vec![recipe_ref_with("child", with)],
             post_execution: vec![],
         };
@@ -470,7 +467,7 @@ mod tests {
             description: None,
             args: vec![],
             maps: BTreeMap::new(),
-        queries: BTreeMap::new(),
+            queries: BTreeMap::new(),
             steps: vec![recipe_ref_with("child", BTreeMap::new())],
             post_execution: vec![],
         };

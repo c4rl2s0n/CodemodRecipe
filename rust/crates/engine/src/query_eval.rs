@@ -1,13 +1,13 @@
 //! Guard and `let` query evaluation (match existence, extract capture values).
 
-use codemod_recipe_yaml::let_binding::{
-    LetBinding, LetExtract, LetOnManyMatches, LetOnNoMatch,
-};
+use codemod_recipe_yaml::let_binding::{LetBinding, LetExtract, LetOnManyMatches, LetOnNoMatch};
 use codemod_recipe_yaml::QuerySpec;
 use tree_sitter::StreamingIterator;
 use tree_sitter::{Query, QueryCursor, Tree};
 
-use super::engine::{CaptureSpan, Engine, EngineError, QueryContext, node_for_byte_range, resolve_step_text};
+use super::engine::{
+    node_for_byte_range, resolve_step_text, CaptureSpan, Engine, EngineError, QueryContext,
+};
 
 impl Engine {
     /// True when the query chain produces at least one match on `source`.
@@ -39,8 +39,7 @@ impl Engine {
         match binding.extract {
             LetExtract::Exists => {
                 let capture = binding.capture.as_deref();
-                let count =
-                    self.count_query_matches(ctx, source, &tree, query, capture)?;
+                let count = self.count_query_matches(ctx, source, &tree, query, capture)?;
                 Ok(if count > 0 {
                     "true".to_string()
                 } else {
@@ -49,8 +48,7 @@ impl Engine {
             }
             LetExtract::Count => {
                 let capture = binding.capture.as_deref();
-                let count =
-                    self.count_query_matches(ctx, source, &tree, query, capture)?;
+                let count = self.count_query_matches(ctx, source, &tree, query, capture)?;
                 Ok(count.to_string())
             }
             LetExtract::Text | LetExtract::Kind => {
@@ -60,14 +58,7 @@ impl Engine {
                         binding.name, binding.extract
                     ))
                 })?;
-                self.extract_single_capture_value(
-                    ctx,
-                    source,
-                    &tree,
-                    query,
-                    capture,
-                    binding,
-                )
+                self.extract_single_capture_value(ctx, source, &tree, query, capture, binding)
             }
         }
     }
@@ -81,8 +72,7 @@ impl Engine {
         capture_name: &str,
         binding: &LetBinding,
     ) -> Result<String, EngineError> {
-        let spans =
-            self.collect_all_capture_spans(ctx, source, tree, query_spec, capture_name)?;
+        let spans = self.collect_all_capture_spans(ctx, source, tree, query_spec, capture_name)?;
         if spans.is_empty() {
             return match binding.on_no_match {
                 LetOnNoMatch::Error => Err(EngineError::NoMatch {
@@ -147,13 +137,8 @@ impl Engine {
                 }
                 return Ok(count);
             }
-            scope_spans = self.collect_match_root_spans(
-                source,
-                tree,
-                &language,
-                step_text,
-                &scope_spans,
-            )?;
+            scope_spans =
+                self.collect_match_root_spans(source, tree, &language, step_text, &scope_spans)?;
             if scope_spans.is_empty() {
                 return Ok(0);
             }
@@ -213,13 +198,8 @@ impl Engine {
                 }
                 return Ok(spans);
             }
-            scope_spans = self.collect_match_root_spans(
-                source,
-                tree,
-                &language,
-                step_text,
-                &scope_spans,
-            )?;
+            scope_spans =
+                self.collect_match_root_spans(source, tree, &language, step_text, &scope_spans)?;
             if scope_spans.is_empty() {
                 return Ok(vec![]);
             }
@@ -228,13 +208,13 @@ impl Engine {
     }
 }
 
-fn resolved_steps(ctx: &QueryContext<'_>, query_spec: &QuerySpec) -> Result<Vec<String>, EngineError> {
+fn resolved_steps(
+    ctx: &QueryContext<'_>,
+    query_spec: &QuerySpec,
+) -> Result<Vec<String>, EngineError> {
     match query_spec {
         QuerySpec::Single(s) => Ok(vec![resolve_step_text(ctx, s)?]),
-        QuerySpec::Chain(v) => v
-            .iter()
-            .map(|s| resolve_step_text(ctx, s))
-            .collect(),
+        QuerySpec::Chain(v) => v.iter().map(|s| resolve_step_text(ctx, s)).collect(),
     }
 }
 

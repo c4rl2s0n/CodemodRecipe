@@ -11,9 +11,36 @@ use crate::registry::RecipeRegistry;
 use crate::template::convert_legacy_syntax;
 
 const JINJA_KEYWORDS: &[&str] = &[
-    "if", "else", "elif", "endif", "for", "endfor", "block", "endblock", "extends", "include",
-    "with", "endwith", "macro", "endmacro", "call", "endcall", "filter", "endfilter", "set",
-    "raw", "endraw", "true", "false", "none", "True", "False", "None", "map", "var", "LBRACE",
+    "if",
+    "else",
+    "elif",
+    "endif",
+    "for",
+    "endfor",
+    "block",
+    "endblock",
+    "extends",
+    "include",
+    "with",
+    "endwith",
+    "macro",
+    "endmacro",
+    "call",
+    "endcall",
+    "filter",
+    "endfilter",
+    "set",
+    "raw",
+    "endraw",
+    "true",
+    "false",
+    "none",
+    "True",
+    "False",
+    "None",
+    "map",
+    "var",
+    "LBRACE",
 ];
 
 /// Reload workspace recipes/maps and run the full validation pipeline.
@@ -30,7 +57,9 @@ pub fn validate_recipe(registry: &RecipeRegistry, recipe_id: &str) -> ValidateRe
             "E_RECIPE_NOT_FOUND",
             format!("Recipe not found: {recipe_id}"),
             "",
-            Some(format!("Call list_recipes or check .codemod/recipes/{recipe_id}.yaml")),
+            Some(format!(
+                "Call list_recipes or check .codemod/recipes/{recipe_id}.yaml"
+            )),
             Some(recipe_id.to_string()),
             recipe_id,
         ));
@@ -41,18 +70,14 @@ pub fn validate_recipe(registry: &RecipeRegistry, recipe_id: &str) -> ValidateRe
         .recipe_file_for(recipe_id)
         .unwrap_or_else(|| format!(".codemod/recipes/{recipe_id}.yaml"));
     let maps = registry.merged_maps_for(recipe);
-    validate_expanded_recipe(
-        registry,
-        recipe_id,
-        recipe,
-        &file,
-        &maps,
-        &mut diagnostics,
-    );
+    validate_expanded_recipe(registry, recipe_id, recipe, &file, &maps, &mut diagnostics);
     build_validate_response(&diagnostics)
 }
 
-pub fn validate_expanded_recipes(registry: &RecipeRegistry, diagnostics: &mut Vec<RecipeDiagnostic>) {
+pub fn validate_expanded_recipes(
+    registry: &RecipeRegistry,
+    diagnostics: &mut Vec<RecipeDiagnostic>,
+) {
     let ids: Vec<String> = registry.recipes_ast().keys().cloned().collect();
     for id in ids {
         let Some(recipe) = registry.recipes_ast().get(&id).cloned() else {
@@ -86,7 +111,9 @@ fn validate_expanded_recipe(
                 ),
                 ComposeError::RecipeNotFound(_) => (
                     "E_RECIPE_REF",
-                    Some("Ensure the referenced recipe id exists under the codemod root".to_string()),
+                    Some(
+                        "Ensure the referenced recipe id exists under the codemod root".to_string(),
+                    ),
                 ),
             };
             diagnostics.push(error(
@@ -165,12 +192,7 @@ fn validate_with_bindings_in_steps(
                 }
             }
             Step::Scoped(scoped) => {
-                validate_with_bindings_in_steps(
-                    &scoped.steps,
-                    registry,
-                    file_path,
-                    diagnostics,
-                );
+                validate_with_bindings_in_steps(&scoped.steps, registry, file_path, diagnostics);
             }
             _ => {}
         }
@@ -313,26 +335,17 @@ fn templated_fields_for_step(step: &Step) -> Vec<(&'static str, String)> {
             for op in &edit.ops {
                 match op {
                     EditOp::Insert(insert) => {
-                        out.push((
-                            "insert.query",
-                            insert.query.step_strings().join("\n"),
-                        ));
+                        out.push(("insert.query", insert.query.step_strings().join("\n")));
                         out.push(("insert.capture", insert.capture.clone()));
                         out.push(("insert.text", insert.text.clone()));
                     }
                     EditOp::Replace(replace) => {
-                        out.push((
-                            "replace.query",
-                            replace.query.step_strings().join("\n"),
-                        ));
+                        out.push(("replace.query", replace.query.step_strings().join("\n")));
                         out.push(("replace.capture", replace.capture.clone()));
                         out.push(("replace.text", replace.text.clone()));
                     }
                     EditOp::Remove(remove) => {
-                        out.push((
-                            "remove.query",
-                            remove.query.step_strings().join("\n"),
-                        ));
+                        out.push(("remove.query", remove.query.step_strings().join("\n")));
                         out.push(("remove.capture", remove.capture.clone()));
                     }
                     EditOp::Unknown(_, _) => {}
@@ -563,7 +576,9 @@ mod tests {
             }),
             let_bindings: LetBindings(vec![LetBinding {
                 name: "n".into(),
-                query: Some(QuerySpec::single("(identifier) @id (#eq? @id \"{{symbol}}\")")),
+                query: Some(QuerySpec::single(
+                    "(identifier) @id (#eq? @id \"{{symbol}}\")",
+                )),
                 capture: Some("{{cap}}".into()),
                 r#as: Some("{{ derived }}".into()),
                 ..Default::default()
@@ -600,10 +615,7 @@ steps:
         registry.reload();
         let response = validate_recipe(&registry, "parent");
         let diags = response.diagnostics.unwrap_or_default();
-        assert!(
-            diags.iter().any(|d| d.code == "E_RECIPE_REF"),
-            "{diags:?}"
-        );
+        assert!(diags.iter().any(|d| d.code == "E_RECIPE_REF"), "{diags:?}");
         let _ = std::fs::remove_dir_all(ws);
     }
 

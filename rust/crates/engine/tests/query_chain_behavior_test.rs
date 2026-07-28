@@ -31,8 +31,7 @@ const TWO_METHOD_BODIES: &str = r#"(class_definition
 fn ctx() -> (std::path::PathBuf, QueryContext<'static>) {
     let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
     let codemod = repo.join(".codemod");
-    let codemod_static: &'static std::path::Path =
-        Box::leak(codemod.into_boxed_path());
+    let codemod_static: &'static std::path::Path = Box::leak(codemod.into_boxed_path());
     (
         repo,
         QueryContext {
@@ -68,10 +67,7 @@ fn insert_chain_recipe(query: QuerySpec, capture: &str) -> Recipe {
 fn chain_fan_out_only_applies_where_later_step_matches() {
     let (_repo, ctx) = ctx();
     let source = "class A {\n  void target() {}\n}\nclass B {\n  void other() {}\n}\n";
-    let query = QuerySpec::Chain(vec![
-        CLASS_STEP.to_string(),
-        METHOD_TARGET_BODY.to_string(),
-    ]);
+    let query = QuerySpec::Chain(vec![CLASS_STEP.to_string(), METHOD_TARGET_BODY.to_string()]);
     let recipe = insert_chain_recipe(query, "body");
 
     let out = common::with_engine("dart", |engine| {
@@ -91,10 +87,7 @@ fn chain_fan_out_only_applies_where_later_step_matches() {
 fn chain_zero_matches_after_scoped_step_errors() {
     let (_repo, ctx) = ctx();
     let source = "class A {\n  void other() {}\n}\n";
-    let query = QuerySpec::Chain(vec![
-        CLASS_STEP.to_string(),
-        METHOD_TARGET_BODY.to_string(),
-    ]);
+    let query = QuerySpec::Chain(vec![CLASS_STEP.to_string(), METHOD_TARGET_BODY.to_string()]);
     let recipe = insert_chain_recipe(query, "body");
 
     let err = common::with_engine("dart", |engine| {

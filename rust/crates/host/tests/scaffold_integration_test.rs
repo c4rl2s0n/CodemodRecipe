@@ -111,18 +111,12 @@ fn scaffold_project_preview_covers_create_edit_and_delete() {
     let files = response["files"].as_array().unwrap();
     assert_eq!(files.len(), 4, "expected create + 2 edits + delete");
 
-    let kinds: Vec<_> = files
-        .iter()
-        .map(|f| f["kind"].as_str().unwrap())
-        .collect();
+    let kinds: Vec<_> = files.iter().map(|f| f["kind"].as_str().unwrap()).collect();
     assert_eq!(kinds.iter().filter(|k| **k == "create").count(), 1);
     assert_eq!(kinds.iter().filter(|k| **k == "edit").count(), 2);
     assert_eq!(kinds.iter().filter(|k| **k == "delete").count(), 1);
 
-    let create = files
-        .iter()
-        .find(|f| f["kind"] == "create")
-        .unwrap();
+    let create = files.iter().find(|f| f["kind"] == "create").unwrap();
     assert_eq!(create["path"], "lib/counter/counter_repository.dart");
     assert!(create["isNew"].as_bool().unwrap());
     let create_snippet = create["snippet"].as_str().unwrap_or("");
@@ -138,10 +132,7 @@ fn scaffold_project_preview_covers_create_edit_and_delete() {
         .unwrap_or("")
         .contains("tickCount"));
 
-    let app_preview = files
-        .iter()
-        .find(|f| f["path"] == "lib/app.dart")
-        .unwrap();
+    let app_preview = files.iter().find(|f| f["path"] == "lib/app.dart").unwrap();
     assert!(app_preview["snippet"]
         .as_str()
         .unwrap_or("")
@@ -257,7 +248,10 @@ fn scaffold_project_delete_if_missing_skip_is_idempotent() {
     );
     assert_eq!(preview["ok"], true, "{}", preview["error"]);
     let files = preview["files"].as_array().unwrap();
-    assert!(files.is_empty(), "skipped delete should not appear in preview");
+    assert!(
+        files.is_empty(),
+        "skipped delete should not appear in preview"
+    );
 
     let apply = dispatch::handle_command(
         &mut registry,
@@ -312,10 +306,14 @@ fn scaffold_project_apply_with_patch_selection() {
     );
     assert_eq!(apply["ok"], true, "{}", apply["error"]);
 
-    assert!(workspace.join("lib/counter/counter_repository.dart").exists());
-    assert!(std::fs::read_to_string(workspace.join("lib/counter/counter.dart"))
-        .unwrap()
-        .contains("tickCount"));
+    assert!(workspace
+        .join("lib/counter/counter_repository.dart")
+        .exists());
+    assert!(
+        std::fs::read_to_string(workspace.join("lib/counter/counter.dart"))
+            .unwrap()
+            .contains("tickCount")
+    );
     assert!(!std::fs::read_to_string(workspace.join("lib/app.dart"))
         .unwrap()
         .contains("print('scaffold')"));

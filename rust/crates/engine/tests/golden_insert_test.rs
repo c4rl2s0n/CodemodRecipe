@@ -3,7 +3,10 @@ use pretty_assertions::assert_eq;
 
 mod common;
 
-fn test_ctx<'a>(codemod_root: &'a std::path::Path, recipe_file: Option<&'a std::path::Path>) -> QueryContext<'a> {
+fn test_ctx<'a>(
+    codemod_root: &'a std::path::Path,
+    recipe_file: Option<&'a std::path::Path>,
+) -> QueryContext<'a> {
     QueryContext {
         recipe_file,
         codemod_root,

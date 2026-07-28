@@ -156,11 +156,7 @@ fn stdio_subprocess_lists_recipes_and_previews() {
     );
     let preview_text = preview["result"]["content"][0]["text"].as_str().unwrap();
     let preview_json: serde_json::Value = serde_json::from_str(preview_text).unwrap();
-    assert_eq!(
-        preview_json["ok"], true,
-        "preview failed: {}",
-        preview_text
-    );
+    assert_eq!(preview_json["ok"], true, "preview failed: {}", preview_text);
     assert!(!preview_json["files"].as_array().unwrap().is_empty());
     let token = preview_json["previewToken"]
         .as_str()
@@ -199,12 +195,10 @@ fn stdio_subprocess_lists_recipes_and_previews() {
     let reject_text = reject["result"]["content"][0]["text"].as_str().unwrap();
     let reject_json: serde_json::Value = serde_json::from_str(reject_text).unwrap();
     assert_eq!(reject_json["ok"], false);
-    assert!(
-        reject_json["error"]
-            .as_str()
-            .unwrap()
-            .contains("previewToken")
-    );
+    assert!(reject_json["error"]
+        .as_str()
+        .unwrap()
+        .contains("previewToken"));
 
     let _ = std::fs::remove_dir_all(workspace);
 }
@@ -234,18 +228,17 @@ fn stdio_subprocess_bootstraps_project() {
             "arguments": {}
         }),
     );
-    let bootstrap_text = bootstrap["result"]["content"][0]["text"]
-        .as_str()
-        .unwrap();
+    let bootstrap_text = bootstrap["result"]["content"][0]["text"].as_str().unwrap();
     let bootstrap_json: serde_json::Value = serde_json::from_str(bootstrap_text).unwrap();
-    assert_eq!(bootstrap_json["ok"], true, "bootstrap failed: {bootstrap_text}");
+    assert_eq!(
+        bootstrap_json["ok"], true,
+        "bootstrap failed: {bootstrap_text}"
+    );
     assert_eq!(bootstrap_json["edit_policy"], "recommend");
     assert_eq!(bootstrap_json["companions"], serde_json::json!([]));
-    assert!(
-        workspace
-            .join(".agents/skills/codemod-overview/SKILL.md")
-            .is_file()
-    );
+    assert!(workspace
+        .join(".agents/skills/codemod-overview/SKILL.md")
+        .is_file());
     assert!(workspace.join(".cursor/rules/codemod-recipe.mdc").is_file());
     assert!(!workspace.join(".cursor/rules/codebase-memory.mdc").exists());
     assert!(workspace.join(".codemod/recipes").is_dir());
@@ -264,7 +257,10 @@ fn stdio_subprocess_bootstraps_project() {
     );
     let strict_text = strict["result"]["content"][0]["text"].as_str().unwrap();
     let strict_json: serde_json::Value = serde_json::from_str(strict_text).unwrap();
-    assert_eq!(strict_json["ok"], true, "strict bootstrap failed: {strict_text}");
+    assert_eq!(
+        strict_json["ok"], true,
+        "strict bootstrap failed: {strict_text}"
+    );
     assert_eq!(strict_json["edit_policy"], "strict");
     assert_eq!(
         strict_json["companions"],
@@ -272,7 +268,9 @@ fn stdio_subprocess_bootstraps_project() {
     );
     let rule = std::fs::read_to_string(workspace.join(".cursor/rules/codemod-recipe.mdc")).unwrap();
     assert!(rule.contains("edit_policy=strict"));
-    assert!(workspace.join(".cursor/rules/codebase-memory.mdc").is_file());
+    assert!(workspace
+        .join(".cursor/rules/codebase-memory.mdc")
+        .is_file());
 
     let bad = session.rpc(
         4,

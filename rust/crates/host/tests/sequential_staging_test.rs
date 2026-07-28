@@ -11,10 +11,7 @@ static WORKSPACE_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 fn temp_workspace(name: &str) -> PathBuf {
     let n = WORKSPACE_COUNTER.fetch_add(1, Ordering::SeqCst);
-    let dir = std::env::temp_dir().join(format!(
-        "seq_stage_{name}_{}_{n}",
-        std::process::id()
-    ));
+    let dir = std::env::temp_dir().join(format!("seq_stage_{name}_{}_{n}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(dir.join("lib")).unwrap();
     std::fs::create_dir_all(dir.join(".codemod/recipes")).unwrap();
@@ -89,11 +86,7 @@ fn create_then_edit_missing_file_is_single_create() {
 #[test]
 fn create_skip_then_edit_existing_is_patch() {
     let workspace = temp_workspace("create_skip_edit");
-    std::fs::write(
-        workspace.join("lib/barrel.dart"),
-        "// barrel\n",
-    )
-    .unwrap();
+    std::fs::write(workspace.join("lib/barrel.dart"), "// barrel\n").unwrap();
     let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
     registry.reload();
 

@@ -154,10 +154,8 @@ mod tests {
     use std::fs;
 
     fn temp_ws(label: &str) -> std::path::PathBuf {
-        let ws = std::env::temp_dir().join(format!(
-            "codemod_bootstrap_{label}_{}",
-            std::process::id()
-        ));
+        let ws =
+            std::env::temp_dir().join(format!("codemod_bootstrap_{label}_{}", std::process::id()));
         let _ = fs::remove_dir_all(&ws);
         fs::create_dir_all(&ws).expect("create temp workspace");
         ws
@@ -218,8 +216,12 @@ mod tests {
             Some(".cursor/rules/codebase-memory.mdc")
         );
         assert_eq!(
-            resolve_dest_path(".agents/skills/codemod-overview/SKILL.md", EditPolicy::Strict, &[])
-                .as_deref(),
+            resolve_dest_path(
+                ".agents/skills/codemod-overview/SKILL.md",
+                EditPolicy::Strict,
+                &[]
+            )
+            .as_deref(),
             Some(".agents/skills/codemod-overview/SKILL.md")
         );
     }
@@ -260,8 +262,7 @@ mod tests {
         assert!(rule.contains("edit_policy=strict"));
         assert!(rule.contains("## Edit policy"));
         assert!(ws.join(".cursor/rules/codebase-memory.mdc").is_file());
-        let companion =
-            fs::read_to_string(ws.join(".cursor/rules/codebase-memory.mdc")).unwrap();
+        let companion = fs::read_to_string(ws.join(".cursor/rules/codebase-memory.mdc")).unwrap();
         assert!(companion.contains("companions=codebase-memory"));
         assert!(!companion.contains("home-ikusa-workspace"));
         let _ = fs::remove_dir_all(&ws);

@@ -22,21 +22,24 @@ fn collect_patched(
     workspace: &std::path::Path,
     yaml: &str,
     args: &BTreeMap<String, String>,
-) -> (Vec<codemod_recipe_core::file_change::FileChange>, Option<String>) {
+) -> (
+    Vec<codemod_recipe_core::file_change::FileChange>,
+    Option<String>,
+) {
     let recipe = parse_recipe_yaml(yaml).expect("parse");
     let codemod = workspace.join(".codemod");
     std::fs::create_dir_all(&codemod).unwrap();
     let registry = RecipeRegistry::new(workspace.to_path_buf(), codemod);
     let collected = collect_recipe_changes(&registry, &recipe, None, args).expect("collect");
-    let out = collected
-        .changes
-        .first()
-        .map(|c| {
-            let FileChange::Patch { source, patches, .. } = c else {
-                panic!("expected patch");
-            };
-            apply_patches(source, patches).expect("apply")
-        });
+    let out = collected.changes.first().map(|c| {
+        let FileChange::Patch {
+            source, patches, ..
+        } = c
+        else {
+            panic!("expected patch");
+        };
+        apply_patches(source, patches).expect("apply")
+    });
     (collected.changes, out)
 }
 
@@ -79,11 +82,7 @@ steps:
 #[test]
 fn when_not_allows_edit_when_pattern_absent() {
     let workspace = temp_workspace("when_not_run");
-    std::fs::write(
-        workspace.join("lib/a.dart"),
-        "class Plain {\n}\n",
-    )
-    .unwrap();
+    std::fs::write(workspace.join("lib/a.dart"), "class Plain {\n}\n").unwrap();
     let yaml = r#"
 id: t
 steps:

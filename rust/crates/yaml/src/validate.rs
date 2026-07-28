@@ -1,3 +1,4 @@
+use crate::keywords::recipe_keys;
 use crate::model::*;
 use thiserror::Error;
 
@@ -10,7 +11,10 @@ pub enum ValidationError {
     UnsupportedOp(String),
 
     #[error("{op} op missing required field: {field}")]
-    MissingRequiredField { op: &'static str, field: &'static str },
+    MissingRequiredField {
+        op: &'static str,
+        field: &'static str,
+    },
 
     #[error("edit step has no ops")]
     EmptyEditOps,
@@ -53,8 +57,8 @@ pub fn validate_recipe_with(
 
     if recipe.steps.is_empty() {
         errors.push(ValidationError::MissingRequiredField {
-            op: "recipe",
-            field: "steps",
+            op: recipe_keys::RECIPE,
+            field: recipe_keys::STEPS,
         });
     }
 
@@ -85,8 +89,8 @@ fn validate_step(
                 let lang = lang.trim();
                 if lang.is_empty() {
                     errors.push(ValidationError::MissingRequiredField {
-                        op: "edit",
-                        field: "language",
+                        op: recipe_keys::EDIT,
+                        field: recipe_keys::LANGUAGE,
                     });
                 } else if !is_known_language(lang) {
                     errors.push(ValidationError::LanguageNotSupported(lang.to_string()));
@@ -98,8 +102,8 @@ fn validate_step(
         Step::RecipeRef(recipe_ref) => {
             if recipe_ref.id.trim().is_empty() {
                 errors.push(ValidationError::MissingRequiredField {
-                    op: "recipe",
-                    field: "id",
+                    op: recipe_keys::RECIPE,
+                    field: recipe_keys::ID,
                 });
             }
         }
@@ -121,8 +125,8 @@ fn validate_edit(
 ) {
     if edit.path.trim().is_empty() {
         errors.push(ValidationError::MissingRequiredField {
-            op: "edit",
-            field: "path",
+            op: recipe_keys::EDIT,
+            field: recipe_keys::PATH,
         });
     }
     if edit.ops.is_empty() {
@@ -131,11 +135,13 @@ fn validate_edit(
     for binding in &edit.let_bindings.0 {
         if binding.name.trim().is_empty() {
             errors.push(ValidationError::MissingRequiredField {
-                op: "let",
-                field: "name",
+                op: recipe_keys::LET,
+                field: recipe_keys::NAME,
             });
         } else if arg_names.contains(&binding.name) {
-            errors.push(ValidationError::LetNameCollidesWithArg(binding.name.clone()));
+            errors.push(ValidationError::LetNameCollidesWithArg(
+                binding.name.clone(),
+            ));
         }
         if binding.query.is_none() && binding.r#as.is_none() {
             errors.push(ValidationError::LetBindingMissingQuery {
@@ -144,8 +150,8 @@ fn validate_edit(
         }
         if binding.query.as_ref().is_some_and(|q| q.is_empty()) {
             errors.push(ValidationError::MissingRequiredField {
-                op: "let",
-                field: "query",
+                op: recipe_keys::LET,
+                field: recipe_keys::QUERY,
             });
         }
     }
@@ -154,54 +160,54 @@ fn validate_edit(
             EditOp::Insert(insert) => {
                 if insert.query.is_empty() {
                     errors.push(ValidationError::MissingRequiredField {
-                        op: "insert",
-                        field: "query",
+                        op: recipe_keys::INSERT,
+                        field: recipe_keys::QUERY,
                     });
                 }
                 if insert.capture.trim().is_empty() {
                     errors.push(ValidationError::MissingRequiredField {
-                        op: "insert",
-                        field: "capture",
+                        op: recipe_keys::INSERT,
+                        field: recipe_keys::CAPTURE,
                     });
                 }
                 if insert.text.is_empty() {
                     errors.push(ValidationError::MissingRequiredField {
-                        op: "insert",
-                        field: "text",
+                        op: recipe_keys::INSERT,
+                        field: recipe_keys::TEXT,
                     });
                 }
             }
             EditOp::Replace(replace) => {
                 if replace.query.is_empty() {
                     errors.push(ValidationError::MissingRequiredField {
-                        op: "replace",
-                        field: "query",
+                        op: recipe_keys::REPLACE,
+                        field: recipe_keys::QUERY,
                     });
                 }
                 if replace.capture.trim().is_empty() {
                     errors.push(ValidationError::MissingRequiredField {
-                        op: "replace",
-                        field: "capture",
+                        op: recipe_keys::REPLACE,
+                        field: recipe_keys::CAPTURE,
                     });
                 }
                 if replace.text.is_empty() {
                     errors.push(ValidationError::MissingRequiredField {
-                        op: "replace",
-                        field: "text",
+                        op: recipe_keys::REPLACE,
+                        field: recipe_keys::TEXT,
                     });
                 }
             }
             EditOp::Remove(remove) => {
                 if remove.query.is_empty() {
                     errors.push(ValidationError::MissingRequiredField {
-                        op: "remove",
-                        field: "query",
+                        op: recipe_keys::REMOVE,
+                        field: recipe_keys::QUERY,
                     });
                 }
                 if remove.capture.trim().is_empty() {
                     errors.push(ValidationError::MissingRequiredField {
-                        op: "remove",
-                        field: "capture",
+                        op: recipe_keys::REMOVE,
+                        field: recipe_keys::CAPTURE,
                     });
                 }
             }
@@ -215,15 +221,12 @@ fn validate_edit(
 fn validate_create(create: &CreateStep, errors: &mut Vec<ValidationError>) {
     if create.path.trim().is_empty() {
         errors.push(ValidationError::MissingRequiredField {
-            op: "create",
-            field: "path",
+            op: recipe_keys::CREATE,
+            field: recipe_keys::PATH,
         });
     }
     let has_template = create.template.as_ref().is_some_and(|t| !t.is_empty());
-    let has_file = create
-        .template_file
-        .as_ref()
-        .is_some_and(|t| !t.is_empty());
+    let has_file = create.template_file.as_ref().is_some_and(|t| !t.is_empty());
     match (has_template, has_file) {
         (false, false) => errors.push(ValidationError::CreateMissingTemplate),
         (true, true) => errors.push(ValidationError::CreateConflictingTemplate),
@@ -234,8 +237,8 @@ fn validate_create(create: &CreateStep, errors: &mut Vec<ValidationError>) {
 fn validate_delete(delete: &DeleteStep, errors: &mut Vec<ValidationError>) {
     if delete.path.trim().is_empty() {
         errors.push(ValidationError::MissingRequiredField {
-            op: "delete",
-            field: "path",
+            op: recipe_keys::DELETE,
+            field: recipe_keys::PATH,
         });
     }
 }

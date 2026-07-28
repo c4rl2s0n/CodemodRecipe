@@ -1,6 +1,11 @@
 //! Span helpers for tree-sitter capture edits.
 
-pub fn insert_offset_at_anchor_end(source: &str, _start: usize, end: usize, is_block: bool) -> usize {
+pub fn insert_offset_at_anchor_end(
+    source: &str,
+    _start: usize,
+    end: usize,
+    is_block: bool,
+) -> usize {
     if end == 0 {
         return end;
     }

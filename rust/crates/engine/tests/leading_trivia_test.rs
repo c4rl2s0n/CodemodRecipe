@@ -1,12 +1,13 @@
 use codemod_recipe_engine::engine::QueryContext;
-use codemod_recipe_yaml::QuerySpec;
 use codemod_recipe_yaml::model::{EditOp, EditStep, Recipe, RemoveOp, Step};
+use codemod_recipe_yaml::QuerySpec;
 
 use std::collections::BTreeMap;
 
 mod common;
 
-const SOURCE_WITH_DOC_FIELD: &str = "class Settings {\n  /// Count of items.\n  final int count = 0;\n  final int other = 1;\n}\n";
+const SOURCE_WITH_DOC_FIELD: &str =
+    "class Settings {\n  /// Count of items.\n  final int count = 0;\n  final int other = 1;\n}\n";
 
 #[test]
 fn remove_with_leading_trivia_strips_doc_comment() {
@@ -27,7 +28,8 @@ fn remove_with_leading_trivia_strips_doc_comment() {
         steps: vec![Step::Edit(EditStep {
             path: "test.dart".to_string(),
             ops: vec![EditOp::Remove(RemoveOp {
-                query: QuerySpec::single(r#"(class_definition
+                query: QuerySpec::single(
+                    r#"(class_definition
   name: (identifier) @className
   body: (class_body
     (declaration
@@ -35,7 +37,8 @@ fn remove_with_leading_trivia_strips_doc_comment() {
         (initialized_identifier
           (identifier) @fieldName))) @member)
   (#eq? @className "Settings")
-  (#eq? @fieldName "count"))"#),
+  (#eq? @fieldName "count"))"#,
+                ),
                 capture: "member".to_string(),
                 include_leading_trivia: true,
             })],
@@ -78,7 +81,8 @@ fn remove_with_leading_trivia_strips_line_comment() {
         steps: vec![Step::Edit(EditStep {
             path: "test.dart".to_string(),
             ops: vec![EditOp::Remove(RemoveOp {
-                query: QuerySpec::single(r#"(class_definition
+                query: QuerySpec::single(
+                    r#"(class_definition
   name: (identifier) @className
   body: (class_body
     (declaration
@@ -86,7 +90,8 @@ fn remove_with_leading_trivia_strips_line_comment() {
         (initialized_identifier
           (identifier) @fieldName))) @member)
   (#eq? @className "Settings")
-  (#eq? @fieldName "count"))"#),
+  (#eq? @fieldName "count"))"#,
+                ),
                 capture: "member".to_string(),
                 include_leading_trivia: true,
             })],

@@ -2,16 +2,14 @@ use codemod_recipe_core::file_change::{FileChange, IfExists, IfMissing};
 use codemod_recipe_core::patch::apply_patches;
 use codemod_recipe_engine::engine::{EngineError, QueryContext};
 use codemod_recipe_engine::LanguageRegistry;
-use codemod_recipe_yaml::model::{
-    CreateStep, IfExistsStrategy, IfMissingStrategy, Recipe, Step,
-};
+use codemod_recipe_yaml::model::{CreateStep, IfExistsStrategy, IfMissingStrategy, Recipe, Step};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use crate::args;
-use crate::render_context::RecipeRenderContext;
 use crate::path_sandbox::PathSandbox;
 use crate::registry::{render_recipe_templates_with_root, RecipeRegistry};
+use crate::render_context::RecipeRenderContext;
 use crate::template::render_template_file;
 use crate::working_tree::WorkingTree;
 
@@ -69,8 +67,7 @@ pub fn collect_recipe_changes(
 
     let sandbox = PathSandbox::new(registry.workspace_root.clone());
     let mut tree = WorkingTree::new();
-    let mut language_registry =
-        LanguageRegistry::with_config(registry.language_config.clone());
+    let mut language_registry = LanguageRegistry::with_config(registry.language_config.clone());
     let ctx = QueryContext {
         recipe_file: recipe_path,
         codemod_root: registry.codemod_root(),
@@ -202,12 +199,7 @@ pub fn run_recipe_on_file(
     args: &BTreeMap<String, String>,
 ) -> Result<SingleFileRunResult, String> {
     let (recipe, recipe_path) = registry.load_recipe_ast(recipe_id)?;
-    let collected = collect_recipe_changes(
-        registry,
-        &recipe,
-        Some(recipe_path.as_path()),
-        args,
-    )?;
+    let collected = collect_recipe_changes(registry, &recipe, Some(recipe_path.as_path()), args)?;
     let file = args
         .get("file")
         .cloned()
@@ -218,7 +210,9 @@ pub fn run_recipe_on_file(
         .find(|c| c.path() == file)
         .ok_or_else(|| format!("No changes for file: {file}"))?;
     match change {
-        FileChange::Patch { source, patches, .. } => {
+        FileChange::Patch {
+            source, patches, ..
+        } => {
             let modified = apply_patches(source, patches).map_err(|e| e.to_string())?;
             Ok(SingleFileRunResult {
                 file,

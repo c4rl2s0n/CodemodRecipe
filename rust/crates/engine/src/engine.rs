@@ -278,13 +278,8 @@ impl Engine {
                     fail_on_multiple,
                 );
             }
-            scope_spans = self.collect_match_root_spans(
-                source,
-                tree,
-                &language,
-                step_text,
-                &scope_spans,
-            )?;
+            scope_spans =
+                self.collect_match_root_spans(source, tree, &language, step_text, &scope_spans)?;
             if scope_spans.is_empty() {
                 return Ok(None);
             }
@@ -354,7 +349,10 @@ impl Engine {
                             end: node.end_byte(),
                             is_block: node.kind() == "block",
                         };
-                        if !spans.iter().any(|s| s.start == span.start && s.end == span.end) {
+                        if !spans
+                            .iter()
+                            .any(|s| s.start == span.start && s.end == span.end)
+                        {
                             spans.push(span);
                         }
                     }
@@ -377,7 +375,10 @@ impl Engine {
 pub(crate) fn node_for_byte_range(tree: &Tree, start: usize, end: usize) -> Node<'_> {
     tree.root_node()
         .named_descendant_for_byte_range(start, end.max(start + 1))
-        .or_else(|| tree.root_node().descendant_for_byte_range(start, end.max(start + 1)))
+        .or_else(|| {
+            tree.root_node()
+                .descendant_for_byte_range(start, end.max(start + 1))
+        })
         .unwrap_or_else(|| tree.root_node())
 }
 
@@ -390,8 +391,8 @@ fn whitespace_normalized(text: &str) -> String {
 }
 
 pub fn parse_recipe_yaml(yaml_text: &str) -> Result<Recipe, EngineError> {
-    let value =
-        serde_yaml::from_str::<serde_yaml::Value>(yaml_text).map_err(|e| EngineError::RecipeParse(e.to_string()))?;
+    let value = serde_yaml::from_str::<serde_yaml::Value>(yaml_text)
+        .map_err(|e| EngineError::RecipeParse(e.to_string()))?;
     if value
         .as_mapping()
         .is_some_and(|map| map.contains_key(serde_yaml::Value::String("group".to_string())))

@@ -38,23 +38,26 @@ pub enum FileChange {
 impl FileChange {
     pub fn path(&self) -> &str {
         match self {
-            Self::Patch { path, .. } | Self::Create { path, .. } | Self::Delete { path, .. } => path,
+            Self::Patch { path, .. } | Self::Create { path, .. } | Self::Delete { path, .. } => {
+                path
+            }
         }
     }
 
     pub fn is_skipped(&self) -> bool {
         match self {
-            Self::Patch { source, patches, .. } => {
-                patches.is_empty()
-                    || apply_patches(source, patches).ok() == Some(source.clone())
-            }
+            Self::Patch {
+                source, patches, ..
+            } => patches.is_empty() || apply_patches(source, patches).ok() == Some(source.clone()),
             Self::Create { skipped, .. } | Self::Delete { skipped, .. } => *skipped,
         }
     }
 
     pub fn modified_content(&self) -> Result<Option<String>, PatchError> {
         match self {
-            Self::Patch { source, patches, .. } => {
+            Self::Patch {
+                source, patches, ..
+            } => {
                 if patches.is_empty() {
                     return Ok(None);
                 }

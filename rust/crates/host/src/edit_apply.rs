@@ -31,7 +31,8 @@ pub fn apply_edit_step_with_guards(
 
     let mut current = source.to_string();
     for op in &edit.ops {
-        let locals = evaluate_let_bindings(engine, query_ctx, &current, &edit.let_bindings, render)?;
+        let locals =
+            evaluate_let_bindings(engine, query_ctx, &current, &edit.let_bindings, render)?;
         let rendered_op = render_single_edit_op(op, render, &locals)?;
         let patches = engine
             .collect_patches_for_single_op(query_ctx, &rendered_op, &current)

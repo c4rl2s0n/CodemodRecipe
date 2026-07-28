@@ -29,7 +29,11 @@ impl HostConfig {
         }
 
         let workspace_root = workspace_root
-            .or_else(|| std::env::var("CODEMOD_WORKSPACE_ROOT").ok().map(PathBuf::from))
+            .or_else(|| {
+                std::env::var("CODEMOD_WORKSPACE_ROOT")
+                    .ok()
+                    .map(PathBuf::from)
+            })
             .unwrap_or_else(|| std::env::current_dir().expect("cwd"));
         let codemod_root = codemod_root
             .or_else(|| std::env::var("CODEMOD_ROOT").ok().map(PathBuf::from))

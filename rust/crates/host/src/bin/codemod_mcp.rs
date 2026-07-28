@@ -1,5 +1,6 @@
 use codemod_recipe_host::dispatch::handle_command;
 use codemod_recipe_host::protocol::HostCommand;
+use codemod_recipe_host::protocol_keys;
 use codemod_recipe_host::{config::HostConfig, registry::RecipeRegistry};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -34,7 +35,8 @@ struct RpcError {
 
 fn main() -> anyhow::Result<()> {
     let config = HostConfig::from_env_args();
-    let mut registry = RecipeRegistry::new(config.workspace_root.clone(), config.codemod_root.clone());
+    let mut registry =
+        RecipeRegistry::new(config.workspace_root.clone(), config.codemod_root.clone());
     registry.language_config = config.language_registry_config();
     registry.reload();
 
@@ -198,10 +200,7 @@ fn handle_request(
                         .get("recipe")
                         .and_then(|v| v.as_str())
                         .map(String::from);
-                    handle_command(
-                        registry,
-                        HostCommand::Validate { recipe },
-                    )
+                    handle_command(registry, HostCommand::Validate { recipe })
                 }
                 "preview_recipe" => mcp_preview_or_apply(registry, &arguments, false),
                 "apply_recipe" => mcp_preview_or_apply(registry, &arguments, true),
@@ -235,10 +234,10 @@ fn handle_request(
                                 &companions,
                             )
                         }
-                        (Err(e), _) | (_, Err(e)) => json!({ "ok": false, "error": e }),
+                        (Err(e), _) | (_, Err(e)) => error_json(e),
                     }
                 }
-                _ => json!({ "ok": false, "error": format!("Unknown tool: {tool}") }),
+                _ => error_json(format!("Unknown tool: {tool}")),
             };
 
             RpcResponse {
@@ -268,24 +267,24 @@ fn mcp_preview_or_apply(
     do_apply: bool,
 ) -> serde_json::Value {
     let recipe = arguments
-        .get("recipe")
+        .get(protocol_keys::RECIPE)
         .and_then(|v| v.as_str())
         .map(String::from);
-    let inline_recipe = arguments.get("inlineRecipe").cloned();
+    let inline_recipe = arguments.get(protocol_keys::INLINE_RECIPE).cloned();
     if recipe.is_none() && inline_recipe.is_none() {
-        return json!({ "ok": false, "error": "Missing recipe or inlineRecipe" });
+        return error_json("Missing recipe or inlineRecipe");
     }
 
     let args = json_args_to_btreemap(arguments);
 
     if do_apply {
         let preview_token = arguments
-            .get("previewToken")
+            .get(protocol_keys::PREVIEW_TOKEN)
             .and_then(|v| v.as_str())
             .unwrap_or("")
             .to_string();
         let selection = arguments
-            .get("selection")
+            .get(protocol_keys::SELECTION)
             .cloned()
             .unwrap_or(serde_json::Value::Null);
         handle_command(
@@ -300,7 +299,7 @@ fn mcp_preview_or_apply(
         )
     } else {
         let snippet_lines = arguments
-            .get("snippetLines")
+            .get(protocol_keys::SNIPPET_LINES)
             .and_then(|v| v.as_u64())
             .map(|n| n as u32);
         handle_command(
@@ -313,6 +312,19 @@ fn mcp_preview_or_apply(
             },
         )
     }
+}
+
+fn error_json(message: impl Into<String>) -> serde_json::Value {
+    let mut value = serde_json::Map::new();
+    value.insert(
+        protocol_keys::OK.to_string(),
+        serde_json::Value::Bool(false),
+    );
+    value.insert(
+        protocol_keys::ERROR.to_string(),
+        serde_json::Value::String(message.into()),
+    );
+    serde_json::Value::Object(value)
 }
 
 fn json_args_to_btreemap(arguments: &serde_json::Value) -> BTreeMap<String, String> {

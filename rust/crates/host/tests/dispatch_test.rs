@@ -536,7 +536,9 @@ fn preview_create_file_step() {
     assert_eq!(apply["ok"], true, "{}", apply["error"]);
     let created = workspace.join("lib/features/counter.dart");
     assert!(created.exists());
-    assert!(std::fs::read_to_string(&created).unwrap().contains("class Counter"));
+    assert!(std::fs::read_to_string(&created)
+        .unwrap()
+        .contains("class Counter"));
 
     let _ = std::fs::remove_dir_all(workspace);
 }
@@ -655,4 +657,3 @@ fn inline_recipe_preview_and_apply() {
 
     let _ = std::fs::remove_dir_all(workspace);
 }
-

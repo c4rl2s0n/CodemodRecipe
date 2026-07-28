@@ -1,6 +1,7 @@
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use crate::engine::EngineError;
+use codemod_recipe_yaml::query_conventions;
 
 /// Resolve unified `query:` field — inline text or path to a `.scm` file.
 pub fn resolve_query_source(
@@ -13,11 +14,11 @@ pub fn resolve_query_source(
         return Err(EngineError::Query("query must not be empty".to_string()));
     }
 
-    if !looks_like_file_path(trimmed) {
+    if !query_conventions::looks_like_query_path(trimmed) {
         return Ok(trimmed.to_string());
     }
 
-    for candidate in candidate_paths(trimmed, recipe_file, codemod_root) {
+    for candidate in query_conventions::candidate_query_paths(trimmed, recipe_file, codemod_root) {
         if candidate.is_file() {
             return std::fs::read_to_string(&candidate).map_err(|e| {
                 EngineError::Query(format!(
@@ -33,38 +34,10 @@ pub fn resolve_query_source(
     )))
 }
 
-fn looks_like_file_path(query: &str) -> bool {
-    let trimmed = query.trim();
-    if trimmed.contains('(') {
-        return false;
-    }
-    trimmed.ends_with(".scm")
-        || trimmed.contains('/')
-        || trimmed.contains('\\')
-        || (trimmed.ends_with(".yaml") && !trimmed.contains('('))
-}
-
-fn candidate_paths(
-    query: &str,
-    recipe_file: Option<&Path>,
-    codemod_root: &Path,
-) -> Vec<PathBuf> {
-    let mut paths = Vec::new();
-    if let Some(recipe) = recipe_file.and_then(|p| p.parent()) {
-        paths.push(recipe.join(query));
-        paths.push(recipe.join("queries").join(query));
-    }
-    paths.push(codemod_root.join(query));
-    if let Some(recipe) = recipe_file.and_then(|p| p.parent()) {
-        paths.push(recipe.join("..").join(query));
-    }
-    paths.push(codemod_root.join("queries").join(query));
-    paths
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::path::PathBuf;
 
     fn repo_root() -> PathBuf {
         PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..")
@@ -75,12 +48,8 @@ mod tests {
         let repo = repo_root();
         let recipe = repo.join("test/fixtures/rust_oracle/insert_log_line.recipe.yaml");
         let codemod = repo.join(".codemod");
-        let text = resolve_query_source(
-            "settings_update_body.scm",
-            Some(&recipe),
-            &codemod,
-        )
-        .unwrap();
+        let text =
+            resolve_query_source("settings_update_body.scm", Some(&recipe), &codemod).unwrap();
         assert!(text.contains("class_definition"));
         assert!(text.contains("@body"));
     }
@@ -96,7 +65,8 @@ mod tests {
     #[test]
     fn errors_when_query_file_missing() {
         let repo = repo_root();
-        let err = resolve_query_source("missing/file.scm", None, &repo.join(".codemod")).unwrap_err();
+        let err =
+            resolve_query_source("missing/file.scm", None, &repo.join(".codemod")).unwrap_err();
         assert!(err.to_string().contains("query file not found"));
     }
 }

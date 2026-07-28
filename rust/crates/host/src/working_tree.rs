@@ -226,10 +226,7 @@ mod tests {
 
     fn temp_dir() -> std::path::PathBuf {
         let n = COUNTER.fetch_add(1, Ordering::SeqCst);
-        let dir = std::env::temp_dir().join(format!(
-            "working_tree_{}_{n}",
-            std::process::id()
-        ));
+        let dir = std::env::temp_dir().join(format!("working_tree_{}_{n}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir
@@ -240,19 +237,16 @@ mod tests {
         let root = temp_dir();
         let sandbox = PathSandbox::new(root.clone());
         let mut tree = WorkingTree::new();
-        tree.create(
-            &sandbox,
-            "a.dart",
-            "class A {}\n".into(),
-            IfExists::Skip,
-        )
-        .unwrap();
+        tree.create(&sandbox, "a.dart", "class A {}\n".into(), IfExists::Skip)
+            .unwrap();
         tree.apply_edit(&sandbox, "a.dart", |s| Ok(format!("{s}// edited\n")))
             .unwrap();
         let changes = tree.finalize();
         assert_eq!(changes.len(), 1);
         match &changes[0] {
-            FileChange::Create { content, skipped, .. } => {
+            FileChange::Create {
+                content, skipped, ..
+            } => {
                 assert!(!skipped);
                 assert!(content.contains("// edited"));
             }
@@ -267,19 +261,16 @@ mod tests {
         std::fs::write(root.join("a.dart"), "class A {}\n").unwrap();
         let sandbox = PathSandbox::new(root.clone());
         let mut tree = WorkingTree::new();
-        tree.create(
-            &sandbox,
-            "a.dart",
-            "UNUSED".into(),
-            IfExists::Skip,
-        )
-        .unwrap();
+        tree.create(&sandbox, "a.dart", "UNUSED".into(), IfExists::Skip)
+            .unwrap();
         tree.apply_edit(&sandbox, "a.dart", |_| Ok("class A { A(); }\n".into()))
             .unwrap();
         let changes = tree.finalize();
         assert_eq!(changes.len(), 1);
         match &changes[0] {
-            FileChange::Patch { source, patches, .. } => {
+            FileChange::Patch {
+                source, patches, ..
+            } => {
                 assert_eq!(source, "class A {}\n");
                 assert_eq!(patches.len(), 1);
                 assert_eq!(patches[0].replacement, "class A { A(); }\n");
@@ -298,12 +289,7 @@ mod tests {
         tree.apply_edit(&sandbox, "a.dart", |s| Ok(s.to_string()))
             .unwrap();
         let err = tree
-            .create(
-                &sandbox,
-                "a.dart",
-                "x".into(),
-                IfExists::Fail,
-            )
+            .create(&sandbox, "a.dart", "x".into(), IfExists::Fail)
             .unwrap_err();
         assert!(err.contains("already exists"), "{err}");
         let _ = std::fs::remove_dir_all(root);
@@ -314,13 +300,8 @@ mod tests {
         let root = temp_dir();
         let sandbox = PathSandbox::new(root.clone());
         let mut tree = WorkingTree::new();
-        tree.create(
-            &sandbox,
-            "a.dart",
-            "x".into(),
-            IfExists::Fail,
-        )
-        .unwrap();
+        tree.create(&sandbox, "a.dart", "x".into(), IfExists::Fail)
+            .unwrap();
         tree.delete(&sandbox, "a.dart", IfMissing::Fail).unwrap();
         assert!(tree.finalize().is_empty());
         let _ = std::fs::remove_dir_all(root);

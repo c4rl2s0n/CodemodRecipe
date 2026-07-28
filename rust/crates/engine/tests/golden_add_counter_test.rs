@@ -25,7 +25,8 @@ fn golden_add_counter_field() {
     args.insert("className".to_string(), "Settings".to_string());
     args.insert("field".to_string(), "counter".to_string());
 
-    let rendered = render_recipe_templates(&recipe, &args, &BTreeMap::new(), &BTreeMap::new()).expect("render");
+    let rendered = render_recipe_templates(&recipe, &args, &BTreeMap::new(), &BTreeMap::new())
+        .expect("render");
     let codemod = repo_root.join(".codemod");
     let ctx = QueryContext {
         recipe_file: Some(recipe_path.as_path()),
@@ -61,7 +62,8 @@ fn template_renders_camel_field_name_in_recipe_text() {
     args.insert("field".to_string(), "MyCounter".to_string());
     args.insert("file".to_string(), "a.dart".to_string());
 
-    let rendered = render_recipe_templates(&recipe, &args, &BTreeMap::new(), &BTreeMap::new()).expect("render");
+    let rendered = render_recipe_templates(&recipe, &args, &BTreeMap::new(), &BTreeMap::new())
+        .expect("render");
     let codemod_recipe_yaml::model::Step::Edit(edit) = &rendered.steps[0] else {
         panic!("expected edit");
     };
@@ -70,7 +72,10 @@ fn template_renders_camel_field_name_in_recipe_text() {
     };
     assert!(insert.text.contains("myCounter"));
     assert_eq!(
-        render_string(&insert.query.step_strings().join("\n"), &args).expect("render").matches("Settings").count(),
+        render_string(&insert.query.step_strings().join("\n"), &args)
+            .expect("render")
+            .matches("Settings")
+            .count(),
         1
     );
 }

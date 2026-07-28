@@ -42,13 +42,15 @@ steps:
 
 #[test]
 fn parse_recipe_ref_rejects_unknown_field() {
-    let err = parse_recipe_ref(serde_yaml::from_str(
-        r#"
+    let err = parse_recipe_ref(
+        serde_yaml::from_str(
+            r#"
 id: child
 extra: true
 "#,
+        )
+        .unwrap(),
     )
-    .unwrap())
     .unwrap_err();
     assert!(err.contains("unknown field"));
 }

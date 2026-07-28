@@ -1,6 +1,7 @@
 use crate::protocol::{FilePreview, PatchInfo};
 use codemod_recipe_core::file_change::FileChange;
 use codemod_recipe_core::patch::SourcePatch;
+use codemod_recipe_yaml::preview_kinds;
 
 pub fn patches_to_patch_info(patches: &[SourcePatch], include_replacement: bool) -> Vec<PatchInfo> {
     patches
@@ -107,7 +108,7 @@ pub fn build_file_preview(
     });
     FilePreview {
         path,
-        kind: "edit",
+        kind: preview_kinds::EDIT,
         is_new: false,
         skipped,
         original: if include_contents {
@@ -155,7 +156,7 @@ pub fn build_file_preview_from_change(
             content, skipped, ..
         } => Ok(FilePreview {
             path,
-            kind: "create",
+            kind: preview_kinds::CREATE,
             is_new: true,
             skipped: *skipped,
             original: if include_contents {
@@ -183,7 +184,7 @@ pub fn build_file_preview_from_change(
             source, skipped, ..
         } => Ok(FilePreview {
             path,
-            kind: "delete",
+            kind: preview_kinds::DELETE,
             is_new: false,
             skipped: *skipped,
             original: if include_contents {

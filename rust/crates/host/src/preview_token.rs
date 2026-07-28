@@ -1,6 +1,8 @@
 use std::collections::BTreeMap;
 use std::path::Path;
 
+use crate::protocol_keys;
+
 #[derive(Debug, Clone, serde::Serialize)]
 pub struct FileSnapshot {
     exists: bool,
@@ -33,12 +35,23 @@ pub fn compute_preview_token(
         .map(|path| (path.to_string_lossy().to_string(), file_snapshot(path)))
         .collect();
 
-    let payload = serde_json::json!({
-        "recipe": recipe,
-        "inlineRecipe": inline_recipe,
-        "args": args,
-        "snapshots": snapshots,
-    });
+    let mut payload = serde_json::Map::new();
+    payload.insert(
+        protocol_keys::RECIPE.to_string(),
+        serde_json::to_value(recipe).unwrap_or(serde_json::Value::Null),
+    );
+    payload.insert(
+        protocol_keys::INLINE_RECIPE.to_string(),
+        serde_json::to_value(inline_recipe).unwrap_or(serde_json::Value::Null),
+    );
+    payload.insert(
+        protocol_keys::ARGS.to_string(),
+        serde_json::to_value(args).unwrap_or(serde_json::Value::Null),
+    );
+    payload.insert(
+        protocol_keys::SNAPSHOTS.to_string(),
+        serde_json::to_value(snapshots).unwrap_or(serde_json::Value::Null),
+    );
     let serialized = serde_json::to_string(&payload).unwrap_or_default();
     format!("{:x}", md5::compute(serialized))
 }
@@ -113,7 +126,8 @@ mod tests {
         let args = BTreeMap::new();
         let token = compute_preview_token(Some("r"), None, &args, &[file.as_path()]);
         std::fs::write(&file, "version-two-is-longer").unwrap();
-        let err = validate_preview_token(Some("r"), None, &args, &token, &[file.as_path()]).unwrap_err();
+        let err =
+            validate_preview_token(Some("r"), None, &args, &token, &[file.as_path()]).unwrap_err();
         assert!(err.contains("Stale"));
         let _ = std::fs::remove_dir_all(dir);
     }

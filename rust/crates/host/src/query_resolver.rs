@@ -5,6 +5,8 @@ use std::path::Path;
 
 use codemod_recipe_engine::query::resolve_query_source;
 use codemod_recipe_yaml::model::{QueryDefinition, QuerySpec, Recipe};
+use codemod_recipe_yaml::query_conventions;
+use codemod_recipe_yaml::recipe_keys;
 
 use crate::registry::RecipeRegistry;
 use crate::template::render_template;
@@ -86,7 +88,7 @@ fn load_and_render_query_body(
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     vars: &BTreeMap<String, BTreeMap<String, String>>,
 ) -> Result<String, String> {
-    let loaded = if looks_like_query_file_path(body) {
+    let loaded = if query_conventions::looks_like_query_path(body) {
         resolve_query_source(body, recipe_file, codemod_root).map_err(|e| e.to_string())?
     } else {
         body.to_string()
@@ -94,23 +96,12 @@ fn load_and_render_query_body(
     render_template(&loaded, args, maps, vars)
 }
 
-fn looks_like_query_file_path(query: &str) -> bool {
-    let trimmed = query.trim();
-    if trimmed.contains('(') {
-        return false;
-    }
-    trimmed.ends_with(".scm")
-        || trimmed.contains('/')
-        || trimmed.contains('\\')
-        || (trimmed.ends_with(".yaml") && !trimmed.contains('('))
-}
-
 /// Parse a query library YAML document (`id` + `queries` map).
 pub fn parse_query_library(
     root: &serde_yaml::Mapping,
 ) -> Result<(String, BTreeMap<String, QueryDefinition>), String> {
     let id = root
-        .get(serde_yaml::Value::String("id".into()))
+        .get(serde_yaml::Value::String(recipe_keys::ID.into()))
         .and_then(|v| v.as_str())
         .ok_or_else(|| "query library requires string field 'id'".to_string())?
         .trim()
@@ -119,7 +110,7 @@ pub fn parse_query_library(
         return Err("query library id must not be empty".to_string());
     }
     let queries_val = root
-        .get(serde_yaml::Value::String("queries".into()))
+        .get(serde_yaml::Value::String(recipe_keys::QUERIES.into()))
         .ok_or_else(|| "query library requires 'queries' map".to_string())?;
     let queries_map = queries_val
         .as_mapping()
@@ -198,7 +189,7 @@ queries:
                 .unwrap()
                 .as_nanos()
         ));
-        let queries_dir = dir.join(".codemod").join("queries");
+        let queries_dir = dir.join(".codemod").join(query_conventions::QUERIES_DIR);
         std::fs::create_dir_all(&queries_dir).unwrap();
         std::fs::write(
             queries_dir.join("named_class.scm"),
