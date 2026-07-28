@@ -93,7 +93,7 @@ steps:
             text: "    print('codemod');\n"
 
 postExecution:
-  - dartFormat
+  - "dart format ."
 ```
 
 Reference recipes:

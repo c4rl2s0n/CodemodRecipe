@@ -12,4 +12,3 @@ steps:
       path: "lib/counter/counter_repository.dart"
       templateFile: templates/counter_repository.dart.template
       ifExists: fail
-      format: false

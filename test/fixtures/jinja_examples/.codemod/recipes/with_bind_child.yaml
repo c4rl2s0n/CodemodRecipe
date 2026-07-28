@@ -16,4 +16,3 @@ steps:
       template: |
         class {{ className | pascal_case }}{{ suffix | pascal_case }} {}
       ifExists: fail
-      format: false

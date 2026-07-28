@@ -13,7 +13,7 @@ use crate::path_sandbox::PathSandbox;
 #[derive(Debug, Clone)]
 enum Entry {
     /// Did not exist on disk; content may be further edited in memory.
-    New { content: String, format: bool },
+    New { content: String },
     /// Existed on disk at first touch; current may equal original.
     Existing { original: String, current: String },
     /// Scheduled for removal; original is for preview.
@@ -36,7 +36,6 @@ impl WorkingTree {
         relative: &str,
         content: String,
         if_exists: IfExists,
-        format: bool,
     ) -> Result<(), String> {
         let absolute = sandbox
             .resolve_workspace_relative(relative)
@@ -62,10 +61,8 @@ impl WorkingTree {
                         }
                     }
                 } else {
-                    self.entries.insert(
-                        relative.to_string(),
-                        Entry::New { content, format },
-                    );
+                    self.entries
+                        .insert(relative.to_string(), Entry::New { content });
                 }
                 Ok(())
             }
@@ -98,16 +95,10 @@ impl WorkingTree {
                     "Cannot edit {relative}: path was deleted earlier in this recipe"
                 ));
             }
-            Some(Entry::New { content, format }) => {
+            Some(Entry::New { content }) => {
                 let next = transform(content)?;
-                let format = *format;
-                self.entries.insert(
-                    relative.to_string(),
-                    Entry::New {
-                        content: next,
-                        format,
-                    },
-                );
+                self.entries
+                    .insert(relative.to_string(), Entry::New { content: next });
                 return Ok(());
             }
             Some(Entry::Existing { original, current }) => {
@@ -189,12 +180,11 @@ impl WorkingTree {
         let mut changes = Vec::new();
         for (path, entry) in self.entries {
             match entry {
-                Entry::New { content, format } => {
+                Entry::New { content } => {
                     changes.push(FileChange::Create {
                         path,
                         content,
                         if_exists: IfExists::Fail,
-                        format,
                         skipped: false,
                     });
                 }
@@ -255,7 +245,6 @@ mod tests {
             "a.dart",
             "class A {}\n".into(),
             IfExists::Skip,
-            false,
         )
         .unwrap();
         tree.apply_edit(&sandbox, "a.dart", |s| Ok(format!("{s}// edited\n")))
@@ -283,7 +272,6 @@ mod tests {
             "a.dart",
             "UNUSED".into(),
             IfExists::Skip,
-            false,
         )
         .unwrap();
         tree.apply_edit(&sandbox, "a.dart", |_| Ok("class A { A(); }\n".into()))
@@ -315,7 +303,6 @@ mod tests {
                 "a.dart",
                 "x".into(),
                 IfExists::Fail,
-                false,
             )
             .unwrap_err();
         assert!(err.contains("already exists"), "{err}");
@@ -332,7 +319,6 @@ mod tests {
             "a.dart",
             "x".into(),
             IfExists::Fail,
-            false,
         )
         .unwrap();
         tree.delete(&sandbox, "a.dart", IfMissing::Fail).unwrap();

@@ -12,4 +12,3 @@ steps:
       path: "lib/generated/{{ className | snake_case }}_layout.dart"
       templateFile: templates/layout_widget.dart.template
       ifExists: fail
-      format: false

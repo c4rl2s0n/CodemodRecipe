@@ -62,6 +62,39 @@ fn rejects_insert_missing_capture() {
 }
 
 #[test]
+fn rejects_insert_empty_text() {
+    let recipe = Recipe {
+        id: "bad".to_string(),
+        name: None,
+        description: None,
+        group: None,
+        args: vec![],
+        maps: BTreeMap::new(),
+        queries: BTreeMap::new(),
+        steps: vec![Step::Edit(EditStep {
+            path: "a.dart".to_string(),
+            ops: vec![EditOp::Insert(codemod_recipe_yaml::model::InsertOp {
+                query: QuerySpec::single("(identifier) @x"),
+                capture: "x".to_string(),
+                anchor: codemod_recipe_yaml::model::InsertAnchor::End,
+                text: "".to_string(),
+            })],
+            ..Default::default()
+        })],
+        post_execution: vec![],
+    };
+
+    let errors = validate_recipe(&recipe).unwrap_err();
+    assert!(errors.iter().any(|e| matches!(
+        e,
+        ValidationError::MissingRequiredField {
+            op: "insert",
+            field: "text"
+        }
+    )));
+}
+
+#[test]
 fn rejects_empty_edit_ops() {
     let recipe = Recipe {
         id: "bad".to_string(),

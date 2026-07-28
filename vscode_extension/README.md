@@ -60,6 +60,33 @@ JSON Schema files under `schemas/` validate recipe/map/variable YAML (via
 `contributes.jsonValidation`, and Red Hat YAML `yaml.schemas` when that extension
 is installed).
 
+### Syntax highlighting
+
+Recipe YAML keeps the built-in `yaml` language mode. The extension injects a
+TextMate grammar that assigns **scopes** (not fixed colors) to known DSL keys
+and values — for example `keyword.control.codemod-recipe.step` for `edit` /
+`create`, `storage.type.codemod-recipe.op` for `insert` / `replace` / `remove`,
+and `entity.name.tag.codemod-recipe.field` for fields like `query` and `capture`.
+Your active color theme maps those scopes to colors, so Dark+, Light+, High
+Contrast, and third-party themes all work without extension-shipped hex colors.
+
+To customize further, override scopes in user or workspace settings:
+
+```json
+"editor.tokenColorCustomizations": {
+  "textMateRules": [
+    {
+      "scope": "keyword.control.codemod-recipe.step",
+      "settings": { "foreground": "#C586C0", "fontStyle": "bold" }
+    }
+  ]
+}
+```
+
+Useful scopes: `keyword.control.codemod-recipe.step`,
+`storage.type.codemod-recipe.op`, `entity.name.tag.codemod-recipe.field`,
+`constant.language.codemod-recipe.enum`.
+
 ### Custom codemod root
 
 To use a different directory than `.codemod`, set `codemodRecipe.codemodRoot` in

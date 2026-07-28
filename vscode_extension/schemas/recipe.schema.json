@@ -51,12 +51,8 @@
     },
     "postExecution": {
       "type": "array",
-      "items": {
-        "oneOf": [
-          { "type": "string" },
-          { "type": "object" }
-        ]
-      }
+      "description": "Post-apply shell commands or script paths (relative to codemod root). Each entry is Jinja-rendered; scripts are Jinja-rendered then executed via bash. No builtins.",
+      "items": { "type": "string" }
     }
   },
   "definitions": {
@@ -161,8 +157,7 @@
         "path": { "type": "string" },
         "template": { "type": "string" },
         "templateFile": { "type": "string" },
-        "ifExists": { "type": "string", "enum": ["fail", "skip"] },
-        "format": { "type": "boolean" }
+        "ifExists": { "type": "string", "enum": ["fail", "skip"] }
       }
     },
     "deleteStep": {

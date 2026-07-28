@@ -1,0 +1,27 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "scopeName": "codemod-recipe.keys.injection",
+  "injectionSelector": "L:meta.map.key.yaml",
+  "patterns": [
+    { "include": "#step-kinds" },
+    { "include": "#op-kinds" },
+    { "include": "#field-keys" }
+  ],
+  "repository": {
+    "step-kinds": {
+      "comment": "Recipe step discriminators (edit/create/delete/recipe).",
+      "match": "(?<![\\w-])(edit|create|delete|recipe)(?![\\w-])",
+      "name": "keyword.control.codemod-recipe.step"
+    },
+    "op-kinds": {
+      "comment": "Edit operation discriminators (insert/replace/remove).",
+      "match": "(?<![\\w-])(insert|replace|remove)(?![\\w-])",
+      "name": "storage.type.codemod-recipe.op"
+    },
+    "field-keys": {
+      "comment": "Known DSL field names (recipe, map, variables, steps, ops, args, let).",
+      "match": "(?<![\\w-])(postExecution|templateFile|includeLeadingTrivia|allowCustomValue|onManyMatches|contextKey|defaultsTo|inputKind|ifExists|ifMissing|whenNot|onNoMatch|description|language|capture|extract|queries|required|options|anchor|format|values|group|steps|query|maps|args|path|name|help|abbr|text|with|when|join|let|ops|map|id|as)(?![\\w-])",
+      "name": "entity.name.tag.codemod-recipe.field"
+    }
+  }
+}

@@ -1,7 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
-use codemod_recipe_yaml::compose::expand_recipe_references;
+use codemod_recipe_yaml::compose::{expand_recipe_references, ComposeError};
 use codemod_recipe_yaml::model::{CreateStep, EditOp, Recipe, Step};
 
 use crate::diag_source::source_with_needle;
@@ -79,11 +79,21 @@ fn validate_expanded_recipe(
     let expanded = match expand_recipe_references(recipe, registry.recipes_ast()) {
         Ok(expanded) => expanded,
         Err(err) => {
+            let (code, hint) = match &err {
+                ComposeError::Cycle(_) => (
+                    "E_COMPOSE_CYCLE",
+                    Some("Break recipe reference cycles in scaffold orchestrators".to_string()),
+                ),
+                ComposeError::RecipeNotFound(_) => (
+                    "E_RECIPE_REF",
+                    Some("Ensure the referenced recipe id exists under the codemod root".to_string()),
+                ),
+            };
             diagnostics.push(error(
-                "E_COMPOSE_CYCLE",
+                code,
                 err.to_string(),
                 file_path,
-                Some("Break recipe reference cycles in scaffold orchestrators".to_string()),
+                hint,
                 Some(recipe_id.to_string()),
                 "recipe:",
             ));
@@ -275,6 +285,30 @@ fn templated_fields_for_step(step: &Step) -> Vec<(&'static str, String)> {
             out.push(("edit.path", edit.path.clone()));
             if let Some(lang) = &edit.language {
                 out.push(("edit.language", lang.clone()));
+            }
+            if let Some(when) = &edit.when {
+                for guard in &when.guards {
+                    out.push(("edit.when", guard.step_strings().join("\n")));
+                }
+            }
+            if let Some(when_not) = &edit.when_not {
+                for guard in &when_not.guards {
+                    out.push(("edit.whenNot", guard.step_strings().join("\n")));
+                }
+            }
+            for binding in &edit.let_bindings.0 {
+                if let Some(query) = &binding.query {
+                    out.push(("let.query", query.step_strings().join("\n")));
+                }
+                if let Some(capture) = &binding.capture {
+                    out.push(("let.capture", capture.clone()));
+                }
+                if let Some(join) = &binding.join {
+                    out.push(("let.join", join.clone()));
+                }
+                if let Some(as_tmpl) = &binding.r#as {
+                    out.push(("let.as", as_tmpl.clone()));
+                }
             }
             for op in &edit.ops {
                 match op {
@@ -490,6 +524,22 @@ pub fn check_template_file_exists(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use codemod_recipe_yaml::model::EditStep;
+    use codemod_recipe_yaml::{GuardList, LetBinding, LetBindings, QuerySpec};
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    static N: AtomicUsize = AtomicUsize::new(0);
+
+    fn temp_ws(name: &str) -> std::path::PathBuf {
+        let n = N.fetch_add(1, Ordering::SeqCst);
+        let dir = std::env::temp_dir().join(format!(
+            "codemod_validate_{name}_{}_{n}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(dir.join(".codemod/recipes")).unwrap();
+        dir
+    }
 
     #[test]
     fn extracts_variables_from_template_text() {
@@ -502,5 +552,99 @@ mod tests {
     fn converts_legacy_before_extract() {
         let vars = extract_template_variables("{{$camel field}}");
         assert!(vars.contains("field"));
+    }
+
+    #[test]
+    fn detects_undeclared_args_in_when_and_let() {
+        let fields = templated_fields_for_step(&Step::Edit(EditStep {
+            path: "lib/{{file}}.dart".into(),
+            when: Some(GuardList {
+                guards: vec![QuerySpec::single("(#eq? @x \"{{className}}\")")],
+            }),
+            let_bindings: LetBindings(vec![LetBinding {
+                name: "n".into(),
+                query: Some(QuerySpec::single("(identifier) @id (#eq? @id \"{{symbol}}\")")),
+                capture: Some("{{cap}}".into()),
+                r#as: Some("{{ derived }}".into()),
+                ..Default::default()
+            }]),
+            ops: vec![],
+            ..Default::default()
+        }));
+        let joined: String = fields
+            .iter()
+            .map(|(k, v)| format!("{k}:{v}"))
+            .collect::<Vec<_>>()
+            .join("\n");
+        assert!(joined.contains("edit.when"));
+        assert!(joined.contains("{{className}}"));
+        assert!(joined.contains("let.query"));
+        assert!(joined.contains("{{symbol}}"));
+        assert!(joined.contains("let.as"));
+        assert!(joined.contains("{{ derived }}"));
+    }
+
+    #[test]
+    fn compose_not_found_uses_recipe_ref_code() {
+        let ws = temp_ws("compose_ref");
+        let recipes = ws.join(".codemod/recipes");
+        std::fs::write(
+            recipes.join("parent.yaml"),
+            r#"id: parent
+steps:
+  - recipe: missing_child
+"#,
+        )
+        .unwrap();
+        let mut registry = RecipeRegistry::new(ws.clone(), ws.join(".codemod"));
+        registry.reload();
+        let response = validate_recipe(&registry, "parent");
+        let diags = response.diagnostics.unwrap_or_default();
+        assert!(
+            diags.iter().any(|d| d.code == "E_RECIPE_REF"),
+            "{diags:?}"
+        );
+        let _ = std::fs::remove_dir_all(ws);
+    }
+
+    #[test]
+    fn compose_cycle_uses_compose_cycle_code() {
+        let ws = temp_ws("compose_cycle");
+        let recipes = ws.join(".codemod/recipes");
+        std::fs::write(
+            recipes.join("a.yaml"),
+            r#"id: a
+steps:
+  - recipe: b
+"#,
+        )
+        .unwrap();
+        std::fs::write(
+            recipes.join("b.yaml"),
+            r#"id: b
+steps:
+  - recipe: a
+"#,
+        )
+        .unwrap();
+        let mut registry = RecipeRegistry::new(ws.clone(), ws.join(".codemod"));
+        registry.reload();
+        assert!(registry.recipes_ast().contains_key("a"));
+        assert!(registry.recipes_ast().contains_key("b"));
+        let mut diagnostics = Vec::new();
+        let recipe = registry.recipes_ast().get("a").unwrap().clone();
+        validate_expanded_recipe(
+            &registry,
+            "a",
+            &recipe,
+            ".codemod/recipes/a.yaml",
+            registry.maps_by_id(),
+            &mut diagnostics,
+        );
+        assert!(
+            diagnostics.iter().any(|d| d.code == "E_COMPOSE_CYCLE"),
+            "{diagnostics:?}"
+        );
+        let _ = std::fs::remove_dir_all(ws);
     }
 }

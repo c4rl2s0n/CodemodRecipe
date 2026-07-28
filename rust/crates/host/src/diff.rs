@@ -263,7 +263,6 @@ mod tests {
             path: "lib/new.dart".to_string(),
             content: "class New {}\n".to_string(),
             if_exists: IfExists::Fail,
-            format: true,
             skipped: false,
         };
         let preview = build_file_preview_from_change(&change, true, false, None).unwrap();

@@ -123,7 +123,7 @@ Inline recipe mirrors the standard YAML recipe shape:
       }
     }
   ],
-  "postExecution": ["dartFormat"]
+  "postExecution": ["dart format ."]
 }
 ```
 

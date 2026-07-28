@@ -214,8 +214,6 @@ pub struct CreateStep {
     pub template_file: Option<String>,
     #[serde(default, rename = "ifExists")]
     pub if_exists: IfExistsStrategy,
-    #[serde(default = "default_true")]
-    pub format: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Default)]
@@ -240,10 +238,6 @@ pub enum IfMissingStrategy {
     #[default]
     Fail,
     Skip,
-}
-
-fn default_true() -> bool {
-    true
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Default)]

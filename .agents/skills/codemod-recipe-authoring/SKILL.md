@@ -118,7 +118,7 @@ Or compose with `- recipe: other_recipe_id`, or bind child args via
 3. Review `files[].patches` / `replacementPreview`
 4. `apply_recipe` with `previewToken`
 5. Re-preview — confirm idempotency
-6. Run `dart format` / analyzer if not using `postExecution: [dartFormat]`
+6. Run `dart format` / analyzer if not using `postExecution: ["dart format ."]`
 
 ## Common failures
 

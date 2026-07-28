@@ -16,4 +16,3 @@ steps:
       path: "lib/generated/{{ className | snake_case }}_widget.dart"
       templateFile: templates/conditional_widget.dart.template
       ifExists: fail
-      format: false

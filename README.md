@@ -82,7 +82,7 @@ steps:
             anchor: end
             text: "    print('codemod');\n"
 postExecution:
-  - dartFormat
+  - "dart format ."
 ```
 
 ### Template syntax (Jinja2)

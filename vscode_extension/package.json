@@ -13,10 +13,27 @@
     "vscode": "^1.85.0"
   },
   "categories": [
-    "Other"
+    "Other",
+    "Programming Languages"
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "grammars": [
+      {
+        "scopeName": "codemod-recipe.keys.injection",
+        "path": "./syntaxes/codemod-recipe.tmLanguage.json",
+        "injectTo": [
+          "source.yaml"
+        ]
+      },
+      {
+        "scopeName": "codemod-recipe.values.injection",
+        "path": "./syntaxes/codemod-recipe-values.tmLanguage.json",
+        "injectTo": [
+          "source.yaml"
+        ]
+      }
+    ],
     "viewsContainers": {
       "activitybar": [
         {

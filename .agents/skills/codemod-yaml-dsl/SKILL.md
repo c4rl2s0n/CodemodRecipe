@@ -28,7 +28,7 @@ args: []
 maps: {}
 steps: []
 postExecution:
-  - dartFormat
+  - "dart format ."
 ```
 
 ## Step types

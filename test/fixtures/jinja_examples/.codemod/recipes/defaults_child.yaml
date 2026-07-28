@@ -19,4 +19,3 @@ steps:
           static const verbose = {{ verbose }};
         }
       ifExists: fail
-      format: false

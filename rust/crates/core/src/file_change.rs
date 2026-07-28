@@ -25,7 +25,6 @@ pub enum FileChange {
         path: String,
         content: String,
         if_exists: IfExists,
-        format: bool,
         skipped: bool,
     },
     Delete {
@@ -189,7 +188,6 @@ mod tests {
                 path: "a.dart".to_string(),
                 content: "new".to_string(),
                 if_exists: IfExists::Fail,
-                format: false,
                 skipped: false,
             },
         ];

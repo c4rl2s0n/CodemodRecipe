@@ -339,7 +339,7 @@ mod tests {
             maps: BTreeMap::new(),
         queries: BTreeMap::new(),
             steps: vec![],
-            post_execution: vec![PostExecution::String("dartFormat".to_string())],
+            post_execution: vec![PostExecution::String("echo a".to_string())],
         };
 
         let composed = compose_recipe(
@@ -354,7 +354,7 @@ mod tests {
         );
 
         assert_eq!(composed.post_execution.len(), 2);
-        assert!(matches!(&composed.post_execution[0], PostExecution::String(s) if s == "dartFormat"));
+        assert!(matches!(&composed.post_execution[0], PostExecution::String(s) if s == "echo a"));
         assert!(matches!(&composed.post_execution[1], PostExecution::String(s) if s == "build"));
     }
 

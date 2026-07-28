@@ -1,0 +1,15 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "scopeName": "codemod-recipe.values.injection",
+  "injectionSelector": "L:string.unquoted.plain.out.yaml -meta.map.key.yaml, L:string.unquoted.plain.in.yaml -meta.map.key.yaml",
+  "patterns": [
+    { "include": "#enum-values" }
+  ],
+  "repository": {
+    "enum-values": {
+      "comment": "Enum-like scalars that are the entire remaining value (end of line / comment), not substrings in free text.",
+      "match": "(?<![\\w-])(directory|choice|exists|count|first|error|skip|fail|kind|use|start|end)(?![\\w-])(?=[\\t ]*(?:#|$))",
+      "name": "constant.language.codemod-recipe.enum"
+    }
+  }
+}

@@ -868,7 +868,6 @@ steps:
       path: "lib/{{ className }}.dart"
       template: "class {{ className }} {}"
       ifExists: fail
-      format: false
 "#,
         )
         .unwrap();

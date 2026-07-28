@@ -16,7 +16,7 @@ args: []
 maps: {}
 steps: []
 postExecution:
-  - dartFormat
+  - "dart format ."
 ```
 
 ### Top-level fields
@@ -28,7 +28,11 @@ postExecution:
 - `args` (optional): list of argument definitions
 - `maps` (optional): recipe-local map entries
 - `steps` (required): ordered list of operations
-- `postExecution` (optional): post-apply actions (e.g. `dartFormat`)
+- `postExecution` (optional): list of strings run in order after a successful apply.
+  Each entry is Jinja-rendered with recipe args. If the result is a path to an
+  existing file under the **codemod root**, the script body is Jinja-rendered and
+  executed via bash; otherwise the string is run with `sh -c` (cwd = workspace).
+  No builtins and no automatic per-file expansion — recipes own their commands/scripts.
 
 ## Arguments (`args`)
 
@@ -173,7 +177,6 @@ For non-Dart files, set `language:` and use that grammar’s node names. See ski
     path: "lib/new_file.dart"
     template: "class X {}"
     ifExists: fail
-    format: true
 ```
 
 or:
@@ -183,7 +186,6 @@ or:
     path: "lib/new_file.dart"
     templateFile: templates/new_file.dart.template
     ifExists: fail
-    format: false
 ```
 
 Rules:
@@ -191,7 +193,7 @@ Rules:
 - `path` required
 - Exactly one of `template` or `templateFile`
 - `ifExists`: `fail` (default) or `skip`
-- `format`: bool (default true)
+- Formatting is not a create-step flag — use top-level `postExecution` (e.g. `"dart format ."` or a script under the codemod root)
 
 ## Delete steps (`delete`)
 

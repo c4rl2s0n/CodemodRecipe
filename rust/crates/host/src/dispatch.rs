@@ -409,7 +409,10 @@ fn apply(
     if let Err(error) = run_post_execution(
         &collected.recipe.post_execution,
         &args,
-        &applied_paths,
+        registry.maps_by_id(),
+        registry.vars_by_id(),
+        &registry.workspace_root,
+        registry.codemod_root(),
     ) {
         return to_value(ApplyResponse {
             ok: false,

@@ -164,6 +164,12 @@ fn validate_edit(
                         field: "capture",
                     });
                 }
+                if insert.text.is_empty() {
+                    errors.push(ValidationError::MissingRequiredField {
+                        op: "insert",
+                        field: "text",
+                    });
+                }
             }
             EditOp::Replace(replace) => {
                 if replace.query.is_empty() {

@@ -32,4 +32,4 @@ steps:
             text: "  final int {{ field | camel_case }};\n\n"
 
 postExecution:
-  - dartFormat
+  - "dart format ."

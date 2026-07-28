@@ -153,7 +153,7 @@ fn apply_create_to_tree(
         .resolve_workspace_relative(&create.path)
         .map_err(|e| e.message)?;
     if absolute.exists() && if_exists == IfExists::Skip {
-        return tree.create(sandbox, &create.path, String::new(), if_exists, create.format);
+        return tree.create(sandbox, &create.path, String::new(), if_exists);
     }
     if absolute.exists() && if_exists == IfExists::Fail {
         return Err(format!("File already exists: {}", create.path));
@@ -167,7 +167,7 @@ fn apply_create_to_tree(
         return Err("create step missing template".to_string());
     };
 
-    tree.create(sandbox, &create.path, content, if_exists, create.format)
+    tree.create(sandbox, &create.path, content, if_exists)
 }
 
 pub fn absolute_paths_for_changes(
