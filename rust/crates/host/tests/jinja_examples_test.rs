@@ -87,14 +87,14 @@ fn jinja_examples_validate_all_recipes() {
         .map(|r| r["id"].as_str().unwrap())
         .collect();
     for id in [
-        "showcase_casing",
-        "conditional_create",
-        "create_with_layout",
-        "defaults_orchestrator",
-        "defaults_child",
-        "with_bind_child",
-        "with_bind_orchestrator",
-        "with_partial_orchestrator",
+        "jinja.casing.showcase",
+        "jinja.create.conditional",
+        "jinja.create.layout",
+        "jinja.defaults.orchestrator",
+        "jinja.defaults.child",
+        "jinja.bind.child",
+        "jinja.bind.orchestrator",
+        "jinja.bind.orchestrator_partial",
     ] {
         assert!(ids.contains(&id), "missing recipe {id}");
     }
@@ -108,7 +108,7 @@ fn with_bindings_forward_and_hardcode() {
     let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
     registry.reload();
 
-    let schema = registry.get("with_bind_orchestrator").expect("schema");
+    let schema = registry.get("jinja.bind.orchestrator").expect("schema");
     let names: Vec<_> = schema.args.iter().map(|a| a.name.as_str()).collect();
     assert!(names.contains(&"featureName"));
     assert!(!names.contains(&"className"));
@@ -117,7 +117,7 @@ fn with_bindings_forward_and_hardcode() {
     let mut args = BTreeMap::new();
     args.insert("featureName".to_string(), "FeedList".to_string());
 
-    let response = preview_recipe(&mut registry, "with_bind_orchestrator", args);
+    let response = preview_recipe(&mut registry, "jinja.bind.orchestrator", args);
     assert_eq!(response["ok"], true, "{}", response["error"]);
 
     let content = file_content(&response, "lib/generated/feed_list_Widget.dart");
@@ -132,7 +132,7 @@ fn with_bindings_partial_fallthrough() {
     let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
     registry.reload();
 
-    let schema = registry.get("with_partial_orchestrator").expect("schema");
+    let schema = registry.get("jinja.bind.orchestrator_partial").expect("schema");
     let names: Vec<_> = schema.args.iter().map(|a| a.name.as_str()).collect();
     assert!(names.contains(&"featureName"));
     assert!(names.contains(&"suffix"));
@@ -142,7 +142,7 @@ fn with_bindings_partial_fallthrough() {
     args.insert("featureName".to_string(), "Metrics".to_string());
     args.insert("suffix".to_string(), "View".to_string());
 
-    let response = preview_recipe(&mut registry, "with_partial_orchestrator", args);
+    let response = preview_recipe(&mut registry, "jinja.bind.orchestrator_partial", args);
     assert_eq!(response["ok"], true, "{}", response["error"]);
 
     let content = file_content(&response, "lib/generated/metrics_View.dart");
@@ -161,7 +161,7 @@ fn showcase_casing_renders_all_filters() {
     args.insert("name".to_string(), "FeedList".to_string());
     args.insert("fieldKey".to_string(), "tickCount".to_string());
 
-    let response = preview_recipe(&mut registry, "showcase_casing", args);
+    let response = preview_recipe(&mut registry, "jinja.casing.showcase", args);
     assert_eq!(response["ok"], true, "{}", response["error"]);
 
     let content = file_content(&response, "lib/generated/feed_list_casing.dart");
@@ -189,13 +189,13 @@ fn conditional_create_respects_bool_arg() {
     args.insert("className".to_string(), "Counter".to_string());
     args.insert("includeTests".to_string(), "true".to_string());
 
-    let with_tests = preview_recipe(&mut registry, "conditional_create", args.clone());
+    let with_tests = preview_recipe(&mut registry, "jinja.create.conditional", args.clone());
     assert_eq!(with_tests["ok"], true, "{}", with_tests["error"]);
     let content = file_content(&with_tests, "lib/generated/counter_widget.dart");
     assert!(content.contains("void testHook()"));
 
     args.insert("includeTests".to_string(), "false".to_string());
-    let without_tests = preview_recipe(&mut registry, "conditional_create", args);
+    let without_tests = preview_recipe(&mut registry, "jinja.create.conditional", args);
     assert_eq!(without_tests["ok"], true, "{}", without_tests["error"]);
     let content = file_content(&without_tests, "lib/generated/counter_widget.dart");
     assert!(!content.contains("void testHook()"));
@@ -212,7 +212,7 @@ fn create_with_layout_uses_extends_and_include() {
     let mut args = BTreeMap::new();
     args.insert("className".to_string(), "FeedList".to_string());
 
-    let response = preview_recipe(&mut registry, "create_with_layout", args);
+    let response = preview_recipe(&mut registry, "jinja.create.layout", args);
     assert_eq!(response["ok"], true, "{}", response["error"]);
 
     let content = file_content(&response, "lib/generated/feed_list_layout.dart");
@@ -231,7 +231,7 @@ fn defaults_orchestrator_applies_child_defaults_to() {
     let mut args = BTreeMap::new();
     args.insert("label".to_string(), "Metrics".to_string());
 
-    let response = preview_recipe(&mut registry, "defaults_orchestrator", args);
+    let response = preview_recipe(&mut registry, "jinja.defaults.orchestrator", args);
     assert_eq!(response["ok"], true, "{}", response["error"]);
 
     let content = file_content(&response, "lib/generated/metrics_defaults.dart");

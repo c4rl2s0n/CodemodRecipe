@@ -2,7 +2,12 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import type { RecipeDiagnostic, RecipeSchema } from '../shared';
 import { useExtensionClient } from '../composables/useExtensionClient';
-import RecipeGroupNode, { type RecipeTreeNode } from './RecipeGroupNode.vue';
+import RecipeGroupNode from './RecipeGroupNode.vue';
+import {
+  buildRecipeTree,
+  recipeDisplayTitle,
+  type RecipeTreeNode,
+} from '../lib/recipeTree';
 
 const client = useExtensionClient();
 
@@ -41,7 +46,7 @@ const filteredRecipes = computed(() => {
       recipe.id,
       recipe.name,
       recipe.description,
-      recipe.group ?? '',
+      recipeDisplayTitle(recipe),
     ]
       .join(' ')
       .toLowerCase();
@@ -50,52 +55,7 @@ const filteredRecipes = computed(() => {
 });
 
 const recipeTree = computed((): RecipeTreeNode[] => {
-  const root: RecipeTreeNode = {
-    key: '',
-    label: '',
-    recipes: [],
-    children: [],
-  };
-
-  const ensureChild = (parent: RecipeTreeNode, segment: string, key: string) => {
-    let child = parent.children.find((item) => item.label === segment);
-    if (!child) {
-      child = { key, label: segment, recipes: [], children: [] };
-      parent.children.push(child);
-    }
-    return child;
-  };
-
-  for (const recipe of filteredRecipes.value) {
-    const group = (recipe.group ?? '').trim();
-    if (!group) {
-      const ungrouped = ensureChild(root, '(ungrouped)', '(ungrouped)');
-      ungrouped.recipes.push(recipe);
-      continue;
-    }
-    const parts = group.split('.').filter(Boolean);
-    let node = root;
-    let pathKey = '';
-    for (const part of parts) {
-      pathKey = pathKey ? `${pathKey}.${part}` : part;
-      node = ensureChild(node, part, pathKey);
-    }
-    node.recipes.push(recipe);
-  }
-
-  const sortNode = (node: RecipeTreeNode) => {
-    node.children.sort((a, b) => {
-      if (a.label === '(ungrouped)') return 1;
-      if (b.label === '(ungrouped)') return -1;
-      return a.label.localeCompare(b.label);
-    });
-    node.recipes.sort((a, b) => a.name.localeCompare(b.name));
-    for (const child of node.children) {
-      sortNode(child);
-    }
-  };
-  sortNode(root);
-  return root.children;
+  return buildRecipeTree(filteredRecipes.value);
 });
 
 function countRecipes(node: RecipeTreeNode): number {
@@ -172,6 +132,10 @@ function recipeSubtitle(recipe: RecipeSchema): string {
     recipe.description ||
     recipe.args.map((arg) => arg.name).join(', ')
   );
+}
+
+function recipeTitle(recipe: RecipeSchema): string {
+  return recipeDisplayTitle(recipe);
 }
 
 function formatSource(diagnostic: RecipeDiagnostic): string {
@@ -267,6 +231,7 @@ function formatSource(diagnostic: RecipeDiagnostic): string {
           :select-recipe="selectRecipe"
           :on-recipe-context-menu="onRecipeContextMenu"
           :recipe-subtitle="recipeSubtitle"
+          :recipe-title="recipeTitle"
         />
       </div>
     </div>

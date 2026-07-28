@@ -17,8 +17,6 @@ export interface RecipeSchema {
   id: string;
   name: string;
   description: string;
-  /** Optional dotted catalog path (e.g. `rust.data`). */
-  group?: string | null;
   /** Workspace-relative path to the recipe YAML file. */
   sourceFile?: string | null;
   args: RecipeArg[];

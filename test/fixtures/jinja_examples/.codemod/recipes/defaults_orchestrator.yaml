@@ -1,4 +1,4 @@
-id: defaults_orchestrator
+id: jinja.defaults.orchestrator
 name: defaults_orchestrator
 description: Orchestrator that inherits child defaultsTo for verbose
 
@@ -8,4 +8,4 @@ args:
     inputKind: symbol
 
 steps:
-  - recipe: defaults_child
+  - recipe: jinja.defaults.child

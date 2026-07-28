@@ -1,4 +1,4 @@
-id: with_partial_orchestrator
+id: jinja.bind.orchestrator_partial
 name: with_partial_orchestrator
 description: |
   Partial with: remaps className from featureName; suffix falls through from parent.
@@ -13,6 +13,6 @@ args:
 
 steps:
   - recipe:
-      id: with_bind_child
+      id: jinja.bind.child
       with:
         className: "{{ featureName }}"

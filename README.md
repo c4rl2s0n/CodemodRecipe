@@ -51,7 +51,7 @@ See [docs/codemod-mcp.md](docs/codemod-mcp.md) for Cursor MCP setup.
 Recipes declare tree-sitter queries directly under `edit.ops`:
 
 ```yaml
-id: add_log_line
+id: dart.logging.add_log_line
 args:
   - name: file
     required: true
@@ -115,8 +115,8 @@ recipe or `.codemod/queries/`.
 
 ```yaml
 steps:
-  - recipe: add_counter_field
-  - recipe: add_log_line
+  - recipe: dart.settings.add_counter_field
+  - recipe: dart.logging.add_log_line
 ```
 
 Referenced edit steps are inlined; args are merged (first definition wins).

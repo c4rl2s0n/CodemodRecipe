@@ -47,7 +47,6 @@ fn insert_chain_recipe(query: QuerySpec, capture: &str) -> Recipe {
         id: "chain_behavior".to_string(),
         name: None,
         description: None,
-        group: None,
         args: vec![],
         maps: BTreeMap::new(),
         queries: BTreeMap::new(),

@@ -390,5 +390,16 @@ fn whitespace_normalized(text: &str) -> String {
 }
 
 pub fn parse_recipe_yaml(yaml_text: &str) -> Result<Recipe, EngineError> {
-    serde_yaml::from_str::<Recipe>(yaml_text).map_err(|e| EngineError::RecipeParse(e.to_string()))
+    let value =
+        serde_yaml::from_str::<serde_yaml::Value>(yaml_text).map_err(|e| EngineError::RecipeParse(e.to_string()))?;
+    if value
+        .as_mapping()
+        .is_some_and(|map| map.contains_key(serde_yaml::Value::String("group".to_string())))
+    {
+        return Err(EngineError::RecipeParse(
+            "top-level field 'group' is no longer supported; use a dotted recipe id instead"
+                .to_string(),
+        ));
+    }
+    serde_yaml::from_value::<Recipe>(value).map_err(|e| EngineError::RecipeParse(e.to_string()))
 }

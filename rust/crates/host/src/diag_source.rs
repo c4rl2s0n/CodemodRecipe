@@ -75,9 +75,9 @@ mod tests {
 
     #[test]
     fn finds_line_and_column() {
-        let text = "id: foo\ngroup: rust.data\nsteps: []\n";
-        assert_eq!(find_line_column(text, "group:"), Some((2, 1)));
-        assert_eq!(find_line_column(text, "rust.data"), Some((2, 8)));
+        let text = "id: foo\nsteps: []\n";
+        assert_eq!(find_line_column(text, "steps:"), Some((2, 1)));
+        assert_eq!(find_line_column(text, "[]"), Some((2, 8)));
     }
 
     #[test]

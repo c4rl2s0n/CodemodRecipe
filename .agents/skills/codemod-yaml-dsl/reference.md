@@ -7,10 +7,9 @@ Rust implementation: `rust/crates/yaml/src/model.rs`, `validate.rs`, `compose.rs
 ## Top-level structure
 
 ```yaml
-id: recipe_id
+id: feature.area.recipe_id
 name: Human-readable name
 description: What this recipe does
-group: optional.dotted.path
 
 args: []
 maps: {}
@@ -22,9 +21,10 @@ postExecution:
 ### Top-level fields
 
 - `id` (required in practice): unique recipe id
+- Dotted ids also define nested groups in the VS Code Recipes tab. For example,
+  `rust.data.add_log_line` appears under `rust` → `data` with leaf id `add_log_line`.
 - `name` (optional): display name
 - `description` (optional)
-- `group` (optional): dotted catalog path for the VS Code Recipes tab (e.g. `rust.data`, `dart.feature.states`)
 - `args` (optional): list of argument definitions
 - `maps` (optional): recipe-local map entries
 - `steps` (required): ordered list of operations
@@ -246,7 +246,7 @@ steps:
         className: "{{ featureName }}"
         # fieldName omitted → resolved from parent args
   - recipe:
-      id: defaults_child
+      id: jinja.defaults.child
       with:
         verbose: "false"   # hardcode
 ```

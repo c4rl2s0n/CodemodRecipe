@@ -19,10 +19,6 @@
       "type": "string",
       "description": "Short recipe description."
     },
-    "group": {
-      "type": "string",
-      "description": "Optional dotted catalog path (e.g. rust.data)."
-    },
     "args": {
       "type": "array",
       "items": { "$ref": "#/definitions/arg" }

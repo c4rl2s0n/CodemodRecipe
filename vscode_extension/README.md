@@ -35,7 +35,7 @@ flowchart LR
    **Codemod Recipe: Scaffold Project** (also offered when `.codemod` is missing).
 2. Add YAML recipe files (`.yaml` or `.yml`) under `.codemod/` (conventionally
    `.codemod/recipes/`). Each recipe must have `id:` and `steps:`.
-   Optional `group:` (dotted path) organizes the Recipes tab tree.
+   Use dotted ids like `rust.data.add_log_line` to organize the Recipes tab tree.
 3. Optionally add maps (`id` + `map:`), variables (`id` + `values:`), and templates
    (e.g. under `.codemod/maps/`, `.codemod/variables/`, `.codemod/templates/`).
 4. Build and install the extension from `vscode_extension/` (`./build.sh`, or
@@ -96,7 +96,7 @@ settings or use **Codemod Recipe: Set Codemod Root Directory**.
 
 1. Open the **Codemod Recipe** view in the activity bar. The side view has
    **Recipes** and **Recipe Runner** tabs.
-2. Search or expand group folders in the **Recipes** tab, then click a recipe to
+2. Search or expand folders derived from dotted recipe ids in the **Recipes** tab, then click a recipe to
    open the runner. Right-click a recipe and choose **Show Recipe** when the host reports a `sourceFile`.
 3. The **Recipe Runner** tab shows parameter metadata and runs live preview
    automatically as form values change.

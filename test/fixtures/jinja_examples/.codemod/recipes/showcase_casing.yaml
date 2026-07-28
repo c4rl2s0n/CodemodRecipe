@@ -1,4 +1,4 @@
-id: showcase_casing
+id: jinja.casing.showcase
 name: showcase_casing
 description: Demonstrates Jinja casing filters and map lookups
 

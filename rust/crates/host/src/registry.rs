@@ -63,14 +63,17 @@ impl RecipeRegistry {
                 continue;
             };
 
-            let Ok(recipe) = parse_recipe_yaml(&text) else {
-                self.diagnostics.push(RecipeDiagnostic::simple(
-                    "error",
-                    "E_RECIPE_PARSE",
-                    format!("Failed to parse recipe: {}", path.display()),
-                    vec![source_file_only(&relative)],
-                ));
-                continue;
+            let recipe = match parse_recipe_yaml(&text) {
+                Ok(recipe) => recipe,
+                Err(err) => {
+                    self.diagnostics.push(RecipeDiagnostic::simple(
+                        "error",
+                        "E_RECIPE_PARSE",
+                        format!("Failed to parse recipe {}: {err}", path.display()),
+                        vec![source_file_only(&relative)],
+                    ));
+                    continue;
+                }
             };
 
             let schema = recipe_to_schema(&recipe, Some(&relative));
@@ -402,7 +405,6 @@ pub fn recipe_to_schema(recipe: &Recipe, source_file: Option<&str>) -> RecipeSch
         id: recipe.id.clone(),
         name: recipe.name.clone().unwrap_or_else(|| recipe.id.clone()),
         description: recipe.description.clone().unwrap_or_default(),
-        group: recipe.group.clone(),
         source_file: source_file.map(str::to_string),
         args: recipe.args.iter().map(arg_to_schema).collect(),
     }
@@ -739,6 +741,90 @@ mod tests {
     }
 
     #[test]
+    fn allows_same_leaf_id_under_different_dotted_prefixes() {
+        let workspace = std::env::temp_dir().join(format!(
+            "codemod_registry_dotted_ids_{}",
+            std::process::id()
+        ));
+        let recipes_dir = workspace.join(".codemod/recipes");
+        std::fs::create_dir_all(&recipes_dir).unwrap();
+        std::fs::write(
+            recipes_dir.join("rust_insert.yaml"),
+            r#"id: rust.logging.insert
+steps:
+  - delete:
+      path: rust.log
+      ifMissing: skip
+"#,
+        )
+        .unwrap();
+        std::fs::write(
+            recipes_dir.join("dart_insert.yaml"),
+            r#"id: dart.logging.insert
+steps:
+  - delete:
+      path: dart.log
+      ifMissing: skip
+"#,
+        )
+        .unwrap();
+
+        let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+        registry.reload();
+
+        let ids = registry.list_ids();
+        assert!(ids.contains(&"rust.logging.insert".to_string()));
+        assert!(ids.contains(&"dart.logging.insert".to_string()));
+        let (_, diagnostics) = registry.list();
+        assert!(
+            diagnostics.iter().all(|d| d.code != "E_DUPLICATE_ID"),
+            "unexpected duplicate diagnostics: {diagnostics:?}"
+        );
+
+        let _ = std::fs::remove_dir_all(workspace);
+    }
+
+    #[test]
+    fn expands_full_dotted_recipe_references() {
+        let workspace = std::env::temp_dir().join(format!(
+            "codemod_registry_dotted_refs_{}",
+            std::process::id()
+        ));
+        let recipes_dir = workspace.join(".codemod/recipes");
+        std::fs::create_dir_all(&recipes_dir).unwrap();
+        std::fs::write(
+            recipes_dir.join("child.yaml"),
+            r#"id: shared.logging.insert
+args:
+  - name: file
+    required: true
+steps:
+  - delete:
+      path: "{{file}}"
+      ifMissing: skip
+"#,
+        )
+        .unwrap();
+        std::fs::write(
+            recipes_dir.join("parent.yaml"),
+            r#"id: app.logging.apply
+steps:
+  - recipe: shared.logging.insert
+"#,
+        )
+        .unwrap();
+
+        let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+        registry.reload();
+
+        let (recipe, _) = registry.load_recipe_ast("app.logging.apply").unwrap();
+        assert_eq!(recipe.steps.len(), 1);
+        assert!(recipe.args.iter().any(|arg| arg.name == "file"));
+
+        let _ = std::fs::remove_dir_all(workspace);
+    }
+
+    #[test]
     fn warns_when_recipe_references_missing_map() {
         let workspace =
             std::env::temp_dir().join(format!("codemod_registry_map_warn_{}", std::process::id()));
@@ -845,6 +931,39 @@ steps:
 
         let (_, diagnostics) = registry.list();
         assert!(diagnostics.iter().any(|d| d.code == "E_SCHEMA"));
+
+        let _ = std::fs::remove_dir_all(workspace);
+    }
+
+    #[test]
+    fn rejects_legacy_group_field() {
+        let workspace = std::env::temp_dir().join(format!(
+            "codemod_registry_group_field_{}",
+            std::process::id()
+        ));
+        let recipes_dir = workspace.join(".codemod/recipes");
+        std::fs::create_dir_all(&recipes_dir).unwrap();
+        std::fs::write(
+            recipes_dir.join("bad.yaml"),
+            r#"id: demo.recipe
+group: legacy.examples
+steps:
+  - delete:
+      path: "demo.txt"
+      ifMissing: skip
+"#,
+        )
+        .unwrap();
+
+        let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+        registry.reload();
+
+        assert!(registry.get("demo.recipe").is_none());
+        let (_, diagnostics) = registry.list();
+        assert!(diagnostics.iter().any(|d| {
+            d.code == "E_RECIPE_PARSE"
+                && d.message.contains("top-level field 'group' is no longer supported")
+        }));
 
         let _ = std::fs::remove_dir_all(workspace);
     }

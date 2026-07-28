@@ -82,8 +82,6 @@ pub struct RecipeSchema {
     pub id: String,
     pub name: String,
     pub description: String,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub group: Option<String>,
     /// Workspace-relative path to the recipe YAML file.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub source_file: Option<String>,

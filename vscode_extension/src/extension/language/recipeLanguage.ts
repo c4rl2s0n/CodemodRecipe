@@ -5,6 +5,7 @@ import { COMMANDS } from '../constants';
 import type { ExtensionConfig } from '../config/extensionConfig';
 import type { HostBridge } from '../host/hostBridge';
 import type { RecipeRepository } from '../recipes/recipeRepository';
+import { collectRecipeIdCompletions, recipeIdCompletionContext } from '../../shared';
 
 const YAML_SELECTOR: vscode.DocumentSelector = [
   { language: 'yaml', pattern: '**/.codemod/**/*.{yaml,yml}' },
@@ -210,19 +211,35 @@ class RecipeCompletionProvider implements vscode.CompletionItemProvider {
       });
     }
 
-    const recipeIdContext =
-      matchRecipeIdCompletionContext(before) ||
-      (/^\s*id:\s*[\w./-]*$/.test(before.trimEnd()) &&
-        isUnderRecipeMapping(document, position.line));
-
-    if (recipeIdContext) {
-      return this.repository.getRecipes().map((recipe) => {
+    const recipeIdPrefix = recipeIdCompletionContext(before);
+    if (
+      recipeIdPrefix &&
+      (/(?:^|\s)recipe:\s*['"]?[\w./-]*$/.test(before) ||
+        isUnderRecipeMapping(document, position.line))
+    ) {
+      const segmentStart =
+        recipeIdPrefix.start + recipeIdPrefix.typed.lastIndexOf('.') + 1;
+      const range = new vscode.Range(
+        position.line,
+        segmentStart,
+        position.line,
+        position.character
+      );
+      return collectRecipeIdCompletions(
+        this.repository.getRecipes().map((recipe) => recipe.id),
+        recipeIdPrefix.typed
+      ).map((completion) => {
         const item = new vscode.CompletionItem(
-          recipe.id,
-          vscode.CompletionItemKind.Reference
+          completion.label,
+          completion.hasChildren
+            ? vscode.CompletionItemKind.Module
+            : vscode.CompletionItemKind.Reference
         );
-        item.detail = recipe.name;
-        item.documentation = recipe.description;
+        item.insertText = completion.insertText;
+        item.range = range;
+        item.detail = completion.hasChildren
+          ? `Recipe group: ${completion.fullPath}`
+          : `Recipe id: ${completion.fullPath}`;
         return item;
       });
     }
@@ -414,10 +431,6 @@ function matchTemplateFile(line: string, character: number): string | undefined 
     return match[1];
   }
   return undefined;
-}
-
-function matchRecipeIdCompletionContext(before: string): boolean {
-  return /(?:^|\s)recipe:\s*['"]?[\w./-]*$/.test(before);
 }
 
 function isUnderRecipeMapping(

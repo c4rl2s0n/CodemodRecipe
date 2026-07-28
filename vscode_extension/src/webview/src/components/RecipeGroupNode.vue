@@ -1,12 +1,6 @@
 <script setup lang="ts">
 import type { RecipeSchema } from '../shared';
-
-export type RecipeTreeNode = {
-  key: string;
-  label: string;
-  recipes: RecipeSchema[];
-  children: RecipeTreeNode[];
-};
+import type { RecipeTreeNode } from '../lib/recipeTree';
 
 defineProps<{
   node: RecipeTreeNode;
@@ -17,6 +11,7 @@ defineProps<{
   selectRecipe: (id: string) => void;
   onRecipeContextMenu: (recipe: RecipeSchema, event: MouseEvent) => void;
   recipeSubtitle: (recipe: RecipeSchema) => string;
+  recipeTitle: (recipe: RecipeSchema) => string;
 }>();
 </script>
 
@@ -44,8 +39,8 @@ defineProps<{
             class="recipe-button secondary"
             @click="selectRecipe(item.id)"
           >
-            <span class="recipe-title">{{ item.name }}</span>
-            <span v-if="item.group" class="recipe-group-path">{{ item.group }}</span>
+            <span class="recipe-title">{{ recipeTitle(item) }}</span>
+            <span v-if="item.id.includes('.')" class="recipe-group-path">{{ item.id }}</span>
             <span class="recipe-desc">{{ recipeSubtitle(item) }}</span>
           </button>
         </div>
@@ -61,6 +56,7 @@ defineProps<{
         :select-recipe="selectRecipe"
         :on-recipe-context-menu="onRecipeContextMenu"
         :recipe-subtitle="recipeSubtitle"
+        :recipe-title="recipeTitle"
       />
     </div>
   </div>

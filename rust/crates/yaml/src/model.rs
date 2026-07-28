@@ -15,9 +15,6 @@ pub struct Recipe {
     pub name: Option<String>,
     #[serde(default)]
     pub description: Option<String>,
-    /// Optional dotted catalog path (e.g. `rust.data`, `dart.feature.states`).
-    #[serde(default)]
-    pub group: Option<String>,
     #[serde(default)]
     pub args: Vec<Arg>,
     #[serde(default)]

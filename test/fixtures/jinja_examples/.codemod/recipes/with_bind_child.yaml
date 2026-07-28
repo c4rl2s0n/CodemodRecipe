@@ -1,4 +1,4 @@
-id: with_bind_child
+id: jinja.bind.child
 name: with_bind_child
 description: Child recipe for call-site with bindings (className + suffix)
 

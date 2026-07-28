@@ -1,4 +1,4 @@
-id: defaults_child
+id: jinja.defaults.child
 name: defaults_child
 description: Child recipe with defaultsTo on a required arg
 

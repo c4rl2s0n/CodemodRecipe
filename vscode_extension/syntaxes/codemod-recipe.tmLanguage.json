@@ -20,7 +20,7 @@
     },
     "field-keys": {
       "comment": "Known DSL field names (recipe, map, variables, steps, ops, args, let).",
-      "match": "(?<![\\w-])(postExecution|templateFile|includeLeadingTrivia|allowCustomValue|onManyMatches|contextKey|defaultsTo|inputKind|ifExists|ifMissing|whenNot|onNoMatch|description|language|capture|extract|queries|required|options|anchor|format|values|group|steps|query|maps|args|path|name|help|abbr|text|with|when|join|let|ops|map|id|as)(?![\\w-])",
+      "match": "(?<![\\w-])(postExecution|templateFile|includeLeadingTrivia|allowCustomValue|onManyMatches|contextKey|defaultsTo|inputKind|ifExists|ifMissing|whenNot|onNoMatch|description|language|capture|extract|queries|required|options|anchor|format|values|steps|query|maps|args|path|name|help|abbr|text|with|when|join|let|ops|map|id|as)(?![\\w-])",
       "name": "entity.name.tag.codemod-recipe.field"
     }
   }

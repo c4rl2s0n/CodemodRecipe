@@ -1,4 +1,4 @@
-id: with_bind_orchestrator
+id: jinja.bind.orchestrator
 name: with_bind_orchestrator
 description: |
   Forwards featureName → className and hardcodes suffix via recipe with bindings.
@@ -10,7 +10,7 @@ args:
 
 steps:
   - recipe:
-      id: with_bind_child
+      id: jinja.bind.child
       with:
         className: "{{ featureName }}"
         suffix: "Widget"

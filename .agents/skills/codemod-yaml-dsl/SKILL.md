@@ -22,8 +22,7 @@ description: YAML DSL for codemod-recipe — recipe structure, step types, tree-
 ## Top-level shape
 
 ```yaml
-id: recipe_id
-group: optional.dotted.path   # catalog grouping in the VS Code extension
+id: feature.area.recipe_id    # dotted ids define nested groups in the VS Code extension
 args: []
 maps: {}
 steps: []
