@@ -17,7 +17,7 @@ For Rust maintenance, recipe/YAML vocabulary is centralized instead of being sca
   - re-exports `crate::dsl`; `preview_kinds` uses step `WIRE` constants
   - `query_conventions`: shared query path detection for `.scm` file-backed queries and id-based query-library references
   - `preview_kinds`: serialized file preview kinds used by the host
-- Codegen: `cargo run -p codemod_recipe_yaml --bin codemod_dsl_codegen` (or `scripts/generate-dsl-artifacts.sh`) writes `vscode_extension/schemas/generated-keyword-docs.json`, patches JSON Schema `description` fields, and refreshes TextMate keyword alternations. Run after changing `dsl_vocabulary`.
+- Codegen: `cargo run -p codemod_recipe_yaml --bin codemod_dsl_codegen` (or `scripts/generate-dsl-artifacts.sh`) writes JSON Schema (`recipe`/`map`/`variables`), `generated-dsl-surface.json`, `generated-keyword-docs.json`, and TextMate keyword alternations from `dsl_structure` + `ENTRIES`. Run after changing `model.rs`, `dsl_structure`, `dsl::`, or `dsl_vocabulary`. Do not hand-edit schema shape or TS container maps.
 - `rust/crates/core/src/resource_path.rs`
   - shared safe resolver for file-backed resources; update this instead of adding ad hoc `join`, `canonicalize`, or traversal checks in host/engine
 - `rust/crates/host/src/protocol_keys.rs`
@@ -66,24 +66,26 @@ Sequence of `{ kind, if?, args? }` (a single mapping is sugar for a one-element 
 
 | Field | Role |
 |-------|------|
-| `kind` | Required: `file` \| `folder` — which Explorer click targets list this recipe |
-| `if` | Optional MiniJinja expression over magic var **`path`** only (same dialect as step `if`). Omit → always match that kind |
-| `args` | Optional map of recipe arg name → MiniJinja expression over **`path`** only. LHS = destination arg; RHS sees only the click filepath (+ filters). First matching entry wins. When omitted, prefill uses first matching `inputKind` |
+| `kind` | Required: `file` \| `folder` |
+| `if` | Optional MiniJinja expression over Explorer context (see below). Omit → always match that kind |
+| `args` | Optional map of recipe arg name → MiniJinja expression over Explorer context. LHS = destination arg; RHS sees context keys only (not recipe args). First matching entry wins. When omitted, prefill uses first matching `inputKind` |
+
+**Expression context:** `path`, `absolutePath`, `workspaceRoot`, `fileBasename`, `fileStem`, `fileExt`, `fileDirname`, `file`, `directory`. Filters `| parent` / `| basename` / `| stem` and Jinja `~` concat are available (`|` binds tighter than `~`; prefer parens or named builtins).
 
 ```yaml
 explorerMenu:
-  - kind: folder
-    if: path is startingwith("lib/")
-    args:
-      directory: path
-      folderName: path | basename
   - kind: file
+    if: path is startingwith("lib/") and fileExt == "dart"
     args:
       file: path
-      featureDir: path | parent
+      folderName: fileBasename
+      featureDir: fileDirname
+      absFile: absolutePath
 ```
 
 Matching: for click kind `K`, if **any** entry with `kind: K` has missing/`true` `if`, the recipe appears **once**. Same `kind` may repeat with different `if`s (OR). The first matching entry’s `args` (or inputKind heuristic) are used. Fail closed on expression errors.
+
+Explorer submenu: **Run Recipe Here…** (`auto`) and **Open in Recipe Runner…** (`open`).
 
 Guide: [docs/recipe-shortcuts.md](../../../docs/recipe-shortcuts.md#explorer-context-menu).
 

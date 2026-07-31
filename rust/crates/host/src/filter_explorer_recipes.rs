@@ -7,9 +7,64 @@ use codemod_recipe_yaml::dsl::recipe::arg::field::input_kind::value as input_kin
 use codemod_recipe_yaml::model::Recipe;
 use codemod_recipe_yaml::{ExplorerMenuEntry, ExplorerMenuKind};
 
+use crate::path_filters::{path_basename, path_parent, path_stem};
 use crate::protocol::{ExplorerRecipeMatch, FilterExplorerRecipesResponse};
 use crate::registry::RecipeRegistry;
 use crate::step_condition::{condition_expr_passes, eval_string_expr};
+
+/// Build MiniJinja context for explorerMenu `if` / `args` (click path only + derived parts).
+pub fn build_explorer_context(
+    workspace_root: &str,
+    relative_path: &str,
+    kind: ExplorerMenuKind,
+) -> BTreeMap<String, String> {
+    let path = relative_path.replace('\\', "/");
+    let path = path.trim_end_matches('/').to_string();
+    let root = workspace_root.replace('\\', "/");
+    let root = root.trim_end_matches('/').to_string();
+
+    let file_basename = path_basename(&path);
+    let file_stem = path_stem(&path);
+    let file_dirname = path_parent(&path);
+    let file_ext = {
+        let base = &file_basename;
+        match base.rfind('.') {
+            Some(i) if i > 0 => base[i + 1..].to_string(),
+            _ => String::new(),
+        }
+    };
+
+    let absolute_path = if std::path::Path::new(&path).is_absolute() {
+        path.clone()
+    } else if path.is_empty() {
+        root.clone()
+    } else {
+        format!("{root}/{path}")
+    };
+
+    let mut ctx = BTreeMap::new();
+    ctx.insert("path".to_string(), path.clone());
+    ctx.insert("absolutePath".to_string(), absolute_path);
+    ctx.insert("workspaceRoot".to_string(), root);
+    ctx.insert("fileBasename".to_string(), file_basename);
+    ctx.insert("fileStem".to_string(), file_stem);
+    ctx.insert("fileExt".to_string(), file_ext);
+    ctx.insert("fileDirname".to_string(), file_dirname.clone());
+
+    match kind {
+        ExplorerMenuKind::File => {
+            ctx.insert("file".to_string(), path);
+            ctx.insert("directory".to_string(), file_dirname);
+        }
+        ExplorerMenuKind::Folder => {
+            ctx.insert("file".to_string(), String::new());
+            ctx.insert("directory".to_string(), path.clone());
+            // Folder click: treat dirname as the folder itself for parity with extension.
+            ctx.insert("fileDirname".to_string(), path);
+        }
+    }
+    ctx
+}
 
 /// Recipes whose `explorerMenu` matches Explorer click `kind` + `path`.
 pub fn filter_explorer_recipes(
@@ -27,8 +82,11 @@ pub fn filter_explorer_recipes(
         };
     };
 
-    let mut context = BTreeMap::new();
-    context.insert("path".to_string(), path.to_string());
+    let workspace_root = registry
+        .workspace_root
+        .to_string_lossy()
+        .replace('\\', "/");
+    let context = build_explorer_context(&workspace_root, path, click_kind);
     let maps = BTreeMap::new();
     let vars = BTreeMap::new();
     let workspace = registry.workspace_root.clone();
@@ -405,6 +463,110 @@ mod tests {
             ExplorerMenuKind::File,
             "lib/a.dart",
             &ctx,
+            &maps,
+            &vars,
+            exists
+        )
+        .is_none());
+    }
+
+    #[test]
+    fn context_exposes_path_parts_and_absolute() {
+        let ctx = build_explorer_context("/ws", "lib/features/foo.dart", ExplorerMenuKind::File);
+        assert_eq!(ctx.get("path").map(String::as_str), Some("lib/features/foo.dart"));
+        assert_eq!(
+            ctx.get("absolutePath").map(String::as_str),
+            Some("/ws/lib/features/foo.dart")
+        );
+        assert_eq!(ctx.get("workspaceRoot").map(String::as_str), Some("/ws"));
+        assert_eq!(ctx.get("fileBasename").map(String::as_str), Some("foo.dart"));
+        assert_eq!(ctx.get("fileStem").map(String::as_str), Some("foo"));
+        assert_eq!(ctx.get("fileExt").map(String::as_str), Some("dart"));
+        assert_eq!(ctx.get("fileDirname").map(String::as_str), Some("lib/features"));
+        assert_eq!(ctx.get("file").map(String::as_str), Some("lib/features/foo.dart"));
+        assert_eq!(ctx.get("directory").map(String::as_str), Some("lib/features"));
+    }
+
+    #[test]
+    fn args_use_named_builtins() {
+        let mut args = BTreeMap::new();
+        args.insert("file".to_string(), "path".to_string());
+        args.insert("folderName".to_string(), "fileBasename".to_string());
+        args.insert("featureDir".to_string(), "fileDirname".to_string());
+        args.insert("absFile".to_string(), "absolutePath".to_string());
+
+        let recipe = recipe_with_menu(
+            "demo",
+            ExplorerMenu {
+                entries: vec![ExplorerMenuEntry {
+                    kind: ExplorerMenuKind::File,
+                    if_expr: Some("fileExt == \"dart\"".into()),
+                    args,
+                }],
+            },
+        );
+        let click = "lib/features/foo.dart";
+        let ctx = build_explorer_context("/ws", click, ExplorerMenuKind::File);
+        let maps = BTreeMap::new();
+        let vars = BTreeMap::new();
+        let exists = Arc::new(|_: &str| false) as Arc<dyn Fn(&str) -> bool + Send + Sync>;
+        let resolved = resolve_explorer_match(
+            &recipe,
+            ExplorerMenuKind::File,
+            click,
+            &ctx,
+            &maps,
+            &vars,
+            exists,
+        )
+        .expect("match");
+        assert_eq!(resolved.get("file").map(String::as_str), Some(click));
+        assert_eq!(
+            resolved.get("folderName").map(String::as_str),
+            Some("foo.dart")
+        );
+        assert_eq!(
+            resolved.get("featureDir").map(String::as_str),
+            Some("lib/features")
+        );
+        assert_eq!(
+            resolved.get("absFile").map(String::as_str),
+            Some("/ws/lib/features/foo.dart")
+        );
+    }
+
+    #[test]
+    fn if_file_ext_filters_non_dart() {
+        let recipe = recipe_with_menu(
+            "demo",
+            ExplorerMenu {
+                entries: vec![ExplorerMenuEntry {
+                    kind: ExplorerMenuKind::File,
+                    if_expr: Some("fileExt == \"dart\"".into()),
+                    args: BTreeMap::new(),
+                }],
+            },
+        );
+        let maps = BTreeMap::new();
+        let vars = BTreeMap::new();
+        let exists = Arc::new(|_: &str| false) as Arc<dyn Fn(&str) -> bool + Send + Sync>;
+        let dart_ctx = build_explorer_context("/ws", "lib/a.dart", ExplorerMenuKind::File);
+        assert!(resolve_explorer_match(
+            &recipe,
+            ExplorerMenuKind::File,
+            "lib/a.dart",
+            &dart_ctx,
+            &maps,
+            &vars,
+            exists.clone()
+        )
+        .is_some());
+        let md_ctx = build_explorer_context("/ws", "README.md", ExplorerMenuKind::File);
+        assert!(resolve_explorer_match(
+            &recipe,
+            ExplorerMenuKind::File,
+            "README.md",
+            &md_ctx,
             &maps,
             &vars,
             exists

@@ -131,20 +131,26 @@ Example workspace settings:
 
 Default chords: `Ctrl+Shift+I` then `1` (run/auto), `Ctrl+Shift+T` then `1` (open runner).
 
-### Editor navigation
+### Editor navigation (Recipe Language Toolkit)
 
-In `.codemod/**` YAML files the extension provides:
+Under `codemodRecipe.codemodRoot` (default `.codemod/**`) YAML files:
 
-- **Go to Definition** on `recipe:` / nested `id:` references and `templateFile:`
-- **Completions** for recipe ids, `with:` child args, `{{` template args / `var.` /
-  `map.`, and `language:` ids from the host catalog
-- **Hover** on recipe ids (args list) and template files (preview)
-- **CodeLens** on top-level `id:` lines: Open in Recipe Runner, Copy invoke
-  keybinding, Assign to slot…
+- **Structural completions** from `generated-dsl-surface.json` (codegen from Rust
+  `dsl_structure` / model) — e.g. after `recipe:` + newline, keys like `id` /
+  `with` / `if` / `ifNot`
+- **Runtime completions** — recipe ids, `language:` ids, and `with:` arg names from
+  the host catalog / `describe` (not hand-maintained lists)
+- **Go to Definition** on `recipe:` / nested `id:` and `templateFile:` (recipe-local
+  then codemod root)
+- **Hover** on DSL keywords, recipe ids, and template previews
+- **CodeLens** on the **top-level** `id:` only: Open in Recipe Runner, Copy invoke
+  keybinding, Assign to slot…; one **Test query on file…** lens per recipe
+- **Diagnostics** come from the Rust host validate of **saved** files (Problems
+  panel source `codemod-recipe`)
 
-Template-file and query-file paths follow the host's shared safe resolver:
-recipe-local first, then `.codemod/`, with query bare names also checking
-`queries/` under each root.
+DSL structure for editors: edit `model.rs` + `dsl::` + `dsl_structure` + `ENTRIES`
+prose, then run `scripts/generate-dsl-artifacts.sh` (schema, surface, keyword-docs,
+TextMate). Do not hardcode container children in TypeScript.
 
 You can also run **Codemod Recipe: Run From Cursor Context** (`Cmd+Alt+R` on
 macOS, `Ctrl+Alt+R` elsewhere). Context keys include `file`, `selection`, `word`,

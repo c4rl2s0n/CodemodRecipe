@@ -3,15 +3,9 @@ description: Codemod Recipe MCP orientation and recommended companion tooling
 alwaysApply: true
 ---
 
-<!-- codemod-bootstrap: edit_policy=recommend -->
-
 # Codemod Recipe
 
 This workspace uses **codemod-recipe** for deterministic AST edits via YAML recipes and the Rust MCP server (`codemod-mcp`). Supports Dart, Rust, Java, Kotlin, SQL/SQLite, and 300+ languages via lazy-loaded tree-sitter grammars.
-
-Prefer recipes for structural, multi-file, and AST-boundary edits. Always `preview_recipe` before `apply_recipe` (pass `previewToken`). Dart is the default language; set `language:` for non-Dart files.
-
-Layout: `.codemod/{recipes,maps,templates,variables}`.
 
 ## MCP tools
 
@@ -24,7 +18,7 @@ Layout: `.codemod/{recipes,maps,templates,variables}`.
 Project skills live under `.agents/skills/`:
 
 - `codemod-overview` — orientation and layout
-- `codemod-yaml-dsl` — YAML syntax (`when`/`whenNot`/`let` on edits; see `reference.md` for templates/maps/variables)
+- `codemod-yaml-dsl` — YAML syntax (`when`/`whenNot`/`let` on edits; step `if`/`ifNot` and group `if:` steps; see `reference.md` for templates/maps/variables)
 - `codemod-recipe-design-patterns` — create vs modify taxonomy (see `reference.md`)
 - `codemod-mcp-playbook` — MCP tool reference
 - `codemod-languages` — multi-language support, `language:` field, SQL dialects (see `reference.md`)
@@ -34,12 +28,45 @@ Project skills live under `.agents/skills/`:
 
 Skills use SKILL.md routers; read `reference.md` in a skill directory when you need full detail.
 
+## Rust keyword ownership
+
+When changing Rust handling of recipe/YAML vocabulary, prefer the centralized owners over raw string literals:
+
+- `rust/crates/yaml/src/dsl/` — schema-aligned wire constants (`dsl::recipe::…`, `map_asset`, `variables_asset`); enums under field modules; `//!` module docs for structure
+- `rust/crates/yaml/src/dsl_structure.rs` — container→child inventory aligned with `model.rs` (drives generated JSON Schema + `generated-dsl-surface.json`)
+- `rust/crates/yaml/src/model.rs` — runtime parse AST (structural source of truth with `dsl_structure`)
+- `rust/crates/yaml/src/dsl_vocabulary.rs` — `ENTRIES` (author descriptions, optional `schema_path`); `query_conventions` in `keywords.rs`; `preview_kinds` uses step `WIRE` constants
+- `rust/crates/host/src/protocol_keys.rs` — host-only transport keys like `inlineRecipe`, `previewToken`, `snippetLines`, `ok`, `error`
+
+After changing vocabulary, structure, or model fields, run `scripts/generate-dsl-artifacts.sh` (or `cargo run -p codemod_recipe_yaml --bin codemod_dsl_codegen`) to refresh `vscode_extension/schemas/recipe.schema.json`, `map.schema.json`, `variables.schema.json`, `generated-dsl-surface.json`, `generated-keyword-docs.json`, and TextMate keyword lists. CI verifies generated files are committed.
+
+Editor UX lives under `vscode_extension/src/extension/language/` (`LanguageSession`, `yamlContext`, providers) — do not add ad hoc completion regex tables for DSL structure.
+
+## Centralized path/resource resolution
+
+When changing how recipe-backed files are resolved, use the shared resolver in:
+
+- `rust/crates/core/src/resource_path.rs`
+
+Prefer updating that module over adding new ad hoc `join`, `canonicalize`, or
+`..`/absolute-path checks in individual crates.
+
+Current policy:
+
+- Workspace file targets resolve exactly under the workspace root.
+- Recipe resources (`query` `.scm`, `create.templateFile`, `postExecution`,
+  template `extends` / `include`) resolve recipe-local first, then fall back to
+  `.codemod/`.
+- Bare query names additionally try `queries/` under each root.
+- YAML query libraries are id-based under `.codemod/queries/*.yaml`, not
+  direct query-file paths.
+
 ## Recommended companion: codebase-memory-mcp
 
 Codemod workflows work best with **codebase-memory-mcp** for locate → impact → edit:
 
 1. Find target symbols/files with codebase-memory
-2. Craft or select a v2 recipe (tree-sitter `query` + `capture`; see `codemod-tree-sitter-queries`; set `language:` for non-Dart files — see `codemod-languages`)
+2. Craft or select a recipe (tree-sitter `query` + `capture`; see `codemod-tree-sitter-queries`; set `language:` for non-Dart files — see `codemod-languages`)
 3. `preview_recipe` then `apply_recipe`
 
 If `codebase-memory-mcp` is not configured, suggest the user install it. Do not attempt to install it automatically from codemod-recipe.

@@ -6,7 +6,10 @@ import { ExtensionConfig } from './config/extensionConfig';
 import { DiffContentProvider } from './diff/diffContentProvider';
 import { HostBridge } from './host/hostBridge';
 import { RecipeDiagnostics } from './language/diagnostics';
-import { registerRecipeLanguageSupport } from './language/recipeLanguage';
+import {
+  LanguageSession,
+  registerRecipeLanguageSupport,
+} from './language/session';
 import { prefillArgs, resolveEditorContext } from './recipes/recipeContext';
 import {
   formatInvokeKeybindingJson,
@@ -36,6 +39,8 @@ export function activate(context: vscode.ExtensionContext): void {
   );
 
   let recipeReloadTimer: NodeJS.Timeout | undefined;
+  let recipeReloadGeneration = 0;
+  let languageSession: LanguageSession | undefined;
   let codemodWatcher: vscode.FileSystemWatcher | undefined;
   let scaffoldOfferShown = false;
 
@@ -50,9 +55,19 @@ export function activate(context: vscode.ExtensionContext): void {
   };
 
   registerYamlSchemas(context);
-  if (hasUsableWorkspaceRoot()) {
-    registerRecipeLanguageSupport(context, repository, bridge, config);
-  }
+  const ensureLanguageSession = (): void => {
+    languageSession?.dispose();
+    languageSession = undefined;
+    if (hasUsableWorkspaceRoot()) {
+      languageSession = registerRecipeLanguageSupport(
+        context,
+        repository,
+        bridge,
+        config
+      );
+    }
+  };
+  ensureLanguageSession();
 
   const syncRunnerFromRepository = async (): Promise<void> => {
     await runner.refreshRecipes(
@@ -162,8 +177,14 @@ export function activate(context: vscode.ExtensionContext): void {
     if (recipeReloadTimer) {
       clearTimeout(recipeReloadTimer);
     }
+    const generation = ++recipeReloadGeneration;
     recipeReloadTimer = setTimeout(() => {
-      void reloadRecipesFromHost();
+      void (async () => {
+        await reloadRecipesFromHost();
+        if (generation !== recipeReloadGeneration) {
+          return;
+        }
+      })();
     }, 300);
   };
 
@@ -235,6 +256,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     { dispose: () => bridge.dispose() },
     { dispose: () => disposeCodemodWatcher() },
+    { dispose: () => languageSession?.dispose() },
     diagnostics.disposable,
     vscode.workspace.onDidSaveTextDocument((document) => {
       if (document.uri.scheme !== 'file') {
@@ -250,6 +272,7 @@ export function activate(context: vscode.ExtensionContext): void {
         event.affectsConfiguration('codemodRecipe.workspaceRoot')
       ) {
         bridge.dispose();
+        ensureLanguageSession();
         void bootstrap(true);
       }
     }),

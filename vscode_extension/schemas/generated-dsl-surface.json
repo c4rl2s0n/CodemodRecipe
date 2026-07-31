@@ -1,0 +1,215 @@
+{
+  "containers": {
+    "arg": {
+      "children": [
+        "name",
+        "required",
+        "inputKind",
+        "abbr",
+        "help",
+        "defaultsTo",
+        "options",
+        "allowCustomValue",
+        "contextKey",
+        "from"
+      ]
+    },
+    "create": {
+      "children": [
+        "path",
+        "template",
+        "templateFile",
+        "ifExists",
+        "if",
+        "ifNot"
+      ]
+    },
+    "delete": {
+      "children": [
+        "path",
+        "ifMissing",
+        "if",
+        "ifNot"
+      ]
+    },
+    "edit": {
+      "children": [
+        "path",
+        "language",
+        "when",
+        "whenNot",
+        "let",
+        "ops",
+        "if",
+        "ifNot"
+      ]
+    },
+    "explorerMenuEntry": {
+      "children": [
+        "kind",
+        "if",
+        "args"
+      ]
+    },
+    "ifStep": {
+      "children": [
+        "if",
+        "ifNot",
+        "steps"
+      ]
+    },
+    "insert": {
+      "children": [
+        "query",
+        "capture",
+        "anchor",
+        "text"
+      ]
+    },
+    "letBinding": {
+      "children": [
+        "name",
+        "query",
+        "capture",
+        "extract",
+        "onNoMatch",
+        "onManyMatches",
+        "join",
+        "as"
+      ]
+    },
+    "mapRoot": {
+      "children": [
+        "id",
+        "description",
+        "map"
+      ]
+    },
+    "opsItem": {
+      "children": [
+        "insert",
+        "replace",
+        "remove"
+      ]
+    },
+    "recipeRef": {
+      "children": [
+        "id",
+        "with",
+        "if",
+        "ifNot"
+      ],
+      "scalar_alt": true
+    },
+    "recipeRoot": {
+      "children": [
+        "id",
+        "name",
+        "description",
+        "args",
+        "maps",
+        "queries",
+        "steps",
+        "postExecution",
+        "explorerMenu"
+      ]
+    },
+    "remove": {
+      "children": [
+        "query",
+        "capture",
+        "includeLeadingTrivia"
+      ]
+    },
+    "replace": {
+      "children": [
+        "query",
+        "capture",
+        "text",
+        "includeLeadingTrivia"
+      ]
+    },
+    "stepsItem": {
+      "children": [
+        "edit",
+        "create",
+        "delete",
+        "recipe",
+        "if"
+      ]
+    },
+    "variablesRoot": {
+      "children": [
+        "id",
+        "description",
+        "values"
+      ]
+    },
+    "with": {
+      "children": [],
+      "map_value": true
+    }
+  },
+  "documentRoots": {
+    "map": "mapRoot",
+    "recipe": "recipeRoot",
+    "variables": "variablesRoot"
+  },
+  "enums": {
+    "anchor": [
+      "start",
+      "end"
+    ],
+    "explorerMenuKind": [
+      "file",
+      "folder"
+    ],
+    "extract": [
+      "text",
+      "kind",
+      "exists",
+      "count"
+    ],
+    "ifExists": [
+      "fail",
+      "skip"
+    ],
+    "ifMissing": [
+      "fail",
+      "skip"
+    ],
+    "inputKind": [
+      "text",
+      "file",
+      "directory",
+      "choice"
+    ],
+    "onManyMatches": [
+      "error",
+      "first",
+      "join"
+    ],
+    "onNoMatch": [
+      "error",
+      "use"
+    ]
+  },
+  "parentToContainer": {
+    "": "recipeRoot",
+    "args": "arg",
+    "create": "create",
+    "delete": "delete",
+    "edit": "edit",
+    "explorerMenu": "explorerMenuEntry",
+    "if": "ifStep",
+    "insert": "insert",
+    "let": "letBinding",
+    "ops": "opsItem",
+    "recipe": "recipeRef",
+    "remove": "remove",
+    "replace": "replace",
+    "steps": "stepsItem",
+    "with": "with"
+  },
+  "version": 1
+}

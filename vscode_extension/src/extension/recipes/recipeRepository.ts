@@ -68,7 +68,7 @@ export class RecipeRepository {
       this.applyLoadResult(result);
       this.lastError = undefined;
     } catch (err) {
-      this.clearCatalog();
+      // Keep last-good catalog/diagnostics on transient host failure.
       this.lastError = err instanceof Error ? err.message : String(err);
     }
   }
@@ -79,7 +79,7 @@ export class RecipeRepository {
       this.applyLoadResult(result);
       this.lastError = undefined;
     } catch (err) {
-      this.clearCatalog();
+      // Keep last-good catalog/diagnostics on transient host failure.
       this.lastError = err instanceof Error ? err.message : String(err);
     }
   }
@@ -100,5 +100,11 @@ export class RecipeRepository {
     this.varIds = [];
     this.languageIds = [];
     this.describeCache.clear();
+  }
+
+  /** Explicit wipe (e.g. tests); normal host errors keep last-good data. */
+  resetForTests(): void {
+    this.clearCatalog();
+    this.lastError = undefined;
   }
 }

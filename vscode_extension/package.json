@@ -189,7 +189,8 @@
       "editor/context": [
         {
           "command": "codemodRecipe.runFromCursorContext",
-          "group": "navigation"
+          "group": "navigation",
+          "when": "editorTextFocus && resourceScheme == file"
         }
       ],
       "explorer/context": [
