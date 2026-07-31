@@ -63,7 +63,28 @@ Each arg object supports:
 - `name` (required)
 - `required` (bool, default false)
 - `inputKind` (optional string: `text`, `file`, `directory`, `choice`)
-- `abbr`, `help`, `defaultsTo`, `options`, `allowCustomValue`, `contextKey`
+- `abbr`, `help`, `defaultsTo`, `options`, `allowCustomValue`, `contextKey` (deprecated alias of string `from`), `from`
+
+`from` derives the arg from the active editor when invoking via the VS Code extension:
+
+```yaml
+args:
+  - name: file
+    required: true
+    from: file                    # builtin: file, fileStem, fileDirname, selection, word, …
+  - name: feature
+    from:
+      template: "{{ fileDirname | basename }}"
+  - name: className
+    from:
+      query: |
+        (class_definition name: (identifier) @name)
+      capture: name
+      extract: text
+      scope: enclosing            # enclosing | selection | first
+```
+
+Human-oriented shortcut / slots guide: [docs/recipe-shortcuts.md](../../../docs/recipe-shortcuts.md).
 
 Example:
 
@@ -283,12 +304,52 @@ steps:
         verbose: "false"   # hardcode
 ```
 
+### Step conditionals (`if` / `ifNot`)
+
+Optional MiniJinja **expressions** on `edit`, `create`, `delete`, and `recipe` (object
+form). Evaluated at runtime against recipe args (same bool coercion as templates).
+Failed gates **skip** the step (or entire inlined recipe subtree) silently — same as
+edit AST `when` / `whenNot`.
+
+```yaml
+args:
+  - name: includeTests
+    defaultsTo: "false"
+  - name: file
+    required: true
+
+steps:
+  - recipe:
+      id: create_test_harness
+      if: includeTests
+  - create:
+      path: "lib/extra.dart"
+      template: "..."
+      ifNot: file | file_exists
+  - edit:
+      path: "{{ file }}"
+      if: migrateLegacy
+      whenNot: "(...) @already"   # AST guard; both if and whenNot must allow
+      ops: [...]
+```
+
+| Expression | Meaning |
+|------------|---------|
+| `includeTests` | Truthy bool/arg |
+| `kind == "bloc"` | Comparison / `and` / `or` / `not` |
+| `file \| file_exists` | Workspace-relative path exists (WorkingTree, then disk) |
+
+`ifNot: expr` ≡ `if: not (expr)`. Both may be set (must pass `if` and fail `ifNot`).
+
+These are **not** the same as edit `when` / `whenNot` (tree-sitter query guards on file
+source).
+
 Composition behavior:
 
 - Referenced recipe steps are expanded in order
 - Args listed in `with` are **not** unioned into the parent schema
 - Unbound child args are merged by name (first definition wins)
-- Create/edit/delete steps are inlined; non-empty `with` wraps them in a scoped overlay
+- Create/edit/delete steps are inlined; non-empty `with` or `if`/`ifNot` wraps them in a scoped overlay
 - Recipe cycles are rejected
 - Unknown `with` keys (not in the child’s declared `args`) are errors (`E_RECIPE_WITH`)
 

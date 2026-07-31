@@ -176,6 +176,31 @@ impl WorkingTree {
         Ok(())
     }
 
+    /// Whether `relative` exists in the staged tree or on disk as a file.
+    ///
+    /// Staged creates/edits count as present; staged deletes count as absent.
+    pub fn path_exists(&self, sandbox: &PathSandbox, relative: &str) -> bool {
+        match self.entries.get(relative) {
+            Some(Entry::New { .. }) | Some(Entry::Existing { .. }) => true,
+            Some(Entry::Deleted { .. }) => false,
+            None => sandbox
+                .resolve_workspace_relative(relative)
+                .map(|absolute| absolute.is_file())
+                .unwrap_or(false),
+        }
+    }
+
+    /// Snapshot of staged existence overrides (path → exists) for condition filters.
+    pub fn staged_existence(&self) -> BTreeMap<String, bool> {
+        self.entries
+            .iter()
+            .map(|(path, entry)| {
+                let exists = !matches!(entry, Entry::Deleted { .. });
+                (path.clone(), exists)
+            })
+            .collect()
+    }
+
     pub fn finalize(self) -> Vec<FileChange> {
         let mut changes = Vec::new();
         for (path, entry) in self.entries {

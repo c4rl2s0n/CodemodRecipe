@@ -21,7 +21,7 @@ import {
   ValidateResponse,
   parseHostResponse,
 } from './hostProtocol';
-import type { RecipeSchema, SelectionPayload, BootstrapResponse } from '../../shared';
+import type { RecipeSchema, SelectionPayload, BootstrapResponse, DeriveArgsRequest, DeriveArgsResponse } from '../../shared';
 import type { RecipeLoadResult } from '../recipes/recipeRepository';
 
 type PendingRequest = {
@@ -183,6 +183,20 @@ export class HostBridge {
       args,
       selection,
       previewToken,
+    });
+  }
+
+  deriveArgs(request: DeriveArgsRequest): Promise<DeriveArgsResponse> {
+    return this.send<DeriveArgsResponse>({
+      command: 'deriveArgs',
+      recipe: request.recipe,
+      source: request.source,
+      language: request.language,
+      path: request.path,
+      cursorOffset: request.cursorOffset,
+      selectionStart: request.selectionStart,
+      selectionEnd: request.selectionEnd,
+      context: request.context,
     });
   }
 

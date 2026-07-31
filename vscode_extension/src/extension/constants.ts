@@ -8,6 +8,11 @@ export const COMMANDS = {
   scaffoldProject: 'codemodRecipe.scaffoldProject',
   runRecipe: 'codemodRecipe.runRecipe',
   runFromCursorContext: 'codemodRecipe.runFromCursorContext',
+  invoke: 'codemodRecipe.invoke',
+  invokeSlot: 'codemodRecipe.invokeSlot',
+  copyInvokeKeybinding: 'codemodRecipe.copyInvokeKeybinding',
+  assignToSlot: 'codemodRecipe.assignToSlot',
+  copySlotKeybinding: 'codemodRecipe.copySlotKeybinding',
   configureCodemodRoot: 'codemodRecipe.configureHost',
   validateRecipes: 'codemodRecipe.validateRecipes',
   openInRecipeRunner: 'codemodRecipe.openInRecipeRunner',
@@ -25,6 +30,8 @@ export const CONFIG = {
   performanceLogging: 'performanceLogging',
   autoPreviewDebounceMs: 'autoPreviewDebounceMs',
   previewSnippetLines: 'previewSnippetLines',
+  slots: 'slots',
+  shortcutConfirmApply: 'shortcutConfirmApply',
 } as const;
 
 export const DIFF = {

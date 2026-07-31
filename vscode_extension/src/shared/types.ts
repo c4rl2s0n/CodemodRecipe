@@ -1,6 +1,20 @@
 import type { BootstrapPhase, RunnerTab, ArgInputKind, FilePreviewKind } from './constants';
 
 
+/** How to derive an arg from editor context (string builtin or structured spec). */
+export type ArgFrom =
+  | string
+  | {
+      template?: string;
+      query?: string | string[];
+      capture?: string;
+      extract?: 'text' | 'kind' | 'exists' | 'count';
+      scope?: 'enclosing' | 'selection' | 'first';
+      language?: string;
+      as?: string;
+      onNoMatch?: 'omit' | 'empty';
+    };
+
 export interface RecipeArg {
   name: string;
   abbr: string | null;
@@ -10,7 +24,27 @@ export interface RecipeArg {
   inputKind: ArgInputKind;
   options: string[];
   allowCustomValue: boolean;
+  /** @deprecated Prefer {@link from}. */
   contextKey: string | null;
+  /** Builtin key, template, or tree-sitter query derivation. */
+  from?: ArgFrom | null;
+}
+
+export interface DeriveArgsRequest {
+  recipe: string;
+  source: string;
+  language?: string;
+  path?: string;
+  cursorOffset: number;
+  selectionStart: number;
+  selectionEnd: number;
+  context: Record<string, string>;
+}
+
+export interface DeriveArgsResponse {
+  ok: boolean;
+  error?: string;
+  args?: Record<string, string>;
 }
 
 export interface RecipeSchema {
@@ -133,6 +167,17 @@ export type HostCommand =
       args: Record<string, string>;
       previewToken: string;
       selection: SelectionPayload;
+    }
+  | {
+      command: 'deriveArgs';
+      recipe: string;
+      source: string;
+      language?: string;
+      path?: string;
+      cursorOffset: number;
+      selectionStart: number;
+      selectionEnd: number;
+      context: Record<string, string>;
     }
   | {
       command: 'bootstrap';

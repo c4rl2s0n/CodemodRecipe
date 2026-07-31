@@ -94,6 +94,9 @@ vocab_entries! {
     OpKind, crate::dsl::recipe::steps::edit::ops::replace::WIRE, None, "Replace the span of a query capture with new text.";
     OpKind, crate::dsl::recipe::steps::edit::ops::remove::WIRE, None, "Remove the span matched by a query capture.";
 
+    Field, crate::dsl::recipe::steps::condition::field::IF, None, "MiniJinja expression over recipe args; skip the step when false.", "#/definitions/editStep/properties/if";
+    Field, crate::dsl::recipe::steps::condition::field::IF_NOT, None, "MiniJinja expression over recipe args; skip the step when true.", "#/definitions/editStep/properties/ifNot";
+
     Field, crate::dsl::recipe::steps::edit::field::PATH, None, "Workspace-relative file path (often templated).", "#/definitions/editStep/properties/path";
     Field, crate::dsl::recipe::steps::edit::field::LANGUAGE, None, "Tree-sitter language id when extension inference is ambiguous.", "#/definitions/editStep/properties/language";
     Field, crate::dsl::recipe::steps::edit::field::WHEN, None, "Guard queries; all must match before the edit runs.", "#/definitions/editStep/properties/when";
@@ -132,7 +135,8 @@ vocab_entries! {
     Field, crate::dsl::recipe::arg::field::DEFAULTS_TO, None, "Default value when the arg is omitted.", "#/definitions/arg/properties/defaultsTo";
     Field, crate::dsl::recipe::arg::field::OPTIONS, None, "Allowed values for choice-style args.", "#/definitions/arg/properties/options";
     Field, crate::dsl::recipe::arg::field::ALLOW_CUSTOM_VALUE, None, "Allow values outside options for choice args.", "#/definitions/arg/properties/allowCustomValue";
-    Field, crate::dsl::recipe::arg::field::CONTEXT_KEY, None, "Editor context key used to prefill this arg.", "#/definitions/arg/properties/contextKey";
+    Field, crate::dsl::recipe::arg::field::CONTEXT_KEY, None, "Deprecated alias of string `from` — editor context key used to prefill this arg.", "#/definitions/arg/properties/contextKey";
+    Field, crate::dsl::recipe::arg::field::FROM, None, "How to derive this arg from editor context: builtin key, template, or tree-sitter query (like let).", "#/definitions/arg/properties/from";
     Field, crate::dsl::recipe::steps::recipe_ref::object::field::ID, None, "Unique recipe identifier for an inlined recipe reference.", "#/definitions/recipeRef/properties/id";
 
     Field, crate::dsl::recipe::arg::field::NAME, None, "Recipe argument name.", "#/definitions/arg/properties/name";

@@ -63,6 +63,18 @@ impl Engine {
         }
     }
 
+    /// Collect all spans for `capture_name` (for editor derive / scope filtering).
+    pub fn query_capture_spans(
+        &mut self,
+        ctx: &QueryContext<'_>,
+        source: &str,
+        query_spec: &QuerySpec,
+        capture_name: &str,
+    ) -> Result<Vec<CaptureSpan>, EngineError> {
+        let tree = self.parse_tree(source)?;
+        self.collect_all_capture_spans(ctx, source, &tree, query_spec, capture_name)
+    }
+
     fn extract_single_capture_value(
         &mut self,
         ctx: &QueryContext<'_>,

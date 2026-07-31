@@ -125,6 +125,28 @@ pub fn handle_command(registry: &mut RecipeRegistry, cmd: HostCommand) -> serde_
                 &companions,
             )
         }
+        HostCommand::DeriveArgs {
+            recipe,
+            source,
+            language,
+            path,
+            cursor_offset,
+            selection_start,
+            selection_end,
+            context,
+        } => to_value(crate::derive_args::derive_args(
+            registry,
+            crate::derive_args::DeriveArgsRequest {
+                recipe_id: &recipe,
+                source: &source,
+                language: language.as_deref(),
+                path: path.as_deref(),
+                cursor_offset: cursor_offset as usize,
+                selection_start: selection_start as usize,
+                selection_end: selection_end as usize,
+                context,
+            },
+        )),
         HostCommand::Preview {
             recipe,
             inline_recipe,

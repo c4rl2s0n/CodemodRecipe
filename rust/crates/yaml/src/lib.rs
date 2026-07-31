@@ -1,3 +1,4 @@
+pub mod arg_from;
 pub mod compose;
 pub mod dsl;
 pub mod dsl_vocabulary;
@@ -8,6 +9,7 @@ pub mod model;
 pub mod query_spec;
 pub mod validate;
 
+pub use arg_from::{ArgFrom, ArgFromOnNoMatch, ArgFromScope, ArgFromSpec};
 pub use compose::{
     compose_recipe, expand_recipe_references, recipe_ref_id, ComposeError, ComposeStep,
 };

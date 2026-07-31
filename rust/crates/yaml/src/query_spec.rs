@@ -1,5 +1,5 @@
 use serde::de::{self, Visitor};
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
 
 /// Tree-sitter query on an edit op: one pattern or a chained list of steps.
@@ -39,6 +39,18 @@ impl QuerySpec {
     /// All query step strings (for template validation / scanning).
     pub fn step_strings(&self) -> Vec<&str> {
         self.steps()
+    }
+}
+
+impl Serialize for QuerySpec {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        match self {
+            QuerySpec::Single(s) => serializer.serialize_str(s),
+            QuerySpec::Chain(v) => v.serialize(serializer),
+        }
     }
 }
 

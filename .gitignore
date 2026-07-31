@@ -30,3 +30,6 @@ Thumbs.db
 
 # Rust
 rust/target/
+
+# Local temp (cargo/npm when /tmp is full)
+.tmp/

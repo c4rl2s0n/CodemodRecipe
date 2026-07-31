@@ -34,10 +34,10 @@ postExecution:
 
 Each `steps[]` entry is a single-key object:
 
-- `edit` — patch existing files (insert/replace/remove); optional `when` / `whenNot` guards and `let` step locals (see `reference.md`)
-- `create` — new files from template
-- `delete` — remove files
-- `recipe` — compose another recipe by id (optional `with:` call-site arg bindings)
+- `edit` — patch existing files (insert/replace/remove); optional `when` / `whenNot` AST guards, `if` / `ifNot` arg expressions, and `let` step locals (see `reference.md`)
+- `create` — new files from template (optional `if` / `ifNot`)
+- `delete` — remove files (optional `if` / `ifNot`)
+- `recipe` — compose another recipe by id (optional `with:` call-site arg bindings; optional `if` / `ifNot`)
 
 ## Minimal insert example
 
@@ -65,7 +65,7 @@ Each `steps[]` entry is a single-key object:
 
 ## Instructions
 
-1. **Read and follow** [reference.md](reference.md) for templates, maps, variables, args, composition, and validation.
+1. **Read and follow** [reference.md](reference.md) for templates, maps, variables, args (`from` / `contextKey` editor derivation), composition, and validation.
 2. Call `validate_recipes` after editing recipe YAML.
 3. When adjusting Rust parsing/validation/preview handling for YAML vocabulary, update the centralized owners first:
    - `rust/crates/yaml/src/dsl/` — schema-shaped wire constants; `rust/crates/yaml/src/dsl_vocabulary.rs` — `ENTRIES` (descriptions, codegen); import via `codemod_recipe_yaml::dsl`

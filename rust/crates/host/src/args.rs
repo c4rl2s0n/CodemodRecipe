@@ -64,6 +64,7 @@ mod tests {
             options: vec![],
             allow_custom_value: None,
             context_key: None,
+            from: None,
         }
     }
 
@@ -129,6 +130,8 @@ mod tests {
             steps: vec![Step::RecipeRef(codemod_recipe_yaml::model::RecipeRef {
                 id: "child".to_string(),
                 with: BTreeMap::new(),
+                if_expr: None,
+                if_not: None,
             })],
             post_execution: vec![],
         };

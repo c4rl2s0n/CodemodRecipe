@@ -60,6 +60,23 @@ pub enum HostCommand {
         #[serde(default)]
         companions: Vec<String>,
     },
+    #[serde(rename = "deriveArgs")]
+    DeriveArgs {
+        recipe: String,
+        source: String,
+        #[serde(default)]
+        language: Option<String>,
+        #[serde(default)]
+        path: Option<String>,
+        #[serde(default, rename = "cursorOffset")]
+        cursor_offset: u64,
+        #[serde(default, rename = "selectionStart")]
+        selection_start: u64,
+        #[serde(default, rename = "selectionEnd")]
+        selection_end: u64,
+        #[serde(default)]
+        context: std::collections::BTreeMap<String, String>,
+    },
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -74,6 +91,18 @@ pub struct RecipeArg {
     pub options: Vec<String>,
     pub allow_custom_value: bool,
     pub context_key: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub from: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DeriveArgsResponse {
+    pub ok: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub args: Option<std::collections::BTreeMap<String, String>>,
 }
 
 #[derive(Debug, Serialize, Clone)]

@@ -80,6 +80,26 @@
         "icon": "$(wand)"
       },
       {
+        "command": "codemodRecipe.invoke",
+        "title": "Codemod Recipe: Invoke Recipe"
+      },
+      {
+        "command": "codemodRecipe.invokeSlot",
+        "title": "Codemod Recipe: Invoke Slot"
+      },
+      {
+        "command": "codemodRecipe.copyInvokeKeybinding",
+        "title": "Codemod Recipe: Copy Invoke Keybinding"
+      },
+      {
+        "command": "codemodRecipe.assignToSlot",
+        "title": "Codemod Recipe: Assign to Slot"
+      },
+      {
+        "command": "codemodRecipe.copySlotKeybinding",
+        "title": "Codemod Recipe: Copy Slot Keybinding"
+      },
+      {
         "command": "codemodRecipe.configureHost",
         "title": "Codemod Recipe: Set Codemod Root Directory"
       },
@@ -126,6 +146,26 @@
         "key": "ctrl+alt+r",
         "mac": "cmd+alt+r",
         "when": "editorTextFocus"
+      },
+      {
+        "command": "codemodRecipe.invokeSlot",
+        "key": "ctrl+shift+i 1",
+        "mac": "cmd+shift+i 1",
+        "when": "editorTextFocus",
+        "args": {
+          "slot": "1",
+          "mode": "auto"
+        }
+      },
+      {
+        "command": "codemodRecipe.invokeSlot",
+        "key": "ctrl+shift+t 1",
+        "mac": "cmd+shift+t 1",
+        "when": "editorTextFocus",
+        "args": {
+          "slot": "1",
+          "mode": "open"
+        }
       }
     ],
     "menus": {
@@ -174,6 +214,19 @@
           "minimum": 1,
           "maximum": 20,
           "description": "Maximum number of lines shown per file in compact live preview cards."
+        },
+        "codemodRecipe.slots": {
+          "type": "object",
+          "default": {},
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Map of slot ids (any character key, e.g. \"1\", \"b\") to recipe ids for codemodRecipe.invokeSlot."
+        },
+        "codemodRecipe.shortcutConfirmApply": {
+          "type": "boolean",
+          "default": false,
+          "description": "When a shortcut would auto-apply a recipe with complete args, ask for confirmation first."
         }
       }
     }

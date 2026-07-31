@@ -18,7 +18,7 @@
           "type": "boolean"
         },
         "contextKey": {
-          "description": "Editor context key used to prefill this arg.",
+          "description": "Deprecated alias of string `from` — editor context key used to prefill this arg.",
           "type": [
             "string",
             "null"
@@ -29,6 +29,82 @@
           "type": [
             "string",
             "null"
+          ]
+        },
+        "from": {
+          "description": "How to derive this arg from editor context: builtin key, template, or tree-sitter query (like let).",
+          "oneOf": [
+            {
+              "description": "Builtin editor context key (file, fileStem, selection, word, …).",
+              "type": "string"
+            },
+            {
+              "additionalProperties": true,
+              "properties": {
+                "as": {
+                  "description": "Jinja template to compute a let value from prior locals.",
+                  "type": "string"
+                },
+                "capture": {
+                  "description": "Capture name from the query whose span is edited.",
+                  "type": "string"
+                },
+                "extract": {
+                  "description": "How to derive a let binding value from query captures.",
+                  "enum": [
+                    "text",
+                    "kind",
+                    "exists",
+                    "count"
+                  ],
+                  "type": "string"
+                },
+                "join": {
+                  "description": "Separator when onManyMatches is join.",
+                  "type": "string"
+                },
+                "language": {
+                  "description": "Tree-sitter language id when extension inference is ambiguous.",
+                  "type": "string"
+                },
+                "onManyMatches": {
+                  "description": "Behavior when a let binding query matches multiple nodes.",
+                  "enum": [
+                    "error",
+                    "first",
+                    "join"
+                  ],
+                  "type": "string"
+                },
+                "onNoMatch": {
+                  "description": "Behavior when a let binding query matches nothing.",
+                  "enum": [
+                    "omit",
+                    "empty"
+                  ],
+                  "type": "string"
+                },
+                "query": {
+                  "description": "Inline tree-sitter query, .scm path, query-library ref, or chain."
+                },
+                "scope": {
+                  "enum": [
+                    "enclosing",
+                    "selection",
+                    "first"
+                  ],
+                  "type": "string"
+                },
+                "template": {
+                  "description": "Inline file content for a create step.",
+                  "type": "string"
+                }
+              },
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
           ]
         },
         "help": {
@@ -72,12 +148,20 @@
     "createStep": {
       "additionalProperties": true,
       "properties": {
+        "if": {
+          "description": "MiniJinja expression over recipe args; skip the step when false.",
+          "type": "string"
+        },
         "ifExists": {
           "description": "Behavior when create target path already exists.",
           "enum": [
             "fail",
             "skip"
           ],
+          "type": "string"
+        },
+        "ifNot": {
+          "description": "MiniJinja expression over recipe args; skip the step when true.",
           "type": "string"
         },
         "path": {
@@ -100,12 +184,20 @@
     },
     "deleteStep": {
       "properties": {
+        "if": {
+          "description": "MiniJinja expression over recipe args; skip the step when false.",
+          "type": "string"
+        },
         "ifMissing": {
           "description": "Behavior when delete target path is missing.",
           "enum": [
             "fail",
             "skip"
           ],
+          "type": "string"
+        },
+        "ifNot": {
+          "description": "MiniJinja expression over recipe args; skip the step when true.",
           "type": "string"
         },
         "path": {
@@ -141,6 +233,14 @@
     "editStep": {
       "additionalProperties": true,
       "properties": {
+        "if": {
+          "description": "MiniJinja expression over recipe args; skip the step when false.",
+          "type": "string"
+        },
+        "ifNot": {
+          "description": "MiniJinja expression over recipe args; skip the step when true.",
+          "type": "string"
+        },
         "language": {
           "description": "Tree-sitter language id when extension inference is ambiguous.",
           "type": "string"
@@ -305,6 +405,14 @@
             "id": {
               "description": "Unique recipe identifier.",
               "minLength": 1,
+              "type": "string"
+            },
+            "if": {
+              "description": "MiniJinja expression over recipe args; skip the step when false.",
+              "type": "string"
+            },
+            "ifNot": {
+              "description": "MiniJinja expression over recipe args; skip the step when true.",
               "type": "string"
             },
             "with": {

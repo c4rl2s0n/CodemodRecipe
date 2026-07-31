@@ -60,7 +60,7 @@ pub struct ApplyResult {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) struct CaptureSpan {
+pub struct CaptureSpan {
     pub start: usize,
     pub end: usize,
     pub is_block: bool,

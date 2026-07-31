@@ -8,6 +8,7 @@ The Rust host renders recipe strings and file-backed templates with
 | Location | Render path |
 |----------|-------------|
 | `edit.path`, `edit.when` / `edit.whenNot`, `edit.let[].query` / `capture` / `as`, `edit.ops[].query/capture/text` | Inline `render_str`; guard queries and `let` bindings use the same query resolution as ops. Op `text`/`query`/`capture` re-render **per op** when `let` or guards are present (locals merged with recipe args). Each `query` step (string or list item) after file load |
+| `edit.if` / `edit.ifNot`, `create.if` / `create.ifNot`, `delete.if` / `delete.ifNot`, `recipe.if` / `recipe.ifNot` | MiniJinja **expressions** (not `{{ … }}` templates) over recipe args; optional `file_exists` filter. Skip step when the gate fails |
 | `create.path`, `create.template` | Inline `render_str` |
 | `create.templateFile` | File loader (`extends` / `include` supported) |
 | `delete.path` | Inline `render_str` |
@@ -175,6 +176,7 @@ Runnable recipes demonstrating each feature:
 | `jinja.defaults.orchestrator` | [`test/fixtures/jinja_examples/.../defaults_orchestrator.yaml`](../test/fixtures/jinja_examples/.codemod/recipes/defaults_orchestrator.yaml) | `defaultsTo` via recipe composition |
 | `jinja.bind.orchestrator` | [`test/fixtures/jinja_examples/.../with_bind_orchestrator.yaml`](../test/fixtures/jinja_examples/.codemod/recipes/with_bind_orchestrator.yaml) | `recipe.with` forward + hardcode |
 | `jinja.bind.orchestrator_partial` | [`test/fixtures/jinja_examples/.../with_partial_orchestrator.yaml`](../test/fixtures/jinja_examples/.codemod/recipes/with_partial_orchestrator.yaml) | Partial `with` + parent fallthrough |
+| `jinja.step_if.orchestrator` | [`test/fixtures/jinja_examples/.../step_if_orchestrator.yaml`](../test/fixtures/jinja_examples/.codemod/recipes/step_if_orchestrator.yaml) | Step `if` / `ifNot` + `file_exists` on recipe/create |
 
 Integration tests: [`rust/crates/host/tests/jinja_examples_test.rs`](../rust/crates/host/tests/jinja_examples_test.rs).
 

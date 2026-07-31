@@ -1,0 +1,28 @@
+id: jinja.step_if.orchestrator
+name: step_if_orchestrator
+description: |
+  Demonstrates step-level if / ifNot gates on recipe composition and create.
+
+args:
+  - name: className
+    required: true
+  - name: includeExtra
+    defaultsTo: "false"
+  - name: markerFile
+    defaultsTo: "lib/generated/marker.dart"
+
+steps:
+  - create:
+      path: "lib/generated/{{ className | snake_case }}_base.dart"
+      template: |
+        class {{ className | pascal_case }}Base {}
+  - recipe:
+      id: jinja.step_if.child
+      if: includeExtra
+      with:
+        className: "{{ className }}"
+  - create:
+      path: "lib/generated/skipped_when_marker.dart"
+      template: |
+        // only when markerFile is absent
+      ifNot: markerFile | file_exists

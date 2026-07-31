@@ -1,6 +1,7 @@
 pub mod args;
 pub mod bootstrap;
 pub mod config;
+pub mod derive_args;
 pub mod diag_source;
 pub mod diff;
 pub mod dispatch;
@@ -18,6 +19,7 @@ pub mod query_resolver;
 pub mod registry;
 pub mod render_context;
 pub mod runner;
+pub mod step_condition;
 pub mod template;
 pub mod validate;
 pub mod working_tree;

@@ -8,6 +8,15 @@ import { HostBridge } from './host/hostBridge';
 import { RecipeDiagnostics } from './language/diagnostics';
 import { registerRecipeLanguageSupport } from './language/recipeLanguage';
 import { prefillArgs, resolveEditorContext } from './recipes/recipeContext';
+import {
+  formatInvokeKeybindingJson,
+  formatSlotKeybindingJson,
+  invokeRecipe,
+  invokeSlot,
+  type InvokeArgs,
+  type InvokeMode,
+  type InvokeSlotArgs,
+} from './recipes/recipeInvoke';
 import { RecipeRepository } from './recipes/recipeRepository';
 import type { RecipeSchema } from '../shared';
 import { RecipeRunnerViewProvider } from './views/recipeRunnerViewProvider';
@@ -281,6 +290,103 @@ export function activate(context: vscode.ExtensionContext): void {
         }
       }
     ),
+    vscode.commands.registerCommand(
+      COMMANDS.invoke,
+      async (args?: InvokeArgs) => {
+        await invokeRecipe(
+          { repository, bridge, config, runner },
+          args ?? {}
+        );
+      }
+    ),
+    vscode.commands.registerCommand(
+      COMMANDS.invokeSlot,
+      async (args?: InvokeSlotArgs) => {
+        await invokeSlot({ repository, bridge, config, runner }, args ?? {});
+      }
+    ),
+    vscode.commands.registerCommand(
+      COMMANDS.copyInvokeKeybinding,
+      async (recipeId?: string) => {
+        const id =
+          typeof recipeId === 'string'
+            ? recipeId
+            : await pickRecipeId(repository);
+        if (!id) {
+          return;
+        }
+        const mode = await pickInvokeMode('auto');
+        if (!mode) {
+          return;
+        }
+        await vscode.env.clipboard.writeText(formatInvokeKeybindingJson(id, mode));
+        vscode.window.showInformationMessage(
+          'Codemod Recipe: invoke keybinding JSON copied to clipboard.'
+        );
+      }
+    ),
+    vscode.commands.registerCommand(
+      COMMANDS.assignToSlot,
+      async (recipeId?: string) => {
+        const id =
+          typeof recipeId === 'string'
+            ? recipeId
+            : await pickRecipeId(repository);
+        if (!id) {
+          return;
+        }
+        const slot = await vscode.window.showInputBox({
+          prompt: 'Slot id (any character key, e.g. 1, b, c)',
+          placeHolder: 'b',
+          validateInput: (value) =>
+            value.trim() ? undefined : 'Slot id is required',
+        });
+        if (!slot?.trim()) {
+          return;
+        }
+        const normalized = slot.trim();
+        await config.updateSlot(normalized, id);
+        const copy = await vscode.window.showInformationMessage(
+          `Codemod Recipe: assigned slot \`${normalized}\` → ${id}`,
+          'Copy run keybinding',
+          'Copy open keybinding'
+        );
+        if (copy === 'Copy run keybinding') {
+          await vscode.env.clipboard.writeText(
+            formatSlotKeybindingJson(normalized, 'auto')
+          );
+        } else if (copy === 'Copy open keybinding') {
+          await vscode.env.clipboard.writeText(
+            formatSlotKeybindingJson(normalized, 'open')
+          );
+        }
+      }
+    ),
+    vscode.commands.registerCommand(
+      COMMANDS.copySlotKeybinding,
+      async (slot?: string) => {
+        const slotId =
+          typeof slot === 'string' && slot.trim()
+            ? slot.trim()
+            : await vscode.window.showInputBox({
+                prompt: 'Slot id to copy keybinding for',
+                placeHolder: '1',
+              });
+        if (!slotId?.trim()) {
+          return;
+        }
+        const mode = await pickInvokeMode('auto');
+        if (!mode) {
+          return;
+        }
+        await vscode.env.clipboard.writeText(
+          formatSlotKeybindingJson(slotId.trim(), mode)
+        );
+        vscode.window.showInformationMessage(
+          'Codemod Recipe: slot keybinding JSON copied to clipboard.'
+        );
+      }
+    ),
     vscode.commands.registerCommand(COMMANDS.runFromCursorContext, async () => {
       const recipes = repository.getRecipes();
       const editorContext = resolveEditorContext(config.workspaceRoot);
@@ -314,7 +420,14 @@ export function activate(context: vscode.ExtensionContext): void {
       );
 
       if (picked) {
-        runner.run(picked.candidate.recipe, picked.candidate.args);
+        await invokeRecipe(
+          { repository, bridge, config, runner },
+          {
+            recipeId: picked.candidate.recipe.id,
+            mode: 'auto',
+            args: picked.candidate.args,
+          }
+        );
       }
     }),
     vscode.commands.registerCommand(COMMANDS.configureCodemodRoot, async () => {
@@ -402,6 +515,39 @@ function formatHostError(message: string): string {
     return `${prefixed}\n\nIf the host failed to start, build it via vscode_extension/build.sh or cargo build -p codemod_recipe_host --bin codemod_host.`;
   }
   return prefixed;
+}
+
+async function pickRecipeId(
+  repository: RecipeRepository
+): Promise<string | undefined> {
+  const picked = await vscode.window.showQuickPick(
+    repository.getRecipes().map((item) => ({
+      label: item.id,
+      description: item.name,
+      detail: item.description,
+    })),
+    { placeHolder: 'Select a recipe' }
+  );
+  return picked?.label;
+}
+
+async function pickInvokeMode(
+  defaultMode: InvokeMode
+): Promise<InvokeMode | undefined> {
+  const picked = await vscode.window.showQuickPick(
+    [
+      {
+        label: 'auto',
+        description: 'Execute when complete; otherwise open runner',
+      },
+      { label: 'run', description: 'Prefer execute; open runner if incomplete' },
+      { label: 'open', description: 'Always open recipe runner prefilled' },
+    ],
+    {
+      placeHolder: `Invoke mode (default: ${defaultMode})`,
+    }
+  );
+  return (picked?.label as InvokeMode | undefined) ?? undefined;
 }
 
 function registerYamlSchemas(context: vscode.ExtensionContext): void {

@@ -4,6 +4,7 @@ use std::fmt;
 
 use std::collections::BTreeMap;
 
+use crate::arg_from::ArgFrom;
 use crate::dsl;
 use crate::guard_list::GuardList;
 use crate::let_binding::LetBindings;
@@ -46,6 +47,9 @@ pub struct Arg {
     pub allow_custom_value: Option<bool>,
     #[serde(default, rename = "contextKey")]
     pub context_key: Option<String>,
+    /// Derive this arg from editor context (`file`, query, template, …).
+    #[serde(default)]
+    pub from: Option<ArgFrom>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
@@ -61,13 +65,34 @@ pub struct RecipeRef {
     pub id: String,
     /// Child arg name → template string rendered in the parent context.
     pub with: BTreeMap<String, String>,
+    /// MiniJinja expression; skip the inlined recipe when false.
+    pub if_expr: Option<String>,
+    /// MiniJinja expression; skip the inlined recipe when true.
+    pub if_not: Option<String>,
+}
+
+impl RecipeRef {
+    /// True when this ref carries an `if` or `ifNot` expression.
+    pub fn has_condition(&self) -> bool {
+        self.if_expr.as_ref().is_some_and(|s| !s.trim().is_empty())
+            || self.if_not.as_ref().is_some_and(|s| !s.trim().is_empty())
+    }
 }
 
 /// Inlined child steps with call-site `with` overlays (produced by compose expand).
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ScopedStep {
     pub with: BTreeMap<String, String>,
+    pub if_expr: Option<String>,
+    pub if_not: Option<String>,
     pub steps: Vec<Step>,
+}
+
+impl ScopedStep {
+    pub fn has_condition(&self) -> bool {
+        self.if_expr.as_ref().is_some_and(|s| !s.trim().is_empty())
+            || self.if_not.as_ref().is_some_and(|s| !s.trim().is_empty())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -136,7 +161,7 @@ impl<'de> Deserialize<'de> for Step {
     }
 }
 
-/// Parse a `recipe:` step value: string id or `{ id, with }`.
+/// Parse a `recipe:` step value: string id or `{ id, with, if, ifNot }`.
 pub fn parse_recipe_ref(value: serde_yaml::Value) -> Result<RecipeRef, String> {
     match value {
         serde_yaml::Value::String(id) => {
@@ -146,6 +171,8 @@ pub fn parse_recipe_ref(value: serde_yaml::Value) -> Result<RecipeRef, String> {
             Ok(RecipeRef {
                 id,
                 with: BTreeMap::new(),
+                if_expr: None,
+                if_not: None,
             })
         }
         serde_yaml::Value::Mapping(map) => {
@@ -180,21 +207,54 @@ pub fn parse_recipe_ref(value: serde_yaml::Value) -> Result<RecipeRef, String> {
                     with.insert(key, value);
                 }
             }
+            let if_expr = optional_string_field(
+                &map,
+                dsl::recipe::steps::condition::field::IF,
+                "recipe step 'if'",
+            )?;
+            let if_not = optional_string_field(
+                &map,
+                dsl::recipe::steps::condition::field::IF_NOT,
+                "recipe step 'ifNot'",
+            )?;
             for key in map.keys() {
                 let Some(name) = key.as_str() else {
                     continue;
                 };
                 if name != dsl::recipe::steps::recipe_ref::object::field::ID
                     && name != dsl::recipe::steps::recipe_ref::object::field::WITH
+                    && name != dsl::recipe::steps::condition::field::IF
+                    && name != dsl::recipe::steps::condition::field::IF_NOT
                 {
                     return Err(format!(
-                        "unknown field '{name}' in recipe step (expected id, with)"
+                        "unknown field '{name}' in recipe step (expected id, with, if, ifNot)"
                     ));
                 }
             }
-            Ok(RecipeRef { id, with })
+            Ok(RecipeRef {
+                id,
+                with,
+                if_expr,
+                if_not,
+            })
         }
         _ => Err("recipe step must be a recipe id string or a mapping with 'id'".to_string()),
+    }
+}
+
+fn optional_string_field(
+    map: &serde_yaml::Mapping,
+    field: &str,
+    label: &str,
+) -> Result<Option<String>, String> {
+    let Some(val) = map.get(serde_yaml::Value::String(field.to_string())) else {
+        return Ok(None);
+    };
+    let s = yaml_scalar_to_string(val).ok_or_else(|| format!("{label} must be a string expression"))?;
+    if s.trim().is_empty() {
+        Ok(None)
+    } else {
+        Ok(Some(s))
     }
 }
 
@@ -218,6 +278,10 @@ pub struct CreateStep {
     pub template_file: Option<String>,
     #[serde(default, rename = "ifExists")]
     pub if_exists: IfExistsStrategy,
+    #[serde(default, rename = "if")]
+    pub if_expr: Option<String>,
+    #[serde(default, rename = "ifNot")]
+    pub if_not: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Default)]
@@ -234,6 +298,10 @@ pub struct DeleteStep {
     pub path: String,
     #[serde(default, rename = "ifMissing")]
     pub if_missing: IfMissingStrategy,
+    #[serde(default, rename = "if")]
+    pub if_expr: Option<String>,
+    #[serde(default, rename = "ifNot")]
+    pub if_not: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Default)]
@@ -257,6 +325,10 @@ pub struct EditStep {
     #[serde(default, rename = "let")]
     pub let_bindings: LetBindings,
     pub ops: Vec<EditOp>,
+    #[serde(default, rename = "if")]
+    pub if_expr: Option<String>,
+    #[serde(default, rename = "ifNot")]
+    pub if_not: Option<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

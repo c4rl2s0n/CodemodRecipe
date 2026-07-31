@@ -136,11 +136,13 @@ fn expand_recipe_references_inner(
                         Step::RecipeRef(_) | Step::Unknown(_, _) => {}
                     }
                 }
-                if recipe_ref.with.is_empty() {
+                if recipe_ref.with.is_empty() && !recipe_ref.has_condition() {
                     steps.extend(child_steps);
                 } else {
                     steps.push(Step::Scoped(ScopedStep {
                         with: recipe_ref.with.clone(),
+                        if_expr: recipe_ref.if_expr.clone(),
+                        if_not: recipe_ref.if_not.clone(),
                         steps: child_steps,
                     }));
                 }
@@ -228,6 +230,7 @@ mod tests {
             options: vec![],
             allow_custom_value: None,
             context_key: None,
+            from: None,
         }
     }
 
@@ -261,6 +264,8 @@ mod tests {
         Step::RecipeRef(RecipeRef {
             id: id.to_string(),
             with: BTreeMap::new(),
+            if_expr: None,
+            if_not: None,
         })
     }
 
@@ -268,6 +273,8 @@ mod tests {
         Step::RecipeRef(RecipeRef {
             id: id.to_string(),
             with,
+            if_expr: None,
+            if_not: None,
         })
     }
 
@@ -314,6 +321,7 @@ mod tests {
                 options: vec![],
                 allow_custom_value: None,
                 context_key: None,
+                from: None,
             }],
             vec![ComposeStep::Recipe(nested)],
         );
@@ -476,5 +484,34 @@ mod tests {
 
         let expanded = expand_recipe_references(&parent, &registry).unwrap();
         assert!(matches!(&expanded.steps[0], Step::Edit(_)));
+    }
+
+    #[test]
+    fn expand_conditioned_recipe_ref_keeps_scoped() {
+        let child = recipe_named("child", "child.dart", vec![sample_arg("file")]);
+        let parent = Recipe {
+            id: "parent".to_string(),
+            name: None,
+            description: None,
+            args: vec![],
+            maps: BTreeMap::new(),
+            queries: BTreeMap::new(),
+            steps: vec![Step::RecipeRef(RecipeRef {
+                id: "child".to_string(),
+                with: BTreeMap::new(),
+                if_expr: Some("includeTests".to_string()),
+                if_not: None,
+            })],
+            post_execution: vec![],
+        };
+        let mut registry = BTreeMap::new();
+        registry.insert("child".to_string(), child);
+
+        let expanded = expand_recipe_references(&parent, &registry).unwrap();
+        let Step::Scoped(scoped) = &expanded.steps[0] else {
+            panic!("expected Scoped for conditioned recipe ref");
+        };
+        assert_eq!(scoped.if_expr.as_deref(), Some("includeTests"));
+        assert_eq!(scoped.steps.len(), 1);
     }
 }

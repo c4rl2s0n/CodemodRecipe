@@ -23,6 +23,7 @@ pub mod arg {
         pub const OPTIONS: &str = "options";
         pub const ALLOW_CUSTOM_VALUE: &str = "allowCustomValue";
         pub const CONTEXT_KEY: &str = "contextKey";
+        pub const FROM: &str = "from";
 
         pub mod input_kind {
             pub mod value {
@@ -46,6 +47,14 @@ pub mod queries {
 
 /// Step kinds under `steps[]` (`#/definitions/step`).
 pub mod steps {
+    /// Shared step-condition fields (`if` / `ifNot`) on edit, create, delete, and recipe refs.
+    pub mod condition {
+        pub mod field {
+            pub const IF: &str = "if";
+            pub const IF_NOT: &str = "ifNot";
+        }
+    }
+
     /// Edit step (`#/definitions/editStep`).
     pub mod edit {
         pub const WIRE: &str = "edit";

@@ -27,7 +27,7 @@ pub fn render_template(
 ) -> Result<String, String> {
     let converted = convert_legacy_syntax(template);
     let env = build_environment(maps)?;
-    let ctx = build_context(args, maps, vars);
+    let ctx = build_template_context(args, maps, vars);
     env.render_str(&converted, ctx).map_err(|e| e.to_string())
 }
 
@@ -63,13 +63,28 @@ pub fn render_template_file(
     let tmpl = env
         .get_template(template_name)
         .map_err(|e| format!("Template {template_name}: {e}"))?;
-    let ctx = build_context(args, maps, vars);
+    let ctx = build_template_context(args, maps, vars);
     tmpl.render(ctx).map_err(|e| e.to_string())
 }
 
 fn build_environment(
     maps: &BTreeMap<String, BTreeMap<String, String>>,
-) -> Result<Environment<'_>, String> {
+) -> Result<Environment<'static>, String> {
+    build_environment_inner(maps, None)
+}
+
+/// Environment for step `if` / `ifNot` expressions, including `file_exists`.
+pub(crate) fn build_condition_environment(
+    maps: &BTreeMap<String, BTreeMap<String, String>>,
+    path_exists: Arc<dyn Fn(&str) -> bool + Send + Sync>,
+) -> Result<Environment<'static>, String> {
+    build_environment_inner(maps, Some(path_exists))
+}
+
+fn build_environment_inner(
+    maps: &BTreeMap<String, BTreeMap<String, String>>,
+    path_exists: Option<Arc<dyn Fn(&str) -> bool + Send + Sync>>,
+) -> Result<Environment<'static>, String> {
     let mut env = Environment::new();
     env.set_undefined_behavior(UndefinedBehavior::Strict);
     env.set_fuel(Some(TEMPLATE_FUEL as u64));
@@ -144,10 +159,16 @@ fn build_environment(
         },
     );
 
+    if let Some(path_exists) = path_exists {
+        env.add_filter("file_exists", move |value: String| -> bool {
+            path_exists(value.trim())
+        });
+    }
+
     Ok(env)
 }
 
-fn build_context(
+pub(crate) fn build_template_context(
     args: &BTreeMap<String, String>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     vars: &BTreeMap<String, BTreeMap<String, String>>,

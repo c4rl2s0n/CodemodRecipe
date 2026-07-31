@@ -23,7 +23,9 @@ Use this skill when you need to:
     - `codemodRecipe.refresh`
     - `codemodRecipe.bootstrap`
     - `codemodRecipe.runRecipe`
+    - `codemodRecipe.invoke` / `codemodRecipe.invokeSlot` (shortcut modes + slots)
     - `codemodRecipe.runFromCursorContext`
+    - `codemodRecipe.copyInvokeKeybinding` / `codemodRecipe.assignToSlot`
     - `codemodRecipe.configureHost`
 
 ### Persistent Dart host bridge + protocol framing

@@ -106,6 +106,25 @@ settings or use **Codemod Recipe: Set Codemod Root Directory**.
    changes and open the native side-by-side diff for that file.
 6. Uncheck any files or patches you do not want, then click **Apply Selected**.
 
+### Keyboard shortcuts
+
+Bind recipes to chords via **slots** (`codemodRecipe.slots`) or
+`codemodRecipe.invoke`. Args can auto-fill from the editor with recipe `from:` /
+`contextKey`. Full guide: [docs/recipe-shortcuts.md](../docs/recipe-shortcuts.md).
+
+Example workspace settings:
+
+```jsonc
+{
+  "codemodRecipe.slots": {
+    "1": "my.feature.recipe",
+    "b": "flutter.add_bloc"
+  }
+}
+```
+
+Default chords: `Ctrl+Shift+I` then `1` (run/auto), `Ctrl+Shift+T` then `1` (open runner).
+
 ### Editor navigation
 
 In `.codemod/**` YAML files the extension provides:
@@ -114,7 +133,8 @@ In `.codemod/**` YAML files the extension provides:
 - **Completions** for recipe ids, `with:` child args, `{{` template args / `var.` /
   `map.`, and `language:` ids from the host catalog
 - **Hover** on recipe ids (args list) and template files (preview)
-- **CodeLens** “Open in Recipe Runner” on top-level `id:` lines
+- **CodeLens** on top-level `id:` lines: Open in Recipe Runner, Copy invoke
+  keybinding, Assign to slot…
 
 Template-file and query-file paths follow the host's shared safe resolver:
 recipe-local first, then `.codemod/`, with query bare names also checking

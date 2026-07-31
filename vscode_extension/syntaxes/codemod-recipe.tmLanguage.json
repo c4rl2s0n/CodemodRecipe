@@ -15,7 +15,7 @@
   "repository": {
     "field-keys": {
       "comment": "Known DSL field names (recipe, map, variables, steps, ops, args, let).",
-      "match": "(?<![\\w-])(abbr|allowCustomValue|anchor|args|as|capture|contextKey|defaultsTo|description|extract|help|id|ifExists|ifMissing|includeLeadingTrivia|inputKind|join|language|let|map|maps|name|onManyMatches|onNoMatch|ops|options|path|postExecution|queries|query|required|steps|template|templateFile|text|values|when|whenNot|with)(?![\\w-])",
+      "match": "(?<![\\w-])(abbr|allowCustomValue|anchor|args|as|capture|contextKey|defaultsTo|description|extract|from|help|id|if|ifExists|ifMissing|ifNot|includeLeadingTrivia|inputKind|join|language|let|map|maps|name|onManyMatches|onNoMatch|ops|options|path|postExecution|queries|query|required|steps|template|templateFile|text|values|when|whenNot|with)(?![\\w-])",
       "name": "entity.name.tag.codemod-recipe.field"
     },
     "op-kinds": {

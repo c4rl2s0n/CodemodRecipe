@@ -49,9 +49,42 @@ export class ExtensionConfig {
     return Math.min(20, Math.max(1, value));
   }
 
+  get slots(): Record<string, string> {
+    const raw =
+      vscode.workspace
+        .getConfiguration(CONFIG.section)
+        .get<Record<string, string>>(CONFIG.slots) ?? {};
+    const out: Record<string, string> = {};
+    for (const [key, value] of Object.entries(raw)) {
+      if (typeof value === 'string' && value.trim()) {
+        out[key.trim()] = value.trim();
+      }
+    }
+    return out;
+  }
+
+  get shortcutConfirmApply(): boolean {
+    return (
+      vscode.workspace
+        .getConfiguration(CONFIG.section)
+        .get<boolean>(CONFIG.shortcutConfirmApply) ?? false
+    );
+  }
+
   async updateCodemodRoot(value: string): Promise<void> {
     await vscode.workspace
       .getConfiguration(CONFIG.section)
       .update(CONFIG.codemodRoot, value, vscode.ConfigurationTarget.Workspace);
+  }
+
+  async updateSlot(
+    slot: string,
+    recipeId: string,
+    target: vscode.ConfigurationTarget = vscode.ConfigurationTarget.Workspace
+  ): Promise<void> {
+    const next = { ...this.slots, [slot]: recipeId };
+    await vscode.workspace
+      .getConfiguration(CONFIG.section)
+      .update(CONFIG.slots, next, target);
   }
 }

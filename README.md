@@ -209,6 +209,7 @@ node vscode_extension/scripts/smoke.mjs
 - [docs/tree-sitter-queries.md](docs/tree-sitter-queries.md) — tree-sitter query language for recipes
 - [docs/language-support.md](docs/language-support.md) — multi-language tree-sitter support
 - [docs/codemod-mcp.md](docs/codemod-mcp.md) — MCP tools and agent workflow
+- [docs/recipe-shortcuts.md](docs/recipe-shortcuts.md) — VS Code shortcuts, slots, and `from` arg derivation
 - [vscode_extension/README.md](vscode_extension/README.md) — extension setup
 
 ## License

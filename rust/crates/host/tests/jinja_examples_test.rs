@@ -268,3 +268,31 @@ fn defaults_orchestrator_applies_child_defaults_to() {
 
     let _ = std::fs::remove_dir_all(workspace);
 }
+
+#[test]
+fn step_if_orchestrator_gates_child_and_file_exists() {
+    let workspace = setup_jinja_workspace("jinja_step_if");
+    let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+    registry.reload();
+
+    let mut args = BTreeMap::new();
+    args.insert("className".to_string(), "Counter".to_string());
+    args.insert("includeExtra".to_string(), "false".to_string());
+
+    let without_extra = preview_recipe(&mut registry, "jinja.step_if.orchestrator", args.clone());
+    assert_eq!(without_extra["ok"], true, "{}", without_extra["error"]);
+    let files = without_extra["files"].as_array().unwrap();
+    let paths: Vec<&str> = files.iter().filter_map(|f| f["path"].as_str()).collect();
+    assert!(paths.contains(&"lib/generated/counter_base.dart"));
+    assert!(!paths.iter().any(|p| p.contains("extra")));
+    // markerFile default is absent → skipped_when_marker create runs
+    assert!(paths.contains(&"lib/generated/skipped_when_marker.dart"));
+
+    args.insert("includeExtra".to_string(), "true".to_string());
+    let with_extra = preview_recipe(&mut registry, "jinja.step_if.orchestrator", args);
+    assert_eq!(with_extra["ok"], true, "{}", with_extra["error"]);
+    let content = file_content(&with_extra, "lib/generated/counter_extra.dart");
+    assert!(content.contains("class CounterExtra"));
+
+    let _ = std::fs::remove_dir_all(workspace);
+}

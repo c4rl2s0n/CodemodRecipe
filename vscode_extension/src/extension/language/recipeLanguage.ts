@@ -383,6 +383,20 @@ class RecipeCodeLensProvider implements vscode.CodeLensProvider {
             arguments: [idMatch[1]],
           })
         );
+        lenses.push(
+          new vscode.CodeLens(range, {
+            title: 'Copy invoke keybinding',
+            command: COMMANDS.copyInvokeKeybinding,
+            arguments: [idMatch[1]],
+          })
+        );
+        lenses.push(
+          new vscode.CodeLens(range, {
+            title: 'Assign to slot…',
+            command: COMMANDS.assignToSlot,
+            arguments: [idMatch[1]],
+          })
+        );
       }
       if (recipeId && /^\s*query:\s*/.test(text)) {
         const range = new vscode.Range(i, 0, i, text.length);

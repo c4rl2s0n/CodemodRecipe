@@ -173,6 +173,10 @@ steps:
 Referenced recipe steps are inlined in order. Args merge by name (first definition wins).
 Recipe cycles are rejected.
 
+Orchestrators may gate child recipes with step-level `if` / `ifNot` expressions (bool args,
+comparisons, `file | file_exists`). See skill `codemod-yaml-dsl` — distinct from edit AST
+`when` / `whenNot`.
+
 **Same-path incremental steps** are supported via sequential staging: a scaffold may
 `create` a file (with `ifExists: skip`) and then `edit` it in a later step (or via a
 composed `add_*` recipe), or chain dependent edits (class then members). Templates for

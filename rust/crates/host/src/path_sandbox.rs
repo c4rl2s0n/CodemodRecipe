@@ -14,6 +14,10 @@ impl PathSandbox {
         Self { workspace_root }
     }
 
+    pub fn workspace_root(&self) -> &std::path::Path {
+        &self.workspace_root
+    }
+
     pub fn resolve_workspace_relative(
         &self,
         relative_path: &str,

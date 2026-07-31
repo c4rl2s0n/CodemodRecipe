@@ -120,6 +120,18 @@
   },
   {
     "kind": "Field",
+    "wire": "if",
+    "schemaPath": "#/definitions/editStep/properties/if",
+    "description": "MiniJinja expression over recipe args; skip the step when false."
+  },
+  {
+    "kind": "Field",
+    "wire": "ifNot",
+    "schemaPath": "#/definitions/editStep/properties/ifNot",
+    "description": "MiniJinja expression over recipe args; skip the step when true."
+  },
+  {
+    "kind": "Field",
     "wire": "path",
     "schemaPath": "#/definitions/editStep/properties/path",
     "description": "Workspace-relative file path (often templated)."
@@ -308,7 +320,13 @@
     "kind": "Field",
     "wire": "contextKey",
     "schemaPath": "#/definitions/arg/properties/contextKey",
-    "description": "Editor context key used to prefill this arg."
+    "description": "Deprecated alias of string `from` — editor context key used to prefill this arg."
+  },
+  {
+    "kind": "Field",
+    "wire": "from",
+    "schemaPath": "#/definitions/arg/properties/from",
+    "description": "How to derive this arg from editor context: builtin key, template, or tree-sitter query (like let)."
   },
   {
     "kind": "Field",

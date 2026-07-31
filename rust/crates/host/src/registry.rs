@@ -5,7 +5,9 @@ use crate::render_context::RecipeRenderContext;
 use crate::template::{render_template, render_template_file};
 use codemod_recipe_engine::engine::parse_recipe_yaml;
 use codemod_recipe_yaml::compose::{expand_recipe_references, recipe_ref_id};
-use codemod_recipe_yaml::model::{Arg, CreateStep, DeleteStep, EditOp, Recipe, RecipeRef, Step};
+use codemod_recipe_yaml::model::{
+    Arg, CreateStep, DeleteStep, EditOp, Recipe, RecipeRef, ScopedStep, Step,
+};
 use codemod_recipe_yaml::query_conventions;
 use codemod_recipe_yaml::validate::validate_recipe_with;
 use std::collections::BTreeMap;
@@ -431,6 +433,10 @@ fn arg_to_schema(arg: &Arg) -> RecipeArg {
         options: arg.options.clone(),
         allow_custom_value: arg.allow_custom_value.unwrap_or(true),
         context_key: arg.context_key.clone(),
+        from: arg
+            .from
+            .as_ref()
+            .and_then(|f| serde_json::to_value(f).ok()),
     }
 }
 
@@ -485,7 +491,7 @@ fn render_steps(
         match step {
             Step::Scoped(scoped) => {
                 let local = apply_with_overlay(args, &scoped.with, maps, vars)?;
-                out.extend(render_steps(
+                let rendered_children = render_steps(
                     &scoped.steps,
                     recipe,
                     &local,
@@ -494,7 +500,18 @@ fn render_steps(
                     codemod_root,
                     registry,
                     recipe_file,
-                )?);
+                )?;
+                if scoped.has_condition() {
+                    // Bake `with` into children; keep the group for runtime if/ifNot.
+                    out.push(Step::Scoped(ScopedStep {
+                        with: BTreeMap::new(),
+                        if_expr: scoped.if_expr.clone(),
+                        if_not: scoped.if_not.clone(),
+                        steps: rendered_children,
+                    }));
+                } else {
+                    out.extend(rendered_children);
+                }
             }
             Step::Edit(edit) => {
                 out.push(Step::Edit(render_edit(
@@ -522,6 +539,8 @@ fn render_steps(
                 out.push(Step::Delete(DeleteStep {
                     path: render_template(&delete.path, args, maps, vars)?,
                     if_missing: delete.if_missing.clone(),
+                    if_expr: delete.if_expr.clone(),
+                    if_not: delete.if_not.clone(),
                 }));
             }
             Step::RecipeRef(_) | Step::Unknown(_, _) => {}
