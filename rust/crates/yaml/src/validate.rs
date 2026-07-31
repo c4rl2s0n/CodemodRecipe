@@ -38,6 +38,34 @@ pub enum ValidationError {
     LetBindingMissingQuery { name: String },
 }
 
+impl ValidationError {
+    /// Fragment to locate this error in recipe YAML source (first-match needle).
+    pub fn needle(&self) -> String {
+        match self {
+            ValidationError::UnsupportedStep(kind) | ValidationError::UnsupportedOp(kind) => {
+                kind.clone()
+            }
+            ValidationError::MissingRequiredField { field, .. } => format!("{field}:"),
+            ValidationError::EmptyEditOps => format!("{}:", dsl::recipe::steps::edit::field::OPS),
+            ValidationError::DuplicateArgName(name)
+            | ValidationError::LetNameCollidesWithArg(name) => {
+                format!("name: {name}")
+            }
+            ValidationError::LanguageNotSupported(lang) => lang.clone(),
+            ValidationError::CreateMissingTemplate => {
+                format!("{}:", dsl::recipe::steps::create::WIRE)
+            }
+            ValidationError::CreateConflictingTemplate => {
+                format!(
+                    "{}:",
+                    dsl::recipe::steps::create::field::TEMPLATE_FILE
+                )
+            }
+            ValidationError::LetBindingMissingQuery { name } => format!("name: {name}"),
+        }
+    }
+}
+
 pub fn validate_recipe(recipe: &Recipe) -> Result<(), Vec<ValidationError>> {
     validate_recipe_with(recipe, |_| true)
 }

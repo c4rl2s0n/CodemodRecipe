@@ -1,4 +1,4 @@
-use crate::diag_source::{source_file_only, source_with_needle};
+use crate::diag_source::source_with_needle;
 use crate::map_registry::{load_codemod_assets, merge_maps, warn_on_missing_map_ids};
 use crate::protocol::{RecipeArg, RecipeDiagnostic, RecipeSchema};
 use crate::render_context::RecipeRenderContext;
@@ -66,11 +66,31 @@ impl RecipeRegistry {
             let recipe = match parse_recipe_yaml(&text) {
                 Ok(recipe) => recipe,
                 Err(err) => {
+                    let message = err.to_string();
+                    let source = if message.contains("'group'") {
+                        source_with_needle(&relative, Some(&text), "group")
+                    } else {
+                        match serde_yaml::from_str::<serde_yaml::Value>(&text) {
+                            Err(e) => crate::diag_source::source_from_serde_yaml_error(
+                                &relative, &e,
+                            ),
+                            Ok(value) => {
+                                match serde_yaml::from_value::<Recipe>(value) {
+                                    Err(e) => {
+                                        crate::diag_source::source_from_serde_yaml_error(
+                                            &relative, &e,
+                                        )
+                                    }
+                                    Ok(_) => source_with_needle(&relative, Some(&text), "id:"),
+                                }
+                            }
+                        }
+                    };
                     self.diagnostics.push(RecipeDiagnostic::simple(
                         "error",
                         "E_RECIPE_PARSE",
                         format!("Failed to parse recipe {}: {err}", path.display()),
-                        vec![source_file_only(&relative)],
+                        vec![source],
                     ));
                     continue;
                 }
@@ -104,10 +124,11 @@ impl RecipeRegistry {
             collect_map_warnings(
                 recipe,
                 relative,
+                text,
                 &self.merged_maps_for(recipe),
                 &mut self.diagnostics,
             );
-            collect_schema_errors(recipe, relative, &mut self.diagnostics);
+            collect_schema_errors(recipe, relative, text, &mut self.diagnostics);
             collect_recipe_ref_errors(recipe, relative, text, &known_ids, &mut self.diagnostics);
             self.recipes_ast.insert(recipe.id.clone(), recipe.clone());
         }
@@ -310,16 +331,16 @@ fn validate_one_recipe_ref(
 fn collect_schema_errors(
     recipe: &Recipe,
     file_path: &str,
+    file_text: &str,
     diagnostics: &mut Vec<RecipeDiagnostic>,
 ) {
     if let Err(errors) = validate_recipe_with(recipe, codemod_recipe_engine::is_known_language) {
         for error in errors {
-            let needle = error.to_string();
             diagnostics.push(RecipeDiagnostic::simple(
                 "error",
                 "E_SCHEMA",
-                needle.clone(),
-                vec![source_file_only(file_path)],
+                error.to_string(),
+                vec![source_with_needle(file_path, Some(file_text), &error.needle())],
             ));
         }
     }
@@ -328,70 +349,109 @@ fn collect_schema_errors(
 fn collect_map_warnings(
     recipe: &Recipe,
     file_path: &str,
+    file_text: &str,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     diagnostics: &mut Vec<RecipeDiagnostic>,
 ) {
-    collect_map_warnings_in_steps(&recipe.steps, file_path, maps, diagnostics);
+    collect_map_warnings_in_steps(&recipe.steps, file_path, file_text, maps, diagnostics);
 }
 
 fn collect_map_warnings_in_steps(
     steps: &[Step],
     file_path: &str,
+    file_text: &str,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     diagnostics: &mut Vec<RecipeDiagnostic>,
 ) {
+    let text = Some(file_text);
     for step in steps {
         match step {
             Step::Edit(edit) => {
-                warn_on_missing_map_ids(&edit.path, file_path, maps, diagnostics);
+                warn_on_missing_map_ids(&edit.path, file_path, maps, diagnostics, text);
                 for op in &edit.ops {
                     match op {
                         EditOp::Insert(insert) => {
                             for q in insert.query.step_strings() {
-                                warn_on_missing_map_ids(q, file_path, maps, diagnostics);
+                                warn_on_missing_map_ids(q, file_path, maps, diagnostics, text);
                             }
-                            warn_on_missing_map_ids(&insert.capture, file_path, maps, diagnostics);
-                            warn_on_missing_map_ids(&insert.text, file_path, maps, diagnostics);
+                            warn_on_missing_map_ids(
+                                &insert.capture,
+                                file_path,
+                                maps,
+                                diagnostics,
+                                text,
+                            );
+                            warn_on_missing_map_ids(
+                                &insert.text,
+                                file_path,
+                                maps,
+                                diagnostics,
+                                text,
+                            );
                         }
                         EditOp::Replace(replace) => {
                             for q in replace.query.step_strings() {
-                                warn_on_missing_map_ids(q, file_path, maps, diagnostics);
+                                warn_on_missing_map_ids(q, file_path, maps, diagnostics, text);
                             }
-                            warn_on_missing_map_ids(&replace.capture, file_path, maps, diagnostics);
-                            warn_on_missing_map_ids(&replace.text, file_path, maps, diagnostics);
+                            warn_on_missing_map_ids(
+                                &replace.capture,
+                                file_path,
+                                maps,
+                                diagnostics,
+                                text,
+                            );
+                            warn_on_missing_map_ids(
+                                &replace.text,
+                                file_path,
+                                maps,
+                                diagnostics,
+                                text,
+                            );
                         }
                         EditOp::Remove(remove) => {
                             for q in remove.query.step_strings() {
-                                warn_on_missing_map_ids(q, file_path, maps, diagnostics);
+                                warn_on_missing_map_ids(q, file_path, maps, diagnostics, text);
                             }
-                            warn_on_missing_map_ids(&remove.capture, file_path, maps, diagnostics);
+                            warn_on_missing_map_ids(
+                                &remove.capture,
+                                file_path,
+                                maps,
+                                diagnostics,
+                                text,
+                            );
                         }
                         EditOp::Unknown(_, _) => {}
                     }
                 }
             }
             Step::Create(create) => {
-                warn_on_missing_map_ids(&create.path, file_path, maps, diagnostics);
-                if let Some(text) = &create.template {
-                    warn_on_missing_map_ids(text, file_path, maps, diagnostics);
+                warn_on_missing_map_ids(&create.path, file_path, maps, diagnostics, text);
+                if let Some(tmpl) = &create.template {
+                    warn_on_missing_map_ids(tmpl, file_path, maps, diagnostics, text);
                 }
                 if let Some(file) = &create.template_file {
-                    warn_on_missing_map_ids(file, file_path, maps, diagnostics);
+                    warn_on_missing_map_ids(file, file_path, maps, diagnostics, text);
                 }
             }
             Step::Delete(delete) => {
-                warn_on_missing_map_ids(&delete.path, file_path, maps, diagnostics);
+                warn_on_missing_map_ids(&delete.path, file_path, maps, diagnostics, text);
             }
             Step::RecipeRef(recipe_ref) => {
                 for value in recipe_ref.with.values() {
-                    warn_on_missing_map_ids(value, file_path, maps, diagnostics);
+                    warn_on_missing_map_ids(value, file_path, maps, diagnostics, text);
                 }
             }
             Step::Scoped(scoped) => {
                 for value in scoped.with.values() {
-                    warn_on_missing_map_ids(value, file_path, maps, diagnostics);
+                    warn_on_missing_map_ids(value, file_path, maps, diagnostics, text);
                 }
-                collect_map_warnings_in_steps(&scoped.steps, file_path, maps, diagnostics);
+                collect_map_warnings_in_steps(
+                    &scoped.steps,
+                    file_path,
+                    file_text,
+                    maps,
+                    diagnostics,
+                );
             }
             Step::Unknown(_, _) => {}
         }
@@ -948,7 +1008,13 @@ steps:
         registry.reload();
 
         let (_, diagnostics) = registry.list();
-        assert!(diagnostics.iter().any(|d| d.code == "E_SCHEMA"));
+        let schema = diagnostics
+            .iter()
+            .find(|d| d.code == "E_SCHEMA")
+            .expect("expected schema diagnostic");
+        let source = schema.sources.first().expect("source");
+        assert_eq!(source.line, Some(5), "ops: [] should be on line 5: {source:?}");
+        assert!(source.column.is_some());
 
         let _ = std::fs::remove_dir_all(workspace);
     }

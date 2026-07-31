@@ -1,4 +1,5 @@
-use crate::protocol::{DiagnosticSource, RecipeDiagnostic};
+use crate::diag_source::source_file_only;
+use crate::protocol::RecipeDiagnostic;
 use codemod_recipe_core::resource_path::{resolve_under_root, ResourcePathError};
 use std::path::PathBuf;
 
@@ -40,11 +41,7 @@ pub fn diagnostic_from_sandbox(error: PathSandboxError, file: &str) -> RecipeDia
         "error",
         error.code,
         error.message,
-        vec![DiagnosticSource {
-            file: file.to_string(),
-            line: None,
-            column: None,
-        }],
+        vec![source_file_only(file)],
     )
 }
 

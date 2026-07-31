@@ -1,6 +1,7 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 import type { RecipeDiagnostic } from '../../shared';
+import { diagnosticRangeParts } from './diagnosticRange';
 
 export class RecipeDiagnostics {
   private readonly collection: vscode.DiagnosticCollection;
@@ -33,11 +34,12 @@ export class RecipeDiagnostics {
 
       for (const source of sources) {
         const uri = resolveDiagnosticUri(workspaceRoot, source.file);
-        const line = Math.max(0, (source.line ?? 1) - 1);
-        const column = Math.max(0, (source.column ?? 1) - 1);
+        const parts = diagnosticRangeParts(source.line, source.column);
         const range = new vscode.Range(
-          new vscode.Position(line, column),
-          new vscode.Position(line, column + 1)
+          parts.startLine,
+          parts.startCol,
+          parts.endLine,
+          parts.endCol
         );
         const diagnostic = new vscode.Diagnostic(range, item.message, severity);
         diagnostic.code = item.code;

@@ -63,6 +63,32 @@ pub fn source_file_only(file: &str) -> DiagnosticSource {
     }
 }
 
+/// Build a source from an explicit 1-based line/column.
+pub fn source_at(file: &str, line: u32, column: u32) -> DiagnosticSource {
+    DiagnosticSource {
+        file: file.to_string(),
+        line: Some(line),
+        column: Some(column),
+    }
+}
+
+/// Prefer serde_yaml's location when present; otherwise fall back to file-only.
+pub fn source_from_serde_yaml_error(file: &str, err: &serde_yaml::Error) -> DiagnosticSource {
+    if let Some(loc) = err.location() {
+        return source_at(file, loc.line() as u32, loc.column() as u32);
+    }
+    source_file_only(file)
+}
+
+/// Locate a YAML syntax failure for `text` by re-running serde_yaml so we can
+/// recover line/column even when the original error was stringified.
+pub fn source_from_yaml_text(file: &str, text: &str) -> DiagnosticSource {
+    match serde_yaml::from_str::<serde_yaml::Value>(text) {
+        Err(e) => source_from_serde_yaml_error(file, &e),
+        Ok(_) => source_file_only(file),
+    }
+}
+
 /// Find 1-based line and column of the first occurrence of `needle`.
 pub fn find_line_column(text: &str, needle: &str) -> Option<(u32, u32)> {
     let idx = text.find(needle)?;
@@ -92,6 +118,14 @@ mod tests {
         let src = source_with_needle(".codemod/recipes/a.yaml", Some(text), "id: demo");
         assert_eq!(src.line, Some(1));
         assert_eq!(src.column, Some(1));
+    }
+
+    #[test]
+    fn source_from_serde_yaml_error_has_location() {
+        let err = serde_yaml::from_str::<serde_yaml::Value>("@bad").expect_err("invalid yaml");
+        let src = source_from_serde_yaml_error("bad.yaml", &err);
+        assert_eq!(src.line, Some(1));
+        assert!(src.column.unwrap_or(0) >= 1);
     }
 
     #[test]

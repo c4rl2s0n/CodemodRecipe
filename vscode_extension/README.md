@@ -52,9 +52,11 @@ flowchart LR
 }
 ```
 
-All YAML and `.template` files in the codemod root are automatically discovered
-and reloaded when changed; recipe load errors appear in the Recipes tab and the
-Problems panel.
+All YAML, `.template`, and `.scm` files under the codemod root are automatically
+discovered and reloaded when changed (file-system watch plus reload on editor
+save). Recipe load errors appear in the Recipes tab and the Problems panel.
+Use **Re-scan recipes** only if the catalog looks stale after adding files outside
+the watched patterns or after a host restart failure.
 
 JSON Schema files under `schemas/` validate recipe/map/variable YAML (via
 `contributes.jsonValidation`, and Red Hat YAML `yaml.schemas` when that extension

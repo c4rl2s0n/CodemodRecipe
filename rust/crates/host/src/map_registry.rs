@@ -1,4 +1,6 @@
-use crate::diag_source::source_with_needle;
+use crate::diag_source::{
+    source_file_only, source_from_serde_yaml_error, source_with_needle,
+};
 use crate::protocol::{DiagnosticSource, RecipeDiagnostic};
 use codemod_recipe_yaml::dsl;
 use serde_yaml::Value;
@@ -59,11 +61,7 @@ pub fn load_codemod_assets(workspace_root: &Path, codemod_root: &Path) -> AssetL
                     "error",
                     "E_ASSET_PARSE",
                     format!("Failed to read YAML file: {e}"),
-                    vec![DiagnosticSource {
-                        file: relative,
-                        line: None,
-                        column: None,
-                    }],
+                    vec![source_file_only(&relative)],
                 ));
                 continue;
             }
@@ -93,11 +91,7 @@ pub fn load_codemod_assets(workspace_root: &Path, codemod_root: &Path) -> AssetL
                     "error",
                     "E_ASSET_PARSE",
                     format!("Failed to parse YAML: {e}"),
-                    vec![DiagnosticSource {
-                        file: relative,
-                        line: None,
-                        column: None,
-                    }],
+                    vec![source_from_serde_yaml_error(&relative, &e)],
                 ));
                 continue;
             }
@@ -107,7 +101,7 @@ pub fn load_codemod_assets(workspace_root: &Path, codemod_root: &Path) -> AssetL
             continue;
         };
 
-        match classify_root(root, &relative) {
+        match classify_root(root, &relative, &text) {
             Ok(None) => continue,
             Ok(Some(AssetKind::Recipe)) => {
                 recipe_paths.push(path);
@@ -115,30 +109,25 @@ pub fn load_codemod_assets(workspace_root: &Path, codemod_root: &Path) -> AssetL
             Ok(Some(AssetKind::Map)) => {
                 match parse_keyed_string_map(&text, root, dsl::map_asset::field::MAP, &relative) {
                     Ok((id, entries)) => {
-                        map_id_sources
-                            .entry(id.clone())
-                            .or_default()
-                            .push(DiagnosticSource {
-                                file: relative,
-                                line: None,
-                                column: None,
-                            });
+                        map_id_sources.entry(id.clone()).or_default().push(
+                            source_with_needle(&relative, Some(&text), &format!("id: {id}")),
+                        );
                         maps_by_id.insert(id, entries);
                     }
                     Err(diagnostic) => diagnostics.push(diagnostic),
                 }
             }
             Ok(Some(AssetKind::Variables)) => {
-                match parse_keyed_string_map(&text, root, dsl::variables_asset::field::VALUES, &relative) {
+                match parse_keyed_string_map(
+                    &text,
+                    root,
+                    dsl::variables_asset::field::VALUES,
+                    &relative,
+                ) {
                     Ok((id, entries)) => {
-                        var_id_sources
-                            .entry(id.clone())
-                            .or_default()
-                            .push(DiagnosticSource {
-                                file: relative,
-                                line: None,
-                                column: None,
-                            });
+                        var_id_sources.entry(id.clone()).or_default().push(
+                            source_with_needle(&relative, Some(&text), &format!("id: {id}")),
+                        );
                         vars_by_id.insert(id, entries);
                     }
                     Err(diagnostic) => diagnostics.push(diagnostic),
@@ -147,14 +136,9 @@ pub fn load_codemod_assets(workspace_root: &Path, codemod_root: &Path) -> AssetL
             Ok(Some(AssetKind::QueryLibrary)) => {
                 match crate::query_resolver::parse_query_library(root) {
                     Ok((id, entries)) => {
-                        query_id_sources
-                            .entry(id.clone())
-                            .or_default()
-                            .push(DiagnosticSource {
-                                file: relative,
-                                line: None,
-                                column: None,
-                            });
+                        query_id_sources.entry(id.clone()).or_default().push(
+                            source_with_needle(&relative, Some(&text), &format!("id: {id}")),
+                        );
                         queries_by_id.insert(id, entries);
                     }
                     Err(message) => {
@@ -195,47 +179,44 @@ pub fn load_codemod_assets(workspace_root: &Path, codemod_root: &Path) -> AssetL
 fn classify_root(
     root: &serde_yaml::Mapping,
     relative: &str,
+    text: &str,
 ) -> Result<Option<AssetKind>, RecipeDiagnostic> {
     let has_steps = root.contains_key(dsl::recipe::field::STEPS);
     let has_map = root.contains_key(dsl::map_asset::field::MAP);
     let has_values = root.contains_key(dsl::variables_asset::field::VALUES);
     let has_queries = root.contains_key(dsl::recipe::field::QUERIES);
-    let source = vec![DiagnosticSource {
-        file: relative.to_string(),
-        line: None,
-        column: None,
-    }];
 
-    if has_steps && (has_map || has_values || has_queries) {
-        return Err(RecipeDiagnostic::simple(
+    let ambiguous = |needle: &str, message: String| {
+        RecipeDiagnostic::simple(
             "error",
             "E_AMBIGUOUS_ASSET",
+            message,
+            vec![source_with_needle(relative, Some(text), needle)],
+        )
+    };
+
+    if has_steps && (has_map || has_values || has_queries) {
+        return Err(ambiguous(
+            "steps:",
             "YAML asset cannot combine steps with map, values, or queries".to_string(),
-            source,
         ));
     }
     if has_map && has_values {
-        return Err(RecipeDiagnostic::simple(
-            "error",
-            "E_AMBIGUOUS_ASSET",
+        return Err(ambiguous(
+            "map:",
             "YAML asset cannot define both map and values".to_string(),
-            source,
         ));
     }
     if has_map && has_queries {
-        return Err(RecipeDiagnostic::simple(
-            "error",
-            "E_AMBIGUOUS_ASSET",
+        return Err(ambiguous(
+            "map:",
             "YAML asset cannot define both map and queries".to_string(),
-            source,
         ));
     }
     if has_values && has_queries {
-        return Err(RecipeDiagnostic::simple(
-            "error",
-            "E_AMBIGUOUS_ASSET",
+        return Err(ambiguous(
+            "values:",
             "YAML asset cannot define both values and queries".to_string(),
-            source,
         ));
     }
     if has_steps {
@@ -463,10 +444,11 @@ pub fn warn_on_missing_map_ids(
     file_path: &str,
     maps_by_id: &BTreeMap<String, BTreeMap<String, String>>,
     diagnostics: &mut Vec<RecipeDiagnostic>,
+    file_text: Option<&str>,
 ) {
-    warn_legacy_map_references(template, file_path, maps_by_id, diagnostics);
+    warn_legacy_map_references(template, file_path, maps_by_id, diagnostics, file_text);
     let converted = crate::template::convert_legacy_syntax(template);
-    warn_jinja_map_references(&converted, file_path, maps_by_id, diagnostics);
+    warn_jinja_map_references(&converted, file_path, maps_by_id, diagnostics, file_text);
 }
 
 fn warn_legacy_map_references(
@@ -474,6 +456,7 @@ fn warn_legacy_map_references(
     file_path: &str,
     maps_by_id: &BTreeMap<String, BTreeMap<String, String>>,
     diagnostics: &mut Vec<RecipeDiagnostic>,
+    file_text: Option<&str>,
 ) {
     let mut index = 0;
     while let Some(start) = template[index..].find("{{$map") {
@@ -504,7 +487,7 @@ fn warn_legacy_map_references(
         if maps_by_id.contains_key(map_id) {
             continue;
         }
-        push_map_id_warning(file_path, map_id, diagnostics);
+        push_map_id_warning(file_path, map_id, diagnostics, file_text);
     }
 }
 
@@ -513,6 +496,7 @@ fn warn_jinja_map_references(
     file_path: &str,
     maps_by_id: &BTreeMap<String, BTreeMap<String, String>>,
     diagnostics: &mut Vec<RecipeDiagnostic>,
+    file_text: Option<&str>,
 ) {
     let mut index = 0;
     while let Some(start) = template[index..].find("map(") {
@@ -520,7 +504,7 @@ fn warn_jinja_map_references(
         let rest = &template[abs_start + 4..];
         if let Some(map_id) = parse_quoted_map_id(rest) {
             if !maps_by_id.contains_key(&map_id) {
-                push_map_id_warning(file_path, &map_id, diagnostics);
+                push_map_id_warning(file_path, &map_id, diagnostics, file_text);
             }
             index = abs_start + 4 + map_id.len() + 2;
         } else {
@@ -545,7 +529,12 @@ fn parse_quoted_map_id(text: &str) -> Option<String> {
     Some(map_id)
 }
 
-fn push_map_id_warning(file_path: &str, map_id: &str, diagnostics: &mut Vec<RecipeDiagnostic>) {
+fn push_map_id_warning(
+    file_path: &str,
+    map_id: &str,
+    diagnostics: &mut Vec<RecipeDiagnostic>,
+    file_text: Option<&str>,
+) {
     if diagnostics.iter().any(|d| {
         d.code == "W_MAP_ID_NOT_FOUND"
             && d.message.contains(map_id)
@@ -557,11 +546,7 @@ fn push_map_id_warning(file_path: &str, map_id: &str, diagnostics: &mut Vec<Reci
         "warning",
         "W_MAP_ID_NOT_FOUND",
         format!("Template references unknown map id: {map_id}"),
-        vec![DiagnosticSource {
-            file: file_path.to_string(),
-            line: None,
-            column: None,
-        }],
+        vec![source_with_needle(file_path, file_text, map_id)],
     ));
 }
 

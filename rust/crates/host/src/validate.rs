@@ -217,7 +217,7 @@ fn check_undeclared_args_in_steps(
         match step {
             Step::Scoped(scoped) => {
                 for value in scoped.with.values() {
-                    warn_on_missing_map_ids(value, file_path, maps, diagnostics);
+                    warn_on_missing_map_ids(value, file_path, maps, diagnostics, None);
                     report_legacy_and_undeclared(
                         "recipe.with",
                         value,
@@ -242,7 +242,7 @@ fn check_undeclared_args_in_steps(
             }
             _ => {
                 for (field, text) in templated_fields_for_step(step) {
-                    warn_on_missing_map_ids(&text, file_path, maps, diagnostics);
+                    warn_on_missing_map_ids(&text, file_path, maps, diagnostics, None);
                     report_legacy_and_undeclared(
                         field,
                         &text,

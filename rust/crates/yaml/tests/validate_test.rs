@@ -321,3 +321,27 @@ fn parses_remove_count_oracle_recipe() {
     };
     assert!(matches!(edit.ops[0], EditOp::Remove(_)));
 }
+
+#[test]
+fn validation_error_needles_locate_fields() {
+    assert_eq!(
+        ValidationError::EmptyEditOps.needle(),
+        "ops:"
+    );
+    assert_eq!(
+        ValidationError::MissingRequiredField {
+            op: "insert",
+            field: "capture",
+        }
+        .needle(),
+        "capture:"
+    );
+    assert_eq!(
+        ValidationError::DuplicateArgName("file".into()).needle(),
+        "name: file"
+    );
+    assert_eq!(
+        ValidationError::UnsupportedStep("patch".into()).needle(),
+        "patch"
+    );
+}

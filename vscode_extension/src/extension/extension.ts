@@ -145,6 +145,9 @@ export function activate(context: vscode.ExtensionContext): void {
       vscode.window.showInformationMessage(
         `Codemod Recipe: scaffolded project (${written} written, ${skipped} skipped).`
       );
+      // Scaffold may have created the codemod root; recreate the watcher so
+      // subsequent create/change events are observed.
+      createCodemodWatcher();
       await reloadRecipesFromHost(true);
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -168,13 +171,28 @@ export function activate(context: vscode.ExtensionContext): void {
     codemodWatcher = undefined;
   };
 
+  const isUnderCodemodRoot = (fsPath: string): boolean => {
+    const root = path.resolve(config.workspaceRoot, config.codemodRoot);
+    const resolved = path.resolve(fsPath);
+    return resolved === root || resolved.startsWith(root + path.sep);
+  };
+
   const createCodemodWatcher = (): void => {
     disposeCodemodWatcher();
-    const codemodRootDir = path.join(config.workspaceRoot, config.codemodRoot);
+    const pattern = '**/*.{yaml,yml,template,scm}';
+    const folder = vscode.workspace.workspaceFolders?.[0];
+    const relativePattern =
+      folder && !path.isAbsolute(config.codemodRoot)
+        ? new vscode.RelativePattern(
+            folder,
+            path.posix.join(config.codemodRoot.replace(/\\/g, '/'), pattern)
+          )
+        : new vscode.RelativePattern(
+            path.join(config.workspaceRoot, config.codemodRoot),
+            pattern
+          );
 
-    codemodWatcher = vscode.workspace.createFileSystemWatcher(
-      new vscode.RelativePattern(codemodRootDir, '**/*.{yaml,yml,template}')
-    );
+    codemodWatcher = vscode.workspace.createFileSystemWatcher(relativePattern);
     codemodWatcher.onDidChange(scheduleRecipeReload);
     codemodWatcher.onDidCreate(scheduleRecipeReload);
     codemodWatcher.onDidDelete(scheduleRecipeReload);
@@ -217,6 +235,14 @@ export function activate(context: vscode.ExtensionContext): void {
     { dispose: () => bridge.dispose() },
     { dispose: () => disposeCodemodWatcher() },
     diagnostics.disposable,
+    vscode.workspace.onDidSaveTextDocument((document) => {
+      if (document.uri.scheme !== 'file') {
+        return;
+      }
+      if (isUnderCodemodRoot(document.uri.fsPath)) {
+        scheduleRecipeReload();
+      }
+    }),
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (
         event.affectsConfiguration('codemodRecipe.codemodRoot') ||
