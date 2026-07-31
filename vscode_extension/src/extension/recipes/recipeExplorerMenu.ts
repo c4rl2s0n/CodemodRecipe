@@ -3,9 +3,8 @@ import type { ExtensionConfig } from '../config/extensionConfig';
 import type { HostBridge } from '../host/hostBridge';
 import type { RecipeRepository } from '../recipes/recipeRepository';
 import type { RecipeRunnerViewProvider } from '../views/recipeRunnerViewProvider';
-import type { RecipeSchema } from '../../shared';
+import type { ExplorerRecipeMatch, RecipeSchema } from '../../shared';
 import {
-  prefillArgsFromUriClick,
   resolveUriContext,
   type ExplorerResourceKind,
 } from './recipeContext';
@@ -42,7 +41,7 @@ export async function runRecipeFromExplorer(
     return;
   }
 
-  let recipeIds: string[];
+  let matches: ExplorerRecipeMatch[];
   try {
     const filtered = await deps.bridge.filterExplorerRecipes(
       uriContext.path,
@@ -54,18 +53,26 @@ export async function runRecipeFromExplorer(
       );
       return;
     }
-    recipeIds = filtered.recipeIds ?? [];
+    matches = filtered.matches ?? [];
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
     vscode.window.showErrorMessage(`Codemod Recipe: ${message}`);
     return;
   }
 
-  const recipes = recipeIds
-    .map((id) => deps.repository.findById(id))
-    .filter((r): r is RecipeSchema => Boolean(r));
+  const items = matches
+    .map((match) => {
+      const recipe = deps.repository.findById(match.recipeId);
+      if (!recipe) {
+        return undefined;
+      }
+      return { recipe, match };
+    })
+    .filter((item): item is { recipe: RecipeSchema; match: ExplorerRecipeMatch } =>
+      Boolean(item)
+    );
 
-  if (recipes.length === 0) {
+  if (items.length === 0) {
     vscode.window.showInformationMessage(
       'Codemod Recipe: no recipes match this Explorer selection (explorerMenu).'
     );
@@ -73,12 +80,18 @@ export async function runRecipeFromExplorer(
   }
 
   const picked = await vscode.window.showQuickPick(
-    recipes.map((recipe) => ({
-      label: recipe.name,
-      description: recipe.id,
-      detail: recipe.description || undefined,
-      recipe,
-    })),
+    items.map(({ recipe, match }) => {
+      const argDetail = Object.entries(match.args)
+        .map(([key, value]) => `${key}: ${value}`)
+        .join(', ');
+      return {
+        label: recipe.name,
+        description: recipe.id,
+        detail: argDetail || recipe.description || undefined,
+        recipe,
+        match,
+      };
+    }),
     {
       placeHolder: `Run recipe on ${uriContext.path}`,
       matchOnDescription: true,
@@ -89,18 +102,17 @@ export async function runRecipeFromExplorer(
     return;
   }
 
-  const clickPrefill = prefillArgsFromUriClick(
-    picked.recipe,
-    kind,
-    uriContext.path
-  );
-
   await invokeRecipe(
-    { repository: deps.repository, bridge: deps.bridge, config: deps.config, runner: deps.runner },
+    {
+      repository: deps.repository,
+      bridge: deps.bridge,
+      config: deps.config,
+      runner: deps.runner,
+    },
     {
       recipeId: picked.recipe.id,
       mode: 'auto',
-      args: clickPrefill,
+      args: picked.match.args,
       contextValues: uriContext.values,
       filePath: kind === 'file' ? uriContext.path : undefined,
     }

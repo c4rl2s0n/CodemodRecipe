@@ -50,23 +50,55 @@ fn eval_condition_expr(
     vars: &BTreeMap<String, BTreeMap<String, String>>,
     path_exists: Arc<dyn Fn(&str) -> bool + Send + Sync>,
 ) -> Result<bool, String> {
+    let value = eval_expression_value(expr, args, maps, vars, path_exists)?;
+    Ok(value_is_truthy(&value))
+}
+
+/// Evaluate a MiniJinja expression and stringify the result (for explorerMenu args).
+pub fn eval_string_expr(
+    expr: &str,
+    args: &BTreeMap<String, String>,
+    maps: &BTreeMap<String, BTreeMap<String, String>>,
+    vars: &BTreeMap<String, BTreeMap<String, String>>,
+    path_exists: Arc<dyn Fn(&str) -> bool + Send + Sync>,
+) -> Result<String, String> {
+    let value = eval_expression_value(expr, args, maps, vars, path_exists)?;
+    Ok(value_to_string(&value))
+}
+
+fn eval_expression_value(
+    expr: &str,
+    args: &BTreeMap<String, String>,
+    maps: &BTreeMap<String, BTreeMap<String, String>>,
+    vars: &BTreeMap<String, BTreeMap<String, String>>,
+    path_exists: Arc<dyn Fn(&str) -> bool + Send + Sync>,
+) -> Result<Value, String> {
     let trimmed = expr.trim();
     if trimmed.is_empty() {
-        return Ok(true);
+        return Ok(Value::from(""));
     }
     let env = build_condition_environment(maps, path_exists)?;
     let compiled = env
         .compile_expression(trimmed)
-        .map_err(|e| format!("invalid step condition expression '{trimmed}': {e}"))?;
+        .map_err(|e| format!("invalid expression '{trimmed}': {e}"))?;
     let ctx = build_template_context(args, maps, vars);
-    let value = compiled
+    compiled
         .eval(ctx)
-        .map_err(|e| format!("step condition evaluation failed for '{trimmed}': {e}"))?;
-    Ok(value_is_truthy(&value))
+        .map_err(|e| format!("expression evaluation failed for '{trimmed}': {e}"))
 }
 
 fn value_is_truthy(value: &Value) -> bool {
     value.is_true()
+}
+
+fn value_to_string(value: &Value) -> String {
+    if value.is_undefined() || value.is_none() {
+        return String::new();
+    }
+    if let Some(s) = value.as_str() {
+        return s.to_string();
+    }
+    value.to_string()
 }
 
 #[cfg(test)]

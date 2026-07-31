@@ -77,8 +77,9 @@ vocab_entries! {
     TopLevelField, crate::dsl::recipe::field::QUERIES, None, "Recipe-local named query definitions.", "#/properties/queries";
     TopLevelField, crate::dsl::recipe::field::STEPS, None, "Ordered list of edit, create, delete, recipe, or if group steps.", "#/properties/steps";
     TopLevelField, crate::dsl::recipe::field::POST_EXECUTION, None, "Post-apply shell commands or script paths under the codemod root (Jinja-rendered).", "#/properties/postExecution";
-    TopLevelField, crate::dsl::recipe::field::EXPLORER_MENU, None, "Opt-in for the VS Code Explorer Codemod Recipe submenu: list of { kind: file|folder, if? } (single object is sugar). Missing if always matches that kind; same recipe appears once if any entry matches.", "#/properties/explorerMenu";
+    TopLevelField, crate::dsl::recipe::field::EXPLORER_MENU, None, "Opt-in for the VS Code Explorer Codemod Recipe submenu: list of { kind: file|folder, if?, args? } (single object is sugar). args maps recipe arg names to MiniJinja expressions over path; first matching entry wins.", "#/properties/explorerMenu";
     Field, crate::dsl::recipe::explorer_menu::entry::field::KIND, Some(crate::dsl::recipe::field::EXPLORER_MENU), "Explorer click kind this menu entry applies to.", "#/definitions/explorerMenuEntry/properties/kind";
+    Field, crate::dsl::recipe::explorer_menu::entry::field::ARGS, Some(crate::dsl::recipe::field::EXPLORER_MENU), "Map of recipe arg name to MiniJinja expression over the Explorer click path (RHS sees only path + filters).", "#/definitions/explorerMenuEntry/properties/args";
     EnumValue, crate::dsl::recipe::explorer_menu::entry::field::kind::value::FILE, Some(crate::dsl::recipe::explorer_menu::entry::field::KIND), "Show when the Explorer selection is a file.";
     EnumValue, crate::dsl::recipe::explorer_menu::entry::field::kind::value::FOLDER, Some(crate::dsl::recipe::explorer_menu::entry::field::KIND), "Show when the Explorer selection is a folder.";
 

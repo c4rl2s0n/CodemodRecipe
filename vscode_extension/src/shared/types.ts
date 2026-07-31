@@ -63,6 +63,13 @@ export interface RecipeSchema {
 export interface ExplorerMenuEntry {
   kind: 'file' | 'folder';
   if?: string | null;
+  /** Arg name → MiniJinja expression over click `path` (unevaluated catalog form). */
+  args?: Record<string, string>;
+}
+
+export interface ExplorerRecipeMatch {
+  recipeId: string;
+  args: Record<string, string>;
 }
 
 export interface FilterExplorerRecipesRequest {
@@ -73,7 +80,7 @@ export interface FilterExplorerRecipesRequest {
 export interface FilterExplorerRecipesResponse {
   ok: boolean;
   error?: string;
-  recipeIds?: string[];
+  matches?: ExplorerRecipeMatch[];
 }
 
 export interface PatchInfo {

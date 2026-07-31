@@ -295,6 +295,13 @@
     "explorerMenuEntry": {
       "additionalProperties": false,
       "properties": {
+        "args": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "description": "Recipe argument definitions shown in the runner UI.",
+          "type": "object"
+        },
         "if": {
           "description": "MiniJinja expression over recipe args; skip the step when false.",
           "type": "string"
@@ -581,7 +588,7 @@
     },
     "explorerMenu": {
       "$ref": "#/definitions/explorerMenu",
-      "description": "Opt-in for the VS Code Explorer Codemod Recipe submenu: list of { kind: file|folder, if? } (single object is sugar). Missing if always matches that kind; same recipe appears once if any entry matches."
+      "description": "Opt-in for the VS Code Explorer Codemod Recipe submenu: list of { kind: file|folder, if?, args? } (single object is sugar). args maps recipe arg names to MiniJinja expressions over path; first matching entry wins."
     },
     "id": {
       "description": "Unique recipe identifier.",

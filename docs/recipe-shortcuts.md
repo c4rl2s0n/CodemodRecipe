@@ -176,6 +176,9 @@ Absent → never listed. Shortcuts and slots ignore this field.
 explorerMenu:
   - kind: folder                 # required per entry: file | folder
     if: path is startingwith("lib/")   # optional MiniJinja over path only
+    args:                        # optional: arg name → expression over path
+      directory: path
+      folderName: path | basename
   - kind: file                   # same recipe can appear for both kinds
 ```
 
@@ -184,14 +187,22 @@ Match rules for click kind `K` and path `P`:
 1. Consider entries with `kind == K`.
 2. Entry matches if `if` is omitted **or** evaluates truthy with `{ path: P }`.
 3. If **any** entry matches → recipe appears **once** in the QuickPick (OR).
-4. Expression errors fail closed for that entry.
+4. The **first** matching entry (list order) supplies arg bindings.
+5. Expression errors on `if` or `args` fail closed for that entry / match.
 
-`if` uses the same MiniJinja dialect as step `if` (comparisons, `and` / `or` / `not`,
-`| basename` / `| parent` / `| stem`, `is startingwith`). Do not encode file-vs-folder
-in `if` — use separate entries.
+`if` and entry `args` expressions use the same MiniJinja dialect as step `if`
+(comparisons, `and` / `or` / `not`, `| basename` / `| parent` / `| stem`,
+`is startingwith`). Magic var is **`path`** (the click filepath). Do not encode
+file-vs-folder in `if` — use separate entries.
 
-Prefill uses the **click** kind: first `inputKind: directory` (folder) or
-`inputKind: file` (file) ← `path`, then the usual `from` / `invoke` path (`auto`).
+**Arg bindings (`args` map):** left of `:` is the recipe arg name; right of `:` is
+an expression whose only context is the click `path` (recipe args are not in
+scope on the RHS). Example: `path: path | parent` sets recipe arg `path` to the
+parent of the Explorer path.
+
+When `args` is present on the winning entry, those rendered values are used.
+When absent, prefill falls back to first `inputKind: directory` (folder) or
+`inputKind: file` (file) ← `path`. Then the usual `from` / `invoke` path (`auto`).
 
 Empty match list → info toast (no full-catalog fallback).
 

@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 
 #[derive(Debug, Deserialize)]
 #[serde(tag = "command")]
@@ -130,6 +131,15 @@ pub struct ExplorerMenuEntrySchema {
     pub kind: String,
     #[serde(skip_serializing_if = "Option::is_none", rename = "if")]
     pub if_expr: Option<String>,
+    #[serde(skip_serializing_if = "BTreeMap::is_empty")]
+    pub args: std::collections::BTreeMap<String, String>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ExplorerRecipeMatch {
+    pub recipe_id: String,
+    pub args: std::collections::BTreeMap<String, String>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -139,7 +149,7 @@ pub struct FilterExplorerRecipesResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub recipe_ids: Option<Vec<String>>,
+    pub matches: Option<Vec<ExplorerRecipeMatch>>,
 }
 
 #[derive(Debug, Serialize, Clone)]

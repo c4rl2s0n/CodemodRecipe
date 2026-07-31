@@ -51,7 +51,7 @@
     "kind": "TopLevelField",
     "wire": "explorerMenu",
     "schemaPath": "#/properties/explorerMenu",
-    "description": "Opt-in for the VS Code Explorer Codemod Recipe submenu: list of { kind: file|folder, if? } (single object is sugar). Missing if always matches that kind; same recipe appears once if any entry matches."
+    "description": "Opt-in for the VS Code Explorer Codemod Recipe submenu: list of { kind: file|folder, if?, args? } (single object is sugar). args maps recipe arg names to MiniJinja expressions over path; first matching entry wins."
   },
   {
     "kind": "Field",
@@ -59,6 +59,13 @@
     "parent": "explorerMenu",
     "schemaPath": "#/definitions/explorerMenuEntry/properties/kind",
     "description": "Explorer click kind this menu entry applies to."
+  },
+  {
+    "kind": "Field",
+    "wire": "args",
+    "parent": "explorerMenu",
+    "schemaPath": "#/definitions/explorerMenuEntry/properties/args",
+    "description": "Map of recipe arg name to MiniJinja expression over the Explorer click path (RHS sees only path + filters)."
   },
   {
     "kind": "EnumValue",

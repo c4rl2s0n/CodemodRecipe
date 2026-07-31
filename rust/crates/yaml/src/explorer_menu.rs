@@ -2,6 +2,7 @@
 
 use serde::de::{self, Deserializer, SeqAccess, Visitor};
 use serde::{Deserialize, Serialize};
+use std::collections::BTreeMap;
 use std::fmt;
 
 use crate::dsl;
@@ -37,6 +38,9 @@ pub struct ExplorerMenuEntry {
     pub kind: ExplorerMenuKind,
     #[serde(default, rename = "if", skip_serializing_if = "Option::is_none")]
     pub if_expr: Option<String>,
+    /// Recipe arg name → MiniJinja expression over click `path` only.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub args: BTreeMap<String, String>,
 }
 
 /// Recipe-level Explorer menu opt-in (list of entries; single object is sugar).
@@ -68,7 +72,7 @@ impl<'de> Deserialize<'de> for ExplorerMenu {
 
             fn expecting(&self, formatter: &mut fmt::Formatter) -> fmt::Result {
                 formatter.write_str(
-                    "explorerMenu as a mapping { kind, if? } or a sequence of such mappings",
+                    "explorerMenu as a mapping { kind, if?, args? } or a sequence of such mappings",
                 )
             }
 
@@ -135,5 +139,30 @@ if: path is startingwith("lib/")
         assert_eq!(menu.entries[0].kind, ExplorerMenuKind::Folder);
         assert!(menu.entries[0].if_expr.is_none());
         assert_eq!(menu.entries[1].kind, ExplorerMenuKind::File);
+    }
+
+    #[test]
+    fn args_map_bindings() {
+        let menu: ExplorerMenu = serde_yaml::from_str(
+            r#"
+kind: file
+args:
+  file: path
+  featureDir: path | parent
+  folderName: path | parent | basename
+"#,
+        )
+        .unwrap();
+        assert_eq!(menu.entries.len(), 1);
+        let args = &menu.entries[0].args;
+        assert_eq!(args.get("file").map(String::as_str), Some("path"));
+        assert_eq!(
+            args.get("featureDir").map(String::as_str),
+            Some("path | parent")
+        );
+        assert_eq!(
+            args.get("folderName").map(String::as_str),
+            Some("path | parent | basename")
+        );
     }
 }

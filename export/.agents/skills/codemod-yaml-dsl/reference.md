@@ -62,23 +62,28 @@ explorerMenu:
 
 ### Explorer menu (`explorerMenu`)
 
-Sequence of `{ kind, if? }` (a single mapping is sugar for a one-element list).
+Sequence of `{ kind, if?, args? }` (a single mapping is sugar for a one-element list).
 
 | Field | Role |
 |-------|------|
 | `kind` | Required: `file` \| `folder` — which Explorer click targets list this recipe |
 | `if` | Optional MiniJinja expression over magic var **`path`** only (same dialect as step `if`). Omit → always match that kind |
+| `args` | Optional map of recipe arg name → MiniJinja expression over **`path`** only. LHS = destination arg; RHS sees only the click filepath (+ filters). First matching entry wins. When omitted, prefill uses first matching `inputKind` |
 
 ```yaml
 explorerMenu:
   - kind: folder
     if: path is startingwith("lib/")
+    args:
+      directory: path
+      folderName: path | basename
   - kind: file
+    args:
+      file: path
+      featureDir: path | parent
 ```
 
-Matching: for click kind `K`, if **any** entry with `kind: K` has missing/`true` `if`, the recipe appears **once**. Same `kind` may repeat with different `if`s (OR). Fail closed on expression errors per entry.
-
-Prefill: folder click → first `inputKind: directory` arg; file click → first `inputKind: file` arg. Then normal `from` / invoke.
+Matching: for click kind `K`, if **any** entry with `kind: K` has missing/`true` `if`, the recipe appears **once**. Same `kind` may repeat with different `if`s (OR). The first matching entry’s `args` (or inputKind heuristic) are used. Fail closed on expression errors.
 
 Guide: [docs/recipe-shortcuts.md](../../../docs/recipe-shortcuts.md#explorer-context-menu).
 

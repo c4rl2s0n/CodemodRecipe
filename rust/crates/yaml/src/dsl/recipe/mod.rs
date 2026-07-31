@@ -18,6 +18,7 @@ pub mod explorer_menu {
         pub mod field {
             pub const KIND: &str = "kind";
             pub const IF: &str = "if";
+            pub const ARGS: &str = "args";
 
             pub mod kind {
                 pub mod value {

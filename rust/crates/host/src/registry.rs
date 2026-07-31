@@ -466,6 +466,7 @@ pub fn recipe_to_schema(recipe: &Recipe, source_file: Option<&str>) -> RecipeSch
                 .map(|e| crate::protocol::ExplorerMenuEntrySchema {
                     kind: e.kind.as_str().to_string(),
                     if_expr: e.if_expr.clone(),
+                    args: e.args.clone(),
                 })
                 .collect()
         }),
