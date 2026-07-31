@@ -340,6 +340,7 @@ Supported in paths, queries, inline `create.template`, and `create.templateFile`
 
 - `{{ argName }}`
 - `{{ arg | camel_case }}`, `snake_case`, `pascal_case`, `lower`, `upper`, `screaming_snake`, `kebab_case`
+- `{{ pathArg | parent }}`, `basename`, `stem` (path string transforms; chainable, e.g. `{{ dir | parent | basename }}`)
 - `{{ keyArg | map('mapId') }}`
 - `{{ map.mapId.key }}` / `{{ var.varId.key }}`
 - `{% if includeTests %}…{% endif %}` (bool args as `"true"` / `"false"`)

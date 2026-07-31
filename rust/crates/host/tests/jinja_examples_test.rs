@@ -88,6 +88,7 @@ fn jinja_examples_validate_all_recipes() {
         .collect();
     for id in [
         "jinja.casing.showcase",
+        "jinja.path.showcase",
         "jinja.create.conditional",
         "jinja.create.layout",
         "jinja.defaults.orchestrator",
@@ -177,6 +178,32 @@ fn showcase_casing_renders_all_filters() {
     assert!(content.contains("// mapFilter=int"));
     assert!(content.contains("// mapContext=int"));
     assert!(content.contains("class FeedListCasing"));
+
+    let _ = std::fs::remove_dir_all(workspace);
+}
+
+#[test]
+fn showcase_path_renders_path_filters() {
+    let workspace = setup_jinja_workspace("jinja_path");
+    let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+    registry.reload();
+
+    let mut args = BTreeMap::new();
+    args.insert(
+        "featureDir".to_string(),
+        "lib/features/feed/widgets".to_string(),
+    );
+    args.insert("file".to_string(), "lib/foo.dart".to_string());
+
+    let response = preview_recipe(&mut registry, "jinja.path.showcase", args);
+    assert_eq!(response["ok"], true, "{}", response["error"]);
+
+    let content = file_content(&response, "lib/generated/widgets_path.dart");
+    assert!(content.contains("// parent=lib/features/feed"));
+    assert!(content.contains("// basename=widgets"));
+    assert!(content.contains("// parentBasename=feed"));
+    assert!(content.contains("// stem=foo"));
+    assert!(content.contains("class WidgetsPath"));
 
     let _ = std::fs::remove_dir_all(workspace);
 }

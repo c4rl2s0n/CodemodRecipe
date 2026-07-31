@@ -35,6 +35,25 @@ All templated fields share the same argument namespace (`args` + merged `maps`).
 {{ feature | kebab_case }}
 ```
 
+### Path filters
+
+Pure string transforms on file/directory path args (no workspace I/O):
+
+```jinja
+{{ featureDir | parent }}
+{{ featureDir | basename }}
+{{ featureDir | parent | basename }}
+{{ file | stem }}
+```
+
+| Filter | Result for `lib/features/feed/widgets` / `lib/foo.dart` |
+|--------|--------------------------------------------------------|
+| `parent` | `lib/features/feed` / `lib` |
+| `basename` | `widgets` / `foo.dart` |
+| `stem` | `widgets` / `foo` |
+
+Trailing slashes are stripped; `\` separators are normalized to `/`.
+
 ### Numeric helpers (edit `let` / `as` templates)
 
 Use on string locals from `extract: text` or recipe args:
@@ -150,6 +169,7 @@ Runnable recipes demonstrating each feature:
 | `patch_counter` | [`test/fixtures/scaffold_project/.../patch_counter.yaml`](../test/fixtures/scaffold_project/.codemod/recipes/patch_counter.yaml) | `\| map('field_kind')` + `\| camel_case` |
 | `create_repository` | [`test/fixtures/scaffold_project/.../create_repository.yaml`](../test/fixtures/scaffold_project/.codemod/recipes/create_repository.yaml) | `templateFile` with casing filters |
 | `jinja.casing.showcase` | [`test/fixtures/jinja_examples/.../showcase_casing.yaml`](../test/fixtures/jinja_examples/.codemod/recipes/showcase_casing.yaml) | All casing filters + both map syntaxes |
+| `jinja.path.showcase` | [`test/fixtures/jinja_examples/.../showcase_path.yaml`](../test/fixtures/jinja_examples/.codemod/recipes/showcase_path.yaml) | `parent`, `basename`, `stem` path filters |
 | `jinja.create.conditional` | [`test/fixtures/jinja_examples/.../conditional_create.yaml`](../test/fixtures/jinja_examples/.codemod/recipes/conditional_create.yaml) | Bool conditional in template file |
 | `jinja.create.layout` | [`test/fixtures/jinja_examples/.../create_with_layout.yaml`](../test/fixtures/jinja_examples/.codemod/recipes/create_with_layout.yaml) | `extends` + `include` |
 | `jinja.defaults.orchestrator` | [`test/fixtures/jinja_examples/.../defaults_orchestrator.yaml`](../test/fixtures/jinja_examples/.codemod/recipes/defaults_orchestrator.yaml) | `defaultsTo` via recipe composition |

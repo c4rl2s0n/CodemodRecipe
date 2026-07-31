@@ -96,6 +96,9 @@ Recipes use [MiniJinja](https://docs.rs/minijinja/) (Jinja2-compatible). See
 | `{{ field \| camel_case }}` | camelCase |
 | `{{ field \| snake_case }}` | snake_case |
 | `{{ field \| pascal_case }}` | PascalCase |
+| `{{ path \| parent }}` | Parent directory of a path arg |
+| `{{ path \| basename }}` | Final path component |
+| `{{ path \| stem }}` | Filename without extension |
 | `{{ key \| map('mapId') }}` | Lookup in workspace/recipe maps |
 | `{{ map.mapId.key }}` | Nested map access |
 | `{{ var.varId.key }}` | Shared variable (`id` + `values:`) |

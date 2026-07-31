@@ -10,6 +10,7 @@ use crate::naming::{
     to_camel_case, to_kebab_case, to_lower, to_pascal_case, to_screaming_snake, to_snake_case,
     to_upper,
 };
+use crate::path_filters::{path_basename, path_parent, path_stem};
 
 const TEMPLATE_FUEL: usize = 50_000;
 
@@ -94,6 +95,12 @@ fn build_environment(
     env.add_filter("trim", |value: String| -> String {
         value.trim().to_string()
     });
+
+    env.add_filter("parent", |value: String| -> String { path_parent(&value) });
+    env.add_filter("basename", |value: String| -> String {
+        path_basename(&value)
+    });
+    env.add_filter("stem", |value: String| -> String { path_stem(&value) });
 
     env.add_filter("int", |value: Value| -> Result<i64, minijinja::Error> {
         value_to_i64(&value)
@@ -359,6 +366,33 @@ mod tests {
                 &args
             ),
             "feed_list FEED_LIST"
+        );
+    }
+
+    #[test]
+    fn renders_jinja_path_filters() {
+        let mut args = BTreeMap::new();
+        args.insert(
+            "featureDir".to_string(),
+            "lib/features/feed/widgets".to_string(),
+        );
+        args.insert("file".to_string(), "lib/foo.dart".to_string());
+        assert_eq!(
+            render_ok(
+                "{{ featureDir | parent }} {{ featureDir | basename }} {{ featureDir | parent | basename }} {{ file | stem }}",
+                &args
+            ),
+            "lib/features/feed widgets feed foo"
+        );
+    }
+
+    #[test]
+    fn path_filters_strip_trailing_slash_and_normalize_separators() {
+        let mut args = BTreeMap::new();
+        args.insert("dir".to_string(), "lib\\features\\feed\\".to_string());
+        assert_eq!(
+            render_ok("{{ dir | parent }}/{{ dir | basename }}", &args),
+            "lib/features/feed"
         );
     }
 

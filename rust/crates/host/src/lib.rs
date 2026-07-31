@@ -8,6 +8,7 @@ pub mod edit_apply;
 pub mod map_registry;
 pub mod naming;
 pub mod patch_selector;
+pub mod path_filters;
 pub mod path_sandbox;
 pub mod post_execution;
 pub mod preview_token;

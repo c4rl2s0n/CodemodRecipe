@@ -93,7 +93,7 @@ After apply, re-run `preview_recipe` — expect `files: []` for idempotent recip
 
 Declare all dynamic values as `args` and reference via `{{name}}` in path, query, and text.
 
-Use `inputKind: file` for paths, `inputKind: symbol` for class/method names.
+Use `inputKind: file` for file paths, `inputKind: directory` for folders, and `inputKind: choice` with `options` for fixed value lists.
 
 For template helpers and maps, see `codemod-yaml-dsl` reference.md.
 
