@@ -105,6 +105,36 @@ pub enum Step {
     Unknown(String, serde_yaml::Value),
 }
 
+/// Error for a multi-key step/op map, naming the first surplus key.
+///
+/// Optional `(near: key: value)` suffix helps hosts locate the key when top-level
+/// keys share the same name (e.g. recipe `id:` vs a surplus step `id:`).
+pub fn bad_single_key_map_error(
+    kind: &str,
+    expected_keys: &str,
+    key: &str,
+    value: &serde_yaml::Value,
+) -> String {
+    let mut msg = format!(
+        "bad key '{key}' on {kind} map; each entry must be a single key ({expected_keys})"
+    );
+    if let Some(near) = near_preview_for_key(key, value) {
+        msg.push_str(&format!(" (near: {near})"));
+    }
+    msg
+}
+
+fn near_preview_for_key(key: &str, value: &serde_yaml::Value) -> Option<String> {
+    match value {
+        serde_yaml::Value::String(s)
+            if !s.is_empty() && s.len() <= 80 && !s.contains('\n') =>
+        {
+            Some(format!("{key}: {s}"))
+        }
+        _ => None,
+    }
+}
+
 impl<'de> Deserialize<'de> for Step {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -127,9 +157,13 @@ impl<'de> Deserialize<'de> for Step {
                     .next_entry()?
                     .ok_or_else(|| de::Error::custom("empty step map"))?;
 
-                // Ensure single-key map.
-                if map.next_entry::<String, serde_yaml::Value>()?.is_some() {
-                    return Err(de::Error::custom("step map must have exactly one key"));
+                if let Some((extra_k, extra_v)) = map.next_entry::<String, serde_yaml::Value>()? {
+                    return Err(de::Error::custom(bad_single_key_map_error(
+                        "step",
+                        "edit|create|delete|recipe",
+                        &extra_k,
+                        &extra_v,
+                    )));
                 }
 
                 match k.as_str() {
@@ -361,8 +395,13 @@ impl<'de> Deserialize<'de> for EditOp {
                     .next_entry()?
                     .ok_or_else(|| de::Error::custom("empty op map"))?;
 
-                if map.next_entry::<String, serde_yaml::Value>()?.is_some() {
-                    return Err(de::Error::custom("op map must have exactly one key"));
+                if let Some((extra_k, extra_v)) = map.next_entry::<String, serde_yaml::Value>()? {
+                    return Err(de::Error::custom(bad_single_key_map_error(
+                        "op",
+                        "insert|replace|remove",
+                        &extra_k,
+                        &extra_v,
+                    )));
                 }
 
                 match k.as_str() {

@@ -1,4 +1,4 @@
-use crate::diag_source::source_with_needle;
+use crate::diag_source::{source_for_recipe_parse_error, source_with_needle};
 use crate::map_registry::{load_codemod_assets, merge_maps, warn_on_missing_map_ids};
 use crate::protocol::{RecipeArg, RecipeDiagnostic, RecipeSchema};
 use crate::render_context::RecipeRenderContext;
@@ -66,26 +66,7 @@ impl RecipeRegistry {
             let recipe = match parse_recipe_yaml(&text) {
                 Ok(recipe) => recipe,
                 Err(err) => {
-                    let message = err.to_string();
-                    let source = if message.contains("'group'") {
-                        source_with_needle(&relative, Some(&text), "group")
-                    } else {
-                        match serde_yaml::from_str::<serde_yaml::Value>(&text) {
-                            Err(e) => crate::diag_source::source_from_serde_yaml_error(
-                                &relative, &e,
-                            ),
-                            Ok(value) => {
-                                match serde_yaml::from_value::<Recipe>(value) {
-                                    Err(e) => {
-                                        crate::diag_source::source_from_serde_yaml_error(
-                                            &relative, &e,
-                                        )
-                                    }
-                                    Ok(_) => source_with_needle(&relative, Some(&text), "id:"),
-                                }
-                            }
-                        }
-                    };
+                    let source = source_for_recipe_parse_error(&relative, &text, &err);
                     self.diagnostics.push(RecipeDiagnostic::simple(
                         "error",
                         "E_RECIPE_PARSE",
@@ -1049,6 +1030,53 @@ steps:
                 && d.message
                     .contains("top-level field 'group' is no longer supported")
         }));
+
+        let _ = std::fs::remove_dir_all(workspace);
+    }
+
+    #[test]
+    fn reports_under_indented_recipe_step_on_surplus_key() {
+        let workspace = std::env::temp_dir().join(format!(
+            "codemod_registry_bad_step_key_{}",
+            std::process::id()
+        ));
+        let recipes_dir = workspace.join(".codemod/recipes");
+        std::fs::create_dir_all(&recipes_dir).unwrap();
+        // Line 1: top-level id; line 4: surplus under-indented id under steps.
+        let yaml = r#"id: parent.recipe
+steps:
+  - recipe:
+    id: child.recipe
+    with:
+      path: lib/x.dart
+"#;
+        std::fs::write(recipes_dir.join("bad.yaml"), yaml).unwrap();
+
+        let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+        registry.reload();
+
+        let (_, diagnostics) = registry.list();
+        let diag = diagnostics
+            .iter()
+            .find(|d| d.code == "E_RECIPE_PARSE")
+            .expect("expected parse diagnostic");
+        assert!(
+            diag.message.contains("bad key 'id' on step map"),
+            "message={}",
+            diag.message
+        );
+        let source = diag.sources.first().expect("source");
+        assert_eq!(
+            source.line,
+            Some(4),
+            "expected surplus id line, got {:?}",
+            source
+        );
+        assert!(
+            source.column.unwrap_or(0) >= 5,
+            "expected column on surplus id, got {:?}",
+            source
+        );
 
         let _ = std::fs::remove_dir_all(workspace);
     }

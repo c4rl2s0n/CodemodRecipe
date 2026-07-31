@@ -123,3 +123,50 @@ fn parse_recipe_ref_string_helper() {
         }
     );
 }
+
+#[test]
+fn rejects_under_indented_recipe_step_with_named_bad_key() {
+    let err = serde_yaml::from_str::<Recipe>(
+        r#"
+id: parent
+steps:
+  - recipe:
+    id: child_id
+    with:
+      path: x
+"#,
+    )
+    .unwrap_err();
+    let msg = err.to_string();
+    assert!(
+        msg.contains("bad key 'id' on step map"),
+        "unexpected error: {msg}"
+    );
+    assert!(msg.contains("near: id: child_id"), "unexpected error: {msg}");
+    let loc = err.location().expect("from_str should attach location");
+    assert!(loc.line() >= 4, "expected step entry line, got {}", loc.line());
+}
+
+#[test]
+fn rejects_multi_key_op_with_named_bad_key() {
+    let err = serde_yaml::from_str::<Recipe>(
+        r#"
+id: parent
+steps:
+  - edit:
+      path: "a.dart"
+      ops:
+        - insert:
+          query: "(program) @root"
+          capture: root
+          anchor: end
+          text: "// x\n"
+"#,
+    )
+    .unwrap_err();
+    let msg = err.to_string();
+    assert!(
+        msg.contains("bad key 'query' on op map"),
+        "unexpected error: {msg}"
+    );
+}

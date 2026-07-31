@@ -18,8 +18,12 @@ pub struct QueryContext<'a> {
 
 #[derive(Debug, Error)]
 pub enum EngineError {
-    #[error("failed to parse yaml recipe: {0}")]
-    RecipeParse(String),
+    #[error("failed to parse yaml recipe: {message}")]
+    RecipeParse {
+        message: String,
+        line: Option<u32>,
+        column: Option<u32>,
+    },
 
     #[error("syntax errors present in file: {path}")]
     SyntaxError { path: String },
@@ -47,6 +51,37 @@ pub enum EngineError {
 
     #[error(transparent)]
     Patch(#[from] codemod_recipe_core::patch::PatchError),
+}
+
+impl EngineError {
+    /// 1-based line/column when this is a recipe YAML parse error with a known mark.
+    pub fn recipe_parse_location(&self) -> Option<(u32, u32)> {
+        match self {
+            Self::RecipeParse {
+                line: Some(line),
+                column: Some(column),
+                ..
+            } => Some((*line, *column)),
+            _ => None,
+        }
+    }
+
+    fn recipe_parse_from_yaml(err: serde_yaml::Error) -> Self {
+        let loc = err.location();
+        Self::RecipeParse {
+            message: err.to_string(),
+            line: loc.as_ref().map(|l| l.line() as u32),
+            column: loc.as_ref().map(|l| l.column() as u32),
+        }
+    }
+
+    fn recipe_parse_message(message: impl Into<String>) -> Self {
+        Self::RecipeParse {
+            message: message.into(),
+            line: None,
+            column: None,
+        }
+    }
 }
 
 pub struct Engine {
@@ -391,16 +426,21 @@ fn whitespace_normalized(text: &str) -> String {
 }
 
 pub fn parse_recipe_yaml(yaml_text: &str) -> Result<Recipe, EngineError> {
-    let value = serde_yaml::from_str::<serde_yaml::Value>(yaml_text)
-        .map_err(|e| EngineError::RecipeParse(e.to_string()))?;
-    if value
-        .as_mapping()
-        .is_some_and(|map| map.contains_key(serde_yaml::Value::String("group".to_string())))
-    {
-        return Err(EngineError::RecipeParse(
-            "top-level field 'group' is no longer supported; use a dotted recipe id instead"
-                .to_string(),
-        ));
+    // Reject deprecated `group` before typed parse (`Recipe` ignores unknown fields).
+    match serde_yaml::from_str::<serde_yaml::Value>(yaml_text) {
+        Ok(value)
+            if value.as_mapping().is_some_and(|map| {
+                map.contains_key(serde_yaml::Value::String("group".to_string()))
+            }) =>
+        {
+            return Err(EngineError::recipe_parse_message(
+                "top-level field 'group' is no longer supported; use a dotted recipe id instead",
+            ));
+        }
+        Err(e) => return Err(EngineError::recipe_parse_from_yaml(e)),
+        Ok(_) => {}
     }
-    serde_yaml::from_value::<Recipe>(value).map_err(|e| EngineError::RecipeParse(e.to_string()))
+
+    // Single-pass typed parse preserves serde_yaml line/column on model errors.
+    serde_yaml::from_str::<Recipe>(yaml_text).map_err(EngineError::recipe_parse_from_yaml)
 }

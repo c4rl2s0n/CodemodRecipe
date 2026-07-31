@@ -1,5 +1,6 @@
 use crate::protocol::DiagnosticSource;
 use codemod_recipe_core::resource_path::resolve_under_root;
+use codemod_recipe_engine::engine::EngineError;
 use std::path::{Path, PathBuf};
 
 /// Build a diagnostic source, locating the first occurrence of `needle` in `text`
@@ -89,6 +90,62 @@ pub fn source_from_yaml_text(file: &str, text: &str) -> DiagnosticSource {
     }
 }
 
+/// Resolve a diagnostic span for a failed [`parse_recipe_yaml`](codemod_recipe_engine::engine::parse_recipe_yaml).
+///
+/// Preference order:
+/// 1. `(near: …)` preview from multi-key step/op errors (precise surplus key)
+/// 2. serde_yaml line/column when present (typically the step/op map start)
+/// 3. `bad key '…'` / `'group'` needle search
+/// 4. file-only
+pub fn source_for_recipe_parse_error(
+    file: &str,
+    text: &str,
+    err: &EngineError,
+) -> DiagnosticSource {
+    let message = err.to_string();
+    if let Some(near) = extract_near_preview(&message) {
+        return source_with_needle(file, Some(text), &near);
+    }
+    if let Some((line, column)) = err.recipe_parse_location() {
+        return source_at(file, line, column);
+    }
+    if message.contains("'group'") {
+        return source_with_needle(file, Some(text), "group");
+    }
+    if let Some(key) = extract_bad_key(&message) {
+        return source_with_needle(file, Some(text), &format!("{key}:"));
+    }
+    source_file_only(file)
+}
+
+/// Extract `near: …` from errors like `… (near: id: child_id)`.
+pub fn extract_near_preview(message: &str) -> Option<String> {
+    const MARKER: &str = "(near: ";
+    let start = message.rfind(MARKER)? + MARKER.len();
+    let rest = &message[start..];
+    let end = rest.rfind(')')?;
+    let near = rest[..end].trim();
+    if near.is_empty() {
+        None
+    } else {
+        Some(near.to_string())
+    }
+}
+
+/// Extract key from `bad key 'id' on step map…`.
+pub fn extract_bad_key(message: &str) -> Option<String> {
+    const MARKER: &str = "bad key '";
+    let start = message.find(MARKER)? + MARKER.len();
+    let rest = &message[start..];
+    let end = rest.find('\'')?;
+    let key = &rest[..end];
+    if key.is_empty() {
+        None
+    } else {
+        Some(key.to_string())
+    }
+}
+
 /// Find 1-based line and column of the first occurrence of `needle`.
 pub fn find_line_column(text: &str, needle: &str) -> Option<(u32, u32)> {
     let idx = text.find(needle)?;
@@ -146,5 +203,26 @@ mod tests {
         assert_eq!(src.column, None);
 
         let _ = std::fs::remove_dir_all(workspace);
+    }
+
+    #[test]
+    fn extracts_near_and_bad_key() {
+        let msg = "bad key 'id' on step map; each entry must be a single key (edit|create|delete|recipe) (near: id: child)";
+        assert_eq!(extract_bad_key(msg).as_deref(), Some("id"));
+        assert_eq!(extract_near_preview(msg).as_deref(), Some("id: child"));
+    }
+
+    #[test]
+    fn near_preview_avoids_top_level_id() {
+        let text = "id: parent\nsteps:\n  - recipe:\n    id: child\n";
+        let src = source_with_needle(
+            "r.yaml",
+            Some(text),
+            extract_near_preview("bad key 'id' on step map (near: id: child)")
+                .unwrap()
+                .as_str(),
+        );
+        assert_eq!(src.line, Some(4));
+        assert_eq!(src.column, Some(5));
     }
 }
