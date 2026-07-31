@@ -209,10 +209,68 @@ fn apply_writes_transformed_file() {
             selection: serde_json::json!({}),
         },
     );
-    assert_eq!(apply["ok"], true);
+    assert_eq!(apply["ok"], true, "{}", apply["error"]);
 
     let content = std::fs::read_to_string(&settings).unwrap();
     assert!(content.contains("print('codemod');"));
+
+    let _ = std::fs::remove_dir_all(workspace);
+}
+
+#[test]
+fn apply_runs_post_execution_rustfmt() {
+    let workspace = temp_workspace("post_exec_rustfmt");
+    std::fs::create_dir_all(workspace.join(".codemod/recipes")).unwrap();
+
+    let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+    registry.reload();
+
+    let rel = "src/main.rs";
+    let inline_recipe = serde_json::json!({
+        "id": "post_exec_rustfmt",
+        "args": [{ "name": "file", "required": true }],
+        "steps": [{
+            "create": {
+                "path": "{{file}}",
+                "template": "fn main(){println!(\"hi\");}\n"
+            }
+        }],
+        "postExecution": ["rustfmt {{file}}"]
+    });
+
+    let mut args = BTreeMap::new();
+    args.insert("file".to_string(), rel.to_string());
+
+    let preview = dispatch::handle_command(
+        &mut registry,
+        HostCommand::Preview {
+            recipe: None,
+            inline_recipe: Some(inline_recipe.clone()),
+            args: args.clone(),
+            snippet_lines: None,
+        },
+    );
+    assert_eq!(preview["ok"], true, "{}", preview["error"]);
+    let token = preview["previewToken"].as_str().unwrap();
+
+    let apply = dispatch::handle_command(
+        &mut registry,
+        HostCommand::Apply {
+            recipe: None,
+            inline_recipe: Some(inline_recipe),
+            args,
+            preview_token: token.to_string(),
+            selection: serde_json::json!({}),
+        },
+    );
+    assert_eq!(apply["ok"], true, "{}", apply["error"]);
+
+    let content = std::fs::read_to_string(workspace.join(rel)).unwrap();
+    assert_eq!(
+        content,
+        "fn main() {\n    println!(\"hi\");\n}\n",
+        "postExecution rustfmt should reformat the created file"
+    );
 
     let _ = std::fs::remove_dir_all(workspace);
 }

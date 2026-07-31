@@ -33,5 +33,4 @@ steps:
             anchor: end
             text: "    print('codemod');\n"
 
-postExecution:
-  - "dart format ."
+postExecution: []
