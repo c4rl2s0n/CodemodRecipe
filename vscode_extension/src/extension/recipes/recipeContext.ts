@@ -37,7 +37,7 @@ export function resolveUriContext(
   kind: ExplorerResourceKind
 ): UriContextValues {
   const relative = toWorkspaceRelativePath(workspaceRoot, uri.fsPath);
-  return buildUriContextValues(relative, kind);
+  return buildUriContextValues(relative, kind, workspaceRoot);
 }
 
 export function resolveEditorContext(workspaceRoot: string): EditorContext {

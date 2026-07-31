@@ -43,10 +43,20 @@ export function toWorkspaceRelativePath(
 /** Build context builtins from an Explorer file/folder path. */
 export function buildUriContextValues(
   relativePath: string,
-  kind: ExplorerResourceKind
+  kind: ExplorerResourceKind,
+  workspaceRoot?: string
 ): UriContextValues {
-  const relative = relativePath.replace(/\\/g, '/');
+  const relative = relativePath.replace(/\\/g, '/').replace(/\/+$/, '');
   const parts = pathParts(relative);
+  const root = (workspaceRoot ?? '').replace(/\\/g, '/').replace(/\/+$/, '');
+  const absolutePath = path.isAbsolute(relative)
+    ? relative
+    : relative
+      ? root
+        ? `${root}/${relative}`
+        : relative
+      : root;
+
   const values: Record<string, string> = {
     path: relative,
     fileBasename: parts.fileBasename,
@@ -54,10 +64,15 @@ export function buildUriContextValues(
     fileExt: parts.fileExt,
     fileDirname: parts.fileDirname,
   };
+  if (root) {
+    values.workspaceRoot = root;
+    values.absolutePath = absolutePath;
+  }
   if (kind === 'file') {
     values.file = relative;
     values.directory = parts.fileDirname;
   } else {
+    values.file = '';
     values.directory = relative;
     values.fileDirname = relative;
   }

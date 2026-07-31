@@ -114,8 +114,9 @@ Bind recipes to chords via **slots** (`codemodRecipe.slots`) or
 `codemodRecipe.invoke`. Args can auto-fill from the editor with recipe `from:` /
 `contextKey`. Full guide: [docs/recipe-shortcuts.md](../docs/recipe-shortcuts.md).
 
-Explorer: right-click a file/folder → **Codemod Recipe ▸ Run Recipe Here…** for
-recipes that declare `explorerMenu` (see the shortcuts doc).
+Explorer: right-click a file/folder → **Codemod Recipe ▸ Run Recipe Here…**
+(auto-apply when args complete) or **Open in Recipe Runner…** for recipes that
+declare `explorerMenu` (see the shortcuts doc).
 
 Example workspace settings:
 

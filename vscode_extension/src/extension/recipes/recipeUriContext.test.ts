@@ -13,19 +13,22 @@ describe('uri context helpers', () => {
   });
 
   it('buildUriContextValues sets path and file/directory builtins', () => {
-    expect(buildUriContextValues('lib/a.dart', 'file').values).toMatchObject({
+    expect(buildUriContextValues('lib/a.dart', 'file', '/ws').values).toMatchObject({
       path: 'lib/a.dart',
       file: 'lib/a.dart',
       directory: 'lib',
       fileStem: 'a',
       fileExt: 'dart',
+      workspaceRoot: '/ws',
+      absolutePath: '/ws/lib/a.dart',
     });
     expect(
-      buildUriContextValues('lib/features', 'folder').values
+      buildUriContextValues('lib/features', 'folder', '/ws').values
     ).toMatchObject({
       path: 'lib/features',
       directory: 'lib/features',
       fileDirname: 'lib/features',
+      absolutePath: '/ws/lib/features',
     });
   });
 

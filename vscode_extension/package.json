@@ -85,6 +85,11 @@
         "icon": "$(play)"
       },
       {
+        "command": "codemodRecipe.openFromExplorer",
+        "title": "Codemod Recipe: Open in Recipe Runner…",
+        "icon": "$(open-preview)"
+      },
+      {
         "command": "codemodRecipe.invoke",
         "title": "Codemod Recipe: Invoke Recipe"
       },
@@ -196,7 +201,11 @@
       "codemodRecipe.explorer": [
         {
           "command": "codemodRecipe.runFromExplorer",
-          "group": "navigation"
+          "group": "navigation@1"
+        },
+        {
+          "command": "codemodRecipe.openFromExplorer",
+          "group": "navigation@2"
         }
       ]
     },

@@ -8,16 +8,35 @@ import {
   resolveUriContext,
   type ExplorerResourceKind,
 } from './recipeContext';
-import { invokeRecipe } from './recipeInvoke';
+import { invokeRecipe, type InvokeMode } from './recipeInvoke';
 
+type ExplorerDeps = {
+  repository: RecipeRepository;
+  bridge: HostBridge;
+  config: ExtensionConfig;
+  runner: RecipeRunnerViewProvider;
+};
+
+/** Run Recipe Here… — auto-apply when required args are complete. */
 export async function runRecipeFromExplorer(
-  deps: {
-    repository: RecipeRepository;
-    bridge: HostBridge;
-    config: ExtensionConfig;
-    runner: RecipeRunnerViewProvider;
-  },
+  deps: ExplorerDeps,
   resource?: vscode.Uri | { resourceUri?: vscode.Uri }
+): Promise<void> {
+  await runOrOpenFromExplorer(deps, resource, 'auto');
+}
+
+/** Open in Recipe Runner… — always open runner with prefilled args. */
+export async function openRecipeFromExplorer(
+  deps: ExplorerDeps,
+  resource?: vscode.Uri | { resourceUri?: vscode.Uri }
+): Promise<void> {
+  await runOrOpenFromExplorer(deps, resource, 'open');
+}
+
+export async function runOrOpenFromExplorer(
+  deps: ExplorerDeps,
+  resource: vscode.Uri | { resourceUri?: vscode.Uri } | undefined,
+  mode: InvokeMode
 ): Promise<void> {
   const uri = resolveExplorerUri(resource);
   if (!uri) {
@@ -79,6 +98,11 @@ export async function runRecipeFromExplorer(
     return;
   }
 
+  const placeHolder =
+    mode === 'open'
+      ? `Open recipe in runner for ${uriContext.path}`
+      : `Run recipe on ${uriContext.path}`;
+
   const picked = await vscode.window.showQuickPick(
     items.map(({ recipe, match }) => {
       const argDetail = Object.entries(match.args)
@@ -93,7 +117,7 @@ export async function runRecipeFromExplorer(
       };
     }),
     {
-      placeHolder: `Run recipe on ${uriContext.path}`,
+      placeHolder,
       matchOnDescription: true,
       matchOnDetail: true,
     }
@@ -111,7 +135,7 @@ export async function runRecipeFromExplorer(
     },
     {
       recipeId: picked.recipe.id,
-      mode: 'auto',
+      mode,
       args: picked.match.args,
       contextValues: uriContext.values,
       filePath: kind === 'file' ? uriContext.path : undefined,

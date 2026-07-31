@@ -9,6 +9,7 @@ export const COMMANDS = {
   runRecipe: 'codemodRecipe.runRecipe',
   runFromCursorContext: 'codemodRecipe.runFromCursorContext',
   runFromExplorer: 'codemodRecipe.runFromExplorer',
+  openFromExplorer: 'codemodRecipe.openFromExplorer',
   invoke: 'codemodRecipe.invoke',
   invokeSlot: 'codemodRecipe.invokeSlot',
   copyInvokeKeybinding: 'codemodRecipe.copyInvokeKeybinding',
