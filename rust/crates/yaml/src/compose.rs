@@ -106,13 +106,63 @@ fn expand_recipe_references_inner(
         .iter()
         .map(|a| (a.name.clone(), a.clone()))
         .collect();
-    let mut steps: Vec<Step> = Vec::new();
     let mut maps = recipe.maps.clone();
     let mut queries = recipe.queries.clone();
+    let steps = expand_steps(
+        &recipe.steps,
+        registry,
+        visiting,
+        &mut merged_args,
+        &mut maps,
+        &mut queries,
+    )?;
 
-    for step in &recipe.steps {
+    visiting.remove(&recipe.id);
+
+    Ok(Recipe {
+        id: recipe.id.clone(),
+        name: recipe.name.clone(),
+        description: recipe.description.clone(),
+        args: merged_args.into_values().collect(),
+        maps,
+        queries,
+        steps,
+        post_execution: recipe.post_execution.clone(),
+        explorer_menu: recipe.explorer_menu.clone(),
+    })
+}
+
+fn expand_steps(
+    steps: &[Step],
+    registry: &BTreeMap<String, Recipe>,
+    visiting: &mut BTreeSet<String>,
+    merged_args: &mut BTreeMap<String, Arg>,
+    maps: &mut BTreeMap<String, BTreeMap<String, String>>,
+    queries: &mut BTreeMap<String, QueryDefinition>,
+) -> Result<Vec<Step>, ComposeError> {
+    let mut out: Vec<Step> = Vec::new();
+    for step in steps {
         match step {
-            Step::Edit(edit) => steps.push(Step::Edit(edit.clone())),
+            Step::Edit(edit) => out.push(Step::Edit(edit.clone())),
+            Step::Create(create) => out.push(Step::Create(create.clone())),
+            Step::Delete(delete) => out.push(Step::Delete(delete.clone())),
+            Step::Unknown(_, _) => out.push(step.clone()),
+            Step::Scoped(scoped) => {
+                let child_steps = expand_steps(
+                    &scoped.steps,
+                    registry,
+                    visiting,
+                    merged_args,
+                    maps,
+                    queries,
+                )?;
+                out.push(Step::Scoped(ScopedStep {
+                    with: scoped.with.clone(),
+                    if_expr: scoped.if_expr.clone(),
+                    if_not: scoped.if_not.clone(),
+                    steps: child_steps,
+                }));
+            }
             Step::RecipeRef(recipe_ref) => {
                 let ref_id = recipe_ref_id(recipe_ref);
                 let child = registry
@@ -138,38 +188,21 @@ fn expand_recipe_references_inner(
                     }
                 }
                 if recipe_ref.with.is_empty() && !recipe_ref.has_condition() {
-                    steps.extend(child_steps);
+                    out.extend(child_steps);
                 } else {
-                    steps.push(Step::Scoped(ScopedStep {
+                    out.push(Step::Scoped(ScopedStep {
                         with: recipe_ref.with.clone(),
                         if_expr: recipe_ref.if_expr.clone(),
                         if_not: recipe_ref.if_not.clone(),
                         steps: child_steps,
                     }));
                 }
-                merge_maps_into(&mut maps, &expanded.maps);
-                merge_queries_into(&mut queries, &expanded.queries);
+                merge_maps_into(maps, &expanded.maps);
+                merge_queries_into(queries, &expanded.queries);
             }
-            Step::Create(create) => steps.push(Step::Create(create.clone())),
-            Step::Delete(delete) => steps.push(Step::Delete(delete.clone())),
-            Step::Scoped(scoped) => steps.push(Step::Scoped(scoped.clone())),
-            Step::Unknown(_, _) => steps.push(step.clone()),
         }
     }
-
-    visiting.remove(&recipe.id);
-
-    Ok(Recipe {
-        id: recipe.id.clone(),
-        name: recipe.name.clone(),
-        description: recipe.description.clone(),
-        args: merged_args.into_values().collect(),
-        maps,
-        queries,
-        steps,
-        post_execution: recipe.post_execution.clone(),
-        explorer_menu: recipe.explorer_menu.clone(),
-    })
+    Ok(out)
 }
 
 fn merge_queries_into(
@@ -524,5 +557,81 @@ mod tests {
         };
         assert_eq!(scoped.if_expr.as_deref(), Some("includeTests"));
         assert_eq!(scoped.steps.len(), 1);
+    }
+
+    #[test]
+    fn expand_if_step_expands_nested_recipe_refs() {
+        let child = recipe_named(
+            "child",
+            "child.dart",
+            vec![sample_arg("file"), sample_arg("extra")],
+        );
+        let parent = Recipe {
+            id: "parent".to_string(),
+            name: None,
+            description: None,
+            args: vec![sample_arg("includeTests")],
+            maps: BTreeMap::new(),
+            queries: BTreeMap::new(),
+            steps: vec![Step::Scoped(ScopedStep {
+                with: BTreeMap::new(),
+                if_expr: Some("includeTests".to_string()),
+                if_not: None,
+                steps: vec![recipe_ref("child")],
+            })],
+            post_execution: vec![],
+            explorer_menu: None,
+        };
+        let mut registry = BTreeMap::new();
+        registry.insert("child".to_string(), child);
+
+        let expanded = expand_recipe_references(&parent, &registry).unwrap();
+        let Step::Scoped(scoped) = &expanded.steps[0] else {
+            panic!("expected outer Scoped if step");
+        };
+        assert_eq!(scoped.if_expr.as_deref(), Some("includeTests"));
+        assert_eq!(scoped.steps.len(), 1);
+        assert!(matches!(&scoped.steps[0], Step::Edit(_)));
+        assert!(expanded.args.iter().any(|a| a.name == "file"));
+        assert!(expanded.args.iter().any(|a| a.name == "extra"));
+    }
+
+    #[test]
+    fn expand_nested_if_preserves_inner_gate() {
+        let child = recipe_named("child", "child.dart", vec![]);
+        let parent = Recipe {
+            id: "parent".to_string(),
+            name: None,
+            description: None,
+            args: vec![],
+            maps: BTreeMap::new(),
+            queries: BTreeMap::new(),
+            steps: vec![Step::Scoped(ScopedStep {
+                with: BTreeMap::new(),
+                if_expr: Some("outer".to_string()),
+                if_not: None,
+                steps: vec![Step::Scoped(ScopedStep {
+                    with: BTreeMap::new(),
+                    if_expr: Some("inner".to_string()),
+                    if_not: None,
+                    steps: vec![recipe_ref("child")],
+                })],
+            })],
+            post_execution: vec![],
+            explorer_menu: None,
+        };
+        let mut registry = BTreeMap::new();
+        registry.insert("child".to_string(), child);
+
+        let expanded = expand_recipe_references(&parent, &registry).unwrap();
+        let Step::Scoped(outer) = &expanded.steps[0] else {
+            panic!("expected outer Scoped");
+        };
+        assert_eq!(outer.if_expr.as_deref(), Some("outer"));
+        let Step::Scoped(inner) = &outer.steps[0] else {
+            panic!("expected inner Scoped");
+        };
+        assert_eq!(inner.if_expr.as_deref(), Some("inner"));
+        assert!(matches!(&inner.steps[0], Step::Edit(_)));
     }
 }

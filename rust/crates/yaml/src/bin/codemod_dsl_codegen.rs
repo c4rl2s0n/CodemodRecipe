@@ -30,7 +30,7 @@ fn apply_descriptions_to_properties(value: &mut Value) {
 
     if let Some(props) = obj.get_mut("properties").and_then(Value::as_object_mut) {
         for (key, prop) in props.iter_mut() {
-            if let Some(desc) = description_for_key(key) {
+            if let Some(desc) = description_for_property(key, prop) {
                 if let Some(prop_obj) = prop.as_object_mut() {
                     prop_obj.insert(
                         "description".to_string(),
@@ -61,6 +61,31 @@ fn apply_descriptions_to_properties(value: &mut Value) {
             }
         }
     }
+}
+
+/// Prefer StepKind/OpKind prose when the property is a step/op discriminator (`$ref`).
+fn description_for_property(key: &str, prop: &Value) -> Option<&'static str> {
+    let is_discriminator = prop
+        .as_object()
+        .and_then(|o| o.get("$ref"))
+        .and_then(|v| v.as_str())
+        .is_some_and(|r| {
+            r.contains("Step")
+                || r.contains("recipeRef")
+                || r.contains("/insertOp")
+                || r.contains("/replaceOp")
+                || r.contains("/removeOp")
+        });
+    if is_discriminator {
+        use codemod_recipe_yaml::{all_entries, VocabKind};
+        if let Some(entry) = all_entries()
+            .iter()
+            .find(|e| e.wire == key && matches!(e.kind, VocabKind::StepKind | VocabKind::OpKind))
+        {
+            return Some(entry.description);
+        }
+    }
+    description_for_key(key)
 }
 
 fn patch_schema_descriptions(schema_path: &Path) -> Result<(), String> {

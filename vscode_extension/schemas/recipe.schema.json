@@ -327,6 +327,32 @@
         }
       ]
     },
+    "ifStep": {
+      "additionalProperties": false,
+      "description": "Run nested steps when shared if / ifNot MiniJinja expressions pass.",
+      "properties": {
+        "if": {
+          "description": "MiniJinja expression over recipe args; skip the step when false.",
+          "type": "string"
+        },
+        "ifNot": {
+          "description": "MiniJinja expression over recipe args; skip the step when true.",
+          "type": "string"
+        },
+        "steps": {
+          "description": "Ordered list of edit, create, delete, recipe, or if group steps.",
+          "items": {
+            "$ref": "#/definitions/step"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "required": [
+        "steps"
+      ],
+      "type": "object"
+    },
     "insertOp": {
       "properties": {
         "anchor": {
@@ -529,6 +555,10 @@
           "$ref": "#/definitions/editStep",
           "description": "Patch an existing file with tree-sitter insert, replace, or remove ops."
         },
+        "if": {
+          "$ref": "#/definitions/ifStep",
+          "description": "Run nested steps when shared if / ifNot MiniJinja expressions pass."
+        },
         "recipe": {
           "$ref": "#/definitions/recipeRef",
           "description": "Inline another recipe by id, optionally with call-site with bindings."
@@ -595,7 +625,7 @@
       "type": "object"
     },
     "steps": {
-      "description": "Ordered list of edit, create, delete, or recipe reference steps.",
+      "description": "Ordered list of edit, create, delete, recipe, or if group steps.",
       "items": {
         "$ref": "#/definitions/step"
       },

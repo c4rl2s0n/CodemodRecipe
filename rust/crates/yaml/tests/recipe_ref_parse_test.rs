@@ -1,4 +1,6 @@
-use codemod_recipe_yaml::model::{parse_recipe_ref, CreateStep, EditStep, Recipe, RecipeRef, Step};
+use codemod_recipe_yaml::model::{
+    parse_if_step, parse_recipe_ref, CreateStep, EditStep, Recipe, RecipeRef, Step,
+};
 use std::collections::BTreeMap;
 
 #[test]
@@ -169,4 +171,105 @@ steps:
         msg.contains("bad key 'query' on op map"),
         "unexpected error: {msg}"
     );
+}
+
+#[test]
+fn parses_if_step_with_if_and_nested_steps() {
+    let recipe: Recipe = serde_yaml::from_str(
+        r#"
+id: parent
+steps:
+  - if:
+      if: includeTests
+      steps:
+        - recipe: child_a
+        - create:
+            path: "lib/a.dart"
+            template: "class A {}"
+"#,
+    )
+    .unwrap();
+    let Step::Scoped(scoped) = &recipe.steps[0] else {
+        panic!("expected Scoped");
+    };
+    assert_eq!(scoped.if_expr.as_deref(), Some("includeTests"));
+    assert!(scoped.if_not.is_none());
+    assert_eq!(scoped.steps.len(), 2);
+    assert!(matches!(&scoped.steps[0], Step::RecipeRef(_)));
+    assert!(matches!(&scoped.steps[1], Step::Create(_)));
+}
+
+#[test]
+fn parses_if_step_with_if_not_only() {
+    let recipe: Recipe = serde_yaml::from_str(
+        r#"
+id: parent
+steps:
+  - if:
+      ifNot: file | file_exists
+      steps:
+        - create:
+            path: "lib/a.dart"
+            template: "class A {}"
+"#,
+    )
+    .unwrap();
+    let Step::Scoped(scoped) = &recipe.steps[0] else {
+        panic!("expected Scoped");
+    };
+    assert!(scoped.if_expr.is_none());
+    assert_eq!(scoped.if_not.as_deref(), Some("file | file_exists"));
+}
+
+#[test]
+fn parses_if_step_with_both_gates() {
+    let recipe: Recipe = serde_yaml::from_str(
+        r#"
+id: parent
+steps:
+  - if:
+      if: migrateLegacy
+      ifNot: skipOptional
+      steps:
+        - recipe: do_migrate
+"#,
+    )
+    .unwrap();
+    let Step::Scoped(scoped) = &recipe.steps[0] else {
+        panic!("expected Scoped");
+    };
+    assert_eq!(scoped.if_expr.as_deref(), Some("migrateLegacy"));
+    assert_eq!(scoped.if_not.as_deref(), Some("skipOptional"));
+}
+
+#[test]
+fn parse_if_step_rejects_unknown_field() {
+    let err = parse_if_step(
+        serde_yaml::from_str(
+            r#"
+if: true
+steps:
+  - recipe: x
+extra: 1
+"#,
+        )
+        .unwrap(),
+    )
+    .unwrap_err();
+    assert!(err.contains("unknown field"));
+}
+
+#[test]
+fn parse_if_step_rejects_empty_steps() {
+    let err = parse_if_step(
+        serde_yaml::from_str(
+            r#"
+if: includeTests
+steps: []
+"#,
+        )
+        .unwrap(),
+    )
+    .unwrap_err();
+    assert!(err.contains("non-empty"));
 }

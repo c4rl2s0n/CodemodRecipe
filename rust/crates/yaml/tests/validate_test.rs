@@ -1,5 +1,5 @@
 use codemod_recipe_yaml::let_binding::LetBinding;
-use codemod_recipe_yaml::model::{EditOp, EditStep, Recipe, Step};
+use codemod_recipe_yaml::model::{CreateStep, EditOp, EditStep, Recipe, ScopedStep, Step};
 use codemod_recipe_yaml::validate::{validate_recipe, validate_recipe_with, ValidationError};
 use codemod_recipe_yaml::LetBindings;
 use codemod_recipe_yaml::QuerySpec;
@@ -351,4 +351,89 @@ fn validation_error_needles_locate_fields() {
         ValidationError::UnsupportedStep("patch".into()).needle(),
         "patch"
     );
+    assert_eq!(ValidationError::IfStepMissingCondition.needle(), "if:");
+    assert_eq!(ValidationError::EmptyIfSteps.needle(), "steps:");
+}
+
+#[test]
+fn rejects_if_step_missing_condition() {
+    let recipe = Recipe {
+        id: "bad".to_string(),
+        name: None,
+        description: None,
+        args: vec![],
+        maps: BTreeMap::new(),
+        queries: BTreeMap::new(),
+        steps: vec![Step::Scoped(ScopedStep {
+            with: BTreeMap::new(),
+            if_expr: None,
+            if_not: None,
+            steps: vec![Step::Create(CreateStep {
+                path: "a.dart".to_string(),
+                template: Some("class A {}".to_string()),
+                template_file: None,
+                if_exists: Default::default(),
+                if_expr: None,
+                if_not: None,
+            })],
+        })],
+        post_execution: vec![],
+        explorer_menu: None,
+    };
+    let errors = validate_recipe(&recipe).unwrap_err();
+    assert!(errors
+        .iter()
+        .any(|e| matches!(e, ValidationError::IfStepMissingCondition)));
+}
+
+#[test]
+fn rejects_if_step_empty_steps() {
+    let recipe = Recipe {
+        id: "bad".to_string(),
+        name: None,
+        description: None,
+        args: vec![],
+        maps: BTreeMap::new(),
+        queries: BTreeMap::new(),
+        steps: vec![Step::Scoped(ScopedStep {
+            with: BTreeMap::new(),
+            if_expr: Some("includeTests".to_string()),
+            if_not: None,
+            steps: vec![],
+        })],
+        post_execution: vec![],
+        explorer_menu: None,
+    };
+    let errors = validate_recipe(&recipe).unwrap_err();
+    assert!(errors
+        .iter()
+        .any(|e| matches!(e, ValidationError::EmptyIfSteps)));
+}
+
+#[test]
+fn accepts_if_step_with_condition() {
+    let recipe = Recipe {
+        id: "ok".to_string(),
+        name: None,
+        description: None,
+        args: vec![],
+        maps: BTreeMap::new(),
+        queries: BTreeMap::new(),
+        steps: vec![Step::Scoped(ScopedStep {
+            with: BTreeMap::new(),
+            if_expr: Some("includeTests".to_string()),
+            if_not: None,
+            steps: vec![Step::Create(CreateStep {
+                path: "a.dart".to_string(),
+                template: Some("class A {}".to_string()),
+                template_file: None,
+                if_exists: Default::default(),
+                if_expr: None,
+                if_not: None,
+            })],
+        })],
+        post_execution: vec![],
+        explorer_menu: None,
+    };
+    validate_recipe(&recipe).unwrap();
 }

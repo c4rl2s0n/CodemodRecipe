@@ -9,7 +9,7 @@ description: YAML DSL for codemod-recipe — recipe structure, step types, tree-
 
 - Writing or reviewing `.codemod/recipes/*.yaml`
 - Crafting `inlineRecipe` payloads for MCP preview/apply
-- Understanding `edit`, `create`, `delete`, and `recipe` step types
+- Understanding `edit`, `create`, `delete`, `recipe`, and `if` step types
 
 ## When not to use
 
@@ -40,6 +40,7 @@ Each `steps[]` entry is a single-key object:
 - `create` — new files from template (optional `if` / `ifNot`)
 - `delete` — remove files (optional `if` / `ifNot`)
 - `recipe` — compose another recipe by id (optional `with:` call-site arg bindings; optional `if` / `ifNot`)
+- `if` — gate a nested `steps` list with shared `if` / `ifNot` expressions (see `reference.md`)
 
 ## Minimal insert example
 

@@ -164,7 +164,7 @@ impl<'de> Deserialize<'de> for Step {
                 if let Some((extra_k, extra_v)) = map.next_entry::<String, serde_yaml::Value>()? {
                     return Err(de::Error::custom(bad_single_key_map_error(
                         "step",
-                        "edit|create|delete|recipe",
+                        "edit|create|delete|recipe|if",
                         &extra_k,
                         &extra_v,
                     )));
@@ -190,6 +190,10 @@ impl<'de> Deserialize<'de> for Step {
                         let recipe_ref = parse_recipe_ref(v).map_err(de::Error::custom)?;
                         Ok(Step::RecipeRef(recipe_ref))
                     }
+                    dsl::recipe::steps::if_step::WIRE => {
+                        let scoped = parse_if_step(v).map_err(de::Error::custom)?;
+                        Ok(Step::Scoped(scoped))
+                    }
                     other => Ok(Step::Unknown(other.to_string(), v)),
                 }
             }
@@ -197,6 +201,52 @@ impl<'de> Deserialize<'de> for Step {
 
         deserializer.deserialize_map(StepVisitor)
     }
+}
+
+/// Parse an `if:` step value: `{ if?, ifNot?, steps }`.
+pub fn parse_if_step(value: serde_yaml::Value) -> Result<ScopedStep, String> {
+    let serde_yaml::Value::Mapping(map) = value else {
+        return Err("if step must be a mapping with 'steps'".to_string());
+    };
+    let if_expr = optional_string_field(
+        &map,
+        dsl::recipe::steps::condition::field::IF,
+        "if step 'if'",
+    )?;
+    let if_not = optional_string_field(
+        &map,
+        dsl::recipe::steps::condition::field::IF_NOT,
+        "if step 'ifNot'",
+    )?;
+    let steps_val = map
+        .get(serde_yaml::Value::String(
+            dsl::recipe::steps::if_step::field::STEPS.to_string(),
+        ))
+        .ok_or_else(|| "if step requires field 'steps'".to_string())?;
+    let steps: Vec<Step> = serde_yaml::from_value(steps_val.clone())
+        .map_err(|e| format!("invalid if step steps: {e}"))?;
+    if steps.is_empty() {
+        return Err("if step 'steps' must be a non-empty list".to_string());
+    }
+    for key in map.keys() {
+        let Some(name) = key.as_str() else {
+            continue;
+        };
+        if name != dsl::recipe::steps::condition::field::IF
+            && name != dsl::recipe::steps::condition::field::IF_NOT
+            && name != dsl::recipe::steps::if_step::field::STEPS
+        {
+            return Err(format!(
+                "unknown field '{name}' in if step (expected if, ifNot, steps)"
+            ));
+        }
+    }
+    Ok(ScopedStep {
+        with: BTreeMap::new(),
+        if_expr,
+        if_not,
+        steps,
+    })
 }
 
 /// Parse a `recipe:` step value: string id or `{ id, with, if, ifNot }`.

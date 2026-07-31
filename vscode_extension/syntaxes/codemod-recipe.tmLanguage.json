@@ -24,8 +24,8 @@
       "name": "storage.type.codemod-recipe.op"
     },
     "step-kinds": {
-      "comment": "Recipe step discriminators (edit/create/delete/recipe).",
-      "match": "(?<![\\w-])(create|delete|edit|recipe)(?![\\w-])",
+      "comment": "Recipe step discriminators (edit/create/delete/recipe/if).",
+      "match": "(?<![\\w-])(create|delete|edit|if|recipe)(?![\\w-])",
       "name": "keyword.control.codemod-recipe.step"
     }
   },

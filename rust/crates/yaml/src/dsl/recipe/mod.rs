@@ -65,7 +65,7 @@ pub mod queries {
 
 /// Step kinds under `steps[]` (`#/definitions/step`).
 pub mod steps {
-    /// Shared step-condition fields (`if` / `ifNot`) on edit, create, delete, and recipe refs.
+    /// Shared step-condition fields (`if` / `ifNot`) on edit, create, delete, recipe refs, and if groups.
     pub mod condition {
         pub mod field {
             pub const IF: &str = "if";
@@ -217,6 +217,17 @@ pub mod steps {
                 pub const ID: &str = "id";
                 pub const WITH: &str = "with";
             }
+        }
+    }
+
+    /// Conditional group step (`#/definitions/ifStep`).
+    ///
+    /// Gates a nested `steps` list with shared `if` / `ifNot` expressions.
+    pub mod if_step {
+        pub const WIRE: &str = "if";
+
+        pub mod field {
+            pub const STEPS: &str = "steps";
         }
     }
 }

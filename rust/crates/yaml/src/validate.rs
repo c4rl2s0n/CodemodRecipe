@@ -36,6 +36,12 @@ pub enum ValidationError {
 
     #[error("let binding '{name}' requires query or as")]
     LetBindingMissingQuery { name: String },
+
+    #[error("if step requires if or ifNot")]
+    IfStepMissingCondition,
+
+    #[error("if step has no steps")]
+    EmptyIfSteps,
 }
 
 impl ValidationError {
@@ -62,6 +68,12 @@ impl ValidationError {
                 )
             }
             ValidationError::LetBindingMissingQuery { name } => format!("name: {name}"),
+            ValidationError::IfStepMissingCondition => {
+                format!("{}:", dsl::recipe::steps::if_step::WIRE)
+            }
+            ValidationError::EmptyIfSteps => {
+                format!("{}:", dsl::recipe::steps::if_step::field::STEPS)
+            }
         }
     }
 }
@@ -136,6 +148,12 @@ fn validate_step(
             }
         }
         Step::Scoped(scoped) => {
+            if scoped.steps.is_empty() {
+                errors.push(ValidationError::EmptyIfSteps);
+            }
+            if !scoped.has_condition() && scoped.with.is_empty() {
+                errors.push(ValidationError::IfStepMissingCondition);
+            }
             for inner in &scoped.steps {
                 validate_step(inner, is_known_language, arg_names, errors);
             }

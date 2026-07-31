@@ -199,3 +199,127 @@ steps:
     let changes = collect(&workspace, yaml, &args);
     assert_eq!(changes.len(), 1);
 }
+
+#[test]
+fn if_step_group_gates_all_children() {
+    let workspace = temp_workspace("if_group");
+    let yaml = r#"
+id: gated_group
+args:
+  - name: includeExtra
+    defaultsTo: "false"
+steps:
+  - if:
+      if: includeExtra
+      steps:
+        - create:
+            path: "lib/one.dart"
+            template: "class One {}\n"
+        - create:
+            path: "lib/two.dart"
+            template: "class Two {}\n"
+"#;
+    let mut args = BTreeMap::new();
+    args.insert("includeExtra".to_string(), "false".to_string());
+    assert!(collect(&workspace, yaml, &args).is_empty());
+
+    args.insert("includeExtra".to_string(), "true".to_string());
+    let changes = collect(&workspace, yaml, &args);
+    assert_eq!(changes.len(), 2);
+}
+
+#[test]
+fn if_step_outer_and_child_if_both_apply() {
+    let workspace = temp_workspace("if_nested_gates");
+    let yaml = r#"
+id: nested_gates
+args:
+  - name: includeGroup
+    defaultsTo: "true"
+  - name: includeSecond
+    defaultsTo: "false"
+steps:
+  - if:
+      if: includeGroup
+      steps:
+        - create:
+            path: "lib/one.dart"
+            template: "class One {}\n"
+        - create:
+            path: "lib/two.dart"
+            template: "class Two {}\n"
+            if: includeSecond
+"#;
+    let mut args = BTreeMap::new();
+    args.insert("includeGroup".to_string(), "true".to_string());
+    args.insert("includeSecond".to_string(), "false".to_string());
+    let changes = collect(&workspace, yaml, &args);
+    assert_eq!(changes.len(), 1);
+    assert!(matches!(&changes[0], FileChange::Create { path, .. } if path == "lib/one.dart"));
+
+    args.insert("includeGroup".to_string(), "false".to_string());
+    args.insert("includeSecond".to_string(), "true".to_string());
+    assert!(collect(&workspace, yaml, &args).is_empty());
+}
+
+#[test]
+fn if_step_with_recipe_refs_expands_and_gates() {
+    let workspace = temp_workspace("if_recipe_group");
+    let recipes = workspace.join(".codemod/recipes");
+    std::fs::create_dir_all(&recipes).unwrap();
+    std::fs::write(
+        recipes.join("child_a.yaml"),
+        r#"
+id: child_a
+steps:
+  - create:
+      path: "lib/a.dart"
+      template: "class A {}\n"
+"#,
+    )
+    .unwrap();
+    std::fs::write(
+        recipes.join("child_b.yaml"),
+        r#"
+id: child_b
+steps:
+  - create:
+      path: "lib/b.dart"
+      template: "class B {}\n"
+"#,
+    )
+    .unwrap();
+    std::fs::write(
+        recipes.join("parent_if.yaml"),
+        r#"
+id: parent_if
+args:
+  - name: includeChildren
+    defaultsTo: "false"
+steps:
+  - if:
+      if: includeChildren
+      steps:
+        - recipe: child_a
+        - recipe: child_b
+"#,
+    )
+    .unwrap();
+
+    let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+    registry.reload();
+    let (recipe, path) = registry.load_recipe_ast("parent_if").unwrap();
+
+    let mut args = BTreeMap::new();
+    args.insert("includeChildren".to_string(), "false".to_string());
+    let skipped = collect_recipe_changes(&registry, &recipe, Some(path.as_path()), &args)
+        .unwrap()
+        .changes;
+    assert!(skipped.is_empty());
+
+    args.insert("includeChildren".to_string(), "true".to_string());
+    let applied = collect_recipe_changes(&registry, &recipe, Some(path.as_path()), &args)
+        .unwrap()
+        .changes;
+    assert_eq!(applied.len(), 2);
+}

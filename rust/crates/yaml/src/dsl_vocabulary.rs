@@ -75,7 +75,7 @@ vocab_entries! {
     TopLevelField, crate::dsl::recipe::field::ARGS, None, "Recipe argument definitions shown in the runner UI.", "#/properties/args";
     TopLevelField, crate::dsl::recipe::field::MAPS, None, "Recipe-local map entries merged with workspace maps.", "#/properties/maps";
     TopLevelField, crate::dsl::recipe::field::QUERIES, None, "Recipe-local named query definitions.", "#/properties/queries";
-    TopLevelField, crate::dsl::recipe::field::STEPS, None, "Ordered list of edit, create, delete, or recipe reference steps.", "#/properties/steps";
+    TopLevelField, crate::dsl::recipe::field::STEPS, None, "Ordered list of edit, create, delete, recipe, or if group steps.", "#/properties/steps";
     TopLevelField, crate::dsl::recipe::field::POST_EXECUTION, None, "Post-apply shell commands or script paths under the codemod root (Jinja-rendered).", "#/properties/postExecution";
     TopLevelField, crate::dsl::recipe::field::EXPLORER_MENU, None, "Opt-in for the VS Code Explorer Codemod Recipe submenu: list of { kind: file|folder, if? } (single object is sugar). Missing if always matches that kind; same recipe appears once if any entry matches.", "#/properties/explorerMenu";
     Field, crate::dsl::recipe::explorer_menu::entry::field::KIND, Some(crate::dsl::recipe::field::EXPLORER_MENU), "Explorer click kind this menu entry applies to.", "#/definitions/explorerMenuEntry/properties/kind";
@@ -93,6 +93,7 @@ vocab_entries! {
     StepKind, crate::dsl::recipe::steps::create::WIRE, None, "Create a new file from inline template or templateFile.";
     StepKind, crate::dsl::recipe::steps::delete::WIRE, None, "Delete a file from the workspace.";
     StepKind, crate::dsl::recipe::steps::recipe_ref::WIRE, None, "Inline another recipe by id, optionally with call-site with bindings.";
+    StepKind, crate::dsl::recipe::steps::if_step::WIRE, None, "Run nested steps when shared if / ifNot MiniJinja expressions pass.";
 
     OpKind, crate::dsl::recipe::steps::edit::ops::insert::WIRE, None, "Insert text at a capture anchor (start or end).";
     OpKind, crate::dsl::recipe::steps::edit::ops::replace::WIRE, None, "Replace the span of a query capture with new text.";
@@ -100,6 +101,7 @@ vocab_entries! {
 
     Field, crate::dsl::recipe::steps::condition::field::IF, None, "MiniJinja expression over recipe args; skip the step when false.", "#/definitions/editStep/properties/if";
     Field, crate::dsl::recipe::steps::condition::field::IF_NOT, None, "MiniJinja expression over recipe args; skip the step when true.", "#/definitions/editStep/properties/ifNot";
+    Field, crate::dsl::recipe::steps::if_step::field::STEPS, Some(crate::dsl::recipe::steps::if_step::WIRE), "Nested steps gated by the enclosing if step.", "#/definitions/ifStep/properties/steps";
 
     Field, crate::dsl::recipe::steps::edit::field::PATH, None, "Workspace-relative file path (often templated).", "#/definitions/editStep/properties/path";
     Field, crate::dsl::recipe::steps::edit::field::LANGUAGE, None, "Tree-sitter language id when extension inference is ambiguous.", "#/definitions/editStep/properties/language";
@@ -182,9 +184,20 @@ pub fn all_entries() -> &'static [VocabEntry] {
 }
 
 pub fn description_for_key(wire: &str) -> Option<&'static str> {
+    // Prefer field-like entries so step-kind wires that share a name (e.g. `if`)
+    // do not override property descriptions on edit/create/ifStep bodies.
     ENTRIES
         .iter()
-        .find(|e| e.parent.is_none() && e.wire == wire)
+        .find(|e| {
+            e.parent.is_none()
+                && e.wire == wire
+                && !matches!(e.kind, VocabKind::StepKind | VocabKind::OpKind)
+        })
+        .or_else(|| {
+            ENTRIES
+                .iter()
+                .find(|e| e.parent.is_none() && e.wire == wire)
+        })
         .map(|e| e.description)
 }
 
@@ -270,6 +283,7 @@ mod tests {
             crate::dsl::recipe::steps::create::WIRE,
             crate::dsl::recipe::steps::delete::WIRE,
             crate::dsl::recipe::steps::recipe_ref::WIRE,
+            crate::dsl::recipe::steps::if_step::WIRE,
         ] {
             let entry = ENTRIES
                 .iter()

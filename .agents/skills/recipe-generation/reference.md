@@ -67,7 +67,7 @@ Present this (adapt fields) and wait for approval before writing:
 
 ### Steps (sketch)
 
-- edit / create / delete / recipe: …
+- edit / create / delete / recipe / if: …
 
 OK to write, or tell me which args to drop/rename?
 ```

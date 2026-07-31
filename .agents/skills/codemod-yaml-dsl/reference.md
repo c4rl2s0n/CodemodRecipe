@@ -136,6 +136,7 @@ Each entry in `steps` must be a single-key object of one of:
 - `create`
 - `delete`
 - `recipe` (recipe composition/reference)
+- `if` (conditional group of nested steps)
 
 ## Edit steps (`edit`)
 
@@ -333,9 +334,12 @@ steps:
 ### Step conditionals (`if` / `ifNot`)
 
 Optional MiniJinja **expressions** on `edit`, `create`, `delete`, and `recipe` (object
-form). Evaluated at runtime against recipe args (same bool coercion as templates).
-Failed gates **skip** the step (or entire inlined recipe subtree) silently — same as
-edit AST `when` / `whenNot`.
+form), or as a dedicated **`if` step kind** that gates a nested `steps` list once.
+Evaluated at runtime against recipe args (same bool coercion as templates).
+Failed gates **skip** the step (or entire group / inlined recipe subtree) silently —
+same as edit AST `when` / `whenNot`.
+
+**Per-step** (best for a single gated step):
 
 ```yaml
 args:
@@ -359,6 +363,29 @@ steps:
       ops: [...]
 ```
 
+**Group** (shared gate for several steps — avoid repeating the same `if` on each child):
+
+```yaml
+steps:
+  - if:
+      if: includeTests
+      steps:
+        - recipe: create_test_harness
+        - create:
+            path: "test/{{ name }}_test.dart"
+            templateFile: test.tmpl
+  - if:
+      ifNot: file | file_exists
+      steps:
+        - create:
+            path: "{{ file }}"
+            template: "..."
+```
+
+Body fields on the `if` step kind: `if?`, `ifNot?`, `steps` (required, non-empty). At least
+one of `if` / `ifNot` is required. Nested steps may still carry their own per-step gates
+(outer then inner). Nesting `if` inside `if` is allowed.
+
 | Expression | Meaning |
 |------------|---------|
 | `includeTests` | Truthy bool/arg |
@@ -372,7 +399,7 @@ source).
 
 Composition behavior:
 
-- Referenced recipe steps are expanded in order
+- Referenced recipe steps are expanded in order (including inside `if` groups)
 - Args listed in `with` are **not** unioned into the parent schema
 - Unbound child args are merged by name (first definition wins)
 - Create/edit/delete steps are inlined; non-empty `with` or `if`/`ifNot` wraps them in a scoped overlay

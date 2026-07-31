@@ -18,7 +18,7 @@ This workspace uses **codemod-recipe** for deterministic AST edits via YAML reci
 Project skills live under `.agents/skills/`:
 
 - `codemod-overview` — orientation and layout
-- `codemod-yaml-dsl` — YAML syntax (`when`/`whenNot`/`let` on edits; see `reference.md` for templates/maps/variables)
+- `codemod-yaml-dsl` — YAML syntax (`when`/`whenNot`/`let` on edits; step `if`/`ifNot` and group `if:` steps; see `reference.md` for templates/maps/variables)
 - `codemod-recipe-design-patterns` — create vs modify taxonomy (see `reference.md`)
 - `codemod-mcp-playbook` — MCP tool reference
 - `codemod-languages` — multi-language support, `language:` field, SQL dialects (see `reference.md`)

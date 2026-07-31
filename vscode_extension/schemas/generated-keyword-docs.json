@@ -39,7 +39,7 @@
     "kind": "TopLevelField",
     "wire": "steps",
     "schemaPath": "#/properties/steps",
-    "description": "Ordered list of edit, create, delete, or recipe reference steps."
+    "description": "Ordered list of edit, create, delete, recipe, or if group steps."
   },
   {
     "kind": "TopLevelField",
@@ -129,6 +129,11 @@
     "description": "Inline another recipe by id, optionally with call-site with bindings."
   },
   {
+    "kind": "StepKind",
+    "wire": "if",
+    "description": "Run nested steps when shared if / ifNot MiniJinja expressions pass."
+  },
+  {
     "kind": "OpKind",
     "wire": "insert",
     "description": "Insert text at a capture anchor (start or end)."
@@ -154,6 +159,13 @@
     "wire": "ifNot",
     "schemaPath": "#/definitions/editStep/properties/ifNot",
     "description": "MiniJinja expression over recipe args; skip the step when true."
+  },
+  {
+    "kind": "Field",
+    "wire": "steps",
+    "parent": "if",
+    "schemaPath": "#/definitions/ifStep/properties/steps",
+    "description": "Nested steps gated by the enclosing if step."
   },
   {
     "kind": "Field",

@@ -22,5 +22,5 @@ pub use guard_list::GuardList;
 pub use keywords::{preview_kinds, query_conventions};
 pub use let_binding::{LetBinding, LetBindings, LetExtract, LetOnManyMatches, LetOnNoMatch};
 pub use explorer_menu::{ExplorerMenu, ExplorerMenuEntry, ExplorerMenuKind};
-pub use model::{parse_recipe_ref, RecipeRef, ScopedStep};
+pub use model::{parse_if_step, parse_recipe_ref, RecipeRef, ScopedStep};
 pub use query_spec::{QueryDefinition, QuerySpec};
