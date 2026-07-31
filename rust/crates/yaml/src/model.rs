@@ -6,6 +6,7 @@ use std::collections::BTreeMap;
 
 use crate::arg_from::ArgFrom;
 use crate::dsl;
+use crate::explorer_menu::ExplorerMenu;
 use crate::guard_list::GuardList;
 use crate::let_binding::LetBindings;
 pub use crate::query_spec::{QueryDefinition, QuerySpec};
@@ -26,6 +27,9 @@ pub struct Recipe {
     pub steps: Vec<Step>,
     #[serde(default, rename = "postExecution")]
     pub post_execution: Vec<PostExecution>,
+    /// Opt-in for VS Code Explorer context QuickPick (`kind` + optional path `if`).
+    #[serde(default, rename = "explorerMenu")]
+    pub explorer_menu: Option<ExplorerMenu>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]

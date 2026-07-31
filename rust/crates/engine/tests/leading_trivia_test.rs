@@ -45,6 +45,7 @@ fn remove_with_leading_trivia_strips_doc_comment() {
             ..Default::default()
         })],
         post_execution: vec![],
+        explorer_menu: None,
     };
 
     let out = common::with_engine("dart", |engine| {
@@ -98,6 +99,7 @@ fn remove_with_leading_trivia_strips_line_comment() {
             ..Default::default()
         })],
         post_execution: vec![],
+        explorer_menu: None,
     };
 
     let out = common::with_engine("dart", |engine| {

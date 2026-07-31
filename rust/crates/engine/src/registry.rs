@@ -155,9 +155,9 @@ pub fn is_known_language(id: &str) -> bool {
 
     #[cfg(feature = "lang-pack")]
     {
-        tree_sitter_language_pack::available_languages()
-            .iter()
-            .any(|name| name == id)
+        // has_language includes the downloadable catalog (KNOWN_LANGUAGES), not
+        // only grammars already present on disk (unlike available_languages).
+        tree_sitter_language_pack::has_language(id)
     }
 
     #[cfg(not(feature = "lang-pack"))]
@@ -170,7 +170,9 @@ pub fn is_known_language(id: &str) -> bool {
 pub fn ensure_language_downloaded(id: &str) {
     #[cfg(feature = "lang-pack")]
     {
-        let _ = tree_sitter_language_pack::download(&[id]);
+        // prefetch downloads when the grammar is not loadable from disk;
+        // download() skips when has_language is true even if the .so is missing.
+        let _ = tree_sitter_language_pack::prefetch(&[id]);
     }
     let _ = id;
 }

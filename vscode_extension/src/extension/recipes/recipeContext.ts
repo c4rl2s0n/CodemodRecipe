@@ -1,5 +1,14 @@
-import * as path from 'path';
 import * as vscode from 'vscode';
+import {
+  buildUriContextValues,
+  prefillArgsFromUriClick,
+  toWorkspaceRelativePath,
+  type ExplorerResourceKind,
+  type UriContextValues,
+} from './recipeUriContext';
+
+export type { ExplorerResourceKind, UriContextValues as UriContext };
+export { prefillArgsFromUriClick, toWorkspaceRelativePath };
 
 export interface EditorContext {
   readonly values: Record<string, string>;
@@ -21,6 +30,16 @@ export {
   renderContextTemplate,
 } from './recipeContextValues';
 
+/** Build context builtins from an Explorer file/folder URI. */
+export function resolveUriContext(
+  uri: vscode.Uri,
+  workspaceRoot: string,
+  kind: ExplorerResourceKind
+): UriContextValues {
+  const relative = toWorkspaceRelativePath(workspaceRoot, uri.fsPath);
+  return buildUriContextValues(relative, kind);
+}
+
 export function resolveEditorContext(workspaceRoot: string): EditorContext {
   const editor = vscode.window.activeTextEditor;
   if (!editor) {
@@ -39,16 +58,8 @@ export function resolveEditorContext(workspaceRoot: string): EditorContext {
   const selection = document.getText(editor.selection);
   const wordRange = document.getWordRangeAtPosition(editor.selection.active);
   const word = wordRange ? document.getText(wordRange) : '';
-  const relativePath = path.relative(workspaceRoot, document.uri.fsPath);
-  const file = relativePath.startsWith('..')
-    ? document.uri.fsPath
-    : relativePath;
-  const fileBasename = path.basename(file);
-  const fileExt = path.extname(fileBasename);
-  const fileStem = fileExt
-    ? fileBasename.slice(0, -fileExt.length)
-    : fileBasename;
-  const fileDirname = path.dirname(file).replace(/\\/g, '/');
+  const file = toWorkspaceRelativePath(workspaceRoot, document.uri.fsPath);
+  const parts = buildUriContextValues(file, 'file').values;
   const activeLine = editor.selection.active.line;
   const line = document.lineAt(activeLine).text;
   const cursorOffset = document.offsetAt(editor.selection.active);
@@ -57,10 +68,10 @@ export function resolveEditorContext(workspaceRoot: string): EditorContext {
 
   const values: Record<string, string> = {
     file,
-    fileBasename,
-    fileDirname,
-    fileStem,
-    fileExt: fileExt.replace(/^\./, ''),
+    fileBasename: parts.fileBasename,
+    fileDirname: parts.fileDirname,
+    fileStem: parts.fileStem,
+    fileExt: parts.fileExt,
     selection,
     word,
     line,

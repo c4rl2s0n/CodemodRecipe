@@ -7,6 +7,17 @@ use minijinja::value::Value;
 
 use crate::template::{build_condition_environment, build_template_context};
 
+/// Returns `Ok(true)` when the condition expression is truthy (or empty/absent).
+pub fn condition_expr_passes(
+    if_expr: Option<&str>,
+    args: &BTreeMap<String, String>,
+    maps: &BTreeMap<String, BTreeMap<String, String>>,
+    vars: &BTreeMap<String, BTreeMap<String, String>>,
+    path_exists: Arc<dyn Fn(&str) -> bool + Send + Sync>,
+) -> Result<bool, String> {
+    step_conditions_pass(if_expr, None, args, maps, vars, path_exists)
+}
+
 /// Returns `Ok(true)` when the step should run.
 ///
 /// - `if` must be truthy when present

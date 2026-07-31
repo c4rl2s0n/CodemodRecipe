@@ -209,6 +209,7 @@ queries:
             queries: BTreeMap::new(),
             steps: vec![],
             post_execution: vec![],
+            explorer_menu: None,
         };
         let args = BTreeMap::from([("className".to_string(), "Settings".to_string())]);
         let rendered = render_query_spec(
@@ -252,6 +253,7 @@ queries:
             queries,
             steps: vec![],
             post_execution: vec![],
+            explorer_menu: None,
         };
         let rendered = render_query_spec(
             &QuerySpec::single("local_class"),

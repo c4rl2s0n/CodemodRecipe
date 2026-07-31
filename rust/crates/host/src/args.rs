@@ -79,6 +79,7 @@ mod tests {
             queries: BTreeMap::new(),
             steps: vec![],
             post_execution: vec![],
+            explorer_menu: None,
         };
         let effective = validate_required_args(&recipe, &BTreeMap::new()).unwrap();
         assert_eq!(effective.get("flag"), Some(&"false".to_string()));
@@ -95,6 +96,7 @@ mod tests {
             queries: BTreeMap::new(),
             steps: vec![],
             post_execution: vec![],
+            explorer_menu: None,
         };
         let mut caller = BTreeMap::new();
         caller.insert("flag".to_string(), "true".to_string());
@@ -117,6 +119,7 @@ mod tests {
             queries: BTreeMap::new(),
             steps: vec![],
             post_execution: vec![],
+            explorer_menu: None,
         };
         let mut registry = BTreeMap::new();
         registry.insert("child".to_string(), child);
@@ -134,6 +137,7 @@ mod tests {
                 if_not: None,
             })],
             post_execution: vec![],
+            explorer_menu: None,
         };
         let expanded = expand_recipe_references(&parent, &registry).unwrap();
         let effective = validate_required_args(&expanded, &BTreeMap::new()).unwrap();

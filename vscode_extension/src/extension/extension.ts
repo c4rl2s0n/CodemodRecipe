@@ -17,6 +17,7 @@ import {
   type InvokeMode,
   type InvokeSlotArgs,
 } from './recipes/recipeInvoke';
+import { runRecipeFromExplorer } from './recipes/recipeExplorerMenu';
 import { RecipeRepository } from './recipes/recipeRepository';
 import type { RecipeSchema } from '../shared';
 import { RecipeRunnerViewProvider } from './views/recipeRunnerViewProvider';
@@ -456,6 +457,15 @@ export function activate(context: vscode.ExtensionContext): void {
         );
       }
     }),
+    vscode.commands.registerCommand(
+      COMMANDS.runFromExplorer,
+      async (resource?: vscode.Uri) => {
+        await runRecipeFromExplorer(
+          { repository, bridge, config, runner },
+          resource
+        );
+      }
+    ),
     vscode.commands.registerCommand(COMMANDS.configureCodemodRoot, async () => {
       const value = await vscode.window.showInputBox({
         prompt: 'Path (relative to workspace) of the codemod root directory',

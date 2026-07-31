@@ -24,6 +24,7 @@ fn minimal_insert_edit(mut edit: EditStep) -> Recipe {
         queries: BTreeMap::new(),
         steps: vec![Step::Edit(edit)],
         post_execution: vec![],
+        explorer_menu: None,
     }
 }
 
@@ -47,6 +48,7 @@ fn rejects_insert_missing_capture() {
             ..Default::default()
         })],
         post_execution: vec![],
+        explorer_menu: None,
     };
 
     let errors = validate_recipe(&recipe).unwrap_err();
@@ -79,6 +81,7 @@ fn rejects_insert_empty_text() {
             ..Default::default()
         })],
         post_execution: vec![],
+        explorer_menu: None,
     };
 
     let errors = validate_recipe(&recipe).unwrap_err();
@@ -106,6 +109,7 @@ fn rejects_empty_edit_ops() {
             ..Default::default()
         })],
         post_execution: vec![],
+        explorer_menu: None,
     };
 
     let errors = validate_recipe(&recipe).unwrap_err();
@@ -159,6 +163,7 @@ fn rejects_duplicate_arg_names() {
             ..Default::default()
         })],
         post_execution: vec![],
+        explorer_menu: None,
     };
 
     let errors = validate_recipe(&recipe).unwrap_err();
@@ -182,6 +187,7 @@ fn rejects_unknown_edit_op_kind() {
             ..Default::default()
         })],
         post_execution: vec![],
+        explorer_menu: None,
     };
 
     let errors = validate_recipe(&recipe).unwrap_err();
@@ -211,6 +217,7 @@ fn rejects_unknown_language() {
             ..Default::default()
         })],
         post_execution: vec![],
+        explorer_menu: None,
     };
 
     let errors = validate_recipe_with(&recipe, |_| false).unwrap_err();

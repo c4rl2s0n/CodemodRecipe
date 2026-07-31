@@ -80,6 +80,11 @@
         "icon": "$(wand)"
       },
       {
+        "command": "codemodRecipe.runFromExplorer",
+        "title": "Codemod Recipe: Run Recipe Here…",
+        "icon": "$(play)"
+      },
+      {
         "command": "codemodRecipe.invoke",
         "title": "Codemod Recipe: Invoke Recipe"
       },
@@ -181,8 +186,26 @@
           "command": "codemodRecipe.runFromCursorContext",
           "group": "navigation"
         }
+      ],
+      "explorer/context": [
+        {
+          "submenu": "codemodRecipe.explorer",
+          "group": "navigation@90"
+        }
+      ],
+      "codemodRecipe.explorer": [
+        {
+          "command": "codemodRecipe.runFromExplorer",
+          "group": "navigation"
+        }
       ]
     },
+    "submenus": [
+      {
+        "id": "codemodRecipe.explorer",
+        "label": "Codemod Recipe"
+      }
+    ],
     "configuration": {
       "title": "Codemod Recipe",
       "properties": {

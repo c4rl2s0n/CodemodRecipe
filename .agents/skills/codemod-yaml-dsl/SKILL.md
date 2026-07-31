@@ -28,6 +28,8 @@ maps: {}
 steps: []
 postExecution:
   - "dart format ."
+explorerMenu:                 # optional — Explorer Codemod Recipe submenu
+  - kind: folder              # file | folder; optional if: MiniJinja over path
 ```
 
 ## Step types
@@ -65,7 +67,7 @@ Each `steps[]` entry is a single-key object:
 
 ## Instructions
 
-1. **Read and follow** [reference.md](reference.md) for templates, maps, variables, args (`from` / `contextKey` editor derivation), composition, and validation.
+1. **Read and follow** [reference.md](reference.md) for templates, maps, variables, args (`from` / `contextKey`), `explorerMenu`, composition, and validation.
 2. Call `validate_recipes` after editing recipe YAML.
 3. When adjusting Rust parsing/validation/preview handling for YAML vocabulary, update the centralized owners first:
    - `rust/crates/yaml/src/dsl/` — schema-shaped wire constants; `rust/crates/yaml/src/dsl_vocabulary.rs` — `ENTRIES` (descriptions, codegen); import via `codemod_recipe_yaml::dsl`

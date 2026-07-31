@@ -278,6 +278,41 @@
       ],
       "type": "object"
     },
+    "explorerMenu": {
+      "description": "Opt-in for the VS Code Explorer Codemod Recipe submenu: list of { kind: file|folder, if? } (single object is sugar). Missing if always matches that kind; same recipe appears once if any entry matches.",
+      "oneOf": [
+        {
+          "$ref": "#/definitions/explorerMenuEntry"
+        },
+        {
+          "items": {
+            "$ref": "#/definitions/explorerMenuEntry"
+          },
+          "type": "array"
+        }
+      ]
+    },
+    "explorerMenuEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "if": {
+          "description": "MiniJinja expression over recipe args; skip the step when false.",
+          "type": "string"
+        },
+        "kind": {
+          "description": "Explorer click kind this menu entry applies to.",
+          "enum": [
+            "file",
+            "folder"
+          ],
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "type": "object"
+    },
     "guardQueryField": {
       "oneOf": [
         {
@@ -513,6 +548,10 @@
     "description": {
       "description": "Short recipe description.",
       "type": "string"
+    },
+    "explorerMenu": {
+      "$ref": "#/definitions/explorerMenu",
+      "description": "Opt-in for the VS Code Explorer Codemod Recipe submenu: list of { kind: file|folder, if? } (single object is sugar). Missing if always matches that kind; same recipe appears once if any entry matches."
     },
     "id": {
       "description": "Unique recipe identifier.",

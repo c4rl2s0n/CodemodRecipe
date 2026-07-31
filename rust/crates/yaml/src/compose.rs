@@ -75,6 +75,7 @@ pub fn compose_recipe(
         queries: BTreeMap::new(),
         steps: out_steps,
         post_execution,
+        explorer_menu: None,
     }
 }
 
@@ -167,6 +168,7 @@ fn expand_recipe_references_inner(
         queries,
         steps,
         post_execution: recipe.post_execution.clone(),
+        explorer_menu: recipe.explorer_menu.clone(),
     })
 }
 
@@ -257,6 +259,7 @@ mod tests {
             queries: BTreeMap::new(),
             steps: vec![Step::Edit(edit_step(path))],
             post_execution: vec![],
+            explorer_menu: None,
         }
     }
 
@@ -341,6 +344,7 @@ mod tests {
             queries: BTreeMap::new(),
             steps: vec![],
             post_execution: vec![PostExecution::String("echo a".to_string())],
+            explorer_menu: None,
         };
 
         let composed = compose_recipe(
@@ -371,6 +375,7 @@ mod tests {
             queries: BTreeMap::new(),
             steps: vec![recipe_ref("child")],
             post_execution: vec![],
+            explorer_menu: None,
         };
 
         let mut registry = BTreeMap::new();
@@ -392,6 +397,7 @@ mod tests {
             queries: BTreeMap::new(),
             steps: vec![recipe_ref("b")],
             post_execution: vec![],
+            explorer_menu: None,
         };
         let b = Recipe {
             id: "b".to_string(),
@@ -402,6 +408,7 @@ mod tests {
             queries: BTreeMap::new(),
             steps: vec![recipe_ref("a")],
             post_execution: vec![],
+            explorer_menu: None,
         };
         let registry = BTreeMap::from([("a".to_string(), a.clone()), ("b".to_string(), b)]);
 
@@ -427,6 +434,7 @@ mod tests {
             queries: BTreeMap::new(),
             steps: vec![recipe_ref_with("child", with)],
             post_execution: vec![],
+            explorer_menu: None,
         };
         let mut registry = BTreeMap::new();
         registry.insert("child".to_string(), child);
@@ -457,6 +465,7 @@ mod tests {
             queries: BTreeMap::new(),
             steps: vec![recipe_ref_with("child", with)],
             post_execution: vec![],
+            explorer_menu: None,
         };
         let mut registry = BTreeMap::new();
         registry.insert("child".to_string(), child);
@@ -478,6 +487,7 @@ mod tests {
             queries: BTreeMap::new(),
             steps: vec![recipe_ref_with("child", BTreeMap::new())],
             post_execution: vec![],
+            explorer_menu: None,
         };
         let mut registry = BTreeMap::new();
         registry.insert("child".to_string(), child);
@@ -503,6 +513,7 @@ mod tests {
                 if_not: None,
             })],
             post_execution: vec![],
+            explorer_menu: None,
         };
         let mut registry = BTreeMap::new();
         registry.insert("child".to_string(), child);

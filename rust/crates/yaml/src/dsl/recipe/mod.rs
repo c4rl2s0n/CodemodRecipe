@@ -9,6 +9,24 @@ pub mod field {
     pub const QUERIES: &str = "queries";
     pub const STEPS: &str = "steps";
     pub const POST_EXECUTION: &str = "postExecution";
+    pub const EXPLORER_MENU: &str = "explorerMenu";
+}
+
+/// Explorer context-menu opt-in (`#/definitions/explorerMenu`).
+pub mod explorer_menu {
+    pub mod entry {
+        pub mod field {
+            pub const KIND: &str = "kind";
+            pub const IF: &str = "if";
+
+            pub mod kind {
+                pub mod value {
+                    pub const FILE: &str = "file";
+                    pub const FOLDER: &str = "folder";
+                }
+            }
+        }
+    }
 }
 
 /// Recipe `args[]` item (`#/definitions/arg`).

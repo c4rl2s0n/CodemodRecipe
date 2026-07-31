@@ -44,6 +44,7 @@ fn remove_count_recipe() -> Recipe {
             ..Default::default()
         })],
         post_execution: vec![],
+        explorer_menu: None,
     }
 }
 
@@ -66,6 +67,7 @@ fn replace_count_recipe(text: &str) -> Recipe {
             ..Default::default()
         })],
         post_execution: vec![],
+        explorer_menu: None,
     }
 }
 

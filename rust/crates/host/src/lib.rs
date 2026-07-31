@@ -6,6 +6,7 @@ pub mod diag_source;
 pub mod diff;
 pub mod dispatch;
 pub mod edit_apply;
+pub mod filter_explorer_recipes;
 pub mod map_registry;
 pub mod naming;
 pub mod patch_selector;

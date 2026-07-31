@@ -21,7 +21,7 @@ import {
   ValidateResponse,
   parseHostResponse,
 } from './hostProtocol';
-import type { RecipeSchema, SelectionPayload, BootstrapResponse, DeriveArgsRequest, DeriveArgsResponse } from '../../shared';
+import type { RecipeSchema, SelectionPayload, BootstrapResponse, DeriveArgsRequest, DeriveArgsResponse, FilterExplorerRecipesResponse } from '../../shared';
 import type { RecipeLoadResult } from '../recipes/recipeRepository';
 
 type PendingRequest = {
@@ -197,6 +197,17 @@ export class HostBridge {
       selectionStart: request.selectionStart,
       selectionEnd: request.selectionEnd,
       context: request.context,
+    });
+  }
+
+  filterExplorerRecipes(
+    path: string,
+    kind: 'file' | 'folder'
+  ): Promise<FilterExplorerRecipesResponse> {
+    return this.send<FilterExplorerRecipesResponse>({
+      command: 'filterExplorerRecipes',
+      path,
+      kind,
     });
   }
 

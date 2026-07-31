@@ -22,6 +22,14 @@ export interface InvokeArgs {
   recipeId?: string;
   mode?: InvokeMode;
   args?: Record<string, string>;
+  /** When set, used instead of active-editor context for `from` prefills. */
+  contextValues?: Record<string, string>;
+  source?: string;
+  languageId?: string;
+  filePath?: string;
+  cursorOffset?: number;
+  selectionStart?: number;
+  selectionEnd?: number;
 }
 
 export interface InvokeSlotArgs {
@@ -58,20 +66,38 @@ export async function invokeRecipe(
   const mode: InvokeMode = invoke.mode ?? 'auto';
   const overrides = invoke.args ?? {};
   const editorContext = resolveEditorContext(deps.config.workspaceRoot);
+  const useUriContext = invoke.contextValues != null;
+  const contextValues = useUriContext
+    ? { ...invoke.contextValues }
+    : { ...editorContext.values };
+  const source = useUriContext
+    ? (invoke.source ?? '')
+    : (invoke.source ?? editorContext.source);
+  const languageId = useUriContext
+    ? (invoke.languageId ?? '')
+    : (invoke.languageId ?? editorContext.languageId);
+  const filePath = useUriContext
+    ? (invoke.filePath ?? '')
+    : (invoke.filePath ?? editorContext.filePath);
+  const cursorOffset = invoke.cursorOffset ?? (useUriContext ? 0 : editorContext.cursorOffset);
+  const selectionStart =
+    invoke.selectionStart ?? (useUriContext ? 0 : editorContext.selectionStart);
+  const selectionEnd =
+    invoke.selectionEnd ?? (useUriContext ? 0 : editorContext.selectionEnd);
 
-  let derived = prefillArgs(recipe, editorContext.values);
-  if (recipeNeedsHostDerive(recipe) && editorContext.source) {
+  let derived = prefillArgs(recipe, contextValues);
+  if (recipeNeedsHostDerive(recipe) && source) {
     try {
       await deps.bridge.ensureHost();
       const response = await deps.bridge.deriveArgs({
         recipe: recipe.id,
-        source: editorContext.source,
-        language: editorContext.languageId || undefined,
-        path: editorContext.filePath || undefined,
-        cursorOffset: editorContext.cursorOffset,
-        selectionStart: editorContext.selectionStart,
-        selectionEnd: editorContext.selectionEnd,
-        context: editorContext.values,
+        source,
+        language: languageId || undefined,
+        path: filePath || undefined,
+        cursorOffset,
+        selectionStart,
+        selectionEnd,
+        context: contextValues,
       });
       if (response.ok && response.args) {
         derived = { ...derived, ...response.args };

@@ -8,6 +8,7 @@ export const COMMANDS = {
   scaffoldProject: 'codemodRecipe.scaffoldProject',
   runRecipe: 'codemodRecipe.runRecipe',
   runFromCursorContext: 'codemodRecipe.runFromCursorContext',
+  runFromExplorer: 'codemodRecipe.runFromExplorer',
   invoke: 'codemodRecipe.invoke',
   invokeSlot: 'codemodRecipe.invokeSlot',
   copyInvokeKeybinding: 'codemodRecipe.copyInvokeKeybinding',

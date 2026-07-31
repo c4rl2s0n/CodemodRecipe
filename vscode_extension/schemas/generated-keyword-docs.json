@@ -48,6 +48,31 @@
     "description": "Post-apply shell commands or script paths under the codemod root (Jinja-rendered)."
   },
   {
+    "kind": "TopLevelField",
+    "wire": "explorerMenu",
+    "schemaPath": "#/properties/explorerMenu",
+    "description": "Opt-in for the VS Code Explorer Codemod Recipe submenu: list of { kind: file|folder, if? } (single object is sugar). Missing if always matches that kind; same recipe appears once if any entry matches."
+  },
+  {
+    "kind": "Field",
+    "wire": "kind",
+    "parent": "explorerMenu",
+    "schemaPath": "#/definitions/explorerMenuEntry/properties/kind",
+    "description": "Explorer click kind this menu entry applies to."
+  },
+  {
+    "kind": "EnumValue",
+    "wire": "file",
+    "parent": "kind",
+    "description": "Show when the Explorer selection is a file."
+  },
+  {
+    "kind": "EnumValue",
+    "wire": "folder",
+    "parent": "kind",
+    "description": "Show when the Explorer selection is a folder."
+  },
+  {
     "kind": "AssetRootField",
     "wire": "id",
     "schemaPath": "map#/properties/id",

@@ -147,6 +147,9 @@ pub fn handle_command(registry: &mut RecipeRegistry, cmd: HostCommand) -> serde_
                 context,
             },
         )),
+        HostCommand::FilterExplorerRecipes { path, kind } => to_value(
+            crate::filter_explorer_recipes::filter_explorer_recipes(registry, &path, &kind),
+        ),
         HostCommand::Preview {
             recipe,
             inline_recipe,

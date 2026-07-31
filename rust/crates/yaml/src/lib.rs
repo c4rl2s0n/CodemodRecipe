@@ -2,6 +2,7 @@ pub mod arg_from;
 pub mod compose;
 pub mod dsl;
 pub mod dsl_vocabulary;
+pub mod explorer_menu;
 pub mod guard_list;
 pub mod keywords;
 pub mod let_binding;
@@ -20,5 +21,6 @@ pub use dsl_vocabulary::{
 pub use guard_list::GuardList;
 pub use keywords::{preview_kinds, query_conventions};
 pub use let_binding::{LetBinding, LetBindings, LetExtract, LetOnManyMatches, LetOnNoMatch};
+pub use explorer_menu::{ExplorerMenu, ExplorerMenuEntry, ExplorerMenuKind};
 pub use model::{parse_recipe_ref, RecipeRef, ScopedStep};
 pub use query_spec::{QueryDefinition, QuerySpec};

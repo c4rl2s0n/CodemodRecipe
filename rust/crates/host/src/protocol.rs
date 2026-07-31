@@ -77,6 +77,11 @@ pub enum HostCommand {
         #[serde(default)]
         context: std::collections::BTreeMap<String, String>,
     },
+    #[serde(rename = "filterExplorerRecipes")]
+    FilterExplorerRecipes {
+        path: String,
+        kind: String,
+    },
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -115,6 +120,26 @@ pub struct RecipeSchema {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub source_file: Option<String>,
     pub args: Vec<RecipeArg>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub explorer_menu: Option<Vec<ExplorerMenuEntrySchema>>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ExplorerMenuEntrySchema {
+    pub kind: String,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "if")]
+    pub if_expr: Option<String>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct FilterExplorerRecipesResponse {
+    pub ok: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recipe_ids: Option<Vec<String>>,
 }
 
 #[derive(Debug, Serialize, Clone)]

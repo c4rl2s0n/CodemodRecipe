@@ -128,6 +128,7 @@ fn validates_unknown_explicit_language() {
             ..Default::default()
         })],
         post_execution: vec![],
+        explorer_menu: None,
     };
 
     let errors = validate_recipe_with(&recipe, is_known_language).unwrap_err();
@@ -178,6 +179,7 @@ fn rust_insert_at_function_item_end() {
             ..Default::default()
         })],
         post_execution: vec![],
+        explorer_menu: None,
     };
 
     let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
@@ -221,6 +223,7 @@ fn smoke_sqlite_parses_create_table() {
             ..Default::default()
         })],
         post_execution: vec![],
+        explorer_menu: None,
     };
     let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
     let codemod = repo.join(".codemod");

@@ -54,8 +54,26 @@ export interface RecipeSchema {
   /** Workspace-relative path to the recipe YAML file. */
   sourceFile?: string | null;
   args: RecipeArg[];
+  /** Explorer QuickPick opt-in entries (`kind` + optional path `if`). */
+  explorerMenu?: ExplorerMenuEntry[] | null;
   templatesLoaded?: boolean;
   previewTemplates?: { label: string; path: string; content?: string }[];
+}
+
+export interface ExplorerMenuEntry {
+  kind: 'file' | 'folder';
+  if?: string | null;
+}
+
+export interface FilterExplorerRecipesRequest {
+  path: string;
+  kind: 'file' | 'folder';
+}
+
+export interface FilterExplorerRecipesResponse {
+  ok: boolean;
+  error?: string;
+  recipeIds?: string[];
 }
 
 export interface PatchInfo {
@@ -178,6 +196,11 @@ export type HostCommand =
       selectionStart: number;
       selectionEnd: number;
       context: Record<string, string>;
+    }
+  | {
+      command: 'filterExplorerRecipes';
+      path: string;
+      kind: 'file' | 'folder';
     }
   | {
       command: 'bootstrap';

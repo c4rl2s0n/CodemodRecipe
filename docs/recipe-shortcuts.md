@@ -165,9 +165,39 @@ After merging derived values, keybinding overrides, and `defaultsTo`, any
 **required** arg that is still empty opens the runner instead of applying
 (`auto` / `run`). Optional args never block execute.
 
+## Explorer context menu
+
+Right-click a file or folder in the Explorer → **Codemod Recipe ▸ Run Recipe Here…**.
+
+Recipes opt in with top-level `explorerMenu` (list of entries; a single object is sugar).
+Absent → never listed. Shortcuts and slots ignore this field.
+
+```yaml
+explorerMenu:
+  - kind: folder                 # required per entry: file | folder
+    if: path is startingwith("lib/")   # optional MiniJinja over path only
+  - kind: file                   # same recipe can appear for both kinds
+```
+
+Match rules for click kind `K` and path `P`:
+
+1. Consider entries with `kind == K`.
+2. Entry matches if `if` is omitted **or** evaluates truthy with `{ path: P }`.
+3. If **any** entry matches → recipe appears **once** in the QuickPick (OR).
+4. Expression errors fail closed for that entry.
+
+`if` uses the same MiniJinja dialect as step `if` (comparisons, `and` / `or` / `not`,
+`| basename` / `| parent` / `| stem`, `is startingwith`). Do not encode file-vs-folder
+in `if` — use separate entries.
+
+Prefill uses the **click** kind: first `inputKind: directory` (folder) or
+`inputKind: file` (file) ← `path`, then the usual `from` / `invoke` path (`auto`).
+
+Empty match list → info toast (no full-catalog fallback).
+
 ## Related
 
 - [vscode_extension/README.md](../vscode_extension/README.md) — extension setup
 - [docs/recipe-templates.md](recipe-templates.md) — MiniJinja in recipe steps
 - [docs/tree-sitter-queries.md](tree-sitter-queries.md) — query language
-- Agent skill `codemod-yaml-dsl` — YAML `args` / `from` reference
+- Agent skill `codemod-yaml-dsl` — YAML `args` / `from` / `explorerMenu` reference

@@ -60,6 +60,7 @@ fn insert_chain_recipe(query: QuerySpec, capture: &str) -> Recipe {
             ..Default::default()
         })],
         post_execution: vec![],
+        explorer_menu: None,
     }
 }
 
