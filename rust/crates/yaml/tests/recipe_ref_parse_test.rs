@@ -144,9 +144,16 @@ steps:
         msg.contains("bad key 'id' on step map"),
         "unexpected error: {msg}"
     );
-    assert!(msg.contains("near: id: child_id"), "unexpected error: {msg}");
+    assert!(
+        msg.contains("near: id: child_id"),
+        "unexpected error: {msg}"
+    );
     let loc = err.location().expect("from_str should attach location");
-    assert!(loc.line() >= 4, "expected step entry line, got {}", loc.line());
+    assert!(
+        loc.line() >= 4,
+        "expected step entry line, got {}",
+        loc.line()
+    );
 }
 
 #[test]

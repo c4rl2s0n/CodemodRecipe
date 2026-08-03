@@ -26,10 +26,7 @@ pub struct DeriveArgsRequest<'a> {
     pub context: BTreeMap<String, String>,
 }
 
-pub fn derive_args(
-    registry: &RecipeRegistry,
-    req: DeriveArgsRequest<'_>,
-) -> DeriveArgsResponse {
+pub fn derive_args(registry: &RecipeRegistry, req: DeriveArgsRequest<'_>) -> DeriveArgsResponse {
     let (recipe, recipe_path) = match registry.load_recipe_ast(req.recipe_id) {
         Ok(v) => v,
         Err(err) => {
@@ -129,7 +126,16 @@ fn resolve_spec(
 ) -> Result<Option<String>, String> {
     let extracted = if let Some(query) = &spec.query {
         Some(evaluate_query_from(
-            registry, recipe, recipe_path, languages, maps, vars, spec, query, req, merge_ctx,
+            registry,
+            recipe,
+            recipe_path,
+            languages,
+            maps,
+            vars,
+            spec,
+            query,
+            req,
+            merge_ctx,
         )?)
     } else {
         None
@@ -186,7 +192,14 @@ fn evaluate_query_from(
         .resolve_for_edit(mapped.as_deref(), file_path)
         .map_err(|e| e.to_string())?;
 
-    let render = RecipeRenderContext::with_registry(recipe, registry, Some(recipe_path), merge_ctx, maps, vars);
+    let render = RecipeRenderContext::with_registry(
+        recipe,
+        registry,
+        Some(recipe_path),
+        merge_ctx,
+        maps,
+        vars,
+    );
     let rendered_query = render_query_op_public(query, &render, merge_ctx)?;
     let capture = if let Some(cap) = &spec.capture {
         Some(render_template(cap, merge_ctx, maps, vars)?)
@@ -234,6 +247,7 @@ fn map_editor_language_id(id: &str) -> String {
     }
 }
 
+#[allow(clippy::too_many_arguments)] // scope + selection span mirrors editor protocol
 fn evaluate_with_scope(
     engine: &mut Engine,
     ctx: &QueryContext<'_>,
@@ -249,10 +263,9 @@ fn evaluate_with_scope(
             .evaluate_let_binding(ctx, source, binding)
             .map_err(engine_err),
         ArgFromScope::Enclosing | ArgFromScope::Selection => {
-            let capture = binding
-                .capture
-                .as_deref()
-                .ok_or_else(|| "from.query with enclosing/selection scope requires capture".to_string())?;
+            let capture = binding.capture.as_deref().ok_or_else(|| {
+                "from.query with enclosing/selection scope requires capture".to_string()
+            })?;
             let query = binding
                 .query
                 .as_ref()

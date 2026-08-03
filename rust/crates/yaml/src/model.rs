@@ -119,9 +119,8 @@ pub fn bad_single_key_map_error(
     key: &str,
     value: &serde_yaml::Value,
 ) -> String {
-    let mut msg = format!(
-        "bad key '{key}' on {kind} map; each entry must be a single key ({expected_keys})"
-    );
+    let mut msg =
+        format!("bad key '{key}' on {kind} map; each entry must be a single key ({expected_keys})");
     if let Some(near) = near_preview_for_key(key, value) {
         msg.push_str(&format!(" (near: {near})"));
     }
@@ -130,9 +129,7 @@ pub fn bad_single_key_map_error(
 
 fn near_preview_for_key(key: &str, value: &serde_yaml::Value) -> Option<String> {
     match value {
-        serde_yaml::Value::String(s)
-            if !s.is_empty() && s.len() <= 80 && !s.contains('\n') =>
-        {
+        serde_yaml::Value::String(s) if !s.is_empty() && s.len() <= 80 && !s.contains('\n') => {
             Some(format!("{key}: {s}"))
         }
         _ => None,
@@ -275,11 +272,9 @@ pub fn parse_recipe_ref(value: serde_yaml::Value) -> Result<RecipeRef, String> {
                 return Err("recipe step id must be a non-empty string".to_string());
             }
             let mut with = BTreeMap::new();
-            if let Some(with_val) =
-                map.get(serde_yaml::Value::String(
-                    dsl::recipe::steps::recipe_ref::object::field::WITH.to_string(),
-                ))
-            {
+            if let Some(with_val) = map.get(serde_yaml::Value::String(
+                dsl::recipe::steps::recipe_ref::object::field::WITH.to_string(),
+            )) {
                 let with_map = with_val.as_mapping().ok_or_else(|| {
                     "recipe step 'with' must be a mapping of arg name to template string"
                         .to_string()
@@ -338,7 +333,8 @@ fn optional_string_field(
     let Some(val) = map.get(serde_yaml::Value::String(field.to_string())) else {
         return Ok(None);
     };
-    let s = yaml_scalar_to_string(val).ok_or_else(|| format!("{label} must be a string expression"))?;
+    let s =
+        yaml_scalar_to_string(val).ok_or_else(|| format!("{label} must be a string expression"))?;
     if s.trim().is_empty() {
         Ok(None)
     } else {

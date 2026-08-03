@@ -14,6 +14,9 @@ use crate::path_filters::{path_basename, path_parent, path_stem};
 
 const TEMPLATE_FUEL: usize = 50_000;
 
+/// Callback used by condition templates (`file_exists`) and explorer menu filters.
+pub(crate) type PathExistsFn = Arc<dyn Fn(&str) -> bool + Send + Sync>;
+
 /// Render a template string (recipe paths, queries, inline create.template).
 pub fn render_string(template: &str, args: &BTreeMap<String, String>) -> Result<String, String> {
     render_template(template, args, &BTreeMap::new(), &BTreeMap::new())
@@ -76,14 +79,14 @@ fn build_environment(
 /// Environment for step `if` / `ifNot` expressions, including `file_exists`.
 pub(crate) fn build_condition_environment(
     maps: &BTreeMap<String, BTreeMap<String, String>>,
-    path_exists: Arc<dyn Fn(&str) -> bool + Send + Sync>,
+    path_exists: PathExistsFn,
 ) -> Result<Environment<'static>, String> {
     build_environment_inner(maps, Some(path_exists))
 }
 
 fn build_environment_inner(
     maps: &BTreeMap<String, BTreeMap<String, String>>,
-    path_exists: Option<Arc<dyn Fn(&str) -> bool + Send + Sync>>,
+    path_exists: Option<PathExistsFn>,
 ) -> Result<Environment<'static>, String> {
     let mut env = Environment::new();
     env.set_undefined_behavior(UndefinedBehavior::Strict);

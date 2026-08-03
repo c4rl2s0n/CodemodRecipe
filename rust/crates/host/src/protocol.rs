@@ -79,10 +79,7 @@ pub enum HostCommand {
         context: std::collections::BTreeMap<String, String>,
     },
     #[serde(rename = "filterExplorerRecipes")]
-    FilterExplorerRecipes {
-        path: String,
-        kind: String,
-    },
+    FilterExplorerRecipes { path: String, kind: String },
 }
 
 #[derive(Debug, Serialize, Clone)]

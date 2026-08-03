@@ -55,7 +55,10 @@ impl ExplorerMenu {
     }
 
     /// Entries whose `kind` matches the Explorer click kind.
-    pub fn entries_for_kind(&self, kind: ExplorerMenuKind) -> impl Iterator<Item = &ExplorerMenuEntry> {
+    pub fn entries_for_kind(
+        &self,
+        kind: ExplorerMenuKind,
+    ) -> impl Iterator<Item = &ExplorerMenuEntry> {
         self.entries.iter().filter(move |e| e.kind == kind)
     }
 }
@@ -80,9 +83,8 @@ impl<'de> Deserialize<'de> for ExplorerMenu {
             where
                 A: de::MapAccess<'de>,
             {
-                let entry = ExplorerMenuEntry::deserialize(de::value::MapAccessDeserializer::new(
-                    map,
-                ))?;
+                let entry =
+                    ExplorerMenuEntry::deserialize(de::value::MapAccessDeserializer::new(map))?;
                 Ok(ExplorerMenu {
                     entries: vec![entry],
                 })

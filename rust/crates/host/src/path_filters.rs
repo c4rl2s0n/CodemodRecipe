@@ -56,7 +56,10 @@ mod tests {
 
     #[test]
     fn parent_of_nested_path() {
-        assert_eq!(path_parent("lib/features/feed/widgets"), "lib/features/feed");
+        assert_eq!(
+            path_parent("lib/features/feed/widgets"),
+            "lib/features/feed"
+        );
         assert_eq!(path_parent("lib/foo.dart"), "lib");
     }
 

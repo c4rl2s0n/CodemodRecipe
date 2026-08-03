@@ -14,7 +14,7 @@ use crate::path_sandbox::PathSandbox;
 use crate::registry::{render_recipe_templates_with_root, RecipeRegistry};
 use crate::render_context::RecipeRenderContext;
 use crate::step_condition::step_conditions_pass;
-use crate::template::render_template_file;
+use crate::template::{render_template_file, PathExistsFn};
 use crate::working_tree::WorkingTree;
 
 pub struct CollectedChanges {
@@ -132,8 +132,15 @@ fn apply_steps(
                 )?;
             }
             Step::Edit(edit) => {
-                if !conditions_pass(edit.if_expr.as_deref(), edit.if_not.as_deref(), args, maps, vars, tree, sandbox)?
-                {
+                if !conditions_pass(
+                    edit.if_expr.as_deref(),
+                    edit.if_not.as_deref(),
+                    args,
+                    maps,
+                    vars,
+                    tree,
+                    sandbox,
+                )? {
                     continue;
                 }
                 apply_edit_step(edit, tree, sandbox, language_registry, ctx, render_ctx)?;
@@ -231,10 +238,7 @@ fn conditions_pass(
     step_conditions_pass(if_expr, if_not, args, maps, vars, path_exists)
 }
 
-fn path_exists_checker(
-    tree: &WorkingTree,
-    sandbox: &PathSandbox,
-) -> Arc<dyn Fn(&str) -> bool + Send + Sync> {
+fn path_exists_checker(tree: &WorkingTree, sandbox: &PathSandbox) -> PathExistsFn {
     let staged = tree.staged_existence();
     let root = sandbox.workspace_root().to_path_buf();
     Arc::new(move |relative: &str| {

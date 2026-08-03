@@ -1,6 +1,4 @@
-use crate::diag_source::{
-    source_file_only, source_from_serde_yaml_error, source_with_needle,
-};
+use crate::diag_source::{source_file_only, source_from_serde_yaml_error, source_with_needle};
 use crate::protocol::{DiagnosticSource, RecipeDiagnostic};
 use codemod_recipe_yaml::dsl;
 use serde_yaml::Value;
@@ -70,7 +68,10 @@ pub fn load_codemod_assets(workspace_root: &Path, codemod_root: &Path) -> AssetL
         // Detect duplicate keys in map:/values: blocks from source text before YAML
         // parsers collapse them.
         let mut duplicate_keys = false;
-        for field in [dsl::map_asset::field::MAP, dsl::variables_asset::field::VALUES] {
+        for field in [
+            dsl::map_asset::field::MAP,
+            dsl::variables_asset::field::VALUES,
+        ] {
             if let Some(dup) = find_duplicate_keys_in_block(&text, field) {
                 diagnostics.push(schema_error(
                     &format!("Duplicate key \"{dup}\" in \"{field}\""),
@@ -109,9 +110,14 @@ pub fn load_codemod_assets(workspace_root: &Path, codemod_root: &Path) -> AssetL
             Ok(Some(AssetKind::Map)) => {
                 match parse_keyed_string_map(&text, root, dsl::map_asset::field::MAP, &relative) {
                     Ok((id, entries)) => {
-                        map_id_sources.entry(id.clone()).or_default().push(
-                            source_with_needle(&relative, Some(&text), &format!("id: {id}")),
-                        );
+                        map_id_sources
+                            .entry(id.clone())
+                            .or_default()
+                            .push(source_with_needle(
+                                &relative,
+                                Some(&text),
+                                &format!("id: {id}"),
+                            ));
                         maps_by_id.insert(id, entries);
                     }
                     Err(diagnostic) => diagnostics.push(diagnostic),
@@ -125,9 +131,14 @@ pub fn load_codemod_assets(workspace_root: &Path, codemod_root: &Path) -> AssetL
                     &relative,
                 ) {
                     Ok((id, entries)) => {
-                        var_id_sources.entry(id.clone()).or_default().push(
-                            source_with_needle(&relative, Some(&text), &format!("id: {id}")),
-                        );
+                        var_id_sources
+                            .entry(id.clone())
+                            .or_default()
+                            .push(source_with_needle(
+                                &relative,
+                                Some(&text),
+                                &format!("id: {id}"),
+                            ));
                         vars_by_id.insert(id, entries);
                     }
                     Err(diagnostic) => diagnostics.push(diagnostic),
@@ -136,9 +147,14 @@ pub fn load_codemod_assets(workspace_root: &Path, codemod_root: &Path) -> AssetL
             Ok(Some(AssetKind::QueryLibrary)) => {
                 match crate::query_resolver::parse_query_library(root) {
                     Ok((id, entries)) => {
-                        query_id_sources.entry(id.clone()).or_default().push(
-                            source_with_needle(&relative, Some(&text), &format!("id: {id}")),
-                        );
+                        query_id_sources
+                            .entry(id.clone())
+                            .or_default()
+                            .push(source_with_needle(
+                                &relative,
+                                Some(&text),
+                                &format!("id: {id}"),
+                            ));
                         queries_by_id.insert(id, entries);
                     }
                     Err(message) => {

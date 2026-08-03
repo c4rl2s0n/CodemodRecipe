@@ -254,7 +254,10 @@ mod tests {
         let pairs = [
             (crate::dsl::recipe::steps::edit::WIRE, "edit"),
             (crate::dsl::recipe::steps::create::WIRE, "create"),
-            (crate::dsl::recipe::steps::edit::ops::insert::field::QUERY, "query"),
+            (
+                crate::dsl::recipe::steps::edit::ops::insert::field::QUERY,
+                "query",
+            ),
             (crate::dsl::recipe::field::POST_EXECUTION, "postExecution"),
         ];
         for (constant, wire) in pairs {

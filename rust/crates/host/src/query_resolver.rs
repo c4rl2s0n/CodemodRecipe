@@ -4,9 +4,9 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 use codemod_recipe_engine::query::resolve_query_source;
+use codemod_recipe_yaml::dsl;
 use codemod_recipe_yaml::model::{QueryDefinition, QuerySpec, Recipe};
 use codemod_recipe_yaml::query_conventions;
-use codemod_recipe_yaml::dsl;
 
 use crate::registry::RecipeRegistry;
 use crate::template::render_template;
@@ -110,7 +110,9 @@ pub fn parse_query_library(
         return Err("query library id must not be empty".to_string());
     }
     let queries_val = root
-        .get(serde_yaml::Value::String(dsl::recipe::field::QUERIES.into()))
+        .get(serde_yaml::Value::String(
+            dsl::recipe::field::QUERIES.into(),
+        ))
         .ok_or_else(|| "query library requires 'queries' map".to_string())?;
     let queries_map = queries_val
         .as_mapping()

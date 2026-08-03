@@ -135,7 +135,7 @@ fn rejects_duplicate_arg_names() {
                 options: vec![],
                 allow_custom_value: None,
                 context_key: None,
-            from: None,
+                from: None,
             },
             codemod_recipe_yaml::model::Arg {
                 name: "file".to_string(),
@@ -147,7 +147,7 @@ fn rejects_duplicate_arg_names() {
                 options: vec![],
                 allow_custom_value: None,
                 context_key: None,
-            from: None,
+                from: None,
             },
         ],
         maps: BTreeMap::new(),
@@ -267,7 +267,7 @@ fn rejects_let_name_colliding_with_recipe_arg() {
         options: vec![],
         allow_custom_value: None,
         context_key: None,
-            from: None,
+        from: None,
     }];
     let errors = validate_recipe(&recipe).unwrap_err();
     assert!(errors.iter().any(|e| matches!(
@@ -331,10 +331,7 @@ fn parses_remove_count_oracle_recipe() {
 
 #[test]
 fn validation_error_needles_locate_fields() {
-    assert_eq!(
-        ValidationError::EmptyEditOps.needle(),
-        "ops:"
-    );
+    assert_eq!(ValidationError::EmptyEditOps.needle(), "ops:");
     assert_eq!(
         ValidationError::MissingRequiredField {
             op: "insert",

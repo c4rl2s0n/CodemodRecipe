@@ -97,22 +97,40 @@ pub fn recipe_schema() -> Value {
     let insert_op = container_props(
         "insert",
         &[
-            (dsl::recipe::steps::edit::ops::insert::field::QUERY, query_field.clone()),
-            (dsl::recipe::steps::edit::ops::insert::field::CAPTURE, string_prop()),
+            (
+                dsl::recipe::steps::edit::ops::insert::field::QUERY,
+                query_field.clone(),
+            ),
+            (
+                dsl::recipe::steps::edit::ops::insert::field::CAPTURE,
+                string_prop(),
+            ),
             (
                 dsl::recipe::steps::edit::ops::insert::field::ANCHOR,
                 enum_prop("anchor"),
             ),
-            (dsl::recipe::steps::edit::ops::insert::field::TEXT, string_prop()),
+            (
+                dsl::recipe::steps::edit::ops::insert::field::TEXT,
+                string_prop(),
+            ),
         ],
     );
 
     let replace_op = container_props(
         "replace",
         &[
-            (dsl::recipe::steps::edit::ops::replace::field::QUERY, query_field.clone()),
-            (dsl::recipe::steps::edit::ops::replace::field::CAPTURE, string_prop()),
-            (dsl::recipe::steps::edit::ops::replace::field::TEXT, string_prop()),
+            (
+                dsl::recipe::steps::edit::ops::replace::field::QUERY,
+                query_field.clone(),
+            ),
+            (
+                dsl::recipe::steps::edit::ops::replace::field::CAPTURE,
+                string_prop(),
+            ),
+            (
+                dsl::recipe::steps::edit::ops::replace::field::TEXT,
+                string_prop(),
+            ),
             (
                 dsl::recipe::steps::edit::ops::replace::field::INCLUDE_LEADING_TRIVIA,
                 bool_prop(),
@@ -123,8 +141,14 @@ pub fn recipe_schema() -> Value {
     let remove_op = container_props(
         "remove",
         &[
-            (dsl::recipe::steps::edit::ops::remove::field::QUERY, query_field.clone()),
-            (dsl::recipe::steps::edit::ops::remove::field::CAPTURE, string_prop()),
+            (
+                dsl::recipe::steps::edit::ops::remove::field::QUERY,
+                query_field.clone(),
+            ),
+            (
+                dsl::recipe::steps::edit::ops::remove::field::CAPTURE,
+                string_prop(),
+            ),
             (
                 dsl::recipe::steps::edit::ops::remove::field::INCLUDE_LEADING_TRIVIA,
                 bool_prop(),
@@ -135,9 +159,18 @@ pub fn recipe_schema() -> Value {
     let let_binding = container_props(
         "letBinding",
         &[
-            (dsl::recipe::steps::edit::let_binding::field::NAME, string_prop()),
-            (dsl::recipe::steps::edit::let_binding::field::QUERY, query_field.clone()),
-            (dsl::recipe::steps::edit::let_binding::field::CAPTURE, string_prop()),
+            (
+                dsl::recipe::steps::edit::let_binding::field::NAME,
+                string_prop(),
+            ),
+            (
+                dsl::recipe::steps::edit::let_binding::field::QUERY,
+                query_field.clone(),
+            ),
+            (
+                dsl::recipe::steps::edit::let_binding::field::CAPTURE,
+                string_prop(),
+            ),
             (
                 dsl::recipe::steps::edit::let_binding::field::EXTRACT,
                 enum_prop("extract"),
@@ -150,8 +183,14 @@ pub fn recipe_schema() -> Value {
                 dsl::recipe::steps::edit::let_binding::field::ON_MANY_MATCHES,
                 enum_prop("onManyMatches"),
             ),
-            (dsl::recipe::steps::edit::let_binding::field::JOIN, string_prop()),
-            (dsl::recipe::steps::edit::let_binding::field::AS, string_prop()),
+            (
+                dsl::recipe::steps::edit::let_binding::field::JOIN,
+                string_prop(),
+            ),
+            (
+                dsl::recipe::steps::edit::let_binding::field::AS,
+                string_prop(),
+            ),
         ],
     );
 
@@ -161,7 +200,10 @@ pub fn recipe_schema() -> Value {
             (dsl::recipe::steps::edit::field::PATH, string_prop()),
             (dsl::recipe::steps::edit::field::LANGUAGE, string_prop()),
             (dsl::recipe::steps::edit::field::WHEN, query_field.clone()),
-            (dsl::recipe::steps::edit::field::WHEN_NOT, query_field.clone()),
+            (
+                dsl::recipe::steps::edit::field::WHEN_NOT,
+                query_field.clone(),
+            ),
             (
                 dsl::recipe::steps::edit::field::LET,
                 json!({
@@ -185,7 +227,10 @@ pub fn recipe_schema() -> Value {
         &[
             (dsl::recipe::steps::create::field::PATH, string_prop()),
             (dsl::recipe::steps::create::field::TEMPLATE, string_prop()),
-            (dsl::recipe::steps::create::field::TEMPLATE_FILE, string_prop()),
+            (
+                dsl::recipe::steps::create::field::TEMPLATE_FILE,
+                string_prop(),
+            ),
             (
                 dsl::recipe::steps::create::field::IF_EXISTS,
                 enum_prop("ifExists"),
@@ -245,7 +290,10 @@ pub fn recipe_schema() -> Value {
         (dsl::recipe::steps::edit::ops::remove::WIRE, "removeOp"),
     ] {
         let mut p = Map::new();
-        p.insert("$ref".into(), Value::String(format!("#/definitions/{def_name}")));
+        p.insert(
+            "$ref".into(),
+            Value::String(format!("#/definitions/{def_name}")),
+        );
         if let Some(entry) = all_entries()
             .iter()
             .find(|e| e.wire == wire && matches!(e.kind, VocabKind::OpKind))
@@ -274,7 +322,10 @@ pub fn recipe_schema() -> Value {
         (dsl::recipe::steps::if_step::WIRE, "ifStep", true),
     ] {
         let mut p = Map::new();
-        p.insert("$ref".into(), Value::String(format!("#/definitions/{def_name}")));
+        p.insert(
+            "$ref".into(),
+            Value::String(format!("#/definitions/{def_name}")),
+        );
         if kind_match {
             if let Some(entry) = all_entries()
                 .iter()
@@ -311,7 +362,10 @@ pub fn recipe_schema() -> Value {
             ),
             (dsl::recipe::arg::field::ALLOW_CUSTOM_VALUE, bool_prop()),
             (dsl::recipe::arg::field::CONTEXT_KEY, string_or_null()),
-            (dsl::recipe::arg::field::FROM, json!({ "additionalProperties": true })),
+            (
+                dsl::recipe::arg::field::FROM,
+                json!({ "additionalProperties": true }),
+            ),
         ],
     );
 
@@ -336,7 +390,10 @@ pub fn recipe_schema() -> Value {
     let root = container_props(
         "recipeRoot",
         &[
-            (dsl::recipe::field::ID, json!({ "type": "string", "minLength": 1 })),
+            (
+                dsl::recipe::field::ID,
+                json!({ "type": "string", "minLength": 1 }),
+            ),
             (dsl::recipe::field::NAME, string_prop()),
             (dsl::recipe::field::DESCRIPTION, string_prop()),
             (
@@ -433,7 +490,10 @@ pub fn map_schema() -> Value {
     let root = container_props(
         "mapRoot",
         &[
-            (dsl::map_asset::field::ID, json!({ "type": "string", "minLength": 1 })),
+            (
+                dsl::map_asset::field::ID,
+                json!({ "type": "string", "minLength": 1 }),
+            ),
             (dsl::map_asset::field::DESCRIPTION, string_prop()),
             (
                 dsl::map_asset::field::MAP,

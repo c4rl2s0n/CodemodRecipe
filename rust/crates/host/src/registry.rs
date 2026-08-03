@@ -321,7 +321,11 @@ fn collect_schema_errors(
                 "error",
                 "E_SCHEMA",
                 error.to_string(),
-                vec![source_with_needle(file_path, Some(file_text), &error.needle())],
+                vec![source_with_needle(
+                    file_path,
+                    Some(file_text),
+                    &error.needle(),
+                )],
             ));
         }
     }
@@ -484,10 +488,7 @@ fn arg_to_schema(arg: &Arg) -> RecipeArg {
         options: arg.options.clone(),
         allow_custom_value: arg.allow_custom_value.unwrap_or(true),
         context_key: arg.context_key.clone(),
-        from: arg
-            .from
-            .as_ref()
-            .and_then(|f| serde_json::to_value(f).ok()),
+        from: arg.from.as_ref().and_then(|f| serde_json::to_value(f).ok()),
     }
 }
 
@@ -1004,7 +1005,11 @@ steps:
             .find(|d| d.code == "E_SCHEMA")
             .expect("expected schema diagnostic");
         let source = schema.sources.first().expect("source");
-        assert_eq!(source.line, Some(5), "ops: [] should be on line 5: {source:?}");
+        assert_eq!(
+            source.line,
+            Some(5),
+            "ops: [] should be on line 5: {source:?}"
+        );
         assert!(source.column.is_some());
 
         let _ = std::fs::remove_dir_all(workspace);

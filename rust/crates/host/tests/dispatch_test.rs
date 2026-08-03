@@ -267,8 +267,7 @@ fn apply_runs_post_execution_rustfmt() {
 
     let content = std::fs::read_to_string(workspace.join(rel)).unwrap();
     assert_eq!(
-        content,
-        "fn main() {\n    println!(\"hi\");\n}\n",
+        content, "fn main() {\n    println!(\"hi\");\n}\n",
         "postExecution rustfmt should reformat the created file"
     );
 

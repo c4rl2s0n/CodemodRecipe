@@ -1,7 +1,7 @@
 //! Emit `generated-dsl-surface.json` from [`crate::dsl_structure`].
 
-use crate::dsl_structure::{container_for_parent_wire, CONTAINERS, ENUMS};
 use crate::dsl;
+use crate::dsl_structure::{container_for_parent_wire, CONTAINERS, ENUMS};
 use serde::Serialize;
 use serde_json::{json, Map, Value};
 use std::collections::BTreeMap;

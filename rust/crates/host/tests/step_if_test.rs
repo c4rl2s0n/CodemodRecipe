@@ -99,7 +99,11 @@ steps:
     let mut args = BTreeMap::new();
     args.insert("file".to_string(), "lib/first.dart".to_string());
     let changes = collect(&workspace, yaml, &args);
-    assert_eq!(changes.len(), 1, "second create should skip after staged first");
+    assert_eq!(
+        changes.len(),
+        1,
+        "second create should skip after staged first"
+    );
     assert!(matches!(&changes[0], FileChange::Create { path, .. } if path == "lib/first.dart"));
 }
 

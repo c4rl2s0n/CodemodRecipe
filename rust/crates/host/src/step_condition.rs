@@ -1,11 +1,10 @@
 //! Evaluate step-level `if` / `ifNot` MiniJinja expressions.
 
 use std::collections::BTreeMap;
-use std::sync::Arc;
 
 use minijinja::value::Value;
 
-use crate::template::{build_condition_environment, build_template_context};
+use crate::template::{build_condition_environment, build_template_context, PathExistsFn};
 
 /// Returns `Ok(true)` when the condition expression is truthy (or empty/absent).
 pub fn condition_expr_passes(
@@ -13,7 +12,7 @@ pub fn condition_expr_passes(
     args: &BTreeMap<String, String>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     vars: &BTreeMap<String, BTreeMap<String, String>>,
-    path_exists: Arc<dyn Fn(&str) -> bool + Send + Sync>,
+    path_exists: PathExistsFn,
 ) -> Result<bool, String> {
     step_conditions_pass(if_expr, None, args, maps, vars, path_exists)
 }
@@ -28,7 +27,7 @@ pub fn step_conditions_pass(
     args: &BTreeMap<String, String>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     vars: &BTreeMap<String, BTreeMap<String, String>>,
-    path_exists: Arc<dyn Fn(&str) -> bool + Send + Sync>,
+    path_exists: PathExistsFn,
 ) -> Result<bool, String> {
     if let Some(expr) = if_expr {
         if !eval_condition_expr(expr, args, maps, vars, path_exists.clone())? {
@@ -48,7 +47,7 @@ fn eval_condition_expr(
     args: &BTreeMap<String, String>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     vars: &BTreeMap<String, BTreeMap<String, String>>,
-    path_exists: Arc<dyn Fn(&str) -> bool + Send + Sync>,
+    path_exists: PathExistsFn,
 ) -> Result<bool, String> {
     let value = eval_expression_value(expr, args, maps, vars, path_exists)?;
     Ok(value_is_truthy(&value))
@@ -60,7 +59,7 @@ pub fn eval_string_expr(
     args: &BTreeMap<String, String>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     vars: &BTreeMap<String, BTreeMap<String, String>>,
-    path_exists: Arc<dyn Fn(&str) -> bool + Send + Sync>,
+    path_exists: PathExistsFn,
 ) -> Result<String, String> {
     let value = eval_expression_value(expr, args, maps, vars, path_exists)?;
     Ok(value_to_string(&value))
@@ -71,7 +70,7 @@ fn eval_expression_value(
     args: &BTreeMap<String, String>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     vars: &BTreeMap<String, BTreeMap<String, String>>,
-    path_exists: Arc<dyn Fn(&str) -> bool + Send + Sync>,
+    path_exists: PathExistsFn,
 ) -> Result<Value, String> {
     let trimmed = expr.trim();
     if trimmed.is_empty() {
@@ -104,8 +103,9 @@ fn value_to_string(value: &Value) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::sync::Arc;
 
-    fn checker(f: impl Fn(&str) -> bool + Send + Sync + 'static) -> Arc<dyn Fn(&str) -> bool + Send + Sync> {
+    fn checker(f: impl Fn(&str) -> bool + Send + Sync + 'static) -> PathExistsFn {
         Arc::new(f)
     }
 
@@ -126,15 +126,9 @@ mod tests {
         )
         .unwrap());
         args.insert("includeTests".to_string(), "false".to_string());
-        assert!(!step_conditions_pass(
-            Some("includeTests"),
-            None,
-            &args,
-            &maps,
-            &vars,
-            exists
-        )
-        .unwrap());
+        assert!(
+            !step_conditions_pass(Some("includeTests"), None, &args, &maps, &vars, exists).unwrap()
+        );
     }
 
     #[test]
@@ -179,14 +173,9 @@ mod tests {
             exists.clone()
         )
         .unwrap());
-        assert!(!step_conditions_pass(
-            Some("kind == \"bloc\""),
-            None,
-            &args,
-            &maps,
-            &vars,
-            exists
-        )
-        .unwrap());
+        assert!(
+            !step_conditions_pass(Some("kind == \"bloc\""), None, &args, &maps, &vars, exists)
+                .unwrap()
+        );
     }
 }

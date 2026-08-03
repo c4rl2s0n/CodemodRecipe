@@ -60,10 +60,7 @@ fn dsl_enum_wires_have_registry_entries() {
 #[test]
 fn step_and_op_kinds_are_classified() {
     for (wire, kind) in [
-        (
-            dsl::recipe::steps::edit::WIRE,
-            VocabKind::StepKind,
-        ),
+        (dsl::recipe::steps::edit::WIRE, VocabKind::StepKind),
         (dsl::recipe::steps::create::WIRE, VocabKind::StepKind),
         (dsl::recipe::steps::if_step::WIRE, VocabKind::StepKind),
         (

@@ -62,10 +62,7 @@ impl ValidationError {
                 format!("{}:", dsl::recipe::steps::create::WIRE)
             }
             ValidationError::CreateConflictingTemplate => {
-                format!(
-                    "{}:",
-                    dsl::recipe::steps::create::field::TEMPLATE_FILE
-                )
+                format!("{}:", dsl::recipe::steps::create::field::TEMPLATE_FILE)
             }
             ValidationError::LetBindingMissingQuery { name } => format!("name: {name}"),
             ValidationError::IfStepMissingCondition => {
