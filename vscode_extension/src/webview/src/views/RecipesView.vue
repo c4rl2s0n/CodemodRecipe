@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import RecipesTab from '../components/RecipesTab.vue';
-import type { RecipeDiagnostic, RecipeSchema } from '../shared.js';
+import type {
+  ContextRecipeMatch,
+  RecipeDiagnostic,
+  RecipeSchema,
+} from '../shared.js';
 
 defineProps<{
   recipes: readonly RecipeSchema[];
   discoveryError?: string;
   diagnostics: readonly RecipeDiagnostic[];
   refreshing: boolean;
+  contextMatches: readonly ContextRecipeMatch[];
+  slotsByRecipe: Record<string, string[]>;
 }>();
 </script>
 
@@ -16,6 +22,7 @@ defineProps<{
     :discovery-error="discoveryError"
     :diagnostics="diagnostics"
     :refreshing="refreshing"
+    :context-matches="contextMatches"
+    :slots-by-recipe="slotsByRecipe"
   />
 </template>
-

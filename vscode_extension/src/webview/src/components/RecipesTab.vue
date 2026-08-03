@@ -1,6 +1,10 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
-import type { RecipeDiagnostic, RecipeSchema } from '../shared';
+import type {
+  ContextRecipeMatch,
+  RecipeDiagnostic,
+  RecipeSchema,
+} from '../shared';
 import { useExtensionClient } from '../composables/useExtensionClient';
 import RecipeGroupNode from './RecipeGroupNode.vue';
 import {
@@ -8,6 +12,7 @@ import {
   recipeDisplayTitle,
   type RecipeTreeNode,
 } from '../lib/recipeTree';
+import { slotBadgeLabel, slotBadgeTitle, slotsForRecipe } from '../lib/slotBadges';
 
 const client = useExtensionClient();
 
@@ -16,13 +21,17 @@ const props = defineProps<{
   discoveryError?: string;
   diagnostics: readonly RecipeDiagnostic[];
   refreshing: boolean;
+  contextMatches: readonly ContextRecipeMatch[];
+  slotsByRecipe: Record<string, string[]>;
 }>();
 
 const searchQuery = ref('');
 const collapsedGroups = ref<Record<string, boolean>>({});
+const contextExpanded = ref(true);
 
 type RecipeContextMenuState = {
   recipeId: string;
+  args?: Record<string, string>;
   x: number;
   y: number;
 };
@@ -66,7 +75,6 @@ function countRecipes(node: RecipeTreeNode): number {
 }
 
 function isCollapsed(key: string): boolean {
-  // Groups start collapsed; only expand when the user toggles them open.
   return collapsedGroups.value[key] !== false;
 }
 
@@ -86,12 +94,19 @@ function closeRecipeContextMenu(): void {
 }
 
 function onRecipeContextMenu(recipe: RecipeSchema, event: MouseEvent): void {
-  if (!recipe.sourceFile) {
-    return;
-  }
   event.preventDefault();
   recipeContextMenu.value = {
     recipeId: recipe.id,
+    x: event.clientX,
+    y: event.clientY,
+  };
+}
+
+function onContextMatchMenu(match: ContextRecipeMatch, event: MouseEvent): void {
+  event.preventDefault();
+  recipeContextMenu.value = {
+    recipeId: match.recipeId,
+    args: match.args,
     x: event.clientX,
     y: event.clientY,
   };
@@ -103,6 +118,18 @@ function showRecipeFromContextMenu(): void {
     client.openRecipeFile(id);
   }
   closeRecipeContextMenu();
+}
+
+function createShortcutFromContextMenu(): void {
+  const menu = recipeContextMenu.value;
+  if (menu) {
+    client.createShortcut(menu.recipeId, menu.args);
+  }
+  closeRecipeContextMenu();
+}
+
+function runContextMatch(match: ContextRecipeMatch, mode: 'auto' | 'open'): void {
+  client.invokeRecipe(match.recipeId, mode, match.args);
 }
 
 onMounted(() => {
@@ -149,11 +176,89 @@ function formatSource(diagnostic: RecipeDiagnostic): string {
       : source.file;
   return location;
 }
+
+function formatArgs(args: Record<string, string>): string {
+  return Object.entries(args)
+    .map(([k, v]) => `${k}: ${v}`)
+    .join(', ');
+}
 </script>
 
 <template>
   <div>
     <h2>Recipes</h2>
+
+    <div class="context-expander">
+      <button
+        type="button"
+        class="group-toggle secondary context-toggle"
+        @click="contextExpanded = !contextExpanded"
+      >
+        <span class="group-chevron">{{ contextExpanded ? '▾' : '▸' }}</span>
+        <span class="group-label">Context</span>
+        <span class="group-count">{{ contextMatches.length }}</span>
+      </button>
+      <div v-if="contextExpanded" class="context-body">
+        <p v-if="!contextMatches.length" class="desc context-empty">
+          No recipes match the current editor context. Open a file and place the
+          cursor where recipe <code>from</code> builtins apply.
+        </p>
+        <div v-else class="recipe-list context-list">
+          <div
+            v-for="match in contextMatches"
+            :key="match.recipeId"
+            class="recipe-row context-row"
+            @contextmenu="onContextMatchMenu(match, $event)"
+          >
+            <button
+              type="button"
+              class="recipe-button secondary"
+              @click="runContextMatch(match, 'open')"
+            >
+              <span class="recipe-title-row">
+                <span class="recipe-title">{{ match.name }}</span>
+                <span
+                  v-if="match.complete"
+                  class="badge badge-ready"
+                  title="All required args filled"
+                >ready</span>
+                <span
+                  v-else
+                  class="badge badge-partial"
+                  title="Some required args still missing"
+                >partial</span>
+                <span
+                  v-for="slot in slotsForRecipe(slotsByRecipe, match.recipeId)"
+                  :key="slot"
+                  class="badge badge-slot"
+                  :title="slotBadgeTitle(slot)"
+                >{{ slotBadgeLabel(slot) }}</span>
+              </span>
+              <span class="recipe-group-path">{{ match.recipeId }}</span>
+              <span class="recipe-desc">{{ formatArgs(match.args) }}</span>
+            </button>
+            <div class="context-actions">
+              <button
+                type="button"
+                class="secondary context-action"
+                title="Apply when complete"
+                @click.stop="runContextMatch(match, 'auto')"
+              >
+                Run
+              </button>
+              <button
+                type="button"
+                class="secondary context-action"
+                title="Open in Recipe Runner"
+                @click.stop="runContextMatch(match, 'open')"
+              >
+                Open
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
 
     <div v-if="errorDiagnostics.length" class="diagnostics diagnostics-errors">
       <h3>Recipe errors</h3>
@@ -232,6 +337,7 @@ function formatSource(diagnostic: RecipeDiagnostic): string {
           :on-recipe-context-menu="onRecipeContextMenu"
           :recipe-subtitle="recipeSubtitle"
           :recipe-title="recipeTitle"
+          :slots-by-recipe="slotsByRecipe"
         />
       </div>
     </div>
@@ -254,6 +360,14 @@ function formatSource(diagnostic: RecipeDiagnostic): string {
           @click="showRecipeFromContextMenu"
         >
           Show Recipe
+        </button>
+        <button
+          type="button"
+          class="recipe-context-menu-item"
+          role="menuitem"
+          @click="createShortcutFromContextMenu"
+        >
+          Create shortcut…
         </button>
       </div>
     </Teleport>

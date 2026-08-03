@@ -172,6 +172,67 @@ code,
   font-weight: 600;
 }
 
+.recipe-title-row {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.badge {
+  border-radius: 3px;
+  font-size: 0.75em;
+  font-weight: 500;
+  padding: 1px 6px;
+}
+
+.badge-slot {
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+}
+
+.badge-ready {
+  background: color-mix(in srgb, var(--vscode-testing-iconPassed) 25%, transparent);
+  color: var(--vscode-testing-iconPassed);
+}
+
+.badge-partial {
+  background: color-mix(in srgb, var(--vscode-editorWarning-foreground) 20%, transparent);
+  color: var(--vscode-editorWarning-foreground);
+}
+
+.context-expander {
+  display: grid;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.context-body {
+  display: grid;
+  gap: 6px;
+}
+
+.context-empty {
+  margin: 0;
+  opacity: 0.85;
+}
+
+.context-row {
+  display: grid;
+  gap: 4px;
+}
+
+.context-actions {
+  display: flex;
+  gap: 6px;
+  padding-left: 2px;
+}
+
+.context-action {
+  margin-top: 0;
+  padding: 2px 8px;
+}
+
 .recipe-desc {
   display: block;
   margin-top: 4px;

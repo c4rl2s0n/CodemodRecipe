@@ -20,6 +20,8 @@ export function useHostState(inbound: ExtensionInbound) {
     recipesRefreshing: false,
     bootstrapInFlight: true,
     bootstrapPhase: BOOTSTRAP_PHASES.startingHost,
+    contextMatches: [],
+    slotsByRecipe: {},
   });
 
   const recipe = computed(() => hostState.value.recipe);
@@ -30,6 +32,8 @@ export function useHostState(inbound: ExtensionInbound) {
   const bootstrapInFlight = computed(() => hostState.value.bootstrapInFlight);
   const bootstrapPhase = computed(() => hostState.value.bootstrapPhase);
   const bootstrapError = computed(() => hostState.value.bootstrapError);
+  const contextMatches = computed(() => hostState.value.contextMatches ?? []);
+  const slotsByRecipe = computed(() => hostState.value.slotsByRecipe ?? {});
 
   const showBootstrapOverlay = computed(
     () => bootstrapInFlight.value || bootstrapPhase.value === BOOTSTRAP_PHASES.error
@@ -76,6 +80,8 @@ export function useHostState(inbound: ExtensionInbound) {
     bootstrapInFlight,
     bootstrapPhase,
     bootstrapError,
+    contextMatches,
+    slotsByRecipe,
     showBootstrapOverlay,
     showReloadOverlay,
     showBlockingOverlay,

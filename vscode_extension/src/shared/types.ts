@@ -226,6 +226,14 @@ export interface SelectionPayload {
   files: Record<string, FileSelection>;
 }
 
+export interface ContextRecipeMatch {
+  recipeId: string;
+  name: string;
+  description: string;
+  args: Record<string, string>;
+  complete: boolean;
+}
+
 export interface RecipeViewState {
   recipes: readonly RecipeSchema[];
   discoveryError?: string;
@@ -238,6 +246,10 @@ export interface RecipeViewState {
   initialArgs: Record<string, string>;
   activeTab: RunnerTab;
   autoPreviewDebounceMs?: number;
+  /** Recipes matching local editor context (Tier A). */
+  contextMatches?: readonly ContextRecipeMatch[];
+  /** recipeId → slot ids assigned in settings. */
+  slotsByRecipe?: Record<string, string[]>;
 }
 
 export interface PersistedWebviewState {

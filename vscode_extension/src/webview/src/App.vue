@@ -21,6 +21,8 @@ const {
   discoveryError,
   diagnostics,
   recipesRefreshing,
+  contextMatches,
+  slotsByRecipe,
   showBlockingOverlay,
   showBootstrapOverlay,
   bootstrapInFlight,
@@ -122,6 +124,8 @@ onUnmounted(() => {
         :discovery-error="discoveryError"
         :diagnostics="diagnostics"
         :refreshing="recipesRefreshing"
+        :context-matches="contextMatches"
+        :slots-by-recipe="slotsByRecipe"
       />
     </div>
 

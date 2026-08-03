@@ -1,5 +1,6 @@
 import {
   RUNNER_TABS,
+  type ContextRecipeMatch,
   type FilePreview,
   type RecipeDiagnostic,
   type RecipeSchema,
@@ -21,6 +22,8 @@ export class RecipeRunnerState {
   lastPreviewToken: string | undefined;
   lastFiles: FilePreview[] = [];
   activeTab: RunnerTab = RUNNER_TABS.recipes;
+  contextMatches: readonly ContextRecipeMatch[] = [];
+  slotsByRecipe: Record<string, string[]> = {};
 
   setRecipesRefreshing(inFlight: boolean): void {
     this.recipesRefreshing = inFlight;
@@ -34,6 +37,14 @@ export class RecipeRunnerState {
     this.recipes = recipes;
     this.discoveryError = discoveryError;
     this.diagnostics = diagnostics;
+  }
+
+  setContextMatching(
+    matches: readonly ContextRecipeMatch[],
+    slotsByRecipe: Record<string, string[]>
+  ): void {
+    this.contextMatches = matches;
+    this.slotsByRecipe = slotsByRecipe;
   }
 
   syncRecipesAfterRefresh(
@@ -85,6 +96,8 @@ export class RecipeRunnerState {
       recipe: this.currentRecipe,
       initialArgs: this.initialArgs,
       activeTab: this.activeTab,
+      contextMatches: this.contextMatches,
+      slotsByRecipe: this.slotsByRecipe,
     };
   }
 }

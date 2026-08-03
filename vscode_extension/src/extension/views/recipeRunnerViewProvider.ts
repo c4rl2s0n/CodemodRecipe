@@ -15,6 +15,7 @@ import {
   handleWebviewMessage,
   type RecipeRunnerHandlerHost,
 } from './recipeRunnerHandlers';
+import type { RecipeRepository } from '../recipes/recipeRepository';
 
 export class RecipeRunnerViewProvider
   implements vscode.WebviewViewProvider, RecipeRunnerHandlerHost
@@ -25,6 +26,7 @@ export class RecipeRunnerViewProvider
   private _previewInFlight = false;
   readonly state = new RecipeRunnerState();
   private _scaffoldHandler: (() => Promise<void>) | undefined;
+  private _recipeRepository: RecipeRepository | undefined;
 
   constructor(
     readonly bridge: HostBridge,
@@ -32,6 +34,14 @@ export class RecipeRunnerViewProvider
     readonly diffProvider: DiffContentProvider,
     private readonly extensionUri: vscode.Uri
   ) {}
+
+  get recipeRepository(): RecipeRepository | undefined {
+    return this._recipeRepository;
+  }
+
+  setRecipeRepository(repository: RecipeRepository): void {
+    this._recipeRepository = repository;
+  }
 
   get workspaceRoot(): string {
     return this.config.workspaceRoot;
@@ -105,6 +115,14 @@ export class RecipeRunnerViewProvider
     error?: string;
   }): void {
     this.state.setBootstrap(state);
+    this.postState();
+  }
+
+  setContextMatching(
+    matches: readonly import('../../shared').ContextRecipeMatch[],
+    slotsByRecipe: Record<string, string[]>
+  ): void {
+    this.state.setContextMatching(matches, slotsByRecipe);
     this.postState();
   }
 

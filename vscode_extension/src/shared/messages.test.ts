@@ -31,6 +31,20 @@ describe('isWebviewToExtensionMessage', () => {
         patchIndex: -1,
       })
     ).toBe(true);
+    expect(
+      isWebviewToExtensionMessage({
+        type: WEBVIEW_TO_EXTENSION.invokeRecipe,
+        recipeId: 'r1',
+        mode: 'auto',
+        args: { file: 'a.dart' },
+      })
+    ).toBe(true);
+    expect(
+      isWebviewToExtensionMessage({
+        type: WEBVIEW_TO_EXTENSION.createShortcut,
+        recipeId: 'r1',
+      })
+    ).toBe(true);
   });
 
   it('rejects openDiff without patchIndex', () => {

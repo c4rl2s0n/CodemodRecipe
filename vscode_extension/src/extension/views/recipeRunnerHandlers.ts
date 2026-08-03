@@ -1,8 +1,8 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { COMMANDS, DIFF } from '../constants';
-import type { DiffContentProvider } from '../diff/diffContentProvider';
 import type { ExtensionConfig } from '../config/extensionConfig';
+import type { DiffContentProvider } from '../diff/diffContentProvider';
 import type { HostBridge } from '../host/hostBridge';
 import {
   EXTENSION_TO_WEBVIEW,
@@ -14,6 +14,9 @@ import {
   type WebviewToExtensionMessage,
 } from '../../shared';
 import type { RecipeRunnerState } from './recipeRunnerState';
+import { createShortcutForRecipe } from '../recipes/createShortcut';
+import { invokeRecipe } from '../recipes/recipeInvoke';
+import type { RecipeRepository } from '../recipes/recipeRepository';
 
 export interface RecipeRunnerHandlerHost {
   readonly workspaceRoot: string;
@@ -26,11 +29,15 @@ export interface RecipeRunnerHandlerHost {
   get scaffoldHandler(): (() => Promise<void>) | undefined;
   postState(): void;
   postMessage(message: unknown): void;
-  run(recipe: import('../../shared').RecipeSchema): void;
+  run(
+    recipe: import('../../shared').RecipeSchema,
+    initialArgs?: Record<string, string>
+  ): void;
   ensureRecipeDetails(
     recipe: import('../../shared').RecipeSchema
   ): Promise<import('../../shared').RecipeSchema>;
   argsKey(args: Record<string, string>): string;
+  get recipeRepository(): RecipeRepository | undefined;
 }
 
 export async function handleWebviewMessage(
@@ -78,9 +85,57 @@ export async function handleWebviewMessage(
     case WEBVIEW_TO_EXTENSION.apply:
       await handleApply(host, message.selection);
       break;
+    case WEBVIEW_TO_EXTENSION.invokeRecipe:
+      await handleInvokeRecipe(
+        host,
+        message.recipeId,
+        message.mode,
+        message.args
+      );
+      break;
+    case WEBVIEW_TO_EXTENSION.createShortcut:
+      await handleCreateShortcut(host, message.recipeId, message.args);
+      break;
     default:
       assertNever(message);
   }
+}
+
+async function handleInvokeRecipe(
+  host: RecipeRunnerHandlerHost,
+  recipeId: string,
+  mode: 'auto' | 'run' | 'open',
+  args?: Record<string, string>
+): Promise<void> {
+  const repository = host.recipeRepository;
+  if (!repository) {
+    return;
+  }
+  await invokeRecipe(
+    {
+      repository,
+      bridge: host.bridge,
+      config: host.config,
+      runner: host,
+    },
+    { recipeId, mode, args }
+  );
+}
+
+async function handleCreateShortcut(
+  host: RecipeRunnerHandlerHost,
+  recipeId: string,
+  args?: Record<string, string>
+): Promise<void> {
+  const repository = host.recipeRepository;
+  if (!repository) {
+    return;
+  }
+  await createShortcutForRecipe(
+    { config: host.config, repository },
+    recipeId,
+    args
+  );
 }
 
 async function handleSelectRecipe(

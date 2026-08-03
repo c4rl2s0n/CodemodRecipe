@@ -26,6 +26,12 @@ export interface ExtensionClient {
   requestPreview(args: Record<string, string>, requestId: number): void;
   openDiff(path: string, patchIndex: number): void;
   apply(selection: SelectionPayload): void;
+  invokeRecipe(
+    recipeId: string,
+    mode: 'auto' | 'run' | 'open',
+    args?: Record<string, string>
+  ): void;
+  createShortcut(recipeId: string, args?: Record<string, string>): void;
 }
 
 export function createExtensionClient(deps: ExtensionClientDeps): ExtensionClient {
@@ -86,6 +92,21 @@ export function createExtensionClient(deps: ExtensionClientDeps): ExtensionClien
     },
     apply(selection: SelectionPayload) {
       post({ type: WEBVIEW_TO_EXTENSION.apply, selection });
+    },
+    invokeRecipe(recipeId, mode, args) {
+      post({
+        type: WEBVIEW_TO_EXTENSION.invokeRecipe,
+        recipeId,
+        mode,
+        ...(args ? { args } : {}),
+      });
+    },
+    createShortcut(recipeId, args) {
+      post({
+        type: WEBVIEW_TO_EXTENSION.createShortcut,
+        recipeId,
+        ...(args ? { args } : {}),
+      });
     },
   };
 }

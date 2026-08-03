@@ -252,9 +252,26 @@
           "type": "object",
           "default": {},
           "additionalProperties": {
-            "type": "string"
+            "oneOf": [
+              { "type": "string" },
+              {
+                "type": "object",
+                "required": ["recipeId"],
+                "properties": {
+                  "recipeId": { "type": "string" },
+                  "mode": {
+                    "type": "string",
+                    "enum": ["auto", "run", "open"]
+                  },
+                  "args": {
+                    "type": "object",
+                    "additionalProperties": { "type": "string" }
+                  }
+                }
+              }
+            ]
           },
-          "description": "Map of slot ids (any character key, e.g. \"1\", \"b\") to recipe ids for codemodRecipe.invokeSlot."
+          "description": "Map of slot ids to recipe ids (string) or { recipeId, mode?, args? } for codemodRecipe.invokeSlot."
         },
         "codemodRecipe.shortcutConfirmApply": {
           "type": "boolean",

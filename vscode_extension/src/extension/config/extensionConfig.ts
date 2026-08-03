@@ -1,6 +1,11 @@
 import * as vscode from 'vscode';
 import { CONFIG } from '../constants';
 import * as path from 'path';
+import {
+  parseSlotConfig,
+  serializeSlotConfig,
+  type SlotConfig,
+} from '../recipes/recipeSlots';
 
 export class ExtensionConfig {
   get workspaceRoot(): string {
@@ -49,15 +54,26 @@ export class ExtensionConfig {
     return Math.min(20, Math.max(1, value));
   }
 
+  /** Slot id → recipe id (string sugar only; structured slots expose recipeId). */
   get slots(): Record<string, string> {
+    const out: Record<string, string> = {};
+    for (const [key, config] of Object.entries(this.structuredSlots)) {
+      out[key] = typeof config === 'string' ? config : config.recipeId;
+    }
+    return out;
+  }
+
+  /** Full slot map including structured `{ recipeId, mode?, args? }`. */
+  get structuredSlots(): Record<string, SlotConfig> {
     const raw =
       vscode.workspace
         .getConfiguration(CONFIG.section)
-        .get<Record<string, string>>(CONFIG.slots) ?? {};
-    const out: Record<string, string> = {};
+        .get<Record<string, unknown>>(CONFIG.slots) ?? {};
+    const out: Record<string, SlotConfig> = {};
     for (const [key, value] of Object.entries(raw)) {
-      if (typeof value === 'string' && value.trim()) {
-        out[key.trim()] = value.trim();
+      const parsed = parseSlotConfig(value);
+      if (parsed) {
+        out[key.trim()] = parsed;
       }
     }
     return out;
@@ -79,10 +95,18 @@ export class ExtensionConfig {
 
   async updateSlot(
     slot: string,
-    recipeId: string,
+    recipeIdOrConfig: string | SlotConfig,
     target: vscode.ConfigurationTarget = vscode.ConfigurationTarget.Workspace
   ): Promise<void> {
-    const next = { ...this.slots, [slot]: recipeId };
+    const config: SlotConfig =
+      typeof recipeIdOrConfig === 'string'
+        ? recipeIdOrConfig
+        : recipeIdOrConfig;
+    const next: Record<string, string | Record<string, unknown>> = {};
+    for (const [key, value] of Object.entries(this.structuredSlots)) {
+      next[key] = serializeSlotConfig(value);
+    }
+    next[slot] = serializeSlotConfig(config);
     await vscode.workspace
       .getConfiguration(CONFIG.section)
       .update(CONFIG.slots, next, target);

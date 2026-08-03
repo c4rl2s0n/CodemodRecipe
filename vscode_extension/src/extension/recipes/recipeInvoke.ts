@@ -2,7 +2,6 @@ import * as vscode from 'vscode';
 import type { ExtensionConfig } from '../config/extensionConfig';
 import type { HostBridge } from '../host/hostBridge';
 import type { RecipeRepository } from '../recipes/recipeRepository';
-import type { RecipeRunnerViewProvider } from '../views/recipeRunnerViewProvider';
 import type {
   FilePreview,
   RecipeSchema,
@@ -15,6 +14,7 @@ import {
   recipeNeedsHostDerive,
   resolveEditorContext,
 } from './recipeContext';
+import { resolveSlot } from './recipeSlots';
 
 export type InvokeMode = 'auto' | 'run' | 'open';
 
@@ -43,7 +43,7 @@ export async function invokeRecipe(
     repository: RecipeRepository;
     bridge: HostBridge;
     config: ExtensionConfig;
-    runner: RecipeRunnerViewProvider;
+    runner: { run(recipe: RecipeSchema, initialArgs?: Record<string, string>): void };
   },
   invoke: InvokeArgs
 ): Promise<void> {
@@ -134,7 +134,7 @@ export async function invokeSlot(
     repository: RecipeRepository;
     bridge: HostBridge;
     config: ExtensionConfig;
-    runner: RecipeRunnerViewProvider;
+    runner: { run(recipe: RecipeSchema, initialArgs?: Record<string, string>): void };
   },
   slotArgs: InvokeSlotArgs
 ): Promise<void> {
@@ -145,17 +145,17 @@ export async function invokeSlot(
     );
     return;
   }
-  const recipeId = deps.config.slots[slot];
-  if (!recipeId) {
+  const resolved = resolveSlot(slot, deps.config.structuredSlots[slot]);
+  if (!resolved) {
     vscode.window.showWarningMessage(
       `Codemod Recipe: no recipe assigned to slot \`${slot}\`.`
     );
     return;
   }
   await invokeRecipe(deps, {
-    recipeId,
-    mode: slotArgs.mode ?? 'auto',
-    args: slotArgs.args,
+    recipeId: resolved.recipeId,
+    mode: slotArgs.mode ?? resolved.mode,
+    args: mergeArgLayers(resolved.args, slotArgs.args ?? {}),
   });
 }
 
@@ -175,7 +175,7 @@ async function executeRecipe(
   deps: {
     bridge: HostBridge;
     config: ExtensionConfig;
-    runner: RecipeRunnerViewProvider;
+    runner: { run(recipe: RecipeSchema, initialArgs?: Record<string, string>): void };
   },
   recipe: RecipeSchema,
   args: Record<string, string>

@@ -29,10 +29,17 @@ flowchart LR
   "codemodRecipe.slots": {
     "1": "flutter.add_cubit",
     "b": "flutter.add_bloc",
-    "c": "flutter.add_cubit"
+    "c": {
+      "recipeId": "flutter.add_cubit",
+      "mode": "auto",
+      "args": { "kind": "widget" }
+    }
   }
 }
 ```
+
+Slot values may be a **recipe id string** or a structured object with optional
+`mode` and fixed `args` (merged over derived values at invoke time).
 
 Slot ids are **any character key** VS Code can use as a chord second stroke
 (`1`, `b`, `[`, …) — not only digits.
@@ -89,8 +96,15 @@ On preview/apply failure, the runner opens with the derived args (never silent f
 
 Setting `codemodRecipe.shortcutConfirmApply` (default `false`) asks before auto-apply.
 
-Discovery without a fixed recipe: **Codemod Recipe: Run From Cursor Context**
-(`Ctrl+Alt+R`) QuickPicks recipes that match any derived arg, then uses `auto` mode.
+Discovery without a fixed recipe:
+
+- **Codemod Recipe: Run From Cursor Context** (`Ctrl+Alt+R`) QuickPicks recipes
+  that match any derived arg, then uses `auto` mode.
+- The **Recipes** sidebar has a **Context** expander listing the same Tier A
+  matches (local `from` / `contextKey` prefills). Use **Run** / **Open**, or
+  right-click **Create shortcut…** to assign a slot (optionally with fixed args).
+  Slot badges (`slot:b`) appear on matching recipes; chord text is a hint for
+  the default `Ctrl+Shift+I` / `Ctrl+Shift+T` prefixes.
 
 ## Deriving args (`from`)
 

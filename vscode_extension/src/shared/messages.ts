@@ -13,6 +13,8 @@ export const WEBVIEW_TO_EXTENSION = {
   preview: 'preview',
   openDiff: 'openDiff',
   apply: 'apply',
+  invokeRecipe: 'invokeRecipe',
+  createShortcut: 'createShortcut',
 } as const;
 
 export const EXTENSION_TO_WEBVIEW = {
@@ -40,7 +42,18 @@ export type WebviewToExtensionMessage =
       requestId?: number;
     }
   | { type: typeof WEBVIEW_TO_EXTENSION.openDiff; path: string; patchIndex: number }
-  | { type: typeof WEBVIEW_TO_EXTENSION.apply; selection: SelectionPayload };
+  | { type: typeof WEBVIEW_TO_EXTENSION.apply; selection: SelectionPayload }
+  | {
+      type: typeof WEBVIEW_TO_EXTENSION.invokeRecipe;
+      recipeId: string;
+      mode: 'auto' | 'run' | 'open';
+      args?: Record<string, string>;
+    }
+  | {
+      type: typeof WEBVIEW_TO_EXTENSION.createShortcut;
+      recipeId: string;
+      args?: Record<string, string>;
+    };
 
 export type ExtensionToWebviewMessage =
   | { type: typeof EXTENSION_TO_WEBVIEW.state; state: RecipeViewState }
@@ -125,6 +138,19 @@ export function isWebviewToExtensionMessage(
       return typeof value.path === 'string' && typeof value.patchIndex === 'number';
     case WEBVIEW_TO_EXTENSION.apply:
       return isSelectionPayload(value.selection);
+    case WEBVIEW_TO_EXTENSION.invokeRecipe:
+      return (
+        typeof value.recipeId === 'string' &&
+        (value.mode === 'auto' ||
+          value.mode === 'run' ||
+          value.mode === 'open') &&
+        (value.args === undefined || isStringRecord(value.args))
+      );
+    case WEBVIEW_TO_EXTENSION.createShortcut:
+      return (
+        typeof value.recipeId === 'string' &&
+        (value.args === undefined || isStringRecord(value.args))
+      );
     default:
       return false;
   }

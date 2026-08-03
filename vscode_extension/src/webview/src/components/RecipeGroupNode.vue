@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { RecipeSchema } from '../shared';
 import type { RecipeTreeNode } from '../lib/recipeTree';
+import { slotBadgeLabel, slotBadgeTitle, slotsForRecipe } from '../lib/slotBadges';
 
 defineProps<{
   node: RecipeTreeNode;
@@ -12,6 +13,7 @@ defineProps<{
   onRecipeContextMenu: (recipe: RecipeSchema, event: MouseEvent) => void;
   recipeSubtitle: (recipe: RecipeSchema) => string;
   recipeTitle: (recipe: RecipeSchema) => string;
+  slotsByRecipe: Record<string, string[]>;
 }>();
 </script>
 
@@ -39,7 +41,15 @@ defineProps<{
             class="recipe-button secondary"
             @click="selectRecipe(item.id)"
           >
-            <span class="recipe-title">{{ recipeTitle(item) }}</span>
+            <span class="recipe-title-row">
+              <span class="recipe-title">{{ recipeTitle(item) }}</span>
+              <span
+                v-for="slot in slotsForRecipe(slotsByRecipe, item.id)"
+                :key="slot"
+                class="badge badge-slot"
+                :title="slotBadgeTitle(slot)"
+              >{{ slotBadgeLabel(slot) }}</span>
+            </span>
             <span v-if="item.id.includes('.')" class="recipe-group-path">{{ item.id }}</span>
             <span class="recipe-desc">{{ recipeSubtitle(item) }}</span>
           </button>
@@ -57,6 +67,7 @@ defineProps<{
         :on-recipe-context-menu="onRecipeContextMenu"
         :recipe-subtitle="recipeSubtitle"
         :recipe-title="recipeTitle"
+        :slots-by-recipe="slotsByRecipe"
       />
     </div>
   </div>

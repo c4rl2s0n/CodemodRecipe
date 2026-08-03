@@ -10,7 +10,13 @@ import {
   LanguageSession,
   registerRecipeLanguageSupport,
 } from './language/session';
-import { prefillArgs, resolveEditorContext } from './recipes/recipeContext';
+import { resolveEditorContext } from './recipes/recipeContext';
+import { matchRecipesToEditorContext } from './recipes/recipeContextMatch';
+import {
+  refreshContextMatches,
+  registerContextMatchUpdates,
+} from './recipes/contextMatchService';
+import { createShortcutForRecipe } from './recipes/createShortcut';
 import {
   formatInvokeKeybindingJson,
   formatSlotKeybindingJson,
@@ -37,6 +43,7 @@ export function activate(context: vscode.ExtensionContext): void {
     diffProvider,
     context.extensionUri
   );
+  runner.setRecipeRepository(repository);
 
   let recipeReloadTimer: NodeJS.Timeout | undefined;
   let recipeReloadGeneration = 0;
@@ -76,6 +83,7 @@ export function activate(context: vscode.ExtensionContext): void {
       repository.getDiagnostics()
     );
     diagnostics.publish(repository.getDiagnostics(), config.workspaceRoot);
+    refreshContextMatches({ repository, config, runner });
   };
 
   const maybeOfferScaffold = async (): Promise<void> => {
@@ -258,6 +266,7 @@ export function activate(context: vscode.ExtensionContext): void {
     { dispose: () => disposeCodemodWatcher() },
     { dispose: () => languageSession?.dispose() },
     diagnostics.disposable,
+    registerContextMatchUpdates({ repository, config, runner }),
     vscode.workspace.onDidSaveTextDocument((document) => {
       if (document.uri.scheme !== 'file') {
         return;
@@ -385,31 +394,7 @@ export function activate(context: vscode.ExtensionContext): void {
         if (!id) {
           return;
         }
-        const slot = await vscode.window.showInputBox({
-          prompt: 'Slot id (any character key, e.g. 1, b, c)',
-          placeHolder: 'b',
-          validateInput: (value) =>
-            value.trim() ? undefined : 'Slot id is required',
-        });
-        if (!slot?.trim()) {
-          return;
-        }
-        const normalized = slot.trim();
-        await config.updateSlot(normalized, id);
-        const copy = await vscode.window.showInformationMessage(
-          `Codemod Recipe: assigned slot \`${normalized}\` → ${id}`,
-          'Copy run keybinding',
-          'Copy open keybinding'
-        );
-        if (copy === 'Copy run keybinding') {
-          await vscode.env.clipboard.writeText(
-            formatSlotKeybindingJson(normalized, 'auto')
-          );
-        } else if (copy === 'Copy open keybinding') {
-          await vscode.env.clipboard.writeText(
-            formatSlotKeybindingJson(normalized, 'open')
-          );
-        }
+        await createShortcutForRecipe({ config, repository }, id);
       }
     ),
     vscode.commands.registerCommand(
@@ -440,12 +425,10 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(COMMANDS.runFromCursorContext, async () => {
       const recipes = repository.getRecipes();
       const editorContext = resolveEditorContext(config.workspaceRoot);
-      const candidates = recipes
-        .map((recipe) => ({
-          recipe,
-          args: prefillArgs(recipe, editorContext.values),
-        }))
-        .filter((candidate) => Object.keys(candidate.args).length > 0);
+      const candidates = matchRecipesToEditorContext(
+        recipes,
+        editorContext.values
+      );
 
       if (candidates.length === 0) {
         vscode.window.showInformationMessage(
@@ -456,8 +439,8 @@ export function activate(context: vscode.ExtensionContext): void {
 
       const picked = await vscode.window.showQuickPick(
         candidates.map((candidate) => ({
-          label: candidate.recipe.name,
-          description: candidate.recipe.description,
+          label: candidate.name,
+          description: candidate.description,
           detail: Object.entries(candidate.args)
             .map(([key, value]) => `${key}: ${value}`)
             .join(', '),
@@ -473,7 +456,7 @@ export function activate(context: vscode.ExtensionContext): void {
         await invokeRecipe(
           { repository, bridge, config, runner },
           {
-            recipeId: picked.candidate.recipe.id,
+            recipeId: picked.candidate.recipeId,
             mode: 'auto',
             args: picked.candidate.args,
           }
