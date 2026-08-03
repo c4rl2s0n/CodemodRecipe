@@ -1,6 +1,6 @@
 ---
 name: codemod-recipe-change-checklist
-description: Use when finishing a change to ensure docs/skills/rules stay in sync with the updated behavior. Provides a cross-cutting “what to update” checklist across README files, the modular skills library, and any Cursor rules/config.
+description: Use when finishing a change to ensure docs/skills/rules stay in sync with the updated behavior. Covers READMEs, human Getting Started docs, modular skills, and Cursor rules/config.
 disable-model-invocation: true
 ---
 
@@ -24,16 +24,21 @@ If your change affects behavior, conventions, configuration, or how developers s
    - Root: `README.md`
    - Extension: `vscode_extension/README.md`
 
-2. **Modular skills library**
+2. **Human product docs**
+   - `docs/getting-started.md` and `docs/README.md` when the end-user mental model or day-1 workflows change (setup, YAML surface, templates/Jinja, maps/vars, languages, extension UX, MCP workflow, design-pattern taxonomy, docs layout)
+   - How to edit: skill `codemod-recipe-human-docs` (read its `reference.md`)
+   - Deep reference still belongs in topic `docs/*.md`; Getting Started stays a thin narrative with deep links
+
+3. **Modular skills library**
    - `.cursor/skills/*/SKILL.md` for any subsystem you changed
    - `.cursor/skills/codebase-memory/reference.md` when subsystems or exploration entry points change
    - If you created/changed a new subsystem or workflow, add a new skill file rather than only editing existing ones.
 
-3. **Cursor rules / rules-like guidance (if present)**
+4. **Cursor rules / rules-like guidance (if present)**
    - If your repo uses `.cursor/rules/*` (or similar guidance files), update those when conventions or workflows changed.
    - If the repo does not currently have rules, include this checklist as the primary “where to document changes” guidance.
 
-4. **Vibe agent docs**
+5. **Vibe agent docs**
    - `.vibe.md` Agent tooling section when exploration entry points change
    - `.vibe/prompts/cli.md` when upgrading `mistral-vibe` (re-diff bundled `cli.md`)
 
@@ -63,5 +68,6 @@ If you changed any of these, you almost certainly need coordinated updates acros
 - [ ] Do the relevant skills’ “Where to look” links still point to correct files?
 - [ ] Did I update the skill text where it describes the changed behavior?
 - [ ] Did I update one or more READMEs if end-user or developer workflows changed?
+- [ ] Did Getting Started stay accurate for anything I changed that a new user would learn?
 - [ ] If I introduced a new message/command/type, did I update the checklist’s “what to update” mapping?
 

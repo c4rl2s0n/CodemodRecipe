@@ -28,6 +28,12 @@ Project skills live under `.agents/skills/`:
 
 Skills use SKILL.md routers; read `reference.md` in a skill directory when you need full detail.
 
+## Human documentation
+
+Canonical human onboarding: `docs/getting-started.md` (map: `docs/README.md`).
+
+When you change product concepts that guide teaches (setup, YAML surface, templates/Jinja, maps/vars, languages, extension UX, MCP workflow, design-pattern taxonomy, docs layout), update Getting Started in the same change. Use skill `codemod-recipe-human-docs` (see its `reference.md` for structure and edit rules). Do not put this obligation in `export/rulesets/` — consumer workspaces do not ship these docs.
+
 ## Rust keyword ownership
 
 When changing Rust handling of recipe/YAML vocabulary, prefer the centralized owners over raw string literals:

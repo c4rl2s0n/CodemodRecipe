@@ -1,5 +1,7 @@
 # New Project Quickstart (Rust MCP + YAML)
 
+New here? Start with [Getting Started](getting-started.md) for the full product walkthrough.
+
 This guide shows how to use `codemod_recipe` in a brand-new project with the Rust MCP server and YAML recipes.
 
 ## 1) Prerequisites

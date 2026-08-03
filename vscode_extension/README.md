@@ -1,5 +1,7 @@
 # Codemod Recipe — VS Code Extension
 
+New here? Start with [Getting Started](../docs/getting-started.md) for the full product walkthrough.
+
 A GUI for the [`codemod_recipe`](../README.md) toolkit. Browse recipes, fill in
 placeholder values through a form, preview changes as a native diff, and choose
 exactly which edits to keep before applying.

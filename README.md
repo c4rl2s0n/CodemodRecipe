@@ -204,10 +204,14 @@ node vscode_extension/scripts/smoke.mjs
 
 ## Documentation
 
+- [docs/getting-started.md](docs/getting-started.md) — **start here** (human walkthrough)
+- [docs/README.md](docs/README.md) — documentation map / index
 - [ARCHITECTURE.md](ARCHITECTURE.md) — design overview
 - [docs/new-project-rust-mcp.md](docs/new-project-rust-mcp.md) — Rust MCP quickstart for new projects
 - [docs/tree-sitter-queries.md](docs/tree-sitter-queries.md) — tree-sitter query language for recipes
 - [docs/language-support.md](docs/language-support.md) — multi-language tree-sitter support
+- [docs/recipe-templates.md](docs/recipe-templates.md) — MiniJinja / Jinja2 templates
+- [docs/recipe-design-patterns.md](docs/recipe-design-patterns.md) — create vs modify recipe taxonomy
 - [docs/codemod-mcp.md](docs/codemod-mcp.md) — MCP tools and agent workflow
 - [docs/recipe-shortcuts.md](docs/recipe-shortcuts.md) — VS Code shortcuts, slots, and `from` arg derivation
 - [vscode_extension/README.md](vscode_extension/README.md) — extension setup

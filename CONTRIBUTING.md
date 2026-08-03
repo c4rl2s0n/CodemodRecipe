@@ -63,3 +63,7 @@ Scaffold integration (optional):
 Bootstrap copies files from `export/` into consumer projects. When editing skills or
 rules, update both `.agents/skills/` (workspace copy) and `export/.agents/skills/`
 (source of truth for bootstrap).
+
+Human product docs (`docs/getting-started.md`, `docs/README.md`) are **in-repo only**
+and are not copied by bootstrap. Keep them in sync when user-facing concepts change;
+see skill `codemod-recipe-human-docs` under `.cursor/skills/`.
