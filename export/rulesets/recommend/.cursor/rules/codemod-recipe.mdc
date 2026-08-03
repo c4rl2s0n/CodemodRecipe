@@ -3,9 +3,15 @@ description: Codemod Recipe MCP orientation and recommended companion tooling
 alwaysApply: true
 ---
 
+<!-- codemod-bootstrap: edit_policy=recommend -->
+
 # Codemod Recipe
 
 This workspace uses **codemod-recipe** for deterministic AST edits via YAML recipes and the Rust MCP server (`codemod-mcp`). Supports Dart, Rust, Java, Kotlin, SQL/SQLite, and 300+ languages via lazy-loaded tree-sitter grammars.
+
+Prefer recipes for structural, multi-file, and AST-boundary edits. Always `preview_recipe` before `apply_recipe` (pass `previewToken`). Dart is the default language; set `language:` for non-Dart files.
+
+Layout: `.codemod/{recipes,maps,templates,variables}`.
 
 ## MCP tools
 
