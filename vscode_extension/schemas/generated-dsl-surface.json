@@ -2,53 +2,53 @@
   "containers": {
     "arg": {
       "children": [
-        "name",
-        "required",
-        "inputKind",
         "abbr",
-        "help",
-        "defaultsTo",
-        "options",
         "allowCustomValue",
         "contextKey",
-        "from"
+        "defaultsTo",
+        "from",
+        "help",
+        "inputKind",
+        "name",
+        "options",
+        "required"
       ]
     },
     "create": {
       "children": [
+        "if",
+        "ifExists",
+        "ifNot",
         "path",
         "template",
-        "templateFile",
-        "ifExists",
-        "if",
-        "ifNot"
+        "templateFile"
       ]
     },
     "delete": {
       "children": [
-        "path",
-        "ifMissing",
         "if",
-        "ifNot"
+        "ifMissing",
+        "ifNot",
+        "path"
       ]
     },
     "edit": {
       "children": [
-        "path",
+        "if",
+        "ifNot",
         "language",
-        "when",
-        "whenNot",
         "let",
         "ops",
-        "if",
-        "ifNot"
+        "path",
+        "when",
+        "whenNot"
       ]
     },
     "explorerMenuEntry": {
       "children": [
-        "kind",
+        "args",
         "if",
-        "args"
+        "kind"
       ]
     },
     "ifStep": {
@@ -60,94 +60,94 @@
     },
     "insert": {
       "children": [
-        "query",
-        "capture",
         "anchor",
+        "capture",
+        "query",
         "text"
       ]
     },
     "letBinding": {
       "children": [
-        "name",
-        "query",
+        "as",
         "capture",
         "extract",
-        "onNoMatch",
-        "onManyMatches",
         "join",
-        "as"
+        "name",
+        "onManyMatches",
+        "onNoMatch",
+        "query"
       ]
     },
     "mapRoot": {
       "children": [
-        "id",
         "description",
+        "id",
         "map"
       ]
     },
     "opsItem": {
       "children": [
         "insert",
-        "replace",
-        "remove"
+        "remove",
+        "replace"
       ]
     },
     "recipeRef": {
       "children": [
         "id",
-        "with",
         "if",
-        "ifNot"
+        "ifNot",
+        "with"
       ],
-      "scalar_alt": true
+      "scalarAlt": true
     },
     "recipeRoot": {
       "children": [
-        "id",
-        "name",
-        "description",
         "args",
+        "description",
+        "explorerMenu",
+        "id",
         "maps",
-        "queries",
-        "steps",
+        "name",
         "postExecution",
-        "explorerMenu"
+        "queries",
+        "steps"
       ]
     },
     "remove": {
       "children": [
-        "query",
         "capture",
-        "includeLeadingTrivia"
+        "includeLeadingTrivia",
+        "query"
       ]
     },
     "replace": {
       "children": [
-        "query",
         "capture",
-        "text",
-        "includeLeadingTrivia"
+        "includeLeadingTrivia",
+        "query",
+        "text"
       ]
     },
     "stepsItem": {
       "children": [
-        "edit",
         "create",
         "delete",
-        "recipe",
-        "if"
+        "edit",
+        "if",
+        "recipe"
       ]
     },
     "variablesRoot": {
       "children": [
-        "id",
         "description",
+        "id",
         "values"
       ]
     },
     "with": {
       "children": [],
-      "map_value": true
+      "mapValue": true
     }
   },
   "documentRoots": {

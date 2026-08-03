@@ -1,3 +1,6 @@
+use schemars::gen::SchemaGenerator;
+use schemars::schema::{InstanceType, Schema, SchemaObject, SubschemaValidation};
+use schemars::JsonSchema;
 use serde::de::{self, Visitor};
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use std::fmt;
@@ -105,7 +108,53 @@ impl<'de> Deserialize<'de> for QuerySpec {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+impl JsonSchema for QuerySpec {
+    fn schema_name() -> String {
+        "queryField".to_string()
+    }
+
+    fn json_schema(_gen: &mut SchemaGenerator) -> Schema {
+        SchemaObject {
+            subschemas: Some(Box::new(SubschemaValidation {
+                one_of: Some(vec![
+                    SchemaObject {
+                        instance_type: Some(InstanceType::String.into()),
+                        ..Default::default()
+                    }
+                    .into(),
+                    SchemaObject {
+                        instance_type: Some(InstanceType::Array.into()),
+                        array: Some(Box::new(schemars::schema::ArrayValidation {
+                            items: Some(schemars::schema::SingleOrVec::Single(Box::new(
+                                SchemaObject {
+                                    instance_type: Some(InstanceType::String.into()),
+                                    ..Default::default()
+                                }
+                                .into(),
+                            ))),
+                            min_items: Some(1),
+                            ..Default::default()
+                        })),
+                        ..Default::default()
+                    }
+                    .into(),
+                ]),
+                ..Default::default()
+            })),
+            metadata: Some(Box::new(schemars::schema::Metadata {
+                description: Some(
+                    "Tree-sitter query string or a non-empty list of query steps".to_string(),
+                ),
+                ..Default::default()
+            })),
+            ..Default::default()
+        }
+        .into()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, JsonSchema)]
+#[schemars(rename = "queryDefinition")]
 pub struct QueryDefinition {
     pub query: String,
 }

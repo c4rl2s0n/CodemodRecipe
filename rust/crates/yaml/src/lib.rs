@@ -17,9 +17,7 @@ pub use arg_from::{ArgFrom, ArgFromOnNoMatch, ArgFromScope, ArgFromSpec};
 pub use compose::{
     compose_recipe, expand_recipe_references, recipe_ref_id, ComposeError, ComposeStep,
 };
-pub use dsl_structure::{
-    container_by_id, container_for_parent_wire, ContainerDef, EnumDef, CONTAINERS, ENUMS,
-};
+pub use dsl_structure::container_for_parent_wire;
 pub use dsl_vocabulary::{
     all_entries, description_for_enum, description_for_key, keyword_docs_json, syntax_alternation,
     KeywordDocJson, SyntaxGroup, VocabEntry, VocabKind,
@@ -31,4 +29,4 @@ pub use let_binding::{LetBinding, LetBindings, LetExtract, LetOnManyMatches, Let
 pub use model::{parse_if_step, parse_recipe_ref, RecipeRef, ScopedStep};
 pub use query_spec::{QueryDefinition, QuerySpec};
 pub use schema_gen::{map_schema, recipe_schema, variables_schema};
-pub use surface_gen::dsl_surface_json;
+pub use surface_gen::{container_children, dsl_surface_json};

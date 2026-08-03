@@ -1,6 +1,6 @@
-//! Generate VS Code artifacts from the DSL structural inventory and vocabulary.
+//! Generate VS Code artifacts from the model (`JsonSchema`) and vocabulary.
 //!
-//! Outputs: JSON Schema (from model-aligned structure), dsl-surface, keyword docs, TextMate.
+//! Outputs: JSON Schema (schemars from model), dsl-surface, keyword docs, TextMate.
 
 use std::env;
 use std::fs;

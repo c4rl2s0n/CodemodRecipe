@@ -11,7 +11,7 @@ disable-model-invocation: true
 Use this skill before concluding work if you:
 - changed the JSON-over-stdio protocol / message contract
 - changed recipe schema serialization or arg input metadata
-- changed `dsl_structure` / model fields / DSL codegen outputs (`generated-dsl-surface.json`, schemas)
+- changed `model.rs` / `dsl::` / `ENTRIES` / DSL codegen outputs (`generated-dsl-surface.json`, schemas) — never hand-edit generated schema shape
 - changed the VS Code language toolkit (`vscode_extension/src/extension/language/`)
 - changed preview/diff/apply selection semantics
 - changed UI behavior that affects how agents should implement future Vue changes

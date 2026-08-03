@@ -2,14 +2,15 @@
   "$id": "https://codemod-recipe.dev/schemas/map.schema.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
+  "description": "Workspace map YAML asset root (`map.schema.json`).",
   "properties": {
     "description": {
+      "default": null,
       "description": "Short recipe description.",
       "type": "string"
     },
     "id": {
       "description": "Unique recipe identifier.",
-      "minLength": 1,
       "type": "string"
     },
     "map": {

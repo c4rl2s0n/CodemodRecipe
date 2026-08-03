@@ -17,7 +17,7 @@ For Rust maintenance, recipe/YAML vocabulary is centralized instead of being sca
   - re-exports `crate::dsl`; `preview_kinds` uses step `WIRE` constants
   - `query_conventions`: shared query path detection for `.scm` file-backed queries and id-based query-library references
   - `preview_kinds`: serialized file preview kinds used by the host
-- Codegen: `cargo run -p codemod_recipe_yaml --bin codemod_dsl_codegen` (or `scripts/generate-dsl-artifacts.sh`) writes JSON Schema (`recipe`/`map`/`variables`), `generated-dsl-surface.json`, `generated-keyword-docs.json`, and TextMate keyword alternations from `dsl_structure` + `ENTRIES`. Run after changing `model.rs`, `dsl_structure`, `dsl::`, or `dsl_vocabulary`. Do not hand-edit schema shape or TS container maps.
+- Codegen: `cargo run -p codemod_recipe_yaml --bin codemod_dsl_codegen` (or `scripts/generate-dsl-artifacts.sh`) derives JSON Schema (`recipe`/`map`/`variables`) and `generated-dsl-surface.json` from `model.rs` (`JsonSchema` / schemars), merges `ENTRIES` descriptions, and updates keyword docs + TextMate. Run after changing `model.rs`, `dsl::`, or `dsl_vocabulary`. Do not hand-edit schema shape, maintain a parallel container inventory, or invent TS container maps.
 - `rust/crates/core/src/resource_path.rs`
   - shared safe resolver for file-backed resources; update this instead of adding ad hoc `join`, `canonicalize`, or traversal checks in host/engine
 - `rust/crates/host/src/protocol_keys.rs`

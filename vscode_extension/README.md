@@ -138,7 +138,7 @@ Default chords: `Ctrl+Shift+I` then `1` (run/auto), `Ctrl+Shift+T` then `1` (ope
 Under `codemodRecipe.codemodRoot` (default `.codemod/**`) YAML files:
 
 - **Structural completions** from `generated-dsl-surface.json` (codegen from Rust
-  `dsl_structure` / model) — e.g. after `recipe:` + newline, keys like `id` /
+  `model.rs` via schemars) — e.g. after `recipe:` + newline, keys like `id` /
   `with` / `if` / `ifNot`
 - **Runtime completions** — recipe ids, `language:` ids, and `with:` arg names from
   the host catalog / `describe` (not hand-maintained lists)
@@ -150,9 +150,9 @@ Under `codemodRecipe.codemodRoot` (default `.codemod/**`) YAML files:
 - **Diagnostics** come from the Rust host validate of **saved** files (Problems
   panel source `codemod-recipe`)
 
-DSL structure for editors: edit `model.rs` + `dsl::` + `dsl_structure` + `ENTRIES`
+DSL structure for editors: edit `model.rs` (+ `JsonSchema`) + `dsl::` + `ENTRIES`
 prose, then run `scripts/generate-dsl-artifacts.sh` (schema, surface, keyword-docs,
-TextMate). Do not hardcode container children in TypeScript.
+TextMate). Do not hardcode container children in TypeScript or hand-edit generated schemas.
 
 You can also run **Codemod Recipe: Run From Cursor Context** (`Cmd+Alt+R` on
 macOS, `Ctrl+Alt+R` elsewhere). Context keys include `file`, `selection`, `word`,

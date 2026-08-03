@@ -1,3 +1,8 @@
+use schemars::gen::SchemaGenerator;
+use schemars::schema::{
+    InstanceType, ObjectValidation, Schema, SchemaObject, SubschemaValidation,
+};
+use schemars::JsonSchema;
 use serde::de::{self, MapAccess, Visitor};
 use serde::{Deserialize, Deserializer};
 use std::fmt;
@@ -11,7 +16,19 @@ use crate::guard_list::GuardList;
 use crate::let_binding::LetBindings;
 pub use crate::query_spec::{QueryDefinition, QuerySpec};
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+/// Known `inputKind` values for schema/completions; parse still accepts any string.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, JsonSchema)]
+#[serde(rename_all = "lowercase")]
+#[schemars(rename = "inputKind", rename_all = "lowercase")]
+pub enum ArgInputKind {
+    Text,
+    File,
+    Directory,
+    Choice,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, JsonSchema)]
+#[schemars(rename = "recipeRoot")]
 pub struct Recipe {
     pub id: String,
     #[serde(default)]
@@ -32,12 +49,14 @@ pub struct Recipe {
     pub explorer_menu: Option<ExplorerMenu>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, JsonSchema)]
+#[schemars(rename = "arg")]
 pub struct Arg {
     pub name: String,
     #[serde(default)]
     pub required: bool,
     #[serde(default, rename = "inputKind")]
+    #[schemars(with = "Option<ArgInputKind>")]
     pub input_kind: Option<String>,
     #[serde(default)]
     pub abbr: Option<String>,
@@ -63,15 +82,33 @@ pub enum PostExecution {
     Map(serde_yaml::Value),
 }
 
+impl JsonSchema for PostExecution {
+    fn schema_name() -> String {
+        "postExecutionItem".to_string()
+    }
+
+    fn json_schema(_gen: &mut SchemaGenerator) -> Schema {
+        SchemaObject {
+            instance_type: Some(InstanceType::String.into()),
+            ..Default::default()
+        }
+        .into()
+    }
+}
+
 /// Reference to another recipe, optionally with call-site arg bindings.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, JsonSchema)]
+#[schemars(rename = "recipeRefObject")]
 pub struct RecipeRef {
     pub id: String,
     /// Child arg name → template string rendered in the parent context.
+    #[serde(default)]
     pub with: BTreeMap<String, String>,
     /// MiniJinja expression; skip the inlined recipe when false.
+    #[serde(default, rename = "if")]
     pub if_expr: Option<String>,
     /// MiniJinja expression; skip the inlined recipe when true.
+    #[serde(default, rename = "ifNot")]
     pub if_not: Option<String>,
 }
 
@@ -80,6 +117,39 @@ impl RecipeRef {
     pub fn has_condition(&self) -> bool {
         self.if_expr.as_ref().is_some_and(|s| !s.trim().is_empty())
             || self.if_not.as_ref().is_some_and(|s| !s.trim().is_empty())
+    }
+}
+
+/// YAML `recipe:` step value: scalar id or object form.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RecipeRefYaml;
+
+impl JsonSchema for RecipeRefYaml {
+    fn schema_name() -> String {
+        "recipeRef".to_string()
+    }
+
+    fn json_schema(gen: &mut SchemaGenerator) -> Schema {
+        let object = gen.subschema_for::<RecipeRef>();
+        SchemaObject {
+            subschemas: Some(Box::new(SubschemaValidation {
+                one_of: Some(vec![
+                    SchemaObject {
+                        instance_type: Some(InstanceType::String.into()),
+                        string: Some(Box::new(schemars::schema::StringValidation {
+                            min_length: Some(1),
+                            ..Default::default()
+                        })),
+                        ..Default::default()
+                    }
+                    .into(),
+                    object,
+                ]),
+                ..Default::default()
+            })),
+            ..Default::default()
+        }
+        .into()
     }
 }
 
@@ -99,6 +169,17 @@ impl ScopedStep {
     }
 }
 
+/// Authoring shape for an `if:` step group (`if` / `ifNot` / `steps`).
+#[derive(Debug, Clone, PartialEq, Eq, JsonSchema)]
+#[schemars(rename = "ifStep")]
+pub struct IfStep {
+    #[serde(default, rename = "if")]
+    pub if_expr: Option<String>,
+    #[serde(default, rename = "ifNot")]
+    pub if_not: Option<String>,
+    pub steps: Vec<Step>,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Step {
     Edit(EditStep),
@@ -107,6 +188,48 @@ pub enum Step {
     RecipeRef(RecipeRef),
     Scoped(ScopedStep),
     Unknown(String, serde_yaml::Value),
+}
+
+impl JsonSchema for Step {
+    fn schema_name() -> String {
+        "step".to_string()
+    }
+
+    fn json_schema(gen: &mut SchemaGenerator) -> Schema {
+        let mut properties = schemars::Map::new();
+        properties.insert(
+            dsl::recipe::steps::edit::WIRE.to_string(),
+            gen.subschema_for::<EditStep>(),
+        );
+        properties.insert(
+            dsl::recipe::steps::create::WIRE.to_string(),
+            gen.subschema_for::<CreateStep>(),
+        );
+        properties.insert(
+            dsl::recipe::steps::delete::WIRE.to_string(),
+            gen.subschema_for::<DeleteStep>(),
+        );
+        properties.insert(
+            dsl::recipe::steps::recipe_ref::WIRE.to_string(),
+            gen.subschema_for::<RecipeRefYaml>(),
+        );
+        properties.insert(
+            dsl::recipe::steps::if_step::WIRE.to_string(),
+            gen.subschema_for::<IfStep>(),
+        );
+        SchemaObject {
+            instance_type: Some(InstanceType::Object.into()),
+            object: Some(Box::new(ObjectValidation {
+                properties,
+                additional_properties: Some(Box::new(Schema::Bool(false))),
+                min_properties: Some(1),
+                max_properties: Some(1),
+                ..Default::default()
+            })),
+            ..Default::default()
+        }
+        .into()
+    }
 }
 
 /// Error for a multi-key step/op map, naming the first surplus key.
@@ -352,8 +475,9 @@ fn yaml_scalar_to_string(value: &serde_yaml::Value) -> Option<String> {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[schemars(rename = "createStep", rename_all = "camelCase")]
 pub struct CreateStep {
     pub path: String,
     #[serde(default)]
@@ -368,16 +492,18 @@ pub struct CreateStep {
     pub if_not: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Default, JsonSchema)]
 #[serde(rename_all = "lowercase")]
+#[schemars(rename = "ifExists", rename_all = "lowercase")]
 pub enum IfExistsStrategy {
     #[default]
     Fail,
     Skip,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[schemars(rename = "deleteStep", rename_all = "camelCase")]
 pub struct DeleteStep {
     pub path: String,
     #[serde(default, rename = "ifMissing")]
@@ -388,16 +514,18 @@ pub struct DeleteStep {
     pub if_not: Option<String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Default, JsonSchema)]
 #[serde(rename_all = "lowercase")]
+#[schemars(rename = "ifMissing", rename_all = "lowercase")]
 pub enum IfMissingStrategy {
     #[default]
     Fail,
     Skip,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Default, JsonSchema)]
 #[serde(rename_all = "camelCase")]
+#[schemars(rename = "editStep", rename_all = "camelCase")]
 pub struct EditStep {
     pub path: String,
     #[serde(default)]
@@ -421,6 +549,40 @@ pub enum EditOp {
     Replace(ReplaceOp),
     Remove(RemoveOp),
     Unknown(String, serde_yaml::Value),
+}
+
+impl JsonSchema for EditOp {
+    fn schema_name() -> String {
+        "editOp".to_string()
+    }
+
+    fn json_schema(gen: &mut SchemaGenerator) -> Schema {
+        let mut properties = schemars::Map::new();
+        properties.insert(
+            dsl::recipe::steps::edit::ops::insert::WIRE.to_string(),
+            gen.subschema_for::<InsertOp>(),
+        );
+        properties.insert(
+            dsl::recipe::steps::edit::ops::replace::WIRE.to_string(),
+            gen.subschema_for::<ReplaceOp>(),
+        );
+        properties.insert(
+            dsl::recipe::steps::edit::ops::remove::WIRE.to_string(),
+            gen.subschema_for::<RemoveOp>(),
+        );
+        SchemaObject {
+            instance_type: Some(InstanceType::Object.into()),
+            object: Some(Box::new(ObjectValidation {
+                properties,
+                additional_properties: Some(Box::new(Schema::Bool(false))),
+                min_properties: Some(1),
+                max_properties: Some(1),
+                ..Default::default()
+            })),
+            ..Default::default()
+        }
+        .into()
+    }
 }
 
 impl<'de> Deserialize<'de> for EditOp {
@@ -479,7 +641,8 @@ impl<'de> Deserialize<'de> for EditOp {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, JsonSchema)]
+#[schemars(rename = "insertOp")]
 pub struct InsertOp {
     pub query: QuerySpec,
     pub capture: String,
@@ -487,14 +650,16 @@ pub struct InsertOp {
     pub text: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, JsonSchema)]
 #[serde(rename_all = "lowercase")]
+#[schemars(rename = "anchor", rename_all = "lowercase")]
 pub enum InsertAnchor {
     Start,
     End,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, JsonSchema)]
+#[schemars(rename = "replaceOp")]
 pub struct ReplaceOp {
     pub query: QuerySpec,
     pub capture: String,
@@ -503,10 +668,73 @@ pub struct ReplaceOp {
     pub include_leading_trivia: bool,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, JsonSchema)]
+#[schemars(rename = "removeOp")]
 pub struct RemoveOp {
     pub query: QuerySpec,
     pub capture: String,
     #[serde(default, rename = "includeLeadingTrivia")]
     pub include_leading_trivia: bool,
+}
+
+/// Workspace map YAML asset root (`map.schema.json`).
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, JsonSchema)]
+#[schemars(rename = "mapRoot")]
+pub struct MapAsset {
+    pub id: String,
+    #[serde(default)]
+    pub description: Option<String>,
+    pub map: BTreeMap<String, String>,
+}
+
+/// Workspace variables YAML asset root (`variables.schema.json`).
+#[derive(Debug, Clone, PartialEq, Deserialize, JsonSchema)]
+#[schemars(rename = "variablesRoot")]
+pub struct VariablesAsset {
+    pub id: String,
+    #[serde(default)]
+    pub description: Option<String>,
+    pub values: BTreeMap<String, VariablesValue>,
+}
+
+/// Scalar values allowed under a variables asset `values` map.
+#[derive(Debug, Clone, PartialEq, Deserialize)]
+#[serde(untagged)]
+pub enum VariablesValue {
+    String(String),
+    Number(f64),
+    Bool(bool),
+}
+
+impl JsonSchema for VariablesValue {
+    fn schema_name() -> String {
+        "variablesValue".to_string()
+    }
+
+    fn json_schema(_gen: &mut SchemaGenerator) -> Schema {
+        SchemaObject {
+            subschemas: Some(Box::new(SubschemaValidation {
+                one_of: Some(vec![
+                    SchemaObject {
+                        instance_type: Some(InstanceType::String.into()),
+                        ..Default::default()
+                    }
+                    .into(),
+                    SchemaObject {
+                        instance_type: Some(InstanceType::Number.into()),
+                        ..Default::default()
+                    }
+                    .into(),
+                    SchemaObject {
+                        instance_type: Some(InstanceType::Boolean.into()),
+                        ..Default::default()
+                    }
+                    .into(),
+                ]),
+                ..Default::default()
+            })),
+            ..Default::default()
+        }
+        .into()
+    }
 }

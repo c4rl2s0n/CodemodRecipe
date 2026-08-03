@@ -8,7 +8,7 @@ practices review.
 | Crate | Owns | Must not |
 |-------|------|----------|
 | `core` | patches, atomic apply, `resource_path` | recipe DSL parsing, tree-sitter edits |
-| `yaml` | model, validate, `dsl::`, `dsl_structure`, vocabulary/codegen | host I/O, MCP |
+| `yaml` | model (+ JsonSchema), validate, `dsl::`, vocabulary/codegen | host I/O, MCP |
 | `engine` | tree-sitter query ops | YAML schema surface |
 | `host` | registry, dispatch, MCP, bootstrap | ad-hoc path joins outside `resource_path` |
 
@@ -22,17 +22,18 @@ Workspace lints ([`rust/Cargo.toml`](../../../rust/Cargo.toml)):
 
 Prefer centralized owners over string literals:
 
+- `rust/crates/yaml/src/model.rs` — structural SSOT (parse AST + `JsonSchema`); schemas/surface are codegen outputs
 - `rust/crates/yaml/src/dsl/` — wire constants (`dsl::recipe::…`, maps, variables)
-- `rust/crates/yaml/src/dsl_structure.rs` — container→child inventory (drives schema + surface)
-- `rust/crates/yaml/src/model.rs` — runtime parse AST
-- `rust/crates/yaml/src/dsl_vocabulary.rs` — author descriptions (`ENTRIES`)
+- `rust/crates/yaml/src/dsl_vocabulary.rs` — author descriptions only (`ENTRIES`)
 - `rust/crates/host/src/protocol_keys.rs` — host transport keys only
 
-After changing vocabulary, structure, or model fields:
+After changing model fields, `dsl::`, or `ENTRIES`:
 
 ```bash
 scripts/generate-dsl-artifacts.sh
 ```
+
+Do not hand-edit generated schemas or maintain a parallel container inventory.
 
 Commit refreshed `vscode_extension/schemas/*`, `generated-dsl-surface.json`,
 `generated-keyword-docs.json`, and TextMate lists. CI fails if generated files drift.

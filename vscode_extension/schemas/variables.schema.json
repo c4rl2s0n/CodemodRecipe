@@ -2,29 +2,35 @@
   "$id": "https://codemod-recipe.dev/schemas/variables.schema.json",
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
+  "definitions": {
+    "variablesValue": {
+      "oneOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "number"
+        },
+        {
+          "type": "boolean"
+        }
+      ]
+    }
+  },
+  "description": "Workspace variables YAML asset root (`variables.schema.json`).",
   "properties": {
     "description": {
+      "default": null,
       "description": "Short recipe description.",
       "type": "string"
     },
     "id": {
       "description": "Unique recipe identifier.",
-      "minLength": 1,
       "type": "string"
     },
     "values": {
       "additionalProperties": {
-        "oneOf": [
-          {
-            "type": "string"
-          },
-          {
-            "type": "number"
-          },
-          {
-            "type": "boolean"
-          }
-        ]
+        "$ref": "#/definitions/variablesValue"
       },
       "description": "Constant values for a workspace variables YAML asset (requires id).",
       "type": "object"

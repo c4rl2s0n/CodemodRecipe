@@ -38,13 +38,13 @@ Skills use SKILL.md routers; read `reference.md` in a skill directory when you n
 
 When changing Rust handling of recipe/YAML vocabulary, prefer the centralized owners over raw string literals:
 
-- `rust/crates/yaml/src/dsl/` — schema-aligned wire constants (`dsl::recipe::…`, `map_asset`, `variables_asset`); enums under field modules; `//!` module docs for structure
-- `rust/crates/yaml/src/dsl_structure.rs` — container→child inventory aligned with `model.rs` (drives generated JSON Schema + `generated-dsl-surface.json`)
-- `rust/crates/yaml/src/model.rs` — runtime parse AST (structural source of truth with `dsl_structure`)
-- `rust/crates/yaml/src/dsl_vocabulary.rs` — `ENTRIES` (author descriptions, optional `schema_path`); `query_conventions` in `keywords.rs`; `preview_kinds` uses step `WIRE` constants
+- `rust/crates/yaml/src/model.rs` — **structural SSOT** (parse AST + `JsonSchema` / schemars); JSON Schema and `generated-dsl-surface.json` are derived from this at codegen time — do not hand-edit schema shape or maintain a parallel container inventory
+- `rust/crates/yaml/src/dsl/` — schema-aligned wire constants (`dsl::recipe::…`, `map_asset`, `variables_asset`); enums under field modules; keep in sync with model serde renames
+- `rust/crates/yaml/src/dsl_vocabulary.rs` — `ENTRIES` (author **descriptions** only, optional `schema_path`); not structure
+- `rust/crates/yaml/src/keywords.rs` — `query_conventions`; `preview_kinds` uses step `WIRE` constants
 - `rust/crates/host/src/protocol_keys.rs` — host-only transport keys like `inlineRecipe`, `previewToken`, `snippetLines`, `ok`, `error`
 
-After changing vocabulary, structure, or model fields, run `scripts/generate-dsl-artifacts.sh` (or `cargo run -p codemod_recipe_yaml --bin codemod_dsl_codegen`) to refresh `vscode_extension/schemas/recipe.schema.json`, `map.schema.json`, `variables.schema.json`, `generated-dsl-surface.json`, `generated-keyword-docs.json`, and TextMate keyword lists. CI verifies generated files are committed.
+After changing model fields, `dsl::` wires, or `ENTRIES` prose, run `scripts/generate-dsl-artifacts.sh` (or `cargo run -p codemod_recipe_yaml --bin codemod_dsl_codegen`) to refresh `vscode_extension/schemas/recipe.schema.json`, `map.schema.json`, `variables.schema.json`, `generated-dsl-surface.json`, `generated-keyword-docs.json`, and TextMate keyword lists. CI verifies generated files are committed. Do not edit those generated files by hand.
 
 Editor UX lives under `vscode_extension/src/extension/language/` (`LanguageSession`, `yamlContext`, providers) — do not add ad hoc completion regex tables for DSL structure.
 

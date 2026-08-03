@@ -3,60 +3,97 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "additionalProperties": true,
   "definitions": {
+    "ExplorerMenuKind": {
+      "description": "Explorer resource kind for a menu entry.",
+      "enum": [
+        "file",
+        "folder"
+      ],
+      "type": "string"
+    },
+    "LetExtract": {
+      "enum": [
+        "text",
+        "kind",
+        "exists",
+        "count"
+      ],
+      "type": "string"
+    },
+    "LetOnManyMatches": {
+      "enum": [
+        "error",
+        "first",
+        "join"
+      ],
+      "type": "string"
+    },
+    "LetOnNoMatch": {
+      "enum": [
+        "error",
+        "use"
+      ],
+      "type": "string"
+    },
+    "anchor": {
+      "enum": [
+        "start",
+        "end"
+      ],
+      "type": "string"
+    },
     "arg": {
       "additionalProperties": true,
       "properties": {
         "abbr": {
+          "default": null,
           "description": "Short CLI abbreviation for a recipe arg.",
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string"
         },
         "allowCustomValue": {
+          "default": null,
           "description": "Allow values outside options for choice args.",
           "type": "boolean"
         },
         "contextKey": {
+          "default": null,
           "description": "Deprecated alias of string `from` — editor context key used to prefill this arg.",
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string"
         },
         "defaultsTo": {
+          "default": null,
           "description": "Default value when the arg is omitted.",
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string"
         },
         "from": {
-          "additionalProperties": true,
-          "description": "How to derive this arg from editor context: builtin key, template, or tree-sitter query (like let)."
+          "allOf": [
+            {
+              "$ref": "#/definitions/argFrom"
+            }
+          ],
+          "default": null,
+          "description": "Derive this arg from editor context (`file`, query, template, …)."
         },
         "help": {
+          "default": null,
           "description": "Help text shown in the recipe runner.",
-          "type": [
-            "string",
-            "null"
-          ]
+          "type": "string"
         },
         "inputKind": {
-          "description": "Runner input widget kind for a recipe arg.",
-          "enum": [
-            "text",
-            "file",
-            "directory",
-            "choice"
+          "allOf": [
+            {
+              "$ref": "#/definitions/inputKind"
+            }
           ],
-          "type": "string"
+          "default": null,
+          "description": "Runner input widget kind for a recipe arg."
         },
         "name": {
           "description": "Human-readable recipe name.",
           "type": "string"
         },
         "options": {
+          "default": [],
           "description": "Allowed values for choice-style args.",
           "items": {
             "type": "string"
@@ -64,28 +101,33 @@
           "type": "array"
         },
         "required": {
+          "default": false,
           "description": "Whether the recipe arg must be provided.",
           "type": "boolean"
         }
       },
+      "required": [
+        "name"
+      ],
       "type": "object"
+    },
+    "argFrom": {
+      "additionalProperties": true
     },
     "createStep": {
       "additionalProperties": true,
       "properties": {
         "if": {
+          "default": null,
           "description": "Run nested steps when shared if / ifNot MiniJinja expressions pass.",
           "type": "string"
         },
         "ifExists": {
-          "description": "Behavior when create target path already exists.",
-          "enum": [
-            "fail",
-            "skip"
-          ],
-          "type": "string"
+          "$ref": "#/definitions/ifExists",
+          "description": "Behavior when create target path already exists."
         },
         "ifNot": {
+          "default": null,
           "description": "MiniJinja expression over recipe args; skip the step when true.",
           "type": "string"
         },
@@ -94,32 +136,35 @@
           "type": "string"
         },
         "template": {
+          "default": null,
           "description": "Inline file content for a create step.",
           "type": "string"
         },
         "templateFile": {
+          "default": null,
           "description": "Template path resolved recipe-local first, then under .codemod.",
           "type": "string"
         }
       },
+      "required": [
+        "path"
+      ],
       "type": "object"
     },
     "deleteStep": {
       "additionalProperties": true,
       "properties": {
         "if": {
+          "default": null,
           "description": "Run nested steps when shared if / ifNot MiniJinja expressions pass.",
           "type": "string"
         },
         "ifMissing": {
-          "description": "Behavior when delete target path is missing.",
-          "enum": [
-            "fail",
-            "skip"
-          ],
-          "type": "string"
+          "$ref": "#/definitions/ifMissing",
+          "description": "Behavior when delete target path is missing."
         },
         "ifNot": {
+          "default": null,
           "description": "MiniJinja expression over recipe args; skip the step when true.",
           "type": "string"
         },
@@ -128,6 +173,9 @@
           "type": "string"
         }
       },
+      "required": [
+        "path"
+      ],
       "type": "object"
     },
     "editOp": {
@@ -154,40 +202,29 @@
       "additionalProperties": true,
       "properties": {
         "if": {
+          "default": null,
           "description": "Run nested steps when shared if / ifNot MiniJinja expressions pass.",
           "type": "string"
         },
         "ifNot": {
+          "default": null,
           "description": "MiniJinja expression over recipe args; skip the step when true.",
           "type": "string"
         },
         "language": {
+          "default": null,
           "description": "Tree-sitter language id when extension inference is ambiguous.",
           "type": "string"
         },
         "let": {
-          "description": "Step-local bindings recomputed before each op.",
-          "oneOf": [
-            {
-              "items": {
-                "$ref": "#/definitions/letBinding"
-              },
-              "type": "array"
-            },
-            {
-              "additionalProperties": {
-                "$ref": "#/definitions/letBinding"
-              },
-              "type": "object"
-            }
-          ]
+          "$ref": "#/definitions/letBindings",
+          "description": "Step-local bindings recomputed before each op."
         },
         "ops": {
           "description": "Ordered edit operations applied sequentially on the same file.",
           "items": {
             "$ref": "#/definitions/editOp"
           },
-          "minItems": 1,
           "type": "array"
         },
         "path": {
@@ -195,48 +232,42 @@
           "type": "string"
         },
         "when": {
-          "description": "Guard queries; all must match before the edit runs.",
-          "oneOf": [
-            {
-              "description": "Inline tree-sitter query, .scm path, query-library ref, or chain.",
-              "type": "string"
-            },
-            {
-              "items": {
-                "type": "string"
-              },
-              "minItems": 1,
-              "type": "array"
-            }
-          ]
+          "$ref": "#/definitions/queryField",
+          "description": "Guard queries; all must match before the edit runs."
         },
         "whenNot": {
-          "description": "Forbidden guard queries; edit runs only if none match.",
-          "oneOf": [
-            {
-              "description": "Inline tree-sitter query, .scm path, query-library ref, or chain.",
-              "type": "string"
-            },
-            {
-              "items": {
-                "type": "string"
-              },
-              "minItems": 1,
-              "type": "array"
-            }
-          ]
+          "$ref": "#/definitions/queryField",
+          "description": "Forbidden guard queries; edit runs only if none match."
         }
       },
+      "required": [
+        "ops",
+        "path"
+      ],
       "type": "object"
+    },
+    "explorerMenu": {
+      "oneOf": [
+        {
+          "$ref": "#/definitions/explorerMenuEntry"
+        },
+        {
+          "items": {
+            "$ref": "#/definitions/explorerMenuEntry"
+          },
+          "type": "array"
+        }
+      ]
     },
     "explorerMenuEntry": {
       "additionalProperties": true,
+      "description": "One Explorer menu rule: match `kind`, optionally gate on MiniJinja `if` over `path`.",
       "properties": {
         "args": {
           "additionalProperties": {
             "type": "string"
           },
-          "description": "Recipe argument definitions shown in the runner UI.",
+          "description": "Recipe arg name → MiniJinja expression over click `path` only.",
           "type": "object"
         },
         "if": {
@@ -244,23 +275,39 @@
           "type": "string"
         },
         "kind": {
-          "enum": [
-            "file",
-            "folder"
-          ],
-          "type": "string"
+          "$ref": "#/definitions/ExplorerMenuKind"
         }
       },
+      "required": [
+        "kind"
+      ],
       "type": "object"
+    },
+    "ifExists": {
+      "enum": [
+        "fail",
+        "skip"
+      ],
+      "type": "string"
+    },
+    "ifMissing": {
+      "enum": [
+        "fail",
+        "skip"
+      ],
+      "type": "string"
     },
     "ifStep": {
       "additionalProperties": true,
+      "description": "Authoring shape for an `if:` step group (`if` / `ifNot` / `steps`).",
       "properties": {
         "if": {
+          "default": null,
           "description": "Run nested steps when shared if / ifNot MiniJinja expressions pass.",
           "type": "string"
         },
         "ifNot": {
+          "default": null,
           "description": "MiniJinja expression over recipe args; skip the step when true.",
           "type": "string"
         },
@@ -269,72 +316,76 @@
           "items": {
             "$ref": "#/definitions/step"
           },
-          "minItems": 1,
           "type": "array"
         }
       },
+      "required": [
+        "steps"
+      ],
       "type": "object"
+    },
+    "inputKind": {
+      "description": "Known `inputKind` values for schema/completions; parse still accepts any string.",
+      "enum": [
+        "text",
+        "file",
+        "directory",
+        "choice"
+      ],
+      "type": "string"
     },
     "insertOp": {
       "additionalProperties": true,
       "properties": {
         "anchor": {
-          "description": "Insertion anchor relative to the capture (start or end).",
-          "enum": [
-            "start",
-            "end"
-          ],
-          "type": "string"
+          "$ref": "#/definitions/anchor",
+          "description": "Insertion anchor relative to the capture (start or end)."
         },
         "capture": {
           "description": "Capture name from the query whose span is edited.",
           "type": "string"
         },
         "query": {
-          "description": "Inline tree-sitter query, .scm path, query-library ref, or chain.",
-          "oneOf": [
-            {
-              "description": "Inline tree-sitter query, .scm path, query-library ref, or chain.",
-              "type": "string"
-            },
-            {
-              "items": {
-                "type": "string"
-              },
-              "minItems": 1,
-              "type": "array"
-            }
-          ]
+          "$ref": "#/definitions/queryField",
+          "description": "Inline tree-sitter query, .scm path, query-library ref, or chain."
         },
         "text": {
           "description": "Replacement or inserted source text (Jinja-rendered).",
           "type": "string"
         }
       },
+      "required": [
+        "anchor",
+        "capture",
+        "query",
+        "text"
+      ],
       "type": "object"
     },
     "letBinding": {
       "additionalProperties": true,
       "properties": {
         "as": {
-          "description": "Jinja template to compute a let value from prior locals.",
+          "default": null,
+          "description": "Optional template to compute final value from prior locals (and recipe args).",
           "type": "string"
         },
         "capture": {
+          "default": null,
           "description": "Capture name from the query whose span is edited.",
           "type": "string"
         },
         "extract": {
-          "description": "How to derive a let binding value from query captures.",
-          "enum": [
-            "text",
-            "kind",
-            "exists",
-            "count"
+          "allOf": [
+            {
+              "$ref": "#/definitions/LetExtract"
+            }
           ],
-          "type": "string"
+          "default": "text",
+          "description": "How to derive a let binding value from query captures."
         },
         "join": {
+          "default": null,
           "description": "Separator when onManyMatches is join.",
           "type": "string"
         },
@@ -343,42 +394,72 @@
           "type": "string"
         },
         "onManyMatches": {
-          "description": "Behavior when a let binding query matches multiple nodes.",
-          "enum": [
-            "error",
-            "first",
-            "join"
+          "allOf": [
+            {
+              "$ref": "#/definitions/LetOnManyMatches"
+            }
           ],
-          "type": "string"
+          "default": "error",
+          "description": "Behavior when a let binding query matches multiple nodes."
         },
         "onNoMatch": {
-          "description": "Behavior when a let binding query matches nothing.",
-          "enum": [
-            "error",
-            "use"
+          "allOf": [
+            {
+              "$ref": "#/definitions/LetOnNoMatch"
+            }
           ],
-          "type": "string"
+          "default": "error",
+          "description": "Behavior when a let binding query matches nothing."
         },
         "query": {
-          "description": "Inline tree-sitter query, .scm path, query-library ref, or chain.",
-          "oneOf": [
+          "allOf": [
             {
-              "description": "Inline tree-sitter query, .scm path, query-library ref, or chain.",
-              "type": "string"
-            },
-            {
-              "items": {
-                "type": "string"
-              },
-              "minItems": 1,
-              "type": "array"
+              "$ref": "#/definitions/queryField"
             }
-          ]
+          ],
+          "default": null,
+          "description": "Inline tree-sitter query, .scm path, query-library ref, or chain."
         }
       },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "letBindings": {
+      "oneOf": [
+        {
+          "items": {
+            "$ref": "#/definitions/letBinding"
+          },
+          "type": "array"
+        },
+        {
+          "additionalProperties": {
+            "$ref": "#/definitions/letBinding"
+          },
+          "type": "object"
+        }
+      ]
+    },
+    "postExecutionItem": {
+      "type": "string"
+    },
+    "queryDefinition": {
+      "additionalProperties": true,
+      "properties": {
+        "query": {
+          "description": "Inline tree-sitter query, .scm path, query-library ref, or chain.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "query"
+      ],
       "type": "object"
     },
     "queryField": {
+      "description": "Tree-sitter query string or a non-empty list of query steps",
       "oneOf": [
         {
           "type": "string"
@@ -399,32 +480,41 @@
           "type": "string"
         },
         {
-          "additionalProperties": true,
-          "properties": {
-            "id": {
-              "description": "Unique recipe identifier.",
-              "minLength": 1,
-              "type": "string"
-            },
-            "if": {
-              "description": "Run nested steps when shared if / ifNot MiniJinja expressions pass.",
-              "type": "string"
-            },
-            "ifNot": {
-              "description": "MiniJinja expression over recipe args; skip the step when true.",
-              "type": "string"
-            },
-            "with": {
-              "additionalProperties": {
-                "type": "string"
-              },
-              "description": "Call-site arg bindings when referencing a child recipe.",
-              "type": "object"
-            }
-          },
-          "type": "object"
+          "$ref": "#/definitions/recipeRefObject"
         }
       ]
+    },
+    "recipeRefObject": {
+      "additionalProperties": true,
+      "description": "Reference to another recipe, optionally with call-site arg bindings.",
+      "properties": {
+        "id": {
+          "description": "Unique recipe identifier.",
+          "type": "string"
+        },
+        "if": {
+          "default": null,
+          "description": "Run nested steps when shared if / ifNot MiniJinja expressions pass.",
+          "type": "string"
+        },
+        "ifNot": {
+          "default": null,
+          "description": "MiniJinja expression; skip the inlined recipe when true.",
+          "type": "string"
+        },
+        "with": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "description": "Child arg name → template string rendered in the parent context.",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
     },
     "removeOp": {
       "additionalProperties": true,
@@ -434,26 +524,19 @@
           "type": "string"
         },
         "includeLeadingTrivia": {
+          "default": false,
           "description": "Include leading trivia when replacing or removing a capture.",
           "type": "boolean"
         },
         "query": {
-          "description": "Inline tree-sitter query, .scm path, query-library ref, or chain.",
-          "oneOf": [
-            {
-              "description": "Inline tree-sitter query, .scm path, query-library ref, or chain.",
-              "type": "string"
-            },
-            {
-              "items": {
-                "type": "string"
-              },
-              "minItems": 1,
-              "type": "array"
-            }
-          ]
+          "$ref": "#/definitions/queryField",
+          "description": "Inline tree-sitter query, .scm path, query-library ref, or chain."
         }
       },
+      "required": [
+        "capture",
+        "query"
+      ],
       "type": "object"
     },
     "replaceOp": {
@@ -464,30 +547,24 @@
           "type": "string"
         },
         "includeLeadingTrivia": {
+          "default": false,
           "description": "Include leading trivia when replacing or removing a capture.",
           "type": "boolean"
         },
         "query": {
-          "description": "Inline tree-sitter query, .scm path, query-library ref, or chain.",
-          "oneOf": [
-            {
-              "description": "Inline tree-sitter query, .scm path, query-library ref, or chain.",
-              "type": "string"
-            },
-            {
-              "items": {
-                "type": "string"
-              },
-              "minItems": 1,
-              "type": "array"
-            }
-          ]
+          "$ref": "#/definitions/queryField",
+          "description": "Inline tree-sitter query, .scm path, query-library ref, or chain."
         },
         "text": {
           "description": "Replacement or inserted source text (Jinja-rendered).",
           "type": "string"
         }
       },
+      "required": [
+        "capture",
+        "query",
+        "text"
+      ],
       "type": "object"
     },
     "step": {
@@ -528,26 +605,21 @@
       "type": "array"
     },
     "description": {
+      "default": null,
       "description": "Short recipe description.",
       "type": "string"
     },
     "explorerMenu": {
-      "description": "Opt-in for the VS Code Explorer Codemod Recipe submenu: list of { kind: file|folder, if?, args? } (single object is sugar). args maps recipe arg names to MiniJinja expressions over path; first matching entry wins.",
-      "oneOf": [
+      "allOf": [
         {
-          "$ref": "#/definitions/explorerMenuEntry"
-        },
-        {
-          "items": {
-            "$ref": "#/definitions/explorerMenuEntry"
-          },
-          "type": "array"
+          "$ref": "#/definitions/explorerMenu"
         }
-      ]
+      ],
+      "default": null,
+      "description": "Opt-in for VS Code Explorer context QuickPick (`kind` + optional path `if`)."
     },
     "id": {
       "description": "Unique recipe identifier.",
-      "minLength": 1,
       "type": "string"
     },
     "maps": {
@@ -557,31 +629,25 @@
         },
         "type": "object"
       },
+      "default": {},
       "description": "Recipe-local map entries merged with workspace maps.",
       "type": "object"
     },
     "name": {
+      "default": null,
       "description": "Human-readable recipe name.",
       "type": "string"
     },
     "postExecution": {
       "description": "Post-apply shell commands or script paths under the codemod root (Jinja-rendered).",
       "items": {
-        "type": "string"
+        "$ref": "#/definitions/postExecutionItem"
       },
       "type": "array"
     },
     "queries": {
       "additionalProperties": {
-        "properties": {
-          "query": {
-            "type": "string"
-          }
-        },
-        "required": [
-          "query"
-        ],
-        "type": "object"
+        "$ref": "#/definitions/queryDefinition"
       },
       "description": "Recipe-local named query definitions.",
       "type": "object"
@@ -591,7 +657,6 @@
       "items": {
         "$ref": "#/definitions/step"
       },
-      "minItems": 1,
       "type": "array"
     }
   },

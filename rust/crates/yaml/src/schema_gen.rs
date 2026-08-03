@@ -1,28 +1,64 @@
-//! Emit JSON Schema documents from [`crate::dsl_structure`] + [`crate::dsl_vocabulary`].
+//! Emit JSON Schema documents from [`crate::model`] via schemars + [`crate::dsl_vocabulary`].
 
 use crate::description_for_key;
 use crate::dsl;
-use crate::dsl_structure::{container_by_id, CONTAINERS, ENUMS};
 use crate::dsl_vocabulary::{all_entries, VocabKind};
-use serde_json::{json, Map, Value};
+use crate::model::{MapAsset, Recipe, VariablesAsset};
+use schemars::gen::SchemaSettings;
+use schemars::schema::RootSchema;
+use serde_json::{Map, Value};
 
-fn desc(wire: &str) -> Option<String> {
-    description_for_key(wire).map(str::to_string)
+fn draft07_root_schema_for<T: schemars::JsonSchema>() -> RootSchema {
+    let settings = SchemaSettings::draft07().with(|s| {
+        s.option_nullable = false;
+        s.option_add_null_type = false;
+    });
+    settings.into_generator().into_root_schema_for::<T>()
 }
 
-fn prop(wire: &str, schema: Value) -> (String, Value) {
-    let mut obj = match schema {
-        Value::Object(m) => m,
-        other => {
-            let mut m = Map::new();
-            m.insert("type".into(), other);
-            m
+fn root_to_value(root: RootSchema) -> Value {
+    serde_json::to_value(root).expect("schemars RootSchema serializes")
+}
+
+/// Walk schema objects and attach ENTRIES prose to properties / discriminator keys.
+fn merge_vocab_descriptions(value: &mut Value) {
+    match value {
+        Value::Object(map) => {
+            if let Some(Value::Object(props)) = map.get_mut("properties") {
+                let keys: Vec<String> = props.keys().cloned().collect();
+                for key in keys {
+                    if let Some(prop) = props.get_mut(&key) {
+                        apply_description(prop, &key);
+                        merge_vocab_descriptions(prop);
+                    }
+                }
+            }
+            if map.contains_key("definitions") {
+                if let Some(defs) = map.get_mut("definitions") {
+                    merge_vocab_descriptions(defs);
+                }
+            } else if let Some(defs) = map.get_mut("$defs") {
+                merge_vocab_descriptions(defs);
+            }
+            for (k, v) in map.iter_mut() {
+                if k != "properties" && k != "definitions" && k != "$defs" {
+                    merge_vocab_descriptions(v);
+                }
+            }
         }
-    };
-    if let Some(d) = desc(wire) {
-        obj.insert("description".into(), Value::String(d));
+        Value::Array(items) => {
+            for item in items {
+                merge_vocab_descriptions(item);
+            }
+        }
+        _ => {}
     }
-    // Prefer StepKind/OpKind prose for discriminator keys.
+}
+
+fn apply_description(prop: &mut Value, wire: &str) {
+    let Value::Object(obj) = prop else {
+        return;
+    };
     if let Some(entry) = all_entries()
         .iter()
         .find(|e| e.wire == wire && matches!(e.kind, VocabKind::StepKind | VocabKind::OpKind))
@@ -31,545 +67,310 @@ fn prop(wire: &str, schema: Value) -> (String, Value) {
             "description".into(),
             Value::String(entry.description.to_string()),
         );
+        return;
     }
-    (wire.to_string(), Value::Object(obj))
-}
-
-fn string_prop() -> Value {
-    json!({ "type": "string" })
-}
-
-fn string_or_null() -> Value {
-    json!({ "type": ["string", "null"] })
-}
-
-fn bool_prop() -> Value {
-    json!({ "type": "boolean" })
-}
-
-fn enum_prop(enum_id: &str) -> Value {
-    let values = ENUMS
-        .iter()
-        .find(|e| e.id == enum_id)
-        .map(|e| e.values)
-        .unwrap_or(&[]);
-    json!({ "type": "string", "enum": values })
-}
-
-fn ref_def(name: &str) -> Value {
-    json!({ "$ref": format!("#/definitions/{name}") })
-}
-
-fn object_props(pairs: Vec<(String, Value)>, additional: bool) -> Value {
-    let mut properties = Map::new();
-    for (k, v) in pairs {
-        properties.insert(k, v);
+    if obj.contains_key("description") {
+        return;
     }
-    json!({
-        "type": "object",
-        "additionalProperties": additional,
-        "properties": properties
-    })
+    if let Some(d) = description_for_key(wire) {
+        obj.insert("description".into(), Value::String(d.to_string()));
+    }
 }
 
-fn container_props(container_id: &str, field_schemas: &[(&str, Value)]) -> Value {
-    let container = container_by_id(container_id).expect("known container");
-    let mut pairs = Vec::new();
-    for child in container.children {
-        if let Some((_, schema)) = field_schemas.iter().find(|(w, _)| *w == *child) {
-            pairs.push(prop(child, schema.clone()));
-        } else {
-            pairs.push(prop(child, string_prop()));
-        }
+/// Prefer draft-07 `definitions` key (Red Hat YAML / existing artifacts).
+fn normalize_definitions_key(schema: &mut Value) {
+    let Some(obj) = schema.as_object_mut() else {
+        return;
+    };
+    if let Some(defs) = obj.remove("$defs") {
+        obj.insert("definitions".into(), defs);
     }
-    object_props(pairs, true)
 }
 
-/// Build `recipe.schema.json` from the structural inventory.
-pub fn recipe_schema() -> Value {
-    let query_field = json!({
-        "oneOf": [
-            { "type": "string", "description": description_for_key(dsl::recipe::steps::edit::ops::insert::field::QUERY).unwrap_or("") },
-            { "type": "array", "minItems": 1, "items": { "type": "string" } }
-        ]
-    });
-
-    let insert_op = container_props(
-        "insert",
-        &[
-            (
-                dsl::recipe::steps::edit::ops::insert::field::QUERY,
-                query_field.clone(),
-            ),
-            (
-                dsl::recipe::steps::edit::ops::insert::field::CAPTURE,
-                string_prop(),
-            ),
-            (
-                dsl::recipe::steps::edit::ops::insert::field::ANCHOR,
-                enum_prop("anchor"),
-            ),
-            (
-                dsl::recipe::steps::edit::ops::insert::field::TEXT,
-                string_prop(),
-            ),
-        ],
-    );
-
-    let replace_op = container_props(
-        "replace",
-        &[
-            (
-                dsl::recipe::steps::edit::ops::replace::field::QUERY,
-                query_field.clone(),
-            ),
-            (
-                dsl::recipe::steps::edit::ops::replace::field::CAPTURE,
-                string_prop(),
-            ),
-            (
-                dsl::recipe::steps::edit::ops::replace::field::TEXT,
-                string_prop(),
-            ),
-            (
-                dsl::recipe::steps::edit::ops::replace::field::INCLUDE_LEADING_TRIVIA,
-                bool_prop(),
-            ),
-        ],
-    );
-
-    let remove_op = container_props(
-        "remove",
-        &[
-            (
-                dsl::recipe::steps::edit::ops::remove::field::QUERY,
-                query_field.clone(),
-            ),
-            (
-                dsl::recipe::steps::edit::ops::remove::field::CAPTURE,
-                string_prop(),
-            ),
-            (
-                dsl::recipe::steps::edit::ops::remove::field::INCLUDE_LEADING_TRIVIA,
-                bool_prop(),
-            ),
-        ],
-    );
-
-    let let_binding = container_props(
-        "letBinding",
-        &[
-            (
-                dsl::recipe::steps::edit::let_binding::field::NAME,
-                string_prop(),
-            ),
-            (
-                dsl::recipe::steps::edit::let_binding::field::QUERY,
-                query_field.clone(),
-            ),
-            (
-                dsl::recipe::steps::edit::let_binding::field::CAPTURE,
-                string_prop(),
-            ),
-            (
-                dsl::recipe::steps::edit::let_binding::field::EXTRACT,
-                enum_prop("extract"),
-            ),
-            (
-                dsl::recipe::steps::edit::let_binding::field::ON_NO_MATCH,
-                enum_prop("onNoMatch"),
-            ),
-            (
-                dsl::recipe::steps::edit::let_binding::field::ON_MANY_MATCHES,
-                enum_prop("onManyMatches"),
-            ),
-            (
-                dsl::recipe::steps::edit::let_binding::field::JOIN,
-                string_prop(),
-            ),
-            (
-                dsl::recipe::steps::edit::let_binding::field::AS,
-                string_prop(),
-            ),
-        ],
-    );
-
-    let edit_step = container_props(
-        "edit",
-        &[
-            (dsl::recipe::steps::edit::field::PATH, string_prop()),
-            (dsl::recipe::steps::edit::field::LANGUAGE, string_prop()),
-            (dsl::recipe::steps::edit::field::WHEN, query_field.clone()),
-            (
-                dsl::recipe::steps::edit::field::WHEN_NOT,
-                query_field.clone(),
-            ),
-            (
-                dsl::recipe::steps::edit::field::LET,
-                json!({
-                    "oneOf": [
-                        { "type": "array", "items": ref_def("letBinding") },
-                        { "type": "object", "additionalProperties": ref_def("letBinding") }
-                    ]
-                }),
-            ),
-            (
-                dsl::recipe::steps::edit::field::OPS,
-                json!({ "type": "array", "items": ref_def("editOp"), "minItems": 1 }),
-            ),
-            (dsl::recipe::steps::condition::field::IF, string_prop()),
-            (dsl::recipe::steps::condition::field::IF_NOT, string_prop()),
-        ],
-    );
-
-    let create_step = container_props(
-        "create",
-        &[
-            (dsl::recipe::steps::create::field::PATH, string_prop()),
-            (dsl::recipe::steps::create::field::TEMPLATE, string_prop()),
-            (
-                dsl::recipe::steps::create::field::TEMPLATE_FILE,
-                string_prop(),
-            ),
-            (
-                dsl::recipe::steps::create::field::IF_EXISTS,
-                enum_prop("ifExists"),
-            ),
-            (dsl::recipe::steps::condition::field::IF, string_prop()),
-            (dsl::recipe::steps::condition::field::IF_NOT, string_prop()),
-        ],
-    );
-
-    let delete_step = container_props(
-        "delete",
-        &[
-            (dsl::recipe::steps::delete::field::PATH, string_prop()),
-            (
-                dsl::recipe::steps::delete::field::IF_MISSING,
-                enum_prop("ifMissing"),
-            ),
-            (dsl::recipe::steps::condition::field::IF, string_prop()),
-            (dsl::recipe::steps::condition::field::IF_NOT, string_prop()),
-        ],
-    );
-
-    let recipe_ref = json!({
-        "oneOf": [
-            { "type": "string", "minLength": 1 },
-            container_props(
-                "recipeRef",
-                &[
-                    (dsl::recipe::steps::recipe_ref::object::field::ID, json!({ "type": "string", "minLength": 1 })),
-                    (dsl::recipe::steps::recipe_ref::object::field::WITH, json!({
-                        "type": "object",
-                        "additionalProperties": { "type": "string" }
-                    })),
-                    (dsl::recipe::steps::condition::field::IF, string_prop()),
-                    (dsl::recipe::steps::condition::field::IF_NOT, string_prop()),
-                ],
-            )
-        ]
-    });
-
-    let if_step = container_props(
-        "ifStep",
-        &[
-            (dsl::recipe::steps::condition::field::IF, string_prop()),
-            (dsl::recipe::steps::condition::field::IF_NOT, string_prop()),
-            (
-                dsl::recipe::steps::if_step::field::STEPS,
-                json!({ "type": "array", "items": ref_def("step"), "minItems": 1 }),
-            ),
-        ],
-    );
-
-    let mut edit_op_props = Map::new();
-    for (wire, def_name) in [
-        (dsl::recipe::steps::edit::ops::insert::WIRE, "insertOp"),
-        (dsl::recipe::steps::edit::ops::replace::WIRE, "replaceOp"),
-        (dsl::recipe::steps::edit::ops::remove::WIRE, "removeOp"),
-    ] {
-        let mut p = Map::new();
-        p.insert(
-            "$ref".into(),
-            Value::String(format!("#/definitions/{def_name}")),
-        );
-        if let Some(entry) = all_entries()
-            .iter()
-            .find(|e| e.wire == wire && matches!(e.kind, VocabKind::OpKind))
-        {
-            p.insert(
-                "description".into(),
-                Value::String(entry.description.to_string()),
-            );
-        }
-        edit_op_props.insert(wire.to_string(), Value::Object(p));
-    }
-    let edit_op = json!({
-        "type": "object",
-        "additionalProperties": false,
-        "minProperties": 1,
-        "maxProperties": 1,
-        "properties": edit_op_props
-    });
-
-    let mut step_props = Map::new();
-    for (wire, def_name, kind_match) in [
-        (dsl::recipe::steps::edit::WIRE, "editStep", true),
-        (dsl::recipe::steps::create::WIRE, "createStep", true),
-        (dsl::recipe::steps::delete::WIRE, "deleteStep", true),
-        (dsl::recipe::steps::recipe_ref::WIRE, "recipeRef", true),
-        (dsl::recipe::steps::if_step::WIRE, "ifStep", true),
-    ] {
-        let mut p = Map::new();
-        p.insert(
-            "$ref".into(),
-            Value::String(format!("#/definitions/{def_name}")),
-        );
-        if kind_match {
-            if let Some(entry) = all_entries()
-                .iter()
-                .find(|e| e.wire == wire && matches!(e.kind, VocabKind::StepKind))
-            {
-                p.insert(
-                    "description".into(),
-                    Value::String(entry.description.to_string()),
-                );
+/// Open object shapes for forward-compatible YAML (match prior schema leniency).
+fn open_object_additional_properties(schema: &mut Value) {
+    match schema {
+        Value::Object(map) => {
+            let is_object = map
+                .get("type")
+                .and_then(|t| t.as_str())
+                .is_some_and(|t| t == "object")
+                || map.contains_key("properties");
+            let has_max_props = map
+                .get("maxProperties")
+                .and_then(|v| v.as_u64())
+                .is_some_and(|n| n == 1);
+            if is_object && map.contains_key("properties") && !has_max_props {
+                map.entry("additionalProperties".to_string())
+                    .or_insert(Value::Bool(true));
+            }
+            for (k, v) in map.iter_mut() {
+                if k != "additionalProperties" {
+                    open_object_additional_properties(v);
+                }
             }
         }
-        step_props.insert(wire.to_string(), Value::Object(p));
+        Value::Array(items) => {
+            for item in items {
+                open_object_additional_properties(item);
+            }
+        }
+        _ => {}
     }
-    let step = json!({
-        "type": "object",
-        "additionalProperties": false,
-        "minProperties": 1,
-        "maxProperties": 1,
-        "properties": step_props
-    });
+}
 
-    let arg = container_props(
-        "arg",
-        &[
-            (dsl::recipe::arg::field::NAME, string_prop()),
-            (dsl::recipe::arg::field::REQUIRED, bool_prop()),
-            (dsl::recipe::arg::field::INPUT_KIND, enum_prop("inputKind")),
-            (dsl::recipe::arg::field::ABBR, string_or_null()),
-            (dsl::recipe::arg::field::HELP, string_or_null()),
-            (dsl::recipe::arg::field::DEFAULTS_TO, string_or_null()),
-            (
-                dsl::recipe::arg::field::OPTIONS,
-                json!({ "type": "array", "items": { "type": "string" } }),
-            ),
-            (dsl::recipe::arg::field::ALLOW_CUSTOM_VALUE, bool_prop()),
-            (dsl::recipe::arg::field::CONTEXT_KEY, string_or_null()),
-            (
-                dsl::recipe::arg::field::FROM,
-                json!({ "additionalProperties": true }),
-            ),
-        ],
-    );
+fn finalize_document(
+    mut schema: Value,
+    id: &str,
+    title: &str,
+    required: &[&str],
+) -> Value {
+    normalize_definitions_key(&mut schema);
+    merge_vocab_descriptions(&mut schema);
+    open_object_additional_properties(&mut schema);
 
-    let explorer_entry = container_props(
-        "explorerMenuEntry",
-        &[
-            (
-                dsl::recipe::explorer_menu::entry::field::KIND,
-                enum_prop("explorerMenuKind"),
-            ),
-            (dsl::recipe::explorer_menu::entry::field::IF, string_prop()),
-            (
-                dsl::recipe::explorer_menu::entry::field::ARGS,
-                json!({
-                    "type": "object",
-                    "additionalProperties": { "type": "string" }
-                }),
-            ),
-        ],
-    );
-
-    let root = container_props(
-        "recipeRoot",
-        &[
-            (
-                dsl::recipe::field::ID,
-                json!({ "type": "string", "minLength": 1 }),
-            ),
-            (dsl::recipe::field::NAME, string_prop()),
-            (dsl::recipe::field::DESCRIPTION, string_prop()),
-            (
-                dsl::recipe::field::ARGS,
-                json!({ "type": "array", "items": ref_def("arg") }),
-            ),
-            (
-                dsl::recipe::field::MAPS,
-                json!({
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "object",
-                        "additionalProperties": { "type": "string" }
-                    }
-                }),
-            ),
-            (
-                dsl::recipe::field::QUERIES,
-                json!({
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "object",
-                        "required": ["query"],
-                        "properties": {
-                            "query": { "type": "string" }
-                        }
-                    }
-                }),
-            ),
-            (
-                dsl::recipe::field::STEPS,
-                json!({ "type": "array", "items": ref_def("step"), "minItems": 1 }),
-            ),
-            (
-                dsl::recipe::field::POST_EXECUTION,
-                json!({ "type": "array", "items": { "type": "string" } }),
-            ),
-            (
-                dsl::recipe::field::EXPLORER_MENU,
-                json!({
-                    "oneOf": [
-                        ref_def("explorerMenuEntry"),
-                        { "type": "array", "items": ref_def("explorerMenuEntry") }
-                    ]
-                }),
-            ),
-        ],
-    );
-
-    let mut root_obj = root.as_object().cloned().unwrap();
-    root_obj.insert(
+    let Some(obj) = schema.as_object_mut() else {
+        return schema;
+    };
+    obj.insert(
         "$schema".into(),
         Value::String("http://json-schema.org/draft-07/schema#".into()),
     );
-    root_obj.insert(
-        "$id".into(),
-        Value::String("https://codemod-recipe.dev/schemas/recipe.schema.json".into()),
-    );
-    root_obj.insert("title".into(), Value::String("Codemod Recipe".into()));
-    root_obj.insert(
-        "required".into(),
-        json!([dsl::recipe::field::ID, dsl::recipe::field::STEPS]),
-    );
+    obj.insert("$id".into(), Value::String(id.into()));
+    obj.insert("title".into(), Value::String(title.into()));
+    if !required.is_empty() {
+        obj.insert(
+            "required".into(),
+            Value::Array(required.iter().map(|s| Value::String((*s).into())).collect()),
+        );
+    }
+    // Drop schemars meta noise that editors do not need.
+    obj.remove("format");
+    schema
+}
 
-    let mut definitions = Map::new();
-    definitions.insert("arg".into(), arg);
-    definitions.insert("editStep".into(), edit_step);
-    definitions.insert("createStep".into(), create_step);
-    definitions.insert("deleteStep".into(), delete_step);
-    definitions.insert("recipeRef".into(), recipe_ref);
-    definitions.insert("ifStep".into(), if_step);
-    definitions.insert("step".into(), step);
-    definitions.insert("editOp".into(), edit_op);
-    definitions.insert("insertOp".into(), insert_op);
-    definitions.insert("replaceOp".into(), replace_op);
-    definitions.insert("removeOp".into(), remove_op);
-    definitions.insert("letBinding".into(), let_binding);
-    definitions.insert("explorerMenuEntry".into(), explorer_entry);
-    definitions.insert(
-        "queryField".into(),
-        json!({
-            "oneOf": [
-                { "type": "string" },
-                { "type": "array", "minItems": 1, "items": { "type": "string" } }
-            ]
-        }),
-    );
-    root_obj.insert("definitions".into(), Value::Object(definitions));
-
-    Value::Object(root_obj)
+/// Build `recipe.schema.json` from [`Recipe`] and nested model types.
+pub fn recipe_schema() -> Value {
+    let root = root_to_value(draft07_root_schema_for::<Recipe>());
+    finalize_document(
+        root,
+        "https://codemod-recipe.dev/schemas/recipe.schema.json",
+        "Codemod Recipe",
+        &[dsl::recipe::field::ID, dsl::recipe::field::STEPS],
+    )
 }
 
 pub fn map_schema() -> Value {
-    let root = container_props(
-        "mapRoot",
-        &[
-            (
-                dsl::map_asset::field::ID,
-                json!({ "type": "string", "minLength": 1 }),
-            ),
-            (dsl::map_asset::field::DESCRIPTION, string_prop()),
-            (
-                dsl::map_asset::field::MAP,
-                json!({
-                    "type": "object",
-                    "additionalProperties": { "type": "string" }
-                }),
-            ),
-        ],
-    );
-    let mut obj = root.as_object().cloned().unwrap();
-    obj.insert(
-        "$schema".into(),
-        Value::String("http://json-schema.org/draft-07/schema#".into()),
-    );
-    obj.insert(
-        "$id".into(),
-        Value::String("https://codemod-recipe.dev/schemas/map.schema.json".into()),
-    );
-    obj.insert("title".into(), Value::String("Codemod Recipe Map".into()));
-    obj.insert(
-        "required".into(),
-        json!([dsl::map_asset::field::ID, dsl::map_asset::field::MAP]),
-    );
-    Value::Object(obj)
+    let root = root_to_value(draft07_root_schema_for::<MapAsset>());
+    finalize_document(
+        root,
+        "https://codemod-recipe.dev/schemas/map.schema.json",
+        "Codemod Recipe Map",
+        &[dsl::map_asset::field::ID, dsl::map_asset::field::MAP],
+    )
 }
 
 pub fn variables_schema() -> Value {
-    let root = container_props(
-        "variablesRoot",
+    let root = root_to_value(draft07_root_schema_for::<VariablesAsset>());
+    finalize_document(
+        root,
+        "https://codemod-recipe.dev/schemas/variables.schema.json",
+        "Codemod Recipe Variables",
         &[
-            (
-                dsl::variables_asset::field::ID,
-                json!({ "type": "string", "minLength": 1 }),
-            ),
-            (dsl::variables_asset::field::DESCRIPTION, string_prop()),
-            (
-                dsl::variables_asset::field::VALUES,
-                json!({
-                    "type": "object",
-                    "additionalProperties": {
-                        "oneOf": [
-                            { "type": "string" },
-                            { "type": "number" },
-                            { "type": "boolean" }
-                        ]
-                    }
-                }),
-            ),
-        ],
-    );
-    let mut obj = root.as_object().cloned().unwrap();
-    obj.insert(
-        "$schema".into(),
-        Value::String("http://json-schema.org/draft-07/schema#".into()),
-    );
-    obj.insert(
-        "$id".into(),
-        Value::String("https://codemod-recipe.dev/schemas/variables.schema.json".into()),
-    );
-    obj.insert(
-        "title".into(),
-        Value::String("Codemod Recipe Variables".into()),
-    );
-    obj.insert(
-        "required".into(),
-        json!([
             dsl::variables_asset::field::ID,
-            dsl::variables_asset::field::VALUES
-        ]),
-    );
-    Value::Object(obj)
+            dsl::variables_asset::field::VALUES,
+        ],
+    )
 }
 
-/// Sanity: every container in the inventory is referenced by id.
-pub fn assert_structure_nonempty() {
-    assert!(!CONTAINERS.is_empty());
-    assert!(!ENUMS.is_empty());
+/// Resolve a `$ref` like `#/definitions/editStep` against a schema document.
+pub fn resolve_definition<'a>(schema: &'a Value, name: &str) -> Option<&'a Value> {
+    schema
+        .pointer(&format!("/definitions/{name}"))
+        .or_else(|| schema.pointer(&format!("/$defs/{name}")))
+}
+
+/// Property keys of an object schema (empty if not an object with properties).
+pub fn object_property_keys(schema: &Value) -> Vec<String> {
+    schema
+        .get("properties")
+        .and_then(|p| p.as_object())
+        .map(|o| o.keys().cloned().collect())
+        .unwrap_or_default()
+}
+
+/// Follow `$ref` once when present.
+pub fn deref_schema<'a>(root: &'a Value, schema: &'a Value) -> &'a Value {
+    if let Some(r) = schema.get("$ref").and_then(|v| v.as_str()) {
+        if let Some(name) = r.strip_prefix("#/definitions/") {
+            if let Some(d) = resolve_definition(root, name) {
+                return d;
+            }
+        }
+        if let Some(name) = r.strip_prefix("#/$defs/") {
+            if let Some(d) = resolve_definition(root, name) {
+                return d;
+            }
+        }
+    }
+    schema
+}
+
+/// Collect string enums appearing under object properties, keyed for editor surface.
+pub fn collect_field_enums(root: &Value) -> Map<String, Value> {
+    let mut out = Map::new();
+    let mut visiting_defs = std::collections::HashSet::new();
+    visit_enums(root, root, &mut visiting_defs, &mut out);
+    out
+}
+
+fn visit_enums(
+    root: &Value,
+    node: &Value,
+    visiting_defs: &mut std::collections::HashSet<String>,
+    out: &mut Map<String, Value>,
+) {
+    if let Some(r) = node.get("$ref").and_then(|v| v.as_str()) {
+        let name = r
+            .strip_prefix("#/definitions/")
+            .or_else(|| r.strip_prefix("#/$defs/"));
+        if let Some(name) = name {
+            if !visiting_defs.insert(name.to_string()) {
+                return;
+            }
+            if let Some(def) = resolve_definition(root, name) {
+                visit_enums(root, def, visiting_defs, out);
+            }
+            visiting_defs.remove(name);
+        }
+        return;
+    }
+
+    if let Some(props) = node.get("properties").and_then(|p| p.as_object()) {
+        for (key, prop) in props {
+            if let Some(values) = enum_strings(prop) {
+                let enum_id = surface_enum_id(key);
+                out.insert(
+                    enum_id,
+                    Value::Array(values.into_iter().map(Value::String).collect()),
+                );
+            } else if let Some(r) = prop.get("$ref").and_then(|v| v.as_str()) {
+                // Enum defined as a $ref'd type (e.g. inputKind, anchor).
+                let name = r
+                    .strip_prefix("#/definitions/")
+                    .or_else(|| r.strip_prefix("#/$defs/"));
+                if let Some(name) = name {
+                    if let Some(def) = resolve_definition(root, name) {
+                        if let Some(values) = enum_strings(def) {
+                            let enum_id = surface_enum_id(key);
+                            out.insert(
+                                enum_id,
+                                Value::Array(values.into_iter().map(Value::String).collect()),
+                            );
+                        }
+                    }
+                }
+            }
+            visit_enums(root, prop, visiting_defs, out);
+        }
+    }
+    if let Some(defs) = node
+        .get("definitions")
+        .or_else(|| node.get("$defs"))
+        .and_then(|d| d.as_object())
+    {
+        for (name, def) in defs {
+            if let Some(values) = enum_strings(def) {
+                let enum_id = surface_enum_id(name);
+                out.entry(enum_id).or_insert_with(|| {
+                    Value::Array(values.into_iter().map(Value::String).collect())
+                });
+            }
+            if visiting_defs.insert(name.clone()) {
+                visit_enums(root, def, visiting_defs, out);
+                visiting_defs.remove(name);
+            }
+        }
+    }
+    if let Some(one_of) = node.get("oneOf").and_then(|v| v.as_array()) {
+        for alt in one_of {
+            visit_enums(root, alt, visiting_defs, out);
+        }
+    }
+    if let Some(items) = node.get("items") {
+        visit_enums(root, items, visiting_defs, out);
+    }
+}
+
+fn enum_strings(schema: &Value) -> Option<Vec<String>> {
+    let arr = schema.get("enum")?.as_array()?;
+    let mut out = Vec::new();
+    for v in arr {
+        out.push(v.as_str()?.to_string());
+    }
+    if out.is_empty() {
+        None
+    } else {
+        Some(out)
+    }
+}
+
+fn surface_enum_id(field_or_def: &str) -> String {
+    match field_or_def {
+        "kind" | "ExplorerMenuKind" => "explorerMenuKind".to_string(),
+        "InsertAnchor" => "anchor".to_string(),
+        "IfExistsStrategy" => "ifExists".to_string(),
+        "IfMissingStrategy" => "ifMissing".to_string(),
+        "ArgInputKind" => "inputKind".to_string(),
+        "LetExtract" => "extract".to_string(),
+        "LetOnNoMatch" => "onNoMatch".to_string(),
+        "LetOnManyMatches" => "onManyMatches".to_string(),
+        "anchor" => "anchor".to_string(),
+        other => other.to_string(),
+    }
+}
+
+/// Object branch of a `oneOf` that has `properties` (e.g. recipeRef).
+pub fn object_branch_of_one_of<'a>(root: &'a Value, schema: &'a Value) -> Option<&'a Value> {
+    let schema = deref_schema(root, schema);
+    if schema.get("properties").is_some() {
+        return Some(schema);
+    }
+    let one_of = schema.get("oneOf")?.as_array()?;
+    one_of.iter().find_map(|alt| {
+        let alt = deref_schema(root, alt);
+        if alt.get("properties").is_some() {
+            Some(alt)
+        } else {
+            None
+        }
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn recipe_schema_from_model_has_edit_fields() {
+        let schema = recipe_schema();
+        assert!(schema["required"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .any(|v| v == "id"));
+        let edit = resolve_definition(&schema, "editStep").expect("editStep");
+        let keys = object_property_keys(edit);
+        assert!(keys.iter().any(|k| k == "path"));
+        assert!(keys.iter().any(|k| k == "ops"));
+        assert!(keys.iter().any(|k| k == "whenNot"));
+    }
+
+    #[test]
+    fn input_kind_enum_present() {
+        let schema = recipe_schema();
+        let enums = collect_field_enums(&schema);
+        let values = enums.get("inputKind").expect("inputKind");
+        assert!(values.as_array().unwrap().iter().any(|v| v == "file"));
+    }
 }

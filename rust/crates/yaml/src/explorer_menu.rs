@@ -1,5 +1,8 @@
 //! Recipe `explorerMenu` — VS Code Explorer context QuickPick opt-in.
 
+use schemars::gen::SchemaGenerator;
+use schemars::schema::{InstanceType, Schema, SchemaObject, SubschemaValidation};
+use schemars::JsonSchema;
 use serde::de::{self, Deserializer, SeqAccess, Visitor};
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -8,8 +11,9 @@ use std::fmt;
 use crate::dsl;
 
 /// Explorer resource kind for a menu entry.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "lowercase")]
+#[schemars(rename_all = "lowercase")]
 pub enum ExplorerMenuKind {
     File,
     Folder,
@@ -33,7 +37,8 @@ impl ExplorerMenuKind {
 }
 
 /// One Explorer menu rule: match `kind`, optionally gate on MiniJinja `if` over `path`.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[schemars(rename = "explorerMenuEntry")]
 pub struct ExplorerMenuEntry {
     pub kind: ExplorerMenuKind,
     #[serde(default, rename = "if", skip_serializing_if = "Option::is_none")]
@@ -60,6 +65,35 @@ impl ExplorerMenu {
         kind: ExplorerMenuKind,
     ) -> impl Iterator<Item = &ExplorerMenuEntry> {
         self.entries.iter().filter(move |e| e.kind == kind)
+    }
+}
+
+impl JsonSchema for ExplorerMenu {
+    fn schema_name() -> String {
+        "explorerMenu".to_string()
+    }
+
+    fn json_schema(gen: &mut SchemaGenerator) -> Schema {
+        let entry = gen.subschema_for::<ExplorerMenuEntry>();
+        SchemaObject {
+            subschemas: Some(Box::new(SubschemaValidation {
+                one_of: Some(vec![
+                    entry.clone(),
+                    SchemaObject {
+                        instance_type: Some(InstanceType::Array.into()),
+                        array: Some(Box::new(schemars::schema::ArrayValidation {
+                            items: Some(schemars::schema::SingleOrVec::Single(Box::new(entry))),
+                            ..Default::default()
+                        })),
+                        ..Default::default()
+                    }
+                    .into(),
+                ]),
+                ..Default::default()
+            })),
+            ..Default::default()
+        }
+        .into()
     }
 }
 

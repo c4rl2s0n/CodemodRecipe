@@ -71,10 +71,11 @@ Each `steps[]` entry is a single-key object:
 1. **Read and follow** [reference.md](reference.md) for templates, maps, variables, args (`from` / `contextKey`), `explorerMenu`, composition, and validation.
 2. Call `validate_recipes` after editing recipe YAML.
 3. When adjusting Rust parsing/validation/preview handling for YAML vocabulary, update the centralized owners first:
-   - `rust/crates/yaml/src/dsl/` — schema-shaped wire constants; `rust/crates/yaml/src/dsl_structure.rs` — containers; `rust/crates/yaml/src/dsl_vocabulary.rs` — `ENTRIES` (descriptions); import via `codemod_recipe_yaml::dsl`
+   - `rust/crates/yaml/src/model.rs` — structural SSOT (`Deserialize` + `JsonSchema`); schemas/surface are codegen outputs
+   - `rust/crates/yaml/src/dsl/` — schema-shaped wire constants; `rust/crates/yaml/src/dsl_vocabulary.rs` — `ENTRIES` (descriptions only); import via `codemod_recipe_yaml::dsl`
    - `rust/crates/yaml/src/keywords.rs` — `query_conventions`, `preview_kinds`
    - `rust/crates/host/src/protocol_keys.rs` for host transport keys like `inlineRecipe` and `previewToken`
-   - After model/structure/vocabulary changes, run `scripts/generate-dsl-artifacts.sh` so JSON Schema, `generated-dsl-surface.json`, keyword docs, and TextMate stay in sync (CI checks drift)
+   - After model / `dsl::` / `ENTRIES` changes, run `scripts/generate-dsl-artifacts.sh` so JSON Schema, `generated-dsl-surface.json`, keyword docs, and TextMate stay in sync (CI checks drift). Do not hand-edit generated schemas or invent TS container maps.
 4. When adjusting how YAML-referenced files resolve, update `rust/crates/core/src/resource_path.rs` first instead of adding per-crate path logic. Resource-backed YAML paths resolve recipe-local first, then `.codemod/`; workspace mutation paths resolve exactly under the workspace root.
 
 ## Related skills

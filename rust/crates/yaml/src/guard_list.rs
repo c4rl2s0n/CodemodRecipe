@@ -1,3 +1,6 @@
+use schemars::gen::SchemaGenerator;
+use schemars::schema::Schema;
+use schemars::JsonSchema;
 use serde::de::{self, SeqAccess, Visitor};
 use serde::{Deserialize, Deserializer};
 use std::fmt;
@@ -8,6 +11,17 @@ use crate::query_spec::QuerySpec;
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct GuardList {
     pub guards: Vec<QuerySpec>,
+}
+
+impl JsonSchema for GuardList {
+    fn schema_name() -> String {
+        QuerySpec::schema_name()
+    }
+
+    fn json_schema(gen: &mut SchemaGenerator) -> Schema {
+        // Authoring shape matches a single query field (string or chain list).
+        QuerySpec::json_schema(gen)
+    }
 }
 
 impl GuardList {

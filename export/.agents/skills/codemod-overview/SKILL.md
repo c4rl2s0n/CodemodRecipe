@@ -50,13 +50,12 @@ For recipe organization (create vs modify, scaffolds), invoke skill `codemod-rec
 
 ## Rust DSL vocabulary (maintainers)
 
-- `rust/crates/yaml/src/model.rs` — runtime AST (structural SSOT with `dsl_structure`)
-- `rust/crates/yaml/src/dsl_structure.rs` — container→child inventory for codegen
+- `rust/crates/yaml/src/model.rs` — runtime AST + `JsonSchema` (**structural SSOT**); codegen emits JSON Schema and dsl-surface from this
 - `rust/crates/yaml/src/dsl/` — wire constants (`dsl::recipe::steps::edit::…`, `map_asset`, `variables_asset`); step/op kinds use `WIRE`
-- `rust/crates/yaml/src/dsl_vocabulary.rs` — `ENTRIES` registry (markdown descriptions); drives hovers / TextMate kinds
+- `rust/crates/yaml/src/dsl_vocabulary.rs` — `ENTRIES` registry (markdown descriptions only); drives hovers / TextMate kinds
 - `rust/crates/yaml/src/keywords.rs` — re-exports `dsl`; `query_conventions`, `preview_kinds`
 
-Run `scripts/generate-dsl-artifacts.sh` after model/structure/vocabulary changes (CI checks drift of schemas + `generated-dsl-surface.json`).
+Run `scripts/generate-dsl-artifacts.sh` after model / `dsl::` / `ENTRIES` changes (CI checks drift of schemas + `generated-dsl-surface.json`). Do not hand-edit generated artifacts.
 
 VS Code language toolkit: `vscode_extension/src/extension/language/` (`LanguageSession`, surface-driven completions).
 

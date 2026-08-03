@@ -46,10 +46,10 @@ Structural completions come from codegen surface; recipe ids / languages / `with
 
 ## DSL codegen (maintainers)
 
-After changing `model.rs`, `dsl_structure.rs`, `dsl::`, or `ENTRIES`, run:
+Structural SSOT is `rust/crates/yaml/src/model.rs` (`JsonSchema`). After changing `model.rs`, `dsl::`, or `ENTRIES`, run:
 
 ```bash
 scripts/generate-dsl-artifacts.sh
 ```
 
-Outputs under `vscode_extension/schemas/`: JSON Schema files, `generated-dsl-surface.json`, `generated-keyword-docs.json`, plus TextMate patches.
+Outputs under `vscode_extension/schemas/`: JSON Schema files, `generated-dsl-surface.json`, `generated-keyword-docs.json`, plus TextMate patches. Do not hand-edit those outputs or maintain a parallel container inventory.

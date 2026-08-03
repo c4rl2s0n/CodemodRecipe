@@ -72,7 +72,7 @@ edit sites.
 Verify:
 
 - Crate boundaries (`core` / `yaml` / `engine` / `host`) — see reference table
-- DSL vocabulary via `yaml` `dsl::` / `dsl_structure` / `model`, not ad-hoc strings
+- DSL vocabulary via `yaml` `model` (`JsonSchema`) / `dsl::` / `ENTRIES`, not ad-hoc strings or hand-edited schemas
 - Paths via `codemod_recipe_core::resource_path`, not ad-hoc `join` / `..` checks
 - After DSL/structure changes: `scripts/generate-dsl-artifacts.sh` and committed
   generated schemas
