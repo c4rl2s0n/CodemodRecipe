@@ -448,7 +448,7 @@
     "kind": "EnumValue",
     "wire": "skip",
     "parent": "ifExists",
-    "description": "Skip the create step when the path already exists."
+    "description": "Skip the create step when the path already exists on disk or was staged earlier in this recipe run."
   },
   {
     "kind": "EnumValue",

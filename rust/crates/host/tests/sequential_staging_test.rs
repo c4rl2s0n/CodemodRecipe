@@ -35,6 +35,63 @@ fn preview_inline(
 }
 
 #[test]
+fn create_skip_then_create_skip_then_edit_is_single_create() {
+    let workspace = temp_workspace("create_skip_create_edit");
+    let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+    registry.reload();
+
+    let inline = serde_json::json!({
+        "id": "ensure_barrel_twice",
+        "steps": [
+            {
+                "create": {
+                    "path": "lib/barrel.dart",
+                    "template": "// barrel\n",
+                    "ifExists": "skip",
+                    "format": false
+                }
+            },
+            {
+                "create": {
+                    "path": "lib/barrel.dart",
+                    "template": "// unused ensure\n",
+                    "ifExists": "skip",
+                    "format": false
+                }
+            },
+            {
+                "edit": {
+                    "path": "lib/barrel.dart",
+                    "ops": [{
+                        "insert": {
+                            "query": "(program) @root",
+                            "capture": "root",
+                            "anchor": "end",
+                            "text": "export 'foo.dart';\n"
+                        }
+                    }]
+                }
+            }
+        ]
+    });
+
+    let response = preview_inline(&mut registry, inline, BTreeMap::new());
+    assert_eq!(response["ok"], true, "{}", response["error"]);
+    let files = response["files"].as_array().unwrap();
+    assert_eq!(files.len(), 1);
+    assert_eq!(files[0]["kind"], "create");
+    assert_eq!(files[0]["path"], "lib/barrel.dart");
+    assert!(files[0]["isNew"].as_bool().unwrap());
+    let snippet = files[0]["snippet"].as_str().unwrap_or("");
+    assert!(
+        snippet.contains("export 'foo.dart'") && snippet.contains("// barrel"),
+        "snippet={snippet}"
+    );
+
+    let _ = std::fs::remove_dir_all(workspace);
+}
+
+#[test]
 fn create_then_edit_missing_file_is_single_create() {
     let workspace = temp_workspace("create_edit_new");
     let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));

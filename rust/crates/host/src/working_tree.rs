@@ -66,9 +66,12 @@ impl WorkingTree {
                 }
                 Ok(())
             }
-            Some(Entry::New { .. }) => Err(format!(
-                "Cannot create {relative}: already staged as a new file"
-            )),
+            Some(Entry::New { .. }) => match if_exists {
+                IfExists::Fail => Err(format!(
+                    "Cannot create {relative}: already staged as a new file"
+                )),
+                IfExists::Skip => Ok(()),
+            },
             Some(Entry::Existing { .. }) => match if_exists {
                 IfExists::Fail => Err(format!("File already exists: {relative}")),
                 IfExists::Skip => Ok(()),
@@ -255,6 +258,38 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir
+    }
+
+    #[test]
+    fn create_skip_after_staged_new_is_noop() {
+        let root = temp_dir();
+        let sandbox = PathSandbox::new(root.clone());
+        let mut tree = WorkingTree::new();
+        tree.create(&sandbox, "a.dart", "first\n".into(), IfExists::Fail)
+            .unwrap();
+        tree.create(&sandbox, "a.dart", "second\n".into(), IfExists::Skip)
+            .unwrap();
+        let changes = tree.finalize();
+        assert_eq!(changes.len(), 1);
+        match &changes[0] {
+            FileChange::Create { content, .. } => assert_eq!(content, "first\n"),
+            other => panic!("expected Create, got {other:?}"),
+        }
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn create_fail_after_staged_new_errors() {
+        let root = temp_dir();
+        let sandbox = PathSandbox::new(root.clone());
+        let mut tree = WorkingTree::new();
+        tree.create(&sandbox, "a.dart", "first\n".into(), IfExists::Fail)
+            .unwrap();
+        let err = tree
+            .create(&sandbox, "a.dart", "second\n".into(), IfExists::Fail)
+            .unwrap_err();
+        assert!(err.contains("already staged as a new file"), "{err}");
+        let _ = std::fs::remove_dir_all(root);
     }
 
     #[test]

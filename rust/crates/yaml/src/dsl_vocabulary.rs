@@ -160,7 +160,7 @@ vocab_entries! {
     Field, crate::dsl::recipe::queries::entry::field::QUERY, None, "Inline tree-sitter query, .scm path, query-library ref, or chain.", "#/properties/queries/additionalProperties/query";
 
     EnumValue, crate::dsl::recipe::steps::create::field::if_exists::value::FAIL, Some(crate::dsl::recipe::steps::create::field::IF_EXISTS), "Abort the recipe when the create path already exists.";
-    EnumValue, crate::dsl::recipe::steps::create::field::if_exists::value::SKIP, Some(crate::dsl::recipe::steps::create::field::IF_EXISTS), "Skip the create step when the path already exists.";
+    EnumValue, crate::dsl::recipe::steps::create::field::if_exists::value::SKIP, Some(crate::dsl::recipe::steps::create::field::IF_EXISTS), "Skip the create step when the path already exists on disk or was staged earlier in this recipe run.";
     EnumValue, crate::dsl::recipe::steps::delete::field::if_missing::value::FAIL, Some(crate::dsl::recipe::steps::delete::field::IF_MISSING), "Abort when deleting a missing file.";
     EnumValue, crate::dsl::recipe::steps::delete::field::if_missing::value::SKIP, Some(crate::dsl::recipe::steps::delete::field::IF_MISSING), "Skip delete when the file is already absent.";
     EnumValue, crate::dsl::recipe::steps::edit::ops::insert::field::anchor::value::START, Some(crate::dsl::recipe::steps::edit::ops::insert::field::ANCHOR), "Insert before the capture span.";
