@@ -26,7 +26,11 @@ import 'package:drift/drift.dart';
     RulesTable,
   ],
 )
-class AppDatabase extends _$AppDatabase {}
+class AppDatabase extends _$AppDatabase {
+AppDatabase._({QueryExecutor? executor, TextNotifier? progressUpdater})
+    : super(executor ?? _openConnection());
+  AppDatabase([QueryExecutor? executor]) : this._(executor: executor);
+}
 "#;
 
     #[test]
@@ -52,10 +56,15 @@ class AppDatabase extends _$AppDatabase {}
   (#eq? @annotationName "DriftDatabase")
   (#eq? @argName "tables"))
 "#;
-        let result = debug_query(&lang, DRIFT, query, &DebugOptions {
-            instrument: false,
-            ..DebugOptions::default()
-        })
+        let result = debug_query(
+            &lang,
+            DRIFT,
+            query,
+            &DebugOptions {
+                instrument: false,
+                ..DebugOptions::default()
+            },
+        )
         .expect("query");
         assert!(!result.has_error, "parse errors in fixture");
         assert_eq!(result.match_count, 1);

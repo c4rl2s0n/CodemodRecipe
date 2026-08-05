@@ -44,6 +44,42 @@ command = "dart mcp-server"
 name = "codemod-mcp"
 transport = "stdio"
 command = "cargo"
-args = ["run", "-q", "--manifest-path", "rust/Cargo.toml", "-p", "codemod_recipe_host", "--bin", "codemod_mcp", "--", "--workspace-root", "."]
+args = [
+    "run",
+    "-q",
+    "--manifest-path",
+    "rust/Cargo.toml",
+    "-p",
+    "codemod_recipe_host",
+    "--bin",
+    "codemod_mcp",
+    "--",
+    "--workspace-root",
+    ".",
+]
 disabled = false
 disabled_tools = []
+
+[[models]]
+name = "mistral-vibe-cli-latest"
+provider = "mistral"
+alias = "mistral-medium-3.5"
+temperature = 1.0
+input_price = 1.5
+output_price = 7.5
+cached_input_price = 0.15
+thinking = "medium"
+supports_images = true
+auto_compact_threshold = 200000
+
+[[models]]
+name = "devstral-small-latest"
+provider = "mistral"
+alias = "devstral-small"
+temperature = 0.2
+input_price = 0.1
+output_price = 0.3
+cached_input_price = 0.01
+thinking = "medium"
+supports_images = false
+auto_compact_threshold = 200000

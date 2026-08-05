@@ -92,14 +92,8 @@ pub fn generate_query(
     let mut predicates = Vec::new();
     let query = emit_chain(&chain, source, &capture, opts, &mut predicates, 0);
 
-    let mut full = query;
-    for p in predicates {
-        full.push('\n');
-        full.push_str(&p);
-    }
-
     Ok(GeneratedQuery {
-        query: full,
+        query,
         capture_suggestion: capture,
     })
 }
@@ -142,15 +136,19 @@ fn emit_chain(
         if !opts.include_text_predicates && is_last_named_child(node) {
             s.push_str(" .");
         }
+        // TODO: Maybe don't only create predicates for identifier, but everything that contains a string? (not sure!)
         if opts.include_text_predicates && (kind == "identifier" || kind.contains("string")) {
             if let Some(text) = source.get(node.start_byte()..node.end_byte()) {
                 let lit = text.trim_matches(|c| c == '"' || c == '\'');
                 if !lit.is_empty() && lit.len() < 64 && !lit.contains('\n') {
-                    predicates.push(format!(
-                        "(#eq? @{} \"{}\")",
+                    s.push_str(&format!("{indent}\n"));
+                    s.push_str(&format!(
+                        "{indent}(#eq? @{} \"{}\")",
                         capture,
                         escape_str(lit)
                     ));
+
+                    // predicates.push(format!("(#eq? @{} \"{}\")", capture, escape_str(lit)));
                 }
             }
         }
@@ -170,6 +168,16 @@ fn emit_chain(
     ));
     s.push('\n');
     s.push_str(&indent);
+    // // For root level, place predicates inside before closing parenthesis
+    // if index == 0 && !predicates.is_empty() {
+    //     for p in predicates.iter() {
+    //         s.push('\n');
+    //         s.push_str(&indent);
+    //         s.push_str(&p);
+    //     }
+    //     predicates.clear(); // Clear so they're not added again
+    // }
+
     s.push(')');
     s
 }
