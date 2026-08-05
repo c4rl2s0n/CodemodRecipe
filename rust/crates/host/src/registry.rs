@@ -489,6 +489,7 @@ fn arg_to_schema(arg: &Arg) -> RecipeArg {
         allow_custom_value: arg.allow_custom_value.unwrap_or(true),
         context_key: arg.context_key.clone(),
         from: arg.from.as_ref().and_then(|f| serde_json::to_value(f).ok()),
+        from_recipes: arg.from_recipes.clone(),
     }
 }
 

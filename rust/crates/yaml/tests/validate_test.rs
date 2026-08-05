@@ -136,6 +136,7 @@ fn rejects_duplicate_arg_names() {
                 allow_custom_value: None,
                 context_key: None,
                 from: None,
+                from_recipes: vec![],
             },
             codemod_recipe_yaml::model::Arg {
                 name: "file".to_string(),
@@ -148,6 +149,7 @@ fn rejects_duplicate_arg_names() {
                 allow_custom_value: None,
                 context_key: None,
                 from: None,
+                from_recipes: vec![],
             },
         ],
         maps: BTreeMap::new(),
@@ -268,6 +270,7 @@ fn rejects_let_name_colliding_with_recipe_arg() {
         allow_custom_value: None,
         context_key: None,
         from: None,
+        from_recipes: vec![],
     }];
     let errors = validate_recipe(&recipe).unwrap_err();
     assert!(errors.iter().any(|e| matches!(

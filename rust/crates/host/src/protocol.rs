@@ -96,6 +96,9 @@ pub struct RecipeArg {
     pub context_key: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub from: Option<serde_json::Value>,
+    /// Nested recipe ids that contribute this unbound arg (empty when parent-declared).
+    #[serde(skip_serializing_if = "Vec::is_empty")]
+    pub from_recipes: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Clone)]

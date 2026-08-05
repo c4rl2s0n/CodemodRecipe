@@ -43,7 +43,7 @@
       "type": "string"
     },
     "arg": {
-      "additionalProperties": true,
+      "additionalProperties": false,
       "properties": {
         "abbr": {
           "default": null,

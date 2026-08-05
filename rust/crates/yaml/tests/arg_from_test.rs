@@ -50,4 +50,22 @@ contextKey: word
         assert_eq!(arg.context_key.as_deref(), Some("word"));
         assert!(arg.from.is_none());
     }
+
+    #[test]
+    fn rejects_unknown_arg_field() {
+        let err = serde_yaml::from_str::<Arg>(
+            r#"
+name: withId
+required: true
+defaultValue: "true"
+inputKind: bool
+"#,
+        )
+        .unwrap_err();
+        let msg = err.to_string();
+        assert!(
+            msg.contains("defaultValue") || msg.contains("unknown field"),
+            "expected unknown-field error, got: {msg}"
+        );
+    }
 }

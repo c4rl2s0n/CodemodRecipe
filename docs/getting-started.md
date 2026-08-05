@@ -247,8 +247,13 @@ Summary: [recipe-design-patterns.md](recipe-design-patterns.md).
 
 1. Open **Codemod Recipe** → pick a recipe in the **Recipes** tab.
 2. Fill args in **Recipe Runner** (live preview updates as you type).
+   Args contributed by nested `recipe:` steps are labeled with the nested
+   recipe id(s) (e.g. `Used by nested: dart.generic.create_barrel`).
 3. Review files/patches; uncheck anything you do not want.
 4. **Apply Selected**.
+
+Arg defaults use `defaultsTo` (not `defaultValue`); unknown keys on an arg
+entry are rejected by validation so typos fail fast.
 
 Power features (keyboard slots, `from:` arg derivation from the editor, explorer
 context menu): [recipe-shortcuts.md](recipe-shortcuts.md).

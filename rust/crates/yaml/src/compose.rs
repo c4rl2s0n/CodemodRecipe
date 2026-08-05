@@ -1,5 +1,6 @@
 use crate::model::*;
 use crate::QueryDefinition;
+use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, BTreeSet};
 use thiserror::Error;
 
@@ -173,9 +174,7 @@ fn expand_steps(
                     if recipe_ref.with.contains_key(&arg.name) {
                         continue;
                     }
-                    merged_args
-                        .entry(arg.name.clone())
-                        .or_insert_with(|| arg.clone());
+                    merge_unbound_child_arg(merged_args, arg, ref_id);
                 }
                 let mut child_steps: Vec<Step> = Vec::new();
                 for child_step in &expanded.steps {
@@ -211,6 +210,37 @@ fn merge_queries_into(
 ) {
     for (key, def) in source {
         target.entry(key.clone()).or_insert_with(|| def.clone());
+    }
+}
+
+/// Union an unbound child arg into [merged_args], recording nested recipe provenance.
+///
+/// Parent-declared args (empty `from_recipes`) stay unmarked. Nested contributors
+/// get leaf recipe ids: if the child already tracked provenance, those ids are
+/// propagated; otherwise the immediate child id is the source.
+fn merge_unbound_child_arg(merged_args: &mut BTreeMap<String, Arg>, arg: &Arg, child_id: &str) {
+    let sources: Vec<String> = if arg.from_recipes.is_empty() {
+        vec![child_id.to_string()]
+    } else {
+        arg.from_recipes.clone()
+    };
+    match merged_args.entry(arg.name.clone()) {
+        Entry::Vacant(e) => {
+            let mut inserted = arg.clone();
+            inserted.from_recipes = sources;
+            e.insert(inserted);
+        }
+        Entry::Occupied(mut e) => {
+            // Parent-owned args were inserted first with empty provenance — leave unmarked.
+            if e.get().from_recipes.is_empty() {
+                return;
+            }
+            for source in sources {
+                if !e.get().from_recipes.contains(&source) {
+                    e.get_mut().from_recipes.push(source);
+                }
+            }
+        }
     }
 }
 
@@ -266,6 +296,7 @@ mod tests {
             allow_custom_value: None,
             context_key: None,
             from: None,
+            from_recipes: vec![],
         }
     }
 
@@ -358,6 +389,7 @@ mod tests {
                 allow_custom_value: None,
                 context_key: None,
                 from: None,
+                from_recipes: vec![],
             }],
             vec![ComposeStep::Recipe(nested)],
         );
@@ -633,5 +665,143 @@ mod tests {
         };
         assert_eq!(inner.if_expr.as_deref(), Some("inner"));
         assert!(matches!(&inner.steps[0], Step::Edit(_)));
+    }
+
+    #[test]
+    fn expand_records_leaf_from_recipes_for_unbound_nested_args() {
+        let leaf = recipe_named("leaf", "leaf.dart", vec![sample_arg("description")]);
+        let mid = Recipe {
+            id: "mid".to_string(),
+            name: None,
+            description: None,
+            args: vec![sample_arg("barrelPath")],
+            maps: BTreeMap::new(),
+            queries: BTreeMap::new(),
+            steps: vec![recipe_ref("leaf")],
+            post_execution: vec![],
+            explorer_menu: None,
+        };
+        let parent = Recipe {
+            id: "parent".to_string(),
+            name: None,
+            description: None,
+            args: vec![],
+            maps: BTreeMap::new(),
+            queries: BTreeMap::new(),
+            steps: vec![recipe_ref("mid")],
+            post_execution: vec![],
+            explorer_menu: None,
+        };
+        let registry = BTreeMap::from([
+            ("leaf".to_string(), leaf),
+            ("mid".to_string(), mid),
+        ]);
+
+        let expanded = expand_recipe_references(&parent, &registry).unwrap();
+        let description = expanded
+            .args
+            .iter()
+            .find(|a| a.name == "description")
+            .expect("description bubbled");
+        assert_eq!(description.from_recipes, vec!["leaf".to_string()]);
+        let barrel = expanded
+            .args
+            .iter()
+            .find(|a| a.name == "barrelPath")
+            .expect("barrelPath bubbled");
+        assert_eq!(barrel.from_recipes, vec!["mid".to_string()]);
+    }
+
+    #[test]
+    fn expand_with_excludes_bound_args_from_provenance() {
+        let child = recipe_named(
+            "child",
+            "child.dart",
+            vec![sample_arg("className"), sample_arg("fieldName")],
+        );
+        let mut with = BTreeMap::new();
+        with.insert("className".to_string(), "{{ featureName }}".to_string());
+        let parent = Recipe {
+            id: "parent".to_string(),
+            name: None,
+            description: None,
+            args: vec![sample_arg("featureName")],
+            maps: BTreeMap::new(),
+            queries: BTreeMap::new(),
+            steps: vec![recipe_ref_with("child", with)],
+            post_execution: vec![],
+            explorer_menu: None,
+        };
+        let mut registry = BTreeMap::new();
+        registry.insert("child".to_string(), child);
+
+        let expanded = expand_recipe_references(&parent, &registry).unwrap();
+        assert!(!expanded.args.iter().any(|a| a.name == "className"));
+        let field = expanded
+            .args
+            .iter()
+            .find(|a| a.name == "fieldName")
+            .expect("fieldName unbound");
+        assert_eq!(field.from_recipes, vec!["child".to_string()]);
+        let feature = expanded
+            .args
+            .iter()
+            .find(|a| a.name == "featureName")
+            .expect("featureName parent-owned");
+        assert!(feature.from_recipes.is_empty());
+    }
+
+    #[test]
+    fn expand_unions_from_recipes_from_sibling_refs() {
+        let a = recipe_named("a", "a.dart", vec![sample_arg("shared")]);
+        let b = recipe_named("b", "b.dart", vec![sample_arg("shared")]);
+        let parent = Recipe {
+            id: "parent".to_string(),
+            name: None,
+            description: None,
+            args: vec![],
+            maps: BTreeMap::new(),
+            queries: BTreeMap::new(),
+            steps: vec![recipe_ref("a"), recipe_ref("b")],
+            post_execution: vec![],
+            explorer_menu: None,
+        };
+        let registry = BTreeMap::from([("a".to_string(), a), ("b".to_string(), b)]);
+
+        let expanded = expand_recipe_references(&parent, &registry).unwrap();
+        let shared = expanded
+            .args
+            .iter()
+            .find(|a| a.name == "shared")
+            .expect("shared");
+        assert_eq!(shared.from_recipes.len(), 2);
+        assert!(shared.from_recipes.contains(&"a".to_string()));
+        assert!(shared.from_recipes.contains(&"b".to_string()));
+    }
+
+    #[test]
+    fn expand_parent_declared_arg_has_no_from_recipes() {
+        let child = recipe_named("child", "child.dart", vec![sample_arg("file")]);
+        let parent = Recipe {
+            id: "parent".to_string(),
+            name: None,
+            description: None,
+            args: vec![sample_arg("file")],
+            maps: BTreeMap::new(),
+            queries: BTreeMap::new(),
+            steps: vec![recipe_ref("child")],
+            post_execution: vec![],
+            explorer_menu: None,
+        };
+        let mut registry = BTreeMap::new();
+        registry.insert("child".to_string(), child);
+
+        let expanded = expand_recipe_references(&parent, &registry).unwrap();
+        let file = expanded
+            .args
+            .iter()
+            .find(|a| a.name == "file")
+            .expect("file");
+        assert!(file.from_recipes.is_empty());
     }
 }

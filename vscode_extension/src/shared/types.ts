@@ -28,6 +28,8 @@ export interface RecipeArg {
   contextKey: string | null;
   /** Builtin key, template, or tree-sitter query derivation. */
   from?: ArgFrom | null;
+  /** Nested recipe ids that contribute this unbound arg (absent/empty when parent-declared). */
+  fromRecipes?: string[];
 }
 
 export interface DeriveArgsRequest {

@@ -32,6 +32,9 @@ function paramMeta(arg: RecipeArg): string {
   if (arg.options?.length) {
     parts.push(arg.options.length + ' suggestions');
   }
+  if (arg.fromRecipes?.length) {
+    parts.push('nested: ' + arg.fromRecipes.join(', '));
+  }
   return parts.join(' · ');
 }
 </script>

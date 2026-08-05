@@ -34,6 +34,9 @@ async function pickPath() {
   <label>
     {{ arg.name }}{{ arg.required ? ' *' : '' }}
     <span v-if="arg.help" class="help"> — {{ arg.help }}</span>
+    <span v-if="arg.fromRecipes?.length" class="nested-hint">
+      Used by nested: {{ arg.fromRecipes.join(', ') }}
+    </span>
   </label>
   <div v-if="inputKind === ARG_INPUT_KIND.bool" class="row">
     <input

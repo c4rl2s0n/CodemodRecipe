@@ -65,6 +65,7 @@ mod tests {
             allow_custom_value: None,
             context_key: None,
             from: None,
+            from_recipes: vec![],
         }
     }
 

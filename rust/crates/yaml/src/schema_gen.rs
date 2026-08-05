@@ -119,6 +119,21 @@ fn open_object_additional_properties(schema: &mut Value) {
     }
 }
 
+/// Arg entries reject unknown keys (match `#[serde(deny_unknown_fields)]` on [`Arg`]).
+fn close_arg_additional_properties(schema: &mut Value) {
+    let Some(defs) = schema
+        .as_object_mut()
+        .and_then(|o| o.get_mut("definitions"))
+        .and_then(|d| d.as_object_mut())
+    else {
+        return;
+    };
+    let Some(arg) = defs.get_mut("arg").and_then(|a| a.as_object_mut()) else {
+        return;
+    };
+    arg.insert("additionalProperties".into(), Value::Bool(false));
+}
+
 fn finalize_document(
     mut schema: Value,
     id: &str,
@@ -128,6 +143,7 @@ fn finalize_document(
     normalize_definitions_key(&mut schema);
     merge_vocab_descriptions(&mut schema);
     open_object_additional_properties(&mut schema);
+    close_arg_additional_properties(&mut schema);
 
     let Some(obj) = schema.as_object_mut() else {
         return schema;

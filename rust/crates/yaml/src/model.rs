@@ -50,6 +50,7 @@ pub struct Recipe {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, JsonSchema)]
+#[serde(deny_unknown_fields)]
 #[schemars(rename = "arg")]
 pub struct Arg {
     pub name: String,
@@ -73,6 +74,11 @@ pub struct Arg {
     /// Derive this arg from editor context (`file`, query, template, …).
     #[serde(default)]
     pub from: Option<ArgFrom>,
+    /// Expand-time provenance: nested recipe ids that contribute this unbound arg.
+    /// Not part of recipe YAML; populated by [`crate::compose::expand_recipe_references`].
+    #[serde(skip)]
+    #[schemars(skip)]
+    pub from_recipes: Vec<String>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
