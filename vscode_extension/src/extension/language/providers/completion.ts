@@ -1,8 +1,10 @@
+import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import type { HostBridge } from '../../host/hostBridge';
 import type { RecipeRepository } from '../../recipes/recipeRepository';
 import { collectRecipeIdCompletions, recipeIdCompletionContext } from '../../../shared';
+import { collectCaptureNameCompletions } from '../captureCompletions';
 import type { DslSurface } from '../dslSurface';
 import { remainingChildKeys, resolveContainerId } from '../dslSurface';
 import { resolveYamlContext, lineSourceFromDocument } from '../yamlContext';
@@ -89,6 +91,52 @@ export class RecipeCompletionProvider implements vscode.CompletionItemProvider {
       return this.repository.getLanguageIds().map((id) => {
         return new vscode.CompletionItem(id, vscode.CompletionItemKind.Value);
       });
+    }
+
+    // `capture:` → @names from sibling `query` (inline or .scm).
+    const captureMatch = before.match(/^\s*capture:\s*['"]?([\w]*)$/);
+    if (captureMatch) {
+      const typed = captureMatch[1] ?? '';
+      const lineSource = lineSourceFromDocument(document);
+      const docDir = path.dirname(document.uri.fsPath);
+      const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+      const workspaceRoot = workspaceFolder?.uri.fsPath;
+      const names = collectCaptureNameCompletions(
+        lineSource,
+        position.line,
+        typed,
+        (rel) => {
+          const candidates = [
+            path.isAbsolute(rel) ? rel : path.join(docDir, rel),
+            workspaceRoot ? path.join(workspaceRoot, rel) : undefined,
+            workspaceRoot ? path.join(workspaceRoot, '.codemod', rel) : undefined,
+            workspaceRoot
+              ? path.join(workspaceRoot, '.codemod', 'queries', path.basename(rel))
+              : undefined,
+          ].filter((p): p is string => Boolean(p));
+          for (const candidate of candidates) {
+            try {
+              if (fs.existsSync(candidate) && fs.statSync(candidate).isFile()) {
+                return fs.readFileSync(candidate, 'utf8');
+              }
+            } catch {
+              // ignore
+            }
+          }
+          return undefined;
+        }
+      );
+      if (names.length > 0) {
+        return names.map((name) => {
+          const item = new vscode.CompletionItem(
+            name,
+            vscode.CompletionItemKind.Field
+          );
+          item.detail = 'query capture';
+          item.sortText = `0_${name}`;
+          return item;
+        });
+      }
     }
 
     if (ctx.positionKind === 'key') {

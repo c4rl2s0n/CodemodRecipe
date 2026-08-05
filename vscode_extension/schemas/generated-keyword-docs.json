@@ -220,13 +220,13 @@
     "kind": "Field",
     "wire": "capture",
     "schemaPath": "#/definitions/insertOp/properties/capture",
-    "description": "Capture name from the query whose span is edited."
+    "description": "Name of a tree-sitter capture from this op's `query` (write the `@name` without `@`, e.g. `@body` → `body`). That capture's matched span is what this operation inserts at, replaces, or removes."
   },
   {
     "kind": "Field",
     "wire": "anchor",
     "schemaPath": "#/definitions/insertOp/properties/anchor",
-    "description": "Insertion anchor relative to the capture (start or end)."
+    "description": "Where to insert relative to the span of the capture named by `capture` (`start` = before, `end` = after)."
   },
   {
     "kind": "Field",
@@ -244,7 +244,7 @@
     "kind": "Field",
     "wire": "capture",
     "schemaPath": "#/definitions/replaceOp/properties/capture",
-    "description": "Capture name from the query whose span is edited."
+    "description": "Name of a tree-sitter capture from this op's `query` (write the `@name` without `@`, e.g. `@body` → `body`). That capture's matched span is what this operation inserts at, replaces, or removes."
   },
   {
     "kind": "Field",
@@ -268,7 +268,7 @@
     "kind": "Field",
     "wire": "capture",
     "schemaPath": "#/definitions/removeOp/properties/capture",
-    "description": "Capture name from the query whose span is edited."
+    "description": "Name of a tree-sitter capture from this op's `query` (write the `@name` without `@`, e.g. `@body` → `body`). That capture's matched span is what this operation inserts at, replaces, or removes."
   },
   {
     "kind": "Field",
@@ -430,7 +430,7 @@
     "kind": "Field",
     "wire": "capture",
     "schemaPath": "#/definitions/letBinding/properties/capture",
-    "description": "Capture name from the query whose span is edited."
+    "description": "Name of a tree-sitter capture from this binding's `query` (write the `@name` without `@`). That capture is used to extract the let value."
   },
   {
     "kind": "Field",
