@@ -15,6 +15,7 @@ export class AstTreeItem extends vscode.TreeItem {
         ? vscode.TreeItemCollapsibleState.Collapsed
         : vscode.TreeItemCollapsibleState.None
     );
+    this.id = path.join('.');
     this.description = `[${node.start.line},${node.start.column}]–[${node.end.line},${node.end.column}]`;
     this.tooltip = node.text
       ? `${label}\n${node.text}`
@@ -32,17 +33,21 @@ export class AstTreeItem extends vscode.TreeItem {
 }
 
 export class AstTreeProvider
-  implements vscode.TreeDataProvider<AstTreeItem>, vscode.Disposable
+  implements
+    vscode.TreeDataProvider<AstTreeItem>,
+    vscode.Disposable
 {
   private readonly _onDidChange =
     new vscode.EventEmitter<AstTreeItem | undefined | void>();
   readonly onDidChangeTreeData = this._onDidChange.event;
   private root: AstNodeDto | undefined;
   private hasError = false;
+  private readonly itemCache = new Map<string, AstTreeItem>();
 
   setRoot(root: AstNodeDto | undefined, hasError: boolean): void {
     this.root = root;
     this.hasError = hasError;
+    this.itemCache.clear();
     this._onDidChange.fire();
   }
 
@@ -61,17 +66,43 @@ export class AstTreeProvider
     return findPath(this.root, byte, []);
   }
 
+  getItemForPath(pathIdx: number[]): AstTreeItem | undefined {
+    if (!this.root) {
+      return undefined;
+    }
+    const key = pathIdx.join('.');
+    const cached = this.itemCache.get(key);
+    if (cached) {
+      return cached;
+    }
+    let node: AstNodeDto | undefined = this.root;
+    for (const i of pathIdx) {
+      node = node?.children[i];
+    }
+    if (!node) {
+      return undefined;
+    }
+    const item = new AstTreeItem(node, pathIdx);
+    this.itemCache.set(key, item);
+    return item;
+  }
+
+  getParent(element: AstTreeItem): AstTreeItem | undefined {
+    if (element.path.length <= 1) {
+      return undefined;
+    }
+    return this.getItemForPath(element.path.slice(0, -1));
+  }
+
   getChildren(element?: AstTreeItem): AstTreeItem[] {
     if (!this.root) {
       return [];
     }
     if (!element) {
-      return this.root.children.map(
-        (c, i) => new AstTreeItem(c, [i])
-      );
+      return this.root.children.map((_, i) => this.getItemForPath([i])!);
     }
-    return element.node.children.map(
-      (c, i) => new AstTreeItem(c, [...element.path, i])
+    return element.node.children.map((_, i) =>
+      this.getItemForPath([...element.path, i])!
     );
   }
 

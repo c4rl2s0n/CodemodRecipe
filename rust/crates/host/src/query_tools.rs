@@ -3,9 +3,8 @@
 use std::path::Path;
 
 use codemod_recipe_engine::engine::Engine;
-use codemod_recipe_engine::LanguageRegistry;
 use codemod_recipe_query_tools::{
-    debug_query, dump_ast, generate_query, parse_tree, DebugOptions, DumpOptions, GenerateOptions,
+    debug_query, dump_ast, generate_query, DebugOptions, DumpOptions, GenerateOptions,
 };
 
 use crate::path_sandbox::PathSandbox;
@@ -35,18 +34,32 @@ fn resolve_source(
 }
 
 fn resolve_engine<'a>(
-    _registry: &RecipeRegistry,
-    langs: &'a mut LanguageRegistry,
+    registry: &'a mut RecipeRegistry,
     language: Option<&str>,
     path_hint: &str,
 ) -> Result<&'a mut Engine, String> {
-    langs
+    registry
+        .language_registry()
         .resolve_for_edit(language, path_hint)
         .map_err(|e| e.to_string())
 }
 
+fn cached_parse(
+    registry: &mut RecipeRegistry,
+    path_key: &str,
+    source: &str,
+    language: Option<&str>,
+    path_hint: &str,
+) -> Result<crate::ast_cache::CachedTree, String> {
+    let engine = resolve_engine(registry, language, path_hint)?;
+    let lang = engine.language();
+    registry
+        .ast_cache
+        .get_or_parse(path_key, source, &lang)
+}
+
 pub fn handle_dump_ast(
-    registry: &RecipeRegistry,
+    registry: &mut RecipeRegistry,
     path: Option<&str>,
     source: Option<&str>,
     language: Option<&str>,
@@ -69,29 +82,27 @@ pub fn handle_dump_ast(
 }
 
 fn dump_ast_inner(
-    registry: &RecipeRegistry,
+    registry: &mut RecipeRegistry,
     path: Option<&str>,
     source: Option<&str>,
     language: Option<&str>,
     named_only: bool,
 ) -> Result<(bool, serde_json::Value), String> {
     let (text, hint) = resolve_source(registry, path, source)?;
-    let mut langs = LanguageRegistry::with_config(registry.language_config.clone());
-    let engine = resolve_engine(registry, &mut langs, language, &hint)?;
-    let language = engine.language();
-    let tree = parse_tree(&language, &text).map_err(|e| e.to_string())?;
-    let has_error = tree.root_node().has_error();
+    let path_key = path.unwrap_or(&hint);
+    let cached = cached_parse(registry, path_key, &text, language, &hint)?;
+    let has_error = cached.tree.root_node().has_error();
     let opts = DumpOptions {
         named_only,
         ..DumpOptions::default()
     };
-    let root = dump_ast(tree.root_node(), &text, &opts);
+    let root = dump_ast(cached.tree.root_node(), &cached.source, &opts);
     let value = serde_json::to_value(root).map_err(|e| e.to_string())?;
     Ok((has_error, value))
 }
 
 pub fn handle_debug_query(
-    registry: &RecipeRegistry,
+    registry: &mut RecipeRegistry,
     path: Option<&str>,
     source: Option<&str>,
     language: Option<&str>,
@@ -122,7 +133,7 @@ pub fn handle_debug_query(
 }
 
 fn debug_query_inner(
-    registry: &RecipeRegistry,
+    registry: &mut RecipeRegistry,
     path: Option<&str>,
     source: Option<&str>,
     language: Option<&str>,
@@ -131,20 +142,21 @@ fn debug_query_inner(
     include_sexp: bool,
 ) -> Result<serde_json::Value, String> {
     let (text, hint) = resolve_source(registry, path, source)?;
-    let mut langs = LanguageRegistry::with_config(registry.language_config.clone());
-    let engine = resolve_engine(registry, &mut langs, language, &hint)?;
+    let path_key = path.unwrap_or(&hint);
+    let engine = resolve_engine(registry, language, &hint)?;
     let language = engine.language();
+    let cached = registry.ast_cache.get_or_parse(path_key, &text, &language)?;
     let opts = DebugOptions {
         instrument,
         include_sexp,
         ..DebugOptions::default()
     };
-    let result = debug_query(&language, &text, query, &opts).map_err(|e| e.to_string())?;
+    let result = debug_query(&language, &cached.source, query, &opts).map_err(|e| e.to_string())?;
     serde_json::to_value(result).map_err(|e| e.to_string())
 }
 
 pub fn handle_generate_query(
-    registry: &RecipeRegistry,
+    registry: &mut RecipeRegistry,
     path: Option<&str>,
     source: Option<&str>,
     language: Option<&str>,
@@ -181,7 +193,7 @@ pub fn handle_generate_query(
 }
 
 fn generate_query_inner(
-    registry: &RecipeRegistry,
+    registry: &mut RecipeRegistry,
     path: Option<&str>,
     source: Option<&str>,
     language: Option<&str>,
@@ -192,16 +204,16 @@ fn generate_query_inner(
     max_depth: Option<usize>,
 ) -> Result<codemod_recipe_query_tools::GeneratedQuery, String> {
     let (text, hint) = resolve_source(registry, path, source)?;
-    let mut langs = LanguageRegistry::with_config(registry.language_config.clone());
-    let engine = resolve_engine(registry, &mut langs, language, &hint)?;
+    let path_key = path.unwrap_or(&hint);
+    let engine = resolve_engine(registry, language, &hint)?;
     let language = engine.language();
-    let tree = parse_tree(&language, &text).map_err(|e| e.to_string())?;
+    let cached = registry.ast_cache.get_or_parse(path_key, &text, &language)?;
     let opts = GenerateOptions {
         include_text_predicates,
         capture_leaf: capture_leaf.unwrap_or("target").to_string(),
         max_depth,
     };
-    generate_query(&tree, &text, start, end, &opts).map_err(|e| e.to_string())
+    generate_query(&cached.tree, &cached.source, start, end, &opts).map_err(|e| e.to_string())
 }
 
 pub fn handle_resolve_static_path(template: &str) -> ResolveStaticPathResponse {

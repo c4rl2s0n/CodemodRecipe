@@ -255,6 +255,11 @@
           "command": "codemodRecipe.queryTools.generateFromCursor",
           "group": "navigation",
           "when": "editorTextFocus && resourceScheme == file"
+        },
+        {
+          "command": "codemodRecipe.queryTools.revealAst",
+          "group": "navigation",
+          "when": "editorTextFocus && resourceScheme == file"
         }
       ],
       "explorer/context": [

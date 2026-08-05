@@ -418,6 +418,7 @@ Recipe:
 | `query file not found` | Bad `.scm` path | Place file next to recipe or under `.codemod/queries/` |
 | Predicate ignored | Wrong capture or quantifier | Ensure predicate is inside the pattern that owns the capture |
 | Preview looks like full-file wipe | Patch is whole-file replace | Use Query Tools to see capture spans; not a capture bug by itself |
+| AST tree stale while editing | Query AST refreshes on save / view open, not every keystroke | Save to refresh tree; Run/Generate still use live buffer (host caches parse by hash) |
 
 ---
 

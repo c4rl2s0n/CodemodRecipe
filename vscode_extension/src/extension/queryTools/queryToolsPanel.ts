@@ -116,6 +116,7 @@ export class QueryToolsPanelProvider
   .matches li { cursor: pointer; padding: 2px 4px; }
   .matches li.active { background: var(--vscode-list-activeSelectionBackground); color: var(--vscode-list-activeSelectionForeground); }
   label { margin-right: 4px; }
+  .hint { opacity: 0.75; font-size: 11px; margin: 4px 0; }
 </style>
 </head><body>
   <textarea id="query" spellcheck="false" placeholder="(class_definition …) @target"></textarea>
@@ -127,14 +128,19 @@ export class QueryToolsPanelProvider
       <option value="start">start</option>
       <option value="end" selected>end</option>
     </select>
-    <label><input type="checkbox" id="pinEq"/> pin #eq?</label>
+    <label title="When generating a query, add (#eq? @capture &quot;node text&quot;) so the pattern matches this exact identifier or string."><input type="checkbox" id="pinEq"/> Pin text (#eq?)</label>
   </div>
+  <p class="hint">Pin text = exact literal match. Last list item also gets tree-sitter <code>.</code> when generated.</p>
   <div class="row">
     <button id="run">Run</button>
     <button id="copy">Copy</button>
-    <button id="copyInsert">Copy as YAML insert</button>
-    <button id="copyReplace">replace</button>
-    <button id="copyRemove">remove</button>
+    <label>Copy as YAML</label>
+    <select id="copyYaml">
+      <option value="" selected disabled>choose…</option>
+      <option value="insert">insert</option>
+      <option value="replace">replace</option>
+      <option value="remove">remove</option>
+    </select>
   </div>
   <ul class="matches" id="matches"></ul>
   <div class="status" id="status"></div>
@@ -144,6 +150,7 @@ export class QueryToolsPanelProvider
   const captureEl = document.getElementById('capture');
   const anchorEl = document.getElementById('anchor');
   const pinEqEl = document.getElementById('pinEq');
+  const copyYamlEl = document.getElementById('copyYaml');
   const statusEl = document.getElementById('status');
   const matchesEl = document.getElementById('matches');
   let suppress = false;
@@ -168,9 +175,12 @@ export class QueryToolsPanelProvider
   pinEqEl.addEventListener('change', emitState);
   document.getElementById('run').onclick = () => { emitState(); vscode.postMessage({ type: 'run' }); };
   document.getElementById('copy').onclick = () => vscode.postMessage({ type: 'copy', payload: { kind: 'query' } });
-  document.getElementById('copyInsert').onclick = () => vscode.postMessage({ type: 'copy', payload: { kind: 'insert' } });
-  document.getElementById('copyReplace').onclick = () => vscode.postMessage({ type: 'copy', payload: { kind: 'replace' } });
-  document.getElementById('copyRemove').onclick = () => vscode.postMessage({ type: 'copy', payload: { kind: 'remove' } });
+  copyYamlEl.addEventListener('change', () => {
+    const kind = copyYamlEl.value;
+    if (!kind) return;
+    vscode.postMessage({ type: 'copy', payload: { kind } });
+    copyYamlEl.selectedIndex = 0;
+  });
 
   window.addEventListener('message', (e) => {
     const msg = e.data;

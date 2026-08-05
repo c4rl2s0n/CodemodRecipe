@@ -4,6 +4,7 @@ use crate::protocol::{RecipeArg, RecipeDiagnostic, RecipeSchema};
 use crate::render_context::RecipeRenderContext;
 use crate::template::{render_template, render_template_file};
 use codemod_recipe_engine::engine::parse_recipe_yaml;
+use codemod_recipe_engine::LanguageRegistry;
 use codemod_recipe_yaml::compose::{expand_recipe_references, recipe_ref_id};
 use codemod_recipe_yaml::model::{
     Arg, CreateStep, DeleteStep, EditOp, Recipe, RecipeRef, ScopedStep, Step,
@@ -17,6 +18,8 @@ pub struct RecipeRegistry {
     pub workspace_root: PathBuf,
     codemod_root: PathBuf,
     pub language_config: codemod_recipe_engine::RegistryConfig,
+    pub ast_cache: crate::ast_cache::AstParseCache,
+    language_registry: Option<LanguageRegistry>,
     maps_by_id: BTreeMap<String, BTreeMap<String, String>>,
     vars_by_id: BTreeMap<String, BTreeMap<String, String>>,
     queries_by_id: BTreeMap<String, BTreeMap<String, codemod_recipe_yaml::model::QueryDefinition>>,
@@ -31,6 +34,8 @@ impl RecipeRegistry {
             workspace_root,
             codemod_root,
             language_config: codemod_recipe_engine::RegistryConfig::default(),
+            ast_cache: crate::ast_cache::AstParseCache::default(),
+            language_registry: None,
             maps_by_id: BTreeMap::new(),
             vars_by_id: BTreeMap::new(),
             queries_by_id: BTreeMap::new(),
@@ -47,6 +52,8 @@ impl RecipeRegistry {
         self.vars_by_id.clear();
         self.queries_by_id.clear();
         self.diagnostics.clear();
+        self.ast_cache.clear();
+        self.language_registry = None;
 
         let assets = load_codemod_assets(&self.workspace_root, &self.codemod_root);
         self.maps_by_id = assets.maps_by_id;
@@ -218,6 +225,14 @@ impl RecipeRegistry {
 
     pub fn codemod_root(&self) -> &Path {
         &self.codemod_root
+    }
+
+    pub fn language_registry(&mut self) -> &mut LanguageRegistry {
+        if self.language_registry.is_none() {
+            self.language_registry =
+                Some(LanguageRegistry::with_config(self.language_config.clone()));
+        }
+        self.language_registry.as_mut().expect("initialized above")
     }
 }
 

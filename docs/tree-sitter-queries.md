@@ -90,6 +90,10 @@ Bidirectional helper (read-only; separate from recipe apply):
 
 CodeLens on recipe `query:` → **Open in Query Tools** (loads query; opens `edit.path` when it Jinja-resolves with empty args). **Go to edit path** on static `path:` values.
 
+**AST refresh:** the Query AST tree updates when the view is visible and you switch files, save, or explicitly reveal — not on every keystroke. While the buffer is dirty, the tree shows a **Stale (unsaved)** badge until you save. **Run** / **Generate** always use the current editor text; the Rust host caches parses by path + content hash (LRU, shared across Query Tools commands).
+
+**Generate helpers:** **Pin text (#eq?)** adds `(#eq? @capture "literal")` when generating from a node. Last list items also get the tree-sitter last-child anchor `.` (e.g. `(identifier) @target .`).
+
 MCP: `dump_ast`, `debug_query`, `generate_query`, `resolve_static_path`.
 
 Recipe ops still require an explicit `capture:` — Query Tools may default the UI capture to the last `@name` for visualization only.

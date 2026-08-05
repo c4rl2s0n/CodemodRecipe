@@ -87,6 +87,30 @@ class AppDatabase extends _$AppDatabase {}
         .expect("generate");
         assert!(gen.query.contains("list_literal") || gen.query.contains("identifier"));
         assert!(gen.query.contains("@lastTable"));
+        assert!(
+            gen.query.contains("@lastTable .") || gen.query.contains("@lastTable  ."),
+            "expected last-child anchor . after capture: {}",
+            gen.query
+        );
         assert_eq!(gen.capture_suggestion, "lastTable");
+    }
+
+    #[test]
+    fn generate_query_pins_text_when_requested() {
+        let tree = parse(DRIFT);
+        let offset = DRIFT.find("RulesTable").expect("RulesTable");
+        let gen = generate_query(
+            &tree,
+            DRIFT,
+            offset,
+            offset + "RulesTable".len(),
+            &GenerateOptions {
+                include_text_predicates: true,
+                capture_leaf: "lastTable".into(),
+                max_depth: Some(6),
+            },
+        )
+        .expect("generate");
+        assert!(gen.query.contains("#eq? @lastTable \"RulesTable\""));
     }
 }

@@ -138,6 +138,9 @@ fn emit_chain(
         s.push_str(kind);
         s.push_str(") @");
         s.push_str(capture);
+        if is_last_named_child(node) {
+            s.push_str(" .");
+        }
         if opts.include_text_predicates && (kind == "identifier" || kind.contains("string")) {
             if let Some(text) = source.get(node.start_byte()..node.end_byte()) {
                 let lit = text.trim_matches(|c| c == '"' || c == '\'');
@@ -180,6 +183,21 @@ fn field_name_of_child(parent: Node<'_>, child: Node<'_>) -> Option<String> {
         }
     }
     None
+}
+
+fn is_last_named_child(node: Node<'_>) -> bool {
+    let parent = match node.parent() {
+        Some(p) => p,
+        None => return false,
+    };
+    let count = parent.named_child_count();
+    if count == 0 {
+        return false;
+    }
+    parent
+        .named_child((count - 1) as u32)
+        .map(|last| last.id() == node.id())
+        .unwrap_or(false)
 }
 
 fn escape_str(s: &str) -> String {

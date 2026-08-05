@@ -1,4 +1,5 @@
 pub mod args;
+pub mod ast_cache;
 pub mod bootstrap;
 pub mod config;
 pub mod derive_args;

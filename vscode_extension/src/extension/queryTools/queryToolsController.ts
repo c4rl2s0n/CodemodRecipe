@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 import { COMMANDS, VIEWS } from '../constants';
 import type { ExtensionConfig } from '../config/extensionConfig';
 import type { HostBridge } from '../host/hostBridge';
-import type { AstNodeDto, DebugMatchDto } from '../../shared';
+import type { DebugMatchDto } from '../../shared';
 import { AstTreeItem, AstTreeProvider } from './astTreeProvider';
 import { QueryToolsDecorations } from './decorations';
 import {
@@ -23,7 +23,11 @@ export class QueryToolsController implements vscode.Disposable {
   private matches: DebugMatchDto[] = [];
   private focusIndex = 0;
   private boundUri: vscode.Uri | undefined;
-  private refreshTimer: NodeJS.Timeout | undefined;
+  private astTreeView?: vscode.TreeView<AstTreeItem>;
+  private revealTimer: NodeJS.Timeout | undefined;
+  /** Document version when AST was last dumped for the tree view. */
+  private lastDumpVersion = -1;
+  private astStale = false;
 
   constructor(
     private readonly bridge: HostBridge,
@@ -31,8 +35,13 @@ export class QueryToolsController implements vscode.Disposable {
   ) {}
 
   register(context: vscode.ExtensionContext): void {
+    this.astTreeView = vscode.window.createTreeView(VIEWS.queryAst, {
+      treeDataProvider: this.astProvider,
+      showCollapseAll: true,
+    });
+
     this.disposables.push(
-      vscode.window.registerTreeDataProvider(VIEWS.queryAst, this.astProvider),
+      this.astTreeView,
       vscode.window.registerWebviewViewProvider(
         QueryToolsPanelProvider.viewType,
         this.panel,
@@ -96,26 +105,83 @@ export class QueryToolsController implements vscode.Disposable {
         (doc?: vscode.TextDocument, line?: number) =>
           void this.goToEditPath(doc, line)
       ),
+      this.astTreeView.onDidChangeVisibility((e) => {
+        if (e.visible) {
+          void this.refreshAstIfVisible(true);
+        }
+      }),
       vscode.window.onDidChangeActiveTextEditor(() => {
-        this.scheduleAstRefresh();
+        void this.refreshAstIfVisible(false);
+      }),
+      vscode.workspace.onDidSaveTextDocument((doc) => {
+        if (
+          this.isAstViewVisible() &&
+          doc.uri.toString() === this.boundUri?.toString()
+        ) {
+          void this.refreshAst(true);
+        }
       }),
       vscode.workspace.onDidChangeTextDocument((e) => {
-        if (e.document.uri.toString() === this.boundUri?.toString()) {
-          this.scheduleAstRefresh();
+        if (e.document.uri.toString() !== this.boundUri?.toString()) {
+          return;
         }
+        if (e.document.version !== this.lastDumpVersion) {
+          this.astStale = true;
+          this.updateStaleStatus();
+        }
+      }),
+      vscode.window.onDidChangeTextEditorSelection((e) => {
+        if (e.textEditor.document.uri.toString() !== this.boundUri?.toString()) {
+          return;
+        }
+        this.scheduleRevealAtCursor();
       })
     );
     context.subscriptions.push(this);
-    this.scheduleAstRefresh();
   }
 
-  private scheduleAstRefresh(): void {
-    if (this.refreshTimer) {
-      clearTimeout(this.refreshTimer);
+  private isAstViewVisible(): boolean {
+    return this.astTreeView?.visible ?? false;
+  }
+
+  private scheduleRevealAtCursor(): void {
+    if (!this.isAstViewVisible() || this.astStale) {
+      return;
     }
-    this.refreshTimer = setTimeout(() => {
-      void this.refreshAst();
-    }, 300);
+    if (this.revealTimer) {
+      clearTimeout(this.revealTimer);
+    }
+    this.revealTimer = setTimeout(() => {
+      void this.revealAtCursor(false);
+    }, 150);
+  }
+
+  private async refreshAstIfVisible(force: boolean): Promise<void> {
+    if (!this.isAstViewVisible()) {
+      return;
+    }
+    await this.refreshAst(force);
+  }
+
+  private updateStaleStatus(): void {
+    if (!this.astStale) {
+      return;
+    }
+    const base = this.astProvider.getHasError()
+      ? 'Parse has ERROR nodes — query matching may fail.'
+      : '';
+    const stale = 'Stale (unsaved) — save to refresh AST tree.';
+    this.panel.setStatus(base ? `${stale}\n${base}` : stale);
+    if (this.astTreeView) {
+      this.astTreeView.description = 'Stale (unsaved)';
+    }
+  }
+
+  private clearStaleStatus(): void {
+    this.astStale = false;
+    if (this.astTreeView) {
+      this.astTreeView.description = undefined;
+    }
   }
 
   private activeEditor(): vscode.TextEditor | undefined {
@@ -123,7 +189,6 @@ export class QueryToolsController implements vscode.Disposable {
     if (!ed || ed.document.uri.scheme !== 'file') {
       return undefined;
     }
-    // Prefer bound URI when set and still open
     if (this.boundUri) {
       const found = vscode.window.visibleTextEditors.find(
         (e) => e.document.uri.toString() === this.boundUri!.toString()
@@ -139,10 +204,18 @@ export class QueryToolsController implements vscode.Disposable {
     return path.relative(this.config.workspaceRoot, uri.fsPath).replace(/\\/g, '/');
   }
 
-  private async refreshAst(): Promise<void> {
+  private async refreshAst(force: boolean): Promise<void> {
     const ed = this.activeEditor();
     if (!ed) {
       this.astProvider.setRoot(undefined, false);
+      return;
+    }
+    if (
+      !force &&
+      !this.astStale &&
+      ed.document.version === this.lastDumpVersion &&
+      this.astProvider.getRoot()
+    ) {
       return;
     }
     this.boundUri = ed.document.uri;
@@ -159,11 +232,41 @@ export class QueryToolsController implements vscode.Disposable {
         return;
       }
       this.astProvider.setRoot(resp.root, !!resp.hasError);
+      this.lastDumpVersion = ed.document.version;
+      this.clearStaleStatus();
       if (resp.hasError) {
         this.panel.setStatus('Parse has ERROR nodes — query matching may fail.');
+      } else if (!this.panel.getState().query.trim()) {
+        this.panel.setStatus('AST ready — select a node or Generate from cursor.');
       }
     } catch (e) {
       this.panel.setStatus(e instanceof Error ? e.message : String(e));
+    }
+  }
+
+  private async revealAtCursor(focusAst: boolean): Promise<void> {
+    const ed = this.activeEditor();
+    if (!ed || !this.astProvider.getRoot()) {
+      return;
+    }
+    const offset = ed.document.offsetAt(ed.selection.active);
+    const pathIdx = this.astProvider.findPathForByte(offset);
+    if (!pathIdx) {
+      return;
+    }
+    const item = this.astProvider.getItemForPath(pathIdx);
+    if (!item) {
+      return;
+    }
+    this.decorations.showAstSelection(ed, item.node);
+    try {
+      await this.astTreeView?.reveal(item, {
+        expand: true,
+        select: true,
+        focus: focusAst,
+      });
+    } catch {
+      // reveal can fail if the item is not yet rendered
     }
   }
 
@@ -191,6 +294,9 @@ export class QueryToolsController implements vscode.Disposable {
       }
       this.panel.setQuery(resp.query, resp.captureSuggestion);
       this.panel.setStatus(`Generated query for ${item.node.kind}`);
+      if (this.isAstViewVisible()) {
+        await this.refreshAst(true);
+      }
     } catch (e) {
       this.panel.setStatus(e instanceof Error ? e.message : String(e));
     }
@@ -221,6 +327,10 @@ export class QueryToolsController implements vscode.Disposable {
       }
       this.panel.setQuery(resp.query, resp.captureSuggestion);
       this.panel.setStatus('Generated from cursor');
+      if (this.isAstViewVisible()) {
+        await this.refreshAst(true);
+        await this.revealAtCursor(false);
+      }
       await vscode.commands.executeCommand(`${VIEWS.queryEditor}.focus`);
     } catch (e) {
       this.panel.setStatus(e instanceof Error ? e.message : String(e));
@@ -232,21 +342,14 @@ export class QueryToolsController implements vscode.Disposable {
     if (!ed) {
       return;
     }
-    await this.refreshAst();
+    await this.refreshAst(true);
     const offset = ed.document.offsetAt(ed.selection.active);
     const pathIdx = this.astProvider.findPathForByte(offset);
     if (!pathIdx) {
       this.panel.setStatus('No AST node at cursor');
       return;
     }
-    // Highlight deepest node
-    let node: AstNodeDto | undefined = this.astProvider.getRoot();
-    for (const i of pathIdx) {
-      node = node?.children[i];
-    }
-    if (node) {
-      this.decorations.showAstSelection(ed, node);
-    }
+    await this.revealAtCursor(true);
     await vscode.commands.executeCommand(`${VIEWS.queryAst}.focus`);
   }
 
@@ -286,6 +389,9 @@ export class QueryToolsController implements vscode.Disposable {
       this.focusIndex = 0;
       this.panel.setMatches(this.matches, this.focusIndex);
       this.paintMatches(state.capture, state.anchor);
+      if (this.isAstViewVisible()) {
+        await this.refreshAst(true);
+      }
     } catch (e) {
       this.panel.setStatus(e instanceof Error ? e.message : String(e));
     }
@@ -364,7 +470,9 @@ export class QueryToolsController implements vscode.Disposable {
           const opened = await vscode.workspace.openTextDocument(uri);
           await vscode.window.showTextDocument(opened, vscode.ViewColumn.One);
           this.boundUri = uri;
-          await this.refreshAst();
+          if (this.isAstViewVisible()) {
+            await this.refreshAst(true);
+          }
           await this.runQuery();
           return;
         } catch {
@@ -413,8 +521,8 @@ export class QueryToolsController implements vscode.Disposable {
   }
 
   dispose(): void {
-    if (this.refreshTimer) {
-      clearTimeout(this.refreshTimer);
+    if (this.revealTimer) {
+      clearTimeout(this.revealTimer);
     }
     this.astProvider.dispose();
     this.panel.dispose();
