@@ -23,6 +23,7 @@ export class RecipeRunnerViewProvider
   private view: vscode.WebviewView | undefined;
   private renderPending = false;
   private webviewHtmlLoaded = false;
+  private messageSub: vscode.Disposable | undefined;
   private _previewInFlight = false;
   readonly state = new RecipeRunnerState();
   private _scaffoldHandler: (() => Promise<void>) | undefined;
@@ -64,7 +65,11 @@ export class RecipeRunnerViewProvider
   }
 
   resolveWebviewView(webviewView: vscode.WebviewView): void {
+    this.messageSub?.dispose();
     this.view = webviewView;
+    // Moving between side bars (or reactivation) recreates the WebviewView;
+    // always re-inject HTML for the new host.
+    this.webviewHtmlLoaded = false;
     webviewView.webview.options = {
       enableScripts: true,
       localResourceRoots: [vscode.Uri.joinPath(this.extensionUri, 'media')],
@@ -75,8 +80,27 @@ export class RecipeRunnerViewProvider
     if (hadPendingRender) {
       this.postState();
     }
-    webviewView.webview.onDidReceiveMessage((message: unknown) => {
-      void this.handleMessage(message);
+    this.messageSub = webviewView.webview.onDidReceiveMessage(
+      (message: unknown) => {
+        void this.handleMessage(message);
+      }
+    );
+    webviewView.onDidDispose(() => {
+      if (this.view !== webviewView) {
+        return;
+      }
+      this.view = undefined;
+      this.webviewHtmlLoaded = false;
+      this.messageSub?.dispose();
+      this.messageSub = undefined;
+    });
+    webviewView.onDidChangeVisibility(() => {
+      if (this.view !== webviewView || !webviewView.visible) {
+        return;
+      }
+      // Secondary side bar reactivation can leave an empty body; re-inject.
+      this.ensureWebviewHtml();
+      this.postState();
     });
   }
 
@@ -196,7 +220,12 @@ export class RecipeRunnerViewProvider
   }
 
   private ensureWebviewHtml(): void {
-    if (!this.view || this.webviewHtmlLoaded) {
+    if (!this.view) {
+      return;
+    }
+    // VS Code can clear the webview body (e.g. secondary side bar) without
+    // disposing; treat empty html as needing a fresh inject.
+    if (this.webviewHtmlLoaded && this.view.webview.html) {
       return;
     }
     this.webviewHtmlLoaded = true;
