@@ -113,17 +113,17 @@ vocab_entries! {
     Field, crate::dsl::recipe::steps::edit::field::OPS, None, "Ordered edit operations applied sequentially on the same file.", "#/definitions/editStep/properties/ops";
 
     Field, crate::dsl::recipe::steps::edit::ops::insert::field::QUERY, None, "Inline tree-sitter query, .scm path, query-library ref, or chain.", "#/definitions/insertOp/properties/query";
-    Field, crate::dsl::recipe::steps::edit::ops::insert::field::CAPTURE, None, "Capture name from the query whose span is edited.", "#/definitions/insertOp/properties/capture";
-    Field, crate::dsl::recipe::steps::edit::ops::insert::field::ANCHOR, None, "Insertion anchor relative to the capture (start or end).", "#/definitions/insertOp/properties/anchor";
+    Field, crate::dsl::recipe::steps::edit::ops::insert::field::CAPTURE, None, "Name of a tree-sitter capture from this op's `query` (write the `@name` without `@`, e.g. `@body` → `body`). That capture's matched span is what this operation inserts at, replaces, or removes.", "#/definitions/insertOp/properties/capture";
+    Field, crate::dsl::recipe::steps::edit::ops::insert::field::ANCHOR, None, "Where to insert relative to the span of the capture named by `capture` (`start` = before, `end` = after).", "#/definitions/insertOp/properties/anchor";
     Field, crate::dsl::recipe::steps::edit::ops::insert::field::TEXT, None, "Replacement or inserted source text (Jinja-rendered).", "#/definitions/insertOp/properties/text";
 
     Field, crate::dsl::recipe::steps::edit::ops::replace::field::QUERY, None, "Inline tree-sitter query, .scm path, query-library ref, or chain.", "#/definitions/replaceOp/properties/query";
-    Field, crate::dsl::recipe::steps::edit::ops::replace::field::CAPTURE, None, "Capture name from the query whose span is edited.", "#/definitions/replaceOp/properties/capture";
+    Field, crate::dsl::recipe::steps::edit::ops::replace::field::CAPTURE, None, "Name of a tree-sitter capture from this op's `query` (write the `@name` without `@`, e.g. `@body` → `body`). That capture's matched span is what this operation inserts at, replaces, or removes.", "#/definitions/replaceOp/properties/capture";
     Field, crate::dsl::recipe::steps::edit::ops::replace::field::TEXT, None, "Replacement or inserted source text (Jinja-rendered).", "#/definitions/replaceOp/properties/text";
     Field, crate::dsl::recipe::steps::edit::ops::replace::field::INCLUDE_LEADING_TRIVIA, None, "Include leading trivia when replacing or removing a capture.", "#/definitions/replaceOp/properties/includeLeadingTrivia";
 
     Field, crate::dsl::recipe::steps::edit::ops::remove::field::QUERY, None, "Inline tree-sitter query, .scm path, query-library ref, or chain.", "#/definitions/removeOp/properties/query";
-    Field, crate::dsl::recipe::steps::edit::ops::remove::field::CAPTURE, None, "Capture name from the query whose span is edited.", "#/definitions/removeOp/properties/capture";
+    Field, crate::dsl::recipe::steps::edit::ops::remove::field::CAPTURE, None, "Name of a tree-sitter capture from this op's `query` (write the `@name` without `@`, e.g. `@body` → `body`). That capture's matched span is what this operation inserts at, replaces, or removes.", "#/definitions/removeOp/properties/capture";
     Field, crate::dsl::recipe::steps::edit::ops::remove::field::INCLUDE_LEADING_TRIVIA, None, "Include leading trivia when replacing or removing a capture.", "#/definitions/removeOp/properties/includeLeadingTrivia";
 
     Field, crate::dsl::recipe::steps::create::field::PATH, None, "Workspace-relative file path (often templated).", "#/definitions/createStep/properties/path";
@@ -156,7 +156,7 @@ vocab_entries! {
     Field, crate::dsl::recipe::steps::edit::let_binding::field::AS, None, "Jinja template to compute a let value from prior locals.", "#/definitions/letBinding/properties/as";
     Field, crate::dsl::recipe::steps::edit::let_binding::field::NAME, None, "Let binding local name.", "#/definitions/letBinding/properties/name";
     Field, crate::dsl::recipe::steps::edit::let_binding::field::QUERY, None, "Inline tree-sitter query, .scm path, query-library ref, or chain.", "#/definitions/letBinding/properties/query";
-    Field, crate::dsl::recipe::steps::edit::let_binding::field::CAPTURE, None, "Capture name from the query whose span is edited.", "#/definitions/letBinding/properties/capture";
+    Field, crate::dsl::recipe::steps::edit::let_binding::field::CAPTURE, None, "Name of a tree-sitter capture from this binding's `query` (write the `@name` without `@`). That capture is used to extract the let value.", "#/definitions/letBinding/properties/capture";
 
     Field, crate::dsl::recipe::queries::entry::field::QUERY, None, "Inline tree-sitter query, .scm path, query-library ref, or chain.", "#/properties/queries/additionalProperties/query";
 

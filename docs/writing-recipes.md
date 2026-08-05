@@ -143,6 +143,9 @@ On the op, `capture:` picks **which** named match is edited. Use the name
 `insert` / `replace` / `remove` all require `capture`. If the name is missing,
 unmatched, or ambiguous, the run fails.
 
+In the VS Code extension, completing on `capture:` suggests `@names` scraped
+from the sibling `query` (inline text or a `.scm` path).
+
 ### The `anchor` field (insert only)
 
 `anchor` chooses where `text` is inserted relative to the **captured node’s

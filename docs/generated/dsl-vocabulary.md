@@ -157,8 +157,8 @@ Containers and their child fields (from the generated DSL surface):
 | Wire | Description |
 |------|-------------|
 | `query` | Inline tree-sitter query, .scm path, query-library ref, or chain. |
-| `capture` | Capture name from the query whose span is edited. |
-| `anchor` | Insertion anchor relative to the capture (start or end). |
+| `capture` | Name of a tree-sitter capture from this op's `query` (write the `@name` without `@`, e.g. `@body` → `body`). That capture's matched span is what this operation inserts at, replaces, or removes. |
+| `anchor` | Where to insert relative to the span of the capture named by `capture` (`start` = before, `end` = after). |
 | `text` | Replacement or inserted source text (Jinja-rendered). |
 
 ### `letBinding`
@@ -172,7 +172,7 @@ Containers and their child fields (from the generated DSL surface):
 | `as` | Jinja template to compute a let value from prior locals. |
 | `name` | Let binding local name. |
 | `query` | Inline tree-sitter query, .scm path, query-library ref, or chain. |
-| `capture` | Capture name from the query whose span is edited. |
+| `capture` | Name of a tree-sitter capture from this binding's `query` (write the `@name` without `@`). That capture is used to extract the let value. |
 
 ### `recipeRef`
 
@@ -192,7 +192,7 @@ Containers and their child fields (from the generated DSL surface):
 | Wire | Description |
 |------|-------------|
 | `query` | Inline tree-sitter query, .scm path, query-library ref, or chain. |
-| `capture` | Capture name from the query whose span is edited. |
+| `capture` | Name of a tree-sitter capture from this op's `query` (write the `@name` without `@`, e.g. `@body` → `body`). That capture's matched span is what this operation inserts at, replaces, or removes. |
 | `includeLeadingTrivia` | Include leading trivia when replacing or removing a capture. |
 
 ### `replaceOp`
@@ -200,7 +200,7 @@ Containers and their child fields (from the generated DSL surface):
 | Wire | Description |
 |------|-------------|
 | `query` | Inline tree-sitter query, .scm path, query-library ref, or chain. |
-| `capture` | Capture name from the query whose span is edited. |
+| `capture` | Name of a tree-sitter capture from this op's `query` (write the `@name` without `@`, e.g. `@body` → `body`). That capture's matched span is what this operation inserts at, replaces, or removes. |
 | `text` | Replacement or inserted source text (Jinja-rendered). |
 | `includeLeadingTrivia` | Include leading trivia when replacing or removing a capture. |
 
