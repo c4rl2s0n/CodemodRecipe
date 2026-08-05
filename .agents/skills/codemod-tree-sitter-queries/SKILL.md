@@ -12,6 +12,7 @@ description: Tree-sitter query language for codemod-recipe — S-expression patt
 - Distinguishing tree-sitter query anchors from codemod `anchor: start|end`
 - Moving queries into external `.scm` files
 - Fixing `Invalid node type`, `query matched no nodes`, or `query matched multiple nodes`
+- Using VS Code **Query Tools** or MCP `dump_ast` / `debug_query` / `generate_query`
 
 ## When not to use
 

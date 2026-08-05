@@ -17,6 +17,10 @@ MCP server `codemod-mcp` returns JSON text. Parse output and branch on `ok`.
 | `validate_recipes` | Reload + validate recipes/maps/variables under `.codemod/` |
 | `preview_recipe` | Dry-run; returns `previewToken` |
 | `apply_recipe` | Atomic apply; requires `previewToken` |
+| `dump_ast` | Dump AST for Query Tools / debugging |
+| `debug_query` | Run tree-sitter query; return captures |
+| `generate_query` | Generate starter query from byte range |
+| `resolve_static_path` | Probe whether a Jinja path needs args |
 
 Default bootstrap is soft (`edit_policy: "recommend"`). Use `"strict"` for recipe-first edits; add `"companions": ["codebase-memory"]` when that MCP is available.
 

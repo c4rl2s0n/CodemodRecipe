@@ -16,6 +16,7 @@ pub mod post_execution;
 pub mod preview_token;
 pub mod protocol;
 pub mod protocol_keys;
+pub mod query_tools;
 pub mod query_resolver;
 pub mod registry;
 pub mod render_context;

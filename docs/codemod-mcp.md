@@ -112,6 +112,10 @@ All tools return a JSON string. Parse it, then check `ok`.
 | `validate_recipes` | Reload + validate recipes/maps (optional `recipe` id) |
 | `preview_recipe` | Dry-run recipe; returns `previewToken` |
 | `apply_recipe` | Apply recipe atomically; requires `previewToken` |
+| `dump_ast` | Dump tree-sitter AST (`path` and/or `source`, optional `language`) |
+| `debug_query` | Run a query; return match roots and captures (`query` required) |
+| `generate_query` | Starter query from byte `start`/`end` in a file |
+| `resolve_static_path` | Jinja-render a path with empty args (static paths only) |
 
 ## End-to-end workflow
 

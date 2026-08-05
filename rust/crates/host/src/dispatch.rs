@@ -150,6 +150,57 @@ pub fn handle_command(registry: &mut RecipeRegistry, cmd: HostCommand) -> serde_
         HostCommand::FilterExplorerRecipes { path, kind } => to_value(
             crate::filter_explorer_recipes::filter_explorer_recipes(registry, &path, &kind),
         ),
+        HostCommand::DumpAst {
+            path,
+            source,
+            language,
+            named_only,
+        } => to_value(crate::query_tools::handle_dump_ast(
+            registry,
+            path.as_deref(),
+            source.as_deref(),
+            language.as_deref(),
+            named_only,
+        )),
+        HostCommand::DebugQuery {
+            path,
+            source,
+            language,
+            query,
+            instrument,
+            include_sexp,
+        } => to_value(crate::query_tools::handle_debug_query(
+            registry,
+            path.as_deref(),
+            source.as_deref(),
+            language.as_deref(),
+            &query,
+            instrument,
+            include_sexp,
+        )),
+        HostCommand::GenerateQuery {
+            path,
+            source,
+            language,
+            start,
+            end,
+            include_text_predicates,
+            capture_leaf,
+            max_depth,
+        } => to_value(crate::query_tools::handle_generate_query(
+            registry,
+            path.as_deref(),
+            source.as_deref(),
+            language.as_deref(),
+            start,
+            end,
+            include_text_predicates,
+            capture_leaf.as_deref(),
+            max_depth,
+        )),
+        HostCommand::ResolveStaticPath { template } => {
+            to_value(crate::query_tools::handle_resolve_static_path(&template))
+        },
         HostCommand::Preview {
             recipe,
             inline_recipe,

@@ -36,7 +36,7 @@ and these human docs are **not** copied by bootstrap.
 | [writing-recipes.md](writing-recipes.md) | Authoring workflow, capture/anchor, step types |
 | [generated/dsl-vocabulary.md](generated/dsl-vocabulary.md) | Complete field / enum catalog (from schema) |
 | [recipe-templates.md](recipe-templates.md) | MiniJinja / Jinja2 templates, filters, maps/vars |
-| [tree-sitter-queries.md](tree-sitter-queries.md) | Query language, captures, anchors, predicates |
+| [tree-sitter-queries.md](tree-sitter-queries.md) | Query language, captures, anchors, predicates; **Query Tools** (VS Code + MCP) |
 | [language-support.md](language-support.md) | `language:` field, inference, SQL dialects |
 | [recipe-design-patterns.md](recipe-design-patterns.md) | create / add / scaffold / remove taxonomy |
 
@@ -46,6 +46,7 @@ Root [README.md](../README.md) also shows a compact YAML example and feature sta
 
 | Doc | Contents |
 |-----|----------|
+| [tree-sitter-queries.md — Query Tools](tree-sitter-queries.md#query-tools-vs-code) | AST browse, generate/run queries, CodeLens, MCP debug tools |
 | [recipe-shortcuts.md](recipe-shortcuts.md) | Slots, `from` / `contextKey`, explorer menu |
 
 ## Architecture and contributing

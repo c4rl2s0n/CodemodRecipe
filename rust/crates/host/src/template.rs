@@ -17,6 +17,19 @@ const TEMPLATE_FUEL: usize = 50_000;
 /// Callback used by condition templates (`file_exists`) and explorer menu filters.
 pub(crate) type PathExistsFn = Arc<dyn Fn(&str) -> bool + Send + Sync>;
 
+/// Render with empty args/maps/vars under Strict undefined.
+///
+/// Returns `Ok(rendered)` when the template needs no parameters (static path).
+/// Returns `Err` on syntax errors or undefined variables.
+pub fn try_resolve_static_template(template: &str) -> Result<String, String> {
+    render_template(
+        template,
+        &BTreeMap::new(),
+        &BTreeMap::new(),
+        &BTreeMap::new(),
+    )
+}
+
 /// Render a template string (recipe paths, queries, inline create.template).
 pub fn render_string(template: &str, args: &BTreeMap<String, String>) -> Result<String, String> {
     render_template(template, args, &BTreeMap::new(), &BTreeMap::new())
@@ -351,6 +364,20 @@ mod tests {
     fn strict_undefined_errors_on_missing() {
         let args = BTreeMap::new();
         assert!(render_string("{{missing}}", &args).is_err());
+    }
+
+    #[test]
+    fn try_resolve_static_template_accepts_literal() {
+        assert_eq!(
+            try_resolve_static_template("lib/database.dart").unwrap(),
+            "lib/database.dart"
+        );
+    }
+
+    #[test]
+    fn try_resolve_static_template_rejects_params() {
+        assert!(try_resolve_static_template("{{file}}").is_err());
+        assert!(try_resolve_static_template("lib/{{name}}.dart").is_err());
     }
 
     #[test]

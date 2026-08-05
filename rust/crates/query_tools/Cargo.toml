@@ -1,0 +1,17 @@
+[package]
+name = "codemod_recipe_query_tools"
+version = "0.1.0"
+edition = "2021"
+description = "Tree-sitter AST dump, query debug, and starter-query generation (no recipe coupling)"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+thiserror = "2"
+tree-sitter = "0.26"
+
+[dev-dependencies]
+pretty_assertions = "1"
+tree-sitter-language-pack = "1"
+
+[lints]
+workspace = true

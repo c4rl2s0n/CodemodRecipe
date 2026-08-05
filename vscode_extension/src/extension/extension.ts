@@ -30,6 +30,7 @@ import { openRecipeFromExplorer, runRecipeFromExplorer } from './recipes/recipeE
 import { RecipeRepository } from './recipes/recipeRepository';
 import type { RecipeSchema } from '../shared';
 import { RecipeRunnerViewProvider } from './views/recipeRunnerViewProvider';
+import { QueryToolsController } from './queryTools/queryToolsController';
 
 export function activate(context: vscode.ExtensionContext): void {
   const config = new ExtensionConfig();
@@ -44,6 +45,8 @@ export function activate(context: vscode.ExtensionContext): void {
     context.extensionUri
   );
   runner.setRecipeRepository(repository);
+  const queryTools = new QueryToolsController(bridge, config);
+  queryTools.register(context);
 
   let recipeReloadTimer: NodeJS.Timeout | undefined;
   let recipeReloadGeneration = 0;

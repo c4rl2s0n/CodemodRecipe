@@ -114,6 +114,11 @@ impl Engine {
         self.adapter.language()
     }
 
+    /// Language handle for Query Tools and other host helpers.
+    pub fn language(&self) -> tree_sitter::Language {
+        self.adapter.language()
+    }
+
     /// Collect patches for a single edit op against `source`.
     pub fn collect_patches_for_single_op(
         &mut self,

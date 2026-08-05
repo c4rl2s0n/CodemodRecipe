@@ -164,6 +164,64 @@ fn handle_request(
                       }
                     }
                   }
+                },
+                {
+                  "name": "dump_ast",
+                  "description": "Dump the tree-sitter AST for a workspace file or inline source (Query Tools).",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "path": { "type": "string" },
+                      "source": { "type": "string" },
+                      "language": { "type": "string" },
+                      "namedOnly": { "type": "boolean" }
+                    }
+                  }
+                },
+                {
+                  "name": "debug_query",
+                  "description": "Run a tree-sitter query and return match roots and captures (Query Tools).",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "path": { "type": "string" },
+                      "source": { "type": "string" },
+                      "language": { "type": "string" },
+                      "query": { "type": "string" },
+                      "instrument": { "type": "boolean" },
+                      "includeSexp": { "type": "boolean" }
+                    },
+                    "required": ["query"]
+                  }
+                },
+                {
+                  "name": "generate_query",
+                  "description": "Generate a starter tree-sitter query from a byte range in a file (Query Tools).",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "path": { "type": "string" },
+                      "source": { "type": "string" },
+                      "language": { "type": "string" },
+                      "start": { "type": "number" },
+                      "end": { "type": "number" },
+                      "includeTextPredicates": { "type": "boolean" },
+                      "captureLeaf": { "type": "string" },
+                      "maxDepth": { "type": "number" }
+                    },
+                    "required": ["start"]
+                  }
+                },
+                {
+                  "name": "resolve_static_path",
+                  "description": "Try to Jinja-render a path template with empty args; succeeds only when no parameters are required.",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "template": { "type": "string" }
+                    },
+                    "required": ["template"]
+                  }
                 }
               ]
             })),
@@ -237,6 +295,95 @@ fn handle_request(
                         (Err(e), _) | (_, Err(e)) => error_json(e),
                     }
                 }
+                "dump_ast" => handle_command(
+                    registry,
+                    HostCommand::DumpAst {
+                        path: arguments
+                            .get("path")
+                            .and_then(|v| v.as_str())
+                            .map(String::from),
+                        source: arguments
+                            .get("source")
+                            .and_then(|v| v.as_str())
+                            .map(String::from),
+                        language: arguments
+                            .get("language")
+                            .and_then(|v| v.as_str())
+                            .map(String::from),
+                        named_only: arguments
+                            .get("namedOnly")
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(true),
+                    },
+                ),
+                "debug_query" => handle_command(
+                    registry,
+                    HostCommand::DebugQuery {
+                        path: arguments
+                            .get("path")
+                            .and_then(|v| v.as_str())
+                            .map(String::from),
+                        source: arguments
+                            .get("source")
+                            .and_then(|v| v.as_str())
+                            .map(String::from),
+                        language: arguments
+                            .get("language")
+                            .and_then(|v| v.as_str())
+                            .map(String::from),
+                        query: arguments
+                            .get("query")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string(),
+                        instrument: arguments
+                            .get("instrument")
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(true),
+                        include_sexp: arguments
+                            .get("includeSexp")
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(false),
+                    },
+                ),
+                "generate_query" => handle_command(
+                    registry,
+                    HostCommand::GenerateQuery {
+                        path: arguments
+                            .get("path")
+                            .and_then(|v| v.as_str())
+                            .map(String::from),
+                        source: arguments
+                            .get("source")
+                            .and_then(|v| v.as_str())
+                            .map(String::from),
+                        language: arguments
+                            .get("language")
+                            .and_then(|v| v.as_str())
+                            .map(String::from),
+                        start: arguments.get("start").and_then(|v| v.as_u64()).unwrap_or(0),
+                        end: arguments.get("end").and_then(|v| v.as_u64()).unwrap_or(0),
+                        include_text_predicates: arguments
+                            .get("includeTextPredicates")
+                            .and_then(|v| v.as_bool())
+                            .unwrap_or(false),
+                        capture_leaf: arguments
+                            .get("captureLeaf")
+                            .and_then(|v| v.as_str())
+                            .map(String::from),
+                        max_depth: arguments.get("maxDepth").and_then(|v| v.as_u64()),
+                    },
+                ),
+                "resolve_static_path" => handle_command(
+                    registry,
+                    HostCommand::ResolveStaticPath {
+                        template: arguments
+                            .get("template")
+                            .and_then(|v| v.as_str())
+                            .unwrap_or("")
+                            .to_string(),
+                    },
+                ),
                 _ => error_json(format!("Unknown tool: {tool}")),
             };
 

@@ -100,6 +100,17 @@ File-backed resources (`.scm` queries, `templateFile`, `postExecution`, template
 
 Details and settings: [vscode_extension/README.md](../vscode_extension/README.md).
 
+**Query Tools** (same Codemod activity bar: **Query AST** + **Query Tools**):
+
+1. Open a source file, then browse or click an AST node to generate a starter query.
+2. Paste or edit the query, set `capture` / `anchor`, and **Run** to highlight matches
+   (root, layers, captures, insert anchor).
+3. From a recipe YAML, CodeLens on `query:` → **Open in Query Tools**; on a static
+   `path:` → **Go to edit path**.
+
+Read-only helper — separate from recipe preview/apply. Walkthrough:
+[tree-sitter-queries.md — Query Tools](tree-sitter-queries.md#query-tools-vs-code).
+
 ### MCP
 
 1. Build/run `codemod_mcp` pointing at your workspace root and `.codemod`.
@@ -107,6 +118,11 @@ Details and settings: [vscode_extension/README.md](../vscode_extension/README.md
 3. Call `bootstrap_project` once to install agent skills/rules and scaffolding.
 4. End-to-end new-project checklist:
    [new-project-rust-mcp.md](new-project-rust-mcp.md).
+
+Query debugging without the extension: MCP `dump_ast`, `debug_query`,
+`generate_query` (and `resolve_static_path` for static Jinja paths). Same overview:
+[tree-sitter-queries.md — Query Tools](tree-sitter-queries.md#query-tools-vs-code);
+tool table: [codemod-mcp.md](codemod-mcp.md).
 
 ## Core concepts
 
@@ -187,6 +203,10 @@ Optional `postExecution` runs shell commands after a successful apply (for examp
 Ops find nodes with tree-sitter query S-expressions. You name captures
 (`@body`), optionally filter with predicates (`#eq?`), and point the op at a
 `capture`. Queries can be inline or a path to a `.scm` file.
+
+Debug node kinds and matches with **Query Tools** (VS Code) or MCP `dump_ast` /
+`debug_query` before `preview_recipe` — see
+[tree-sitter-queries.md](tree-sitter-queries.md#query-tools-vs-code).
 
 Full guide: [tree-sitter-queries.md](tree-sitter-queries.md).
 
@@ -323,7 +343,7 @@ and the topic docs when learning yourself; let agents load skills.
 | Extension UI & settings | [vscode_extension/README.md](../vscode_extension/README.md) |
 | New project + MCP | [new-project-rust-mcp.md](new-project-rust-mcp.md) |
 | Jinja / templates | [recipe-templates.md](recipe-templates.md) |
-| Queries | [tree-sitter-queries.md](tree-sitter-queries.md) |
+| Queries / Query Tools | [tree-sitter-queries.md](tree-sitter-queries.md#query-tools-vs-code) |
 | Multi-language | [language-support.md](language-support.md) |
 | Shortcuts / slots | [recipe-shortcuts.md](recipe-shortcuts.md) |
 | Architecture | [ARCHITECTURE.md](../ARCHITECTURE.md) |

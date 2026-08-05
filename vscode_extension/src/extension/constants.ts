@@ -19,10 +19,23 @@ export const COMMANDS = {
   validateRecipes: 'codemodRecipe.validateRecipes',
   openInRecipeRunner: 'codemodRecipe.openInRecipeRunner',
   testQueryOnFile: 'codemodRecipe.testQueryOnFile',
+  queryToolsRun: 'codemodRecipe.queryTools.run',
+  queryToolsGenerateFromCursor: 'codemodRecipe.queryTools.generateFromCursor',
+  queryToolsRevealAst: 'codemodRecipe.queryTools.revealAst',
+  queryToolsNextMatch: 'codemodRecipe.queryTools.nextMatch',
+  queryToolsPrevMatch: 'codemodRecipe.queryTools.prevMatch',
+  queryToolsCopy: 'codemodRecipe.queryTools.copy',
+  queryToolsCopyYamlInsert: 'codemodRecipe.queryTools.copyYaml.insert',
+  queryToolsCopyYamlReplace: 'codemodRecipe.queryTools.copyYaml.replace',
+  queryToolsCopyYamlRemove: 'codemodRecipe.queryTools.copyYaml.remove',
+  queryToolsOpenFromRecipe: 'codemodRecipe.queryTools.openFromRecipe',
+  queryToolsGoToEditPath: 'codemodRecipe.queryTools.goToEditPath',
 } as const;
 
 export const VIEWS = {
   runner: 'codemodRecipe.runner',
+  queryAst: 'codemodRecipe.queryAst',
+  queryEditor: 'codemodRecipe.queryEditor',
 } as const;
 
 export const CONFIG = {

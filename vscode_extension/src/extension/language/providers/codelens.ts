@@ -4,9 +4,10 @@ import {
   documentTopLevelId,
   firstTopLevelQueryLine,
 } from '../recipeHelpers';
+import { findEditPathNearLine } from '../../queryTools/recipeYamlExtract';
 
 /**
- * Declarative CodeLens: top-level recipe id only + one test-query lens.
+ * Declarative CodeLens: recipe actions + Query Tools / edit.path navigation.
  */
 export class RecipeCodeLensProvider implements vscode.CodeLensProvider {
   constructor(private readonly isUnderCodemod: (uri: vscode.Uri) => boolean) {}
@@ -53,9 +54,29 @@ export class RecipeCodeLensProvider implements vscode.CodeLensProvider {
       const range = new vscode.Range(queryLine, 0, queryLine, text.length);
       lenses.push(
         new vscode.CodeLens(range, {
-          title: 'Test query on file…',
-          command: COMMANDS.testQueryOnFile,
-          arguments: [recipeId],
+          title: 'Open in Query Tools',
+          command: COMMANDS.queryToolsOpenFromRecipe,
+          arguments: [document, queryLine],
+        })
+      );
+    }
+
+    // path: under edit: — Go to edit path when present
+    for (let i = 0; i < document.lineCount; i++) {
+      const text = document.lineAt(i).text;
+      if (!/^\s*path:\s*.+/.test(text)) {
+        continue;
+      }
+      // only under edit blocks
+      if (!findEditPathNearLine(document, i)) {
+        continue;
+      }
+      const range = new vscode.Range(i, 0, i, text.length);
+      lenses.push(
+        new vscode.CodeLens(range, {
+          title: 'Go to edit path',
+          command: COMMANDS.queryToolsGoToEditPath,
+          arguments: [document, i],
         })
       );
     }

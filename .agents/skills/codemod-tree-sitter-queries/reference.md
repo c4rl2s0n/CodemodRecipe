@@ -410,13 +410,14 @@ Recipe:
 
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
-| `Invalid node type "…"` | Wrong node name for grammar | Check AST / `codemod-languages`; fix node kinds |
-| `query matched no nodes` | Typo, wrong language, or predicates too strict | Preview with looser query; verify `language:` |
+| `Invalid node type "…"` | Wrong node name for grammar | Use **Query Tools** / `dump_ast`; check `codemod-languages` |
+| `query matched no nodes` | Typo, wrong language, or predicates too strict | Run `debug_query` / Query Tools; loosen predicates; verify `language:` |
 | `query matched multiple nodes` | Pattern too broad | Add `#eq?`, `field:`, or structural constraints |
 | Confused insert position | Mixed up anchors | tree-sitter `.` = tree position; codemod `anchor` = byte offset in capture |
-| `Missing capture` | `capture:` name not in query | Align `capture:` with an `@name` in the query |
+| `Missing capture` | `capture:` name not in query | Align `capture:` with an `@name` in the query (recipe requires explicit `capture:`) |
 | `query file not found` | Bad `.scm` path | Place file next to recipe or under `.codemod/queries/` |
 | Predicate ignored | Wrong capture or quantifier | Ensure predicate is inside the pattern that owns the capture |
+| Preview looks like full-file wipe | Patch is whole-file replace | Use Query Tools to see capture spans; not a capture bug by itself |
 
 ---
 

@@ -4,6 +4,7 @@ members = [
   "crates/core",
   "crates/yaml",
   "crates/engine",
+  "crates/query_tools",
   "crates/host",
 ]
 

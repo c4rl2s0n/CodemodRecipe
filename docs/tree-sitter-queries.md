@@ -75,9 +75,24 @@ Node type names are **per grammar**. Dart pack grammar uses `class_definition`, 
 
 ## Workflow
 
-1. Inspect AST (tree-sitter playground) for node kinds.
-2. `validate_recipes` → `preview_recipe` → inspect patches.
+1. Inspect AST with **Query Tools** (VS Code Codemod sidebar → Query AST / Query Tools), or a tree-sitter playground, for node kinds.
+2. `validate_recipes` → `preview_recipe` → inspect patches (preview may show a full-file replace; use Query Tools to see capture spans).
 3. Tighten predicates if preview is empty or matches multiple nodes.
+
+## Query Tools (VS Code)
+
+Bidirectional helper (read-only; separate from recipe apply):
+
+| Direction | Action |
+|-----------|--------|
+| **Build** | Click an AST node (or Generate from cursor) → starter `query` |
+| **Match** | Paste/Run a query → decorations for root, layers, `@captures`, insert anchor |
+
+CodeLens on recipe `query:` → **Open in Query Tools** (loads query; opens `edit.path` when it Jinja-resolves with empty args). **Go to edit path** on static `path:` values.
+
+MCP: `dump_ast`, `debug_query`, `generate_query`, `resolve_static_path`.
+
+Recipe ops still require an explicit `capture:` — Query Tools may default the UI capture to the last `@name` for visualization only.
 
 ## Query file resolution
 

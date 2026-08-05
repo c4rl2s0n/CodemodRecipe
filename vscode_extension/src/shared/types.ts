@@ -216,7 +216,115 @@ export type HostCommand =
       force?: boolean;
       editPolicy?: string;
       companions?: string[];
+    }
+  | {
+      command: 'dumpAst';
+      path?: string;
+      source?: string;
+      language?: string;
+      namedOnly?: boolean;
+    }
+  | {
+      command: 'debugQuery';
+      path?: string;
+      source?: string;
+      language?: string;
+      query: string;
+      instrument?: boolean;
+      includeSexp?: boolean;
+    }
+  | {
+      command: 'generateQuery';
+      path?: string;
+      source?: string;
+      language?: string;
+      start: number;
+      end?: number;
+      includeTextPredicates?: boolean;
+      captureLeaf?: string;
+      maxDepth?: number;
+    }
+  | {
+      command: 'resolveStaticPath';
+      template: string;
     };
+
+export interface AstNodeDto {
+  kind: string;
+  named: boolean;
+  field?: string;
+  start: { byte: number; line: number; column: number };
+  end: { byte: number; line: number; column: number };
+  isError: boolean;
+  isMissing: boolean;
+  text?: string;
+  children: AstNodeDto[];
+}
+
+export interface DumpAstResponse {
+  ok: boolean;
+  error?: string;
+  hasError?: boolean;
+  root?: AstNodeDto;
+}
+
+export interface CaptureInfoDto {
+  name: string;
+  kind: string;
+  start: number;
+  end: number;
+  startLine: number;
+  startColumn: number;
+  endLine: number;
+  endColumn: number;
+  text?: string;
+  depth: number;
+  isLayer: boolean;
+  queryStart?: number;
+  queryEnd?: number;
+}
+
+export interface DebugMatchDto {
+  root: {
+    kind: string;
+    start: number;
+    end: number;
+    startLine: number;
+    startColumn: number;
+    endLine: number;
+    endColumn: number;
+    text?: string;
+  };
+  captures: CaptureInfoDto[];
+}
+
+export interface DebugQueryResultDto {
+  hasError: boolean;
+  matchCount: number;
+  matches: DebugMatchDto[];
+  instrumentedQuery?: string;
+  rootSexp?: string;
+}
+
+export interface DebugQueryResponse {
+  ok: boolean;
+  error?: string;
+  result?: DebugQueryResultDto;
+}
+
+export interface GenerateQueryResponse {
+  ok: boolean;
+  error?: string;
+  query?: string;
+  captureSuggestion?: string;
+}
+
+export interface ResolveStaticPathResponse {
+  ok: boolean;
+  error?: string;
+  path?: string;
+  staticResolvable: boolean;
+}
 
 
 export interface FileSelection {

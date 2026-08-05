@@ -48,7 +48,18 @@
         {
           "type": "webview",
           "id": "codemodRecipe.runner",
-          "name": "Codemod Recipe",
+          "name": "Recipes",
+          "icon": "media/recipe.svg"
+        },
+        {
+          "id": "codemodRecipe.queryAst",
+          "name": "Query AST",
+          "icon": "media/recipe.svg"
+        },
+        {
+          "type": "webview",
+          "id": "codemodRecipe.queryEditor",
+          "name": "Query Tools",
           "icon": "media/recipe.svg"
         }
       ]
@@ -124,7 +135,55 @@
       },
       {
         "command": "codemodRecipe.testQueryOnFile",
-        "title": "Codemod Recipe: Test Query on File"
+        "title": "Codemod Recipe: Preview Recipe on File…"
+      },
+      {
+        "command": "codemodRecipe.queryTools.run",
+        "title": "Codemod Recipe: Query Tools Run"
+      },
+      {
+        "command": "codemodRecipe.queryTools.generateFromCursor",
+        "title": "Codemod Recipe: Generate Query from Cursor"
+      },
+      {
+        "command": "codemodRecipe.queryTools.revealAst",
+        "title": "Codemod Recipe: Reveal Cursor in AST"
+      },
+      {
+        "command": "codemodRecipe.queryTools.nextMatch",
+        "title": "Codemod Recipe: Next Query Match"
+      },
+      {
+        "command": "codemodRecipe.queryTools.prevMatch",
+        "title": "Codemod Recipe: Previous Query Match"
+      },
+      {
+        "command": "codemodRecipe.queryTools.copy",
+        "title": "Codemod Recipe: Copy Query"
+      },
+      {
+        "command": "codemodRecipe.queryTools.copyYaml.insert",
+        "title": "Codemod Recipe: Copy Query as YAML Insert"
+      },
+      {
+        "command": "codemodRecipe.queryTools.copyYaml.replace",
+        "title": "Codemod Recipe: Copy Query as YAML Replace"
+      },
+      {
+        "command": "codemodRecipe.queryTools.copyYaml.remove",
+        "title": "Codemod Recipe: Copy Query as YAML Remove"
+      },
+      {
+        "command": "codemodRecipe.queryTools.openFromRecipe",
+        "title": "Codemod Recipe: Open Query in Query Tools"
+      },
+      {
+        "command": "codemodRecipe.queryTools.goToEditPath",
+        "title": "Codemod Recipe: Go to Edit Path"
+      },
+      {
+        "command": "codemodRecipe.queryTools.selectAstNode",
+        "title": "Codemod Recipe: Select AST Node"
       }
     ],
     "jsonValidation": [
@@ -189,6 +248,11 @@
       "editor/context": [
         {
           "command": "codemodRecipe.runFromCursorContext",
+          "group": "navigation",
+          "when": "editorTextFocus && resourceScheme == file"
+        },
+        {
+          "command": "codemodRecipe.queryTools.generateFromCursor",
           "group": "navigation",
           "when": "editorTextFocus && resourceScheme == file"
         }

@@ -1,0 +1,257 @@
+import * as vscode from 'vscode';
+import type { DebugMatchDto } from '../../shared';
+
+export type QueryToolsPanelState = {
+  query: string;
+  capture: string;
+  anchor: 'start' | 'end';
+  pinEq: boolean;
+  status: string;
+  captures: string[];
+  matches: { index: number; summary: string }[];
+  focusIndex: number;
+};
+
+export class QueryToolsPanelProvider
+  implements vscode.WebviewViewProvider, vscode.Disposable
+{
+  public static readonly viewType = 'codemodRecipe.queryEditor';
+
+  private view?: vscode.WebviewView;
+  private state: QueryToolsPanelState = {
+    query: '',
+    capture: '',
+    anchor: 'end',
+    pinEq: false,
+    status: 'Open a source file, then Generate or paste a query.',
+    captures: [],
+    matches: [],
+    focusIndex: 0,
+  };
+
+  private readonly _onRun = new vscode.EventEmitter<QueryToolsPanelState>();
+  readonly onRun = this._onRun.event;
+  private readonly _onStateChange = new vscode.EventEmitter<QueryToolsPanelState>();
+  readonly onStateChange = this._onStateChange.event;
+  private readonly _onCopy = new vscode.EventEmitter<'query' | 'insert' | 'replace' | 'remove'>();
+  readonly onCopy = this._onCopy.event;
+
+  resolveWebviewView(webviewView: vscode.WebviewView): void {
+    this.view = webviewView;
+    webviewView.webview.options = { enableScripts: true };
+    webviewView.webview.html = this.html();
+    webviewView.webview.onDidReceiveMessage((msg: { type: string; payload?: Partial<QueryToolsPanelState> }) => {
+      if (msg.type === 'state' && msg.payload) {
+        this.state = { ...this.state, ...msg.payload };
+        this.state.captures = extractCaptures(this.state.query);
+        if (!this.state.capture && this.state.captures.length) {
+          this.state.capture = this.state.captures[this.state.captures.length - 1];
+        }
+        this._onStateChange.fire(this.state);
+        this.postState();
+      } else if (msg.type === 'run') {
+        this._onRun.fire(this.getState());
+      } else if (msg.type === 'copy') {
+        this._onCopy.fire((msg.payload as { kind?: 'query' | 'insert' | 'replace' | 'remove' })?.kind ?? 'query');
+      } else if (msg.type === 'focusMatch') {
+        const idx = (msg.payload as { index?: number })?.index ?? 0;
+        this.state.focusIndex = idx;
+        this._onStateChange.fire(this.state);
+      }
+    });
+    this.postState();
+  }
+
+  getState(): QueryToolsPanelState {
+    return { ...this.state };
+  }
+
+  setQuery(query: string, capture?: string, anchor?: 'start' | 'end'): void {
+    this.state.query = query;
+    this.state.captures = extractCaptures(query);
+    this.state.capture =
+      capture ??
+      (this.state.captures.length
+        ? this.state.captures[this.state.captures.length - 1]
+        : '');
+    if (anchor) {
+      this.state.anchor = anchor;
+    }
+    this.postState();
+  }
+
+  setStatus(status: string): void {
+    this.state.status = status;
+    this.postState();
+  }
+
+  setMatches(matches: DebugMatchDto[], focusIndex: number): void {
+    this.state.matches = matches.map((m, i) => ({
+      index: i,
+      summary: `${m.root.kind} L${m.root.startLine + 1} (${m.captures.length} caps)`,
+    }));
+    this.state.focusIndex = focusIndex;
+    this.postState();
+  }
+
+  isPinEq(): boolean {
+    return this.state.pinEq;
+  }
+
+  private postState(): void {
+    void this.view?.webview.postMessage({ type: 'state', payload: this.state });
+  }
+
+  private html(): string {
+    return `<!DOCTYPE html>
+<html><head>
+<meta charset="UTF-8"/>
+<style>
+  body { font-family: var(--vscode-font-family); font-size: 12px; color: var(--vscode-foreground); padding: 8px; }
+  textarea { width: 100%; height: 140px; font-family: var(--vscode-editor-font-family); background: var(--vscode-input-background); color: var(--vscode-input-foreground); border: 1px solid var(--vscode-input-border); }
+  select, button { margin: 4px 4px 4px 0; }
+  .row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 6px 0; }
+  .status { opacity: 0.85; white-space: pre-wrap; margin-top: 8px; }
+  .matches { list-style: none; padding: 0; margin: 4px 0; max-height: 120px; overflow: auto; }
+  .matches li { cursor: pointer; padding: 2px 4px; }
+  .matches li.active { background: var(--vscode-list-activeSelectionBackground); color: var(--vscode-list-activeSelectionForeground); }
+  label { margin-right: 4px; }
+</style>
+</head><body>
+  <textarea id="query" spellcheck="false" placeholder="(class_definition …) @target"></textarea>
+  <div class="row">
+    <label>capture</label>
+    <select id="capture"></select>
+    <label>anchor</label>
+    <select id="anchor">
+      <option value="start">start</option>
+      <option value="end" selected>end</option>
+    </select>
+    <label><input type="checkbox" id="pinEq"/> pin #eq?</label>
+  </div>
+  <div class="row">
+    <button id="run">Run</button>
+    <button id="copy">Copy</button>
+    <button id="copyInsert">Copy as YAML insert</button>
+    <button id="copyReplace">replace</button>
+    <button id="copyRemove">remove</button>
+  </div>
+  <ul class="matches" id="matches"></ul>
+  <div class="status" id="status"></div>
+<script>
+  const vscode = acquireVsCodeApi();
+  const queryEl = document.getElementById('query');
+  const captureEl = document.getElementById('capture');
+  const anchorEl = document.getElementById('anchor');
+  const pinEqEl = document.getElementById('pinEq');
+  const statusEl = document.getElementById('status');
+  const matchesEl = document.getElementById('matches');
+  let suppress = false;
+
+  function emitState() {
+    if (suppress) return;
+    vscode.postMessage({
+      type: 'state',
+      payload: {
+        query: queryEl.value,
+        capture: captureEl.value,
+        anchor: anchorEl.value,
+        pinEq: pinEqEl.checked,
+      }
+    });
+  }
+
+  queryEl.addEventListener('change', emitState);
+  queryEl.addEventListener('blur', emitState);
+  captureEl.addEventListener('change', emitState);
+  anchorEl.addEventListener('change', emitState);
+  pinEqEl.addEventListener('change', emitState);
+  document.getElementById('run').onclick = () => { emitState(); vscode.postMessage({ type: 'run' }); };
+  document.getElementById('copy').onclick = () => vscode.postMessage({ type: 'copy', payload: { kind: 'query' } });
+  document.getElementById('copyInsert').onclick = () => vscode.postMessage({ type: 'copy', payload: { kind: 'insert' } });
+  document.getElementById('copyReplace').onclick = () => vscode.postMessage({ type: 'copy', payload: { kind: 'replace' } });
+  document.getElementById('copyRemove').onclick = () => vscode.postMessage({ type: 'copy', payload: { kind: 'remove' } });
+
+  window.addEventListener('message', (e) => {
+    const msg = e.data;
+    if (msg.type !== 'state') return;
+    const s = msg.payload;
+    suppress = true;
+    queryEl.value = s.query || '';
+    captureEl.innerHTML = '';
+    (s.captures || []).forEach((c) => {
+      const o = document.createElement('option');
+      o.value = c; o.textContent = c;
+      if (c === s.capture) o.selected = true;
+      captureEl.appendChild(o);
+    });
+    anchorEl.value = s.anchor || 'end';
+    pinEqEl.checked = !!s.pinEq;
+    statusEl.textContent = s.status || '';
+    matchesEl.innerHTML = '';
+    (s.matches || []).forEach((m) => {
+      const li = document.createElement('li');
+      li.textContent = m.summary;
+      if (m.index === s.focusIndex) li.className = 'active';
+      li.onclick = () => vscode.postMessage({ type: 'focusMatch', payload: { index: m.index } });
+      matchesEl.appendChild(li);
+    });
+    suppress = false;
+  });
+</script>
+</body></html>`;
+  }
+
+  dispose(): void {
+    this._onRun.dispose();
+    this._onStateChange.dispose();
+    this._onCopy.dispose();
+  }
+}
+
+export function extractCaptures(query: string): string[] {
+  const names: string[] = [];
+  const re = /@([A-Za-z_][\w]*)/g;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(query))) {
+    if (!m[1].startsWith('__layer_') && !names.includes(m[1])) {
+      names.push(m[1]);
+    }
+  }
+  return names;
+}
+
+export function formatYamlOp(
+  kind: 'insert' | 'replace' | 'remove',
+  query: string,
+  capture: string,
+  anchor: 'start' | 'end'
+): string {
+  const indented = query
+    .trim()
+    .split('\n')
+    .map((l) => `              ${l}`)
+    .join('\n');
+  if (kind === 'insert') {
+    return `        - insert:
+            query: |
+${indented}
+            capture: ${capture || 'target'}
+            anchor: ${anchor}
+            text: ""
+`;
+  }
+  if (kind === 'replace') {
+    return `        - replace:
+            query: |
+${indented}
+            capture: ${capture || 'target'}
+            text: ""
+`;
+  }
+  return `        - remove:
+            query: |
+${indented}
+            capture: ${capture || 'target'}
+`;
+}

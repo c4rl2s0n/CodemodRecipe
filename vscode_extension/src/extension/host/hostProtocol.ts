@@ -7,6 +7,10 @@ import type {
   PreviewResponse,
   RecipeCatalogResponse,
   ValidateResponse,
+  DumpAstResponse,
+  DebugQueryResponse,
+  GenerateQueryResponse,
+  ResolveStaticPathResponse,
 } from '../../shared';
 
 export type {
@@ -17,6 +21,10 @@ export type {
   PreviewResponse,
   ApplyResponse,
   ValidateResponse,
+  DumpAstResponse,
+  DebugQueryResponse,
+  GenerateQueryResponse,
+  ResolveStaticPathResponse,
 };
 
 export function extractHostResult(output: string): string | undefined {

@@ -131,6 +131,7 @@ dependencies = [
  "anyhow",
  "codemod_recipe_core",
  "codemod_recipe_engine",
+ "codemod_recipe_query_tools",
  "codemod_recipe_yaml",
  "md5",
  "minijinja",
@@ -139,6 +140,17 @@ dependencies = [
  "serde_json",
  "serde_yaml",
  "thiserror 2.0.18",
+]
+
+[[package]]
+name = "codemod_recipe_query_tools"
+version = "0.1.0"
+dependencies = [
+ "pretty_assertions",
+ "serde",
+ "thiserror 2.0.18",
+ "tree-sitter",
+ "tree-sitter-language-pack",
 ]
 
 [[package]]

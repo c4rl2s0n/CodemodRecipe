@@ -4,7 +4,9 @@ New here? Start with [Getting Started](../docs/getting-started.md) for the full 
 
 A GUI for the [`codemod_recipe`](../README.md) toolkit. Browse recipes, fill in
 placeholder values through a form, preview changes as a native diff, and choose
-exactly which edits to keep before applying.
+exactly which edits to keep before applying. **Query Tools** (same sidebar)
+lets you browse the AST, generate starter tree-sitter queries, and highlight
+query matches before writing recipes.
 
 Supports **multi-language** recipes (Dart, Rust, Java, Kotlin, SQL, TypeScript,
 JavaScript, Python, and 300+ tree-sitter grammars via the Rust host).
@@ -146,7 +148,9 @@ Under `codemodRecipe.codemodRoot` (default `.codemod/**`) YAML files:
   then codemod root)
 - **Hover** on DSL keywords, recipe ids, and template previews
 - **CodeLens** on the **top-level** `id:` only: Open in Recipe Runner, Copy invoke
-  keybinding, Assign to slot…; one **Test query on file…** lens per recipe
+  keybinding, Assign to slot…; on `query:` → **Open in Query Tools**; on static
+  `path:` → **Go to edit path**; **Preview recipe on file…** for full recipe preview
+  (file picker)
 - **Diagnostics** come from the Rust host validate of **saved** files (Problems
   panel source `codemod-recipe`)
 
@@ -183,6 +187,15 @@ Commands accepted by the host (one JSON object per line on stdin):
   "args": { "file": "lib/foo.dart", "className": "Foo", "methodName": "bar" },
   "previewToken": "<from preview>",
   "selection": { "files": { "lib/foo.dart": { "include": true, "patches": [0] } } } }
+
+{ "command": "dumpAst", "path": "lib/foo.dart" }
+
+{ "command": "debugQuery", "path": "lib/foo.dart",
+  "query": "(identifier) @id", "instrument": true }
+
+{ "command": "generateQuery", "path": "lib/foo.dart", "start": 10, "end": 20 }
+
+{ "command": "resolveStaticPath", "pathTemplate": "lib/{{ file }}.dart" }
 ```
 
 Omitting a file from `selection.files` keeps all of its patches. Setting

@@ -80,6 +80,55 @@ pub enum HostCommand {
     },
     #[serde(rename = "filterExplorerRecipes")]
     FilterExplorerRecipes { path: String, kind: String },
+    #[serde(rename = "dumpAst")]
+    DumpAst {
+        #[serde(default)]
+        path: Option<String>,
+        #[serde(default)]
+        source: Option<String>,
+        #[serde(default)]
+        language: Option<String>,
+        #[serde(default = "default_true", rename = "namedOnly")]
+        named_only: bool,
+    },
+    #[serde(rename = "debugQuery")]
+    DebugQuery {
+        #[serde(default)]
+        path: Option<String>,
+        #[serde(default)]
+        source: Option<String>,
+        #[serde(default)]
+        language: Option<String>,
+        query: String,
+        #[serde(default = "default_true")]
+        instrument: bool,
+        #[serde(default, rename = "includeSexp")]
+        include_sexp: bool,
+    },
+    #[serde(rename = "generateQuery")]
+    GenerateQuery {
+        #[serde(default)]
+        path: Option<String>,
+        #[serde(default)]
+        source: Option<String>,
+        #[serde(default)]
+        language: Option<String>,
+        start: u64,
+        #[serde(default)]
+        end: u64,
+        #[serde(default, rename = "includeTextPredicates")]
+        include_text_predicates: bool,
+        #[serde(default, rename = "captureLeaf")]
+        capture_leaf: Option<String>,
+        #[serde(default, rename = "maxDepth")]
+        max_depth: Option<u64>,
+    },
+    #[serde(rename = "resolveStaticPath")]
+    ResolveStaticPath { template: String },
+}
+
+fn default_true() -> bool {
+    true
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -297,6 +346,51 @@ pub struct AstPathResult {
     pub ok: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DumpAstResponse {
+    pub ok: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub has_error: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub root: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DebugQueryResponse {
+    pub ok: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub result: Option<serde_json::Value>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct GenerateQueryResponse {
+    pub ok: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub query: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub capture_suggestion: Option<String>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ResolveStaticPathResponse {
+    pub ok: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+    pub static_resolvable: bool,
 }
 
 #[cfg(test)]

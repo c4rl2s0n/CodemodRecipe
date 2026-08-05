@@ -19,6 +19,10 @@ import {
   PreviewResponse,
   RecipeCatalogResponse,
   ValidateResponse,
+  DumpAstResponse,
+  DebugQueryResponse,
+  GenerateQueryResponse,
+  ResolveStaticPathResponse,
   parseHostResponse,
 } from './hostProtocol';
 import type { RecipeSchema, SelectionPayload, BootstrapResponse, DeriveArgsRequest, DeriveArgsResponse, FilterExplorerRecipesResponse } from '../../shared';
@@ -220,6 +224,70 @@ export class HostBridge {
       force,
       ...(options?.editPolicy ? { editPolicy: options.editPolicy } : {}),
       ...(options?.companions ? { companions: options.companions } : {}),
+    });
+  }
+
+  dumpAst(opts: {
+    path?: string;
+    source?: string;
+    language?: string;
+    namedOnly?: boolean;
+  }): Promise<DumpAstResponse> {
+    return this.send<DumpAstResponse>({
+      command: 'dumpAst',
+      path: opts.path,
+      source: opts.source,
+      language: opts.language,
+      namedOnly: opts.namedOnly ?? true,
+    });
+  }
+
+  debugQuery(opts: {
+    path?: string;
+    source?: string;
+    language?: string;
+    query: string;
+    instrument?: boolean;
+    includeSexp?: boolean;
+  }): Promise<DebugQueryResponse> {
+    return this.send<DebugQueryResponse>({
+      command: 'debugQuery',
+      path: opts.path,
+      source: opts.source,
+      language: opts.language,
+      query: opts.query,
+      instrument: opts.instrument ?? true,
+      includeSexp: opts.includeSexp ?? false,
+    });
+  }
+
+  generateQuery(opts: {
+    path?: string;
+    source?: string;
+    language?: string;
+    start: number;
+    end?: number;
+    includeTextPredicates?: boolean;
+    captureLeaf?: string;
+    maxDepth?: number;
+  }): Promise<GenerateQueryResponse> {
+    return this.send<GenerateQueryResponse>({
+      command: 'generateQuery',
+      path: opts.path,
+      source: opts.source,
+      language: opts.language,
+      start: opts.start,
+      end: opts.end ?? opts.start,
+      includeTextPredicates: opts.includeTextPredicates ?? false,
+      captureLeaf: opts.captureLeaf,
+      maxDepth: opts.maxDepth,
+    });
+  }
+
+  resolveStaticPath(template: string): Promise<ResolveStaticPathResponse> {
+    return this.send<ResolveStaticPathResponse>({
+      command: 'resolveStaticPath',
+      template,
     });
   }
 
