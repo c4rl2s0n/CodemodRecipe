@@ -4,6 +4,7 @@ A human-oriented walkthrough of the product: what it is, how the pieces fit
 together, and how to run your first recipe. Deep reference stays in the linked
 topic docs — this guide is the map and the day-1 path.
 
+To **write** recipes (query / capture / anchor, step types): [writing-recipes.md](writing-recipes.md).
 For a full documentation index, see [README.md](README.md) in this folder.
 
 ## What you’re getting
@@ -155,6 +156,29 @@ steps:
             text: "    print('codemod');\n"
 ```
 
+#### How an insert finds its place
+
+Three fields work together:
+
+1. **`query`** — tree-sitter pattern. Names like `@body` and `@className` label
+   matched nodes (filters and the edit target).
+2. **`capture`** — which of those names is the **edit target**. Write the name
+   without `@` (`@body` → `capture: body`).
+3. **`anchor`** (`insert` only) — insert **before** (`start`) or **after**
+   (`end`) that capture’s text span:
+
+```text
+  …[===== @body span =====]…
+     ^                     ^
+  anchor: start         anchor: end
+```
+
+In the example above, the query finds a method’s block as `@body`, and
+`anchor: end` appends `text` at the end of that block.
+
+How to write recipes end to end: [writing-recipes.md](writing-recipes.md).
+Query language detail: [tree-sitter-queries.md](tree-sitter-queries.md).
+
 Optional `postExecution` runs shell commands after a successful apply (for example
 `dart format .`).
 
@@ -172,12 +196,16 @@ Under `edit.ops`:
 
 | Op | Needs | Notes |
 |----|-------|-------|
-| `insert` | `query`, `capture`, `anchor` (`start` \| `end`), `text` | Insert at capture boundary |
+| `insert` | `query`, `capture`, `anchor` (`start` \| `end`), `text` | Insert before/after the capture span |
 | `replace` | `query`, `capture`, `text` | Replace the captured node |
 | `remove` | `query`, `capture` | Delete the captured node |
 
 Guards (`when` / `whenNot`) and `let` bindings can scope or bind locals for later
 ops. Prefer idempotent recipes: a second apply should produce no patches.
+
+Authoring walkthrough (workflow, captures, anchors, step types):
+[writing-recipes.md](writing-recipes.md). Every DSL field:
+[generated/dsl-vocabulary.md](generated/dsl-vocabulary.md).
 
 ### Templates (Jinja / MiniJinja)
 
@@ -290,6 +318,8 @@ and the topic docs when learning yourself; let agents load skills.
 | Goal | Go to |
 |------|-------|
 | Docs map (everything) | [docs/README.md](README.md) |
+| **Write a recipe** | [writing-recipes.md](writing-recipes.md) |
+| DSL field vocabulary | [generated/dsl-vocabulary.md](generated/dsl-vocabulary.md) |
 | Extension UI & settings | [vscode_extension/README.md](../vscode_extension/README.md) |
 | New project + MCP | [new-project-rust-mcp.md](new-project-rust-mcp.md) |
 | Jinja / templates | [recipe-templates.md](recipe-templates.md) |

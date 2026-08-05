@@ -1,32 +1,13 @@
 # Recipe Design Patterns (Create vs Modify)
 
-This guide describes how to organize codemod-recipe YAML recipes around **concepts or
-features**, with a clear split between **creation** (greenfield scaffolding) and
-**modification** (brownfield AST edits).
+How to organize codemod-recipe YAML recipes around **concepts or features**, with
+a clear split between **creation** (greenfield scaffolding) and **modification**
+(brownfield AST edits).
 
-## For agents
+For the authoring workflow (queries, capture, anchor, step types), see
+[writing-recipes.md](writing-recipes.md).
 
-After `bootstrap_project`, the full guide lives at:
-
-```text
-.agents/skills/codemod-recipe-design-patterns/
-  SKILL.md       # router (~30 lines) — load by default
-  reference.md   # full playbook — read when designing recipes
-```
-
-Invoke skill **`codemod-recipe-design-patterns`** when organizing recipes, choosing
-`create_*` vs `add_*` vs `scaffold_*` naming, or designing feature packs.
-
-Related modular skills (also under `.agents/skills/` after bootstrap):
-
-| Skill | Contents |
-|-------|----------|
-| `codemod-yaml-dsl` | YAML syntax, templates, maps (`reference.md`) |
-| `codemod-recipe-authoring` | Tree-sitter queries |
-| `codemod-languages` | Multi-language `language:` field, SQL dialects |
-| `codemod-mcp-playbook` | preview/apply workflow |
-
-## Quick summary
+## Taxonomy
 
 | Prefix | Purpose |
 |--------|---------|
@@ -35,7 +16,40 @@ Related modular skills (also under `.agents/skills/` after bootstrap):
 | `scaffold_` | Feature workflow (compose atomics) |
 | `remove_` | Tear down members or files |
 
-**One recipe = one coherent change.** Compose upward with `scaffold_*` orchestrators.
-For incremental changes after scaffolding, call atomic `add_*` recipes.
+**One recipe = one coherent change.** Compose upward with `scaffold_*`
+orchestrators. For incremental changes after scaffolding, call atomic `add_*`
+recipes.
 
-See [codemod-mcp.md](codemod-mcp.md) for MCP setup and [new-project-rust-mcp.md](new-project-rust-mcp.md) for bootstrap.
+Prefer idempotent brownfield recipes: a second apply should produce no patches
+([writing-recipes.md](writing-recipes.md#idempotency)).
+
+## Layout tips
+
+- Group recipes by feature under `.codemod/recipes/` (directory names are
+  convention; discovery is schema-based).
+- Use dotted `id`s (`feature.area.recipe_name`) so the VS Code Recipes tab nests
+  them.
+- Keep AST edits small; put multi-file workflows in a `scaffold_*` that
+  references atomics with `- recipe: …`.
+
+## Related docs
+
+| Doc | Contents |
+|-----|----------|
+| [writing-recipes.md](writing-recipes.md) | How to write recipes |
+| [recipe-templates.md](recipe-templates.md) | Jinja / maps / variables |
+| [codemod-mcp.md](codemod-mcp.md) | MCP preview/apply |
+| [new-project-rust-mcp.md](new-project-rust-mcp.md) | Bootstrap a new project |
+
+## For agents
+
+After `bootstrap_project`, the full playbook also lives at:
+
+```text
+.agents/skills/codemod-recipe-design-patterns/
+  SKILL.md       # router — load by default
+  reference.md   # full playbook — read when designing recipes
+```
+
+Related modular skills: `codemod-yaml-dsl`, `codemod-recipe-authoring`,
+`codemod-languages`, `codemod-mcp-playbook`.

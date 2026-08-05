@@ -87,3 +87,10 @@ Each `steps[]` entry is a single-key object:
 | `codemod-tree-sitter-queries` | query syntax, captures, predicates |
 | `codemod-recipe-authoring` | Dart query patterns and testing |
 | `codemod-mcp-playbook` | preview/apply workflow |
+
+## Human docs
+
+- [docs/writing-recipes.md](../../../docs/writing-recipes.md) — authoring workflow and capture/anchor
+- [docs/generated/dsl-vocabulary.md](../../../docs/generated/dsl-vocabulary.md) — every field (generated)
+- [docs/getting-started.md](../../../docs/getting-started.md) — day-1 overview
+

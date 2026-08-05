@@ -30,7 +30,7 @@ Skills use SKILL.md routers; read `reference.md` in a skill directory when you n
 
 ## Human documentation
 
-Canonical human onboarding: `docs/getting-started.md` (map: `docs/README.md`).
+Canonical human onboarding: `docs/getting-started.md` (map: `docs/README.md`). Recipe authoring: `docs/writing-recipes.md`. Field catalog (generated): `docs/generated/dsl-vocabulary.md`.
 
 When you change product concepts that guide teaches (setup, YAML surface, templates/Jinja, maps/vars, languages, extension UX, MCP workflow, design-pattern taxonomy, docs layout), update Getting Started in the same change. Use skill `codemod-recipe-human-docs` (see its `reference.md` for structure and edit rules). Do not put this obligation in `export/rulesets/` — consumer workspaces do not ship these docs.
 
@@ -44,7 +44,7 @@ When changing Rust handling of recipe/YAML vocabulary, prefer the centralized ow
 - `rust/crates/yaml/src/keywords.rs` — `query_conventions`; `preview_kinds` uses step `WIRE` constants
 - `rust/crates/host/src/protocol_keys.rs` — host-only transport keys like `inlineRecipe`, `previewToken`, `snippetLines`, `ok`, `error`
 
-After changing model fields, `dsl::` wires, or `ENTRIES` prose, run `scripts/generate-dsl-artifacts.sh` (or `cargo run -p codemod_recipe_yaml --bin codemod_dsl_codegen`) to refresh `vscode_extension/schemas/recipe.schema.json`, `map.schema.json`, `variables.schema.json`, `generated-dsl-surface.json`, `generated-keyword-docs.json`, and TextMate keyword lists. CI verifies generated files are committed. Do not edit those generated files by hand.
+After changing model fields, `dsl::` wires, or `ENTRIES` prose, run `scripts/generate-dsl-artifacts.sh` (or `cargo run -p codemod_recipe_yaml --bin codemod_dsl_codegen`) to refresh `vscode_extension/schemas/recipe.schema.json`, `map.schema.json`, `variables.schema.json`, `generated-dsl-surface.json`, `generated-keyword-docs.json`, TextMate keyword lists, and `docs/generated/dsl-vocabulary.md`. CI verifies generated files are committed. Do not edit those generated files by hand.
 
 Editor UX lives under `vscode_extension/src/extension/language/` (`LanguageSession`, `yamlContext`, providers) — do not add ad hoc completion regex tables for DSL structure.
 

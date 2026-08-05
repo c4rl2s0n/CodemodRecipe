@@ -4,9 +4,21 @@ Human-oriented docs for **codemod-recipe**. Start here if you are new:
 
 **[Getting Started](getting-started.md)** — mental model, setup, core concepts, first apply.
 
+Then **[Writing recipes](writing-recipes.md)** — how to author YAML (query / capture / anchor,
+step types, workflow).
+
 Agent skills and Cursor rules are separate (installed into consumer projects by
 `bootstrap_project` from `export/`). They are **not** a substitute for these pages,
 and these human docs are **not** copied by bootstrap.
+
+## Learning path
+
+1. [getting-started.md](getting-started.md) — what it is, setup, first apply
+2. [writing-recipes.md](writing-recipes.md) — author recipes end to end
+3. [tree-sitter-queries.md](tree-sitter-queries.md) — query language depth
+4. [recipe-templates.md](recipe-templates.md) — Jinja / maps / variables
+5. [generated/dsl-vocabulary.md](generated/dsl-vocabulary.md) — every DSL field (generated)
+6. [recipe-design-patterns.md](recipe-design-patterns.md) — naming and composition
 
 ## Setup and clients
 
@@ -21,6 +33,8 @@ and these human docs are **not** copied by bootstrap.
 
 | Doc | Contents |
 |-----|----------|
+| [writing-recipes.md](writing-recipes.md) | Authoring workflow, capture/anchor, step types |
+| [generated/dsl-vocabulary.md](generated/dsl-vocabulary.md) | Complete field / enum catalog (from schema) |
 | [recipe-templates.md](recipe-templates.md) | MiniJinja / Jinja2 templates, filters, maps/vars |
 | [tree-sitter-queries.md](tree-sitter-queries.md) | Query language, captures, anchors, predicates |
 | [language-support.md](language-support.md) | `language:` field, inference, SQL dialects |

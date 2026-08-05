@@ -6,7 +6,8 @@
 //! - **Author-facing prose** (VS Code hovers, JSON Schema `description`, TextMate): [`ENTRIES`] only — do not duplicate long docs on `dsl` consts
 //! - **Optional `schema_path`** on each entry disambiguates duplicate wires (e.g. `query` on ops vs recipe `queries` map)
 //!
-//! After changing entries or `dsl` wires, run `scripts/generate-dsl-artifacts.sh`.
+//! After changing entries or `dsl` wires, run `scripts/generate-dsl-artifacts.sh`
+//! (refreshes JSON Schema, keyword docs, TextMate, and `docs/generated/dsl-vocabulary.md`).
 
 use serde::Serialize;
 

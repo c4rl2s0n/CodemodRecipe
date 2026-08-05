@@ -85,6 +85,11 @@ postExecution:
   - "dart format ."
 ```
 
+`capture` selects which `@name` from the query to edit; `anchor` (`start` \|
+`end`) places an insert before or after that span. Full walkthrough:
+[docs/writing-recipes.md](docs/writing-recipes.md). Day-1 guide:
+[docs/getting-started.md](docs/getting-started.md).
+
 ### Template syntax (Jinja2)
 
 Recipes use [MiniJinja](https://docs.rs/minijinja/) (Jinja2-compatible). See

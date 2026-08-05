@@ -16,6 +16,9 @@ For recipe organization (create vs modify, scaffolds), see skill `codemod-recipe
 For YAML syntax and templates, see skill `codemod-yaml-dsl`.
 For query language syntax (captures, predicates, operators), see skill `codemod-tree-sitter-queries`.
 
+Human-oriented authoring guide: [docs/writing-recipes.md](../../../docs/writing-recipes.md).
+Field catalog: [docs/generated/dsl-vocabulary.md](../../../docs/generated/dsl-vocabulary.md).
+
 ## Crafting tree-sitter queries (Dart — language-pack grammar)
 
 Dart grammars from **tree-sitter-language-pack** use `class_definition` (not `class_declaration`) and place members directly under `class_body` (no `class_member` wrapper).

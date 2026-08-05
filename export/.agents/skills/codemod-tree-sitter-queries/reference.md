@@ -4,7 +4,7 @@ Tree-sitter queries are **S-expression patterns** matched against a parsed synta
 
 This guide condenses the [official tree-sitter query documentation](https://tree-sitter.github.io/tree-sitter/using-parsers/queries/1-syntax.html) for recipe authoring. For grammar-specific node names, see skill `codemod-languages`.
 
-Human-oriented copy also lives in [docs/tree-sitter-queries.md](../../../../docs/tree-sitter-queries.md).
+Human-oriented copy also lives in [docs/tree-sitter-queries.md](../../../../docs/tree-sitter-queries.md) and [docs/writing-recipes.md](../../../../docs/writing-recipes.md).
 
 ---
 

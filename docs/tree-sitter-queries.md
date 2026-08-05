@@ -2,13 +2,15 @@
 
 codemod-recipe uses [tree-sitter](https://tree-sitter.github.io/) queries to match AST nodes before applying insert, replace, or remove patches. Queries are S-expression patterns written in recipe `edit.ops` or external `.scm` files.
 
+**How this fits recipe authoring:** [writing-recipes.md](writing-recipes.md) (workflow, `capture` / `anchor` mental model).
+
 **Agent skill:** `.agents/skills/codemod-tree-sitter-queries/` (installed by `bootstrap_project` from `export/.agents/skills/codemod-tree-sitter-queries/`).
 
 ## Quick start
 
 1. Write a pattern matching the target node: `(node_type field: (child) @capture)`.
 2. Filter with predicates: `(#eq? @capture "{{arg}}")`.
-3. Set `capture:` on the op to the `@name` you want to edit.
+3. Set `capture:` on the op to the `@name` you want to edit (omit the `@`).
 4. For `insert`, set `anchor: start` or `end` on the capture span.
 
 ```yaml
@@ -41,6 +43,23 @@ codemod-recipe uses [tree-sitter](https://tree-sitter.github.io/) queries to mat
 | Edit guards | `edit.when`, `edit.whenNot` | Same query specs as ops; evaluated once before the edit (skip step if guards fail) |
 | Step locals | `edit.let[].query` | Per-op bindings; `capture` + `extract` (`text`, `kind`, `exists`, `count`) feed Jinja in later ops |
 
+## Insert `anchor` (codemod)
+
+Only `insert` uses `anchor`. It picks the **byte** edge of the node named by `capture:`:
+
+```text
+  …[===== capture span =====]…
+     ^                       ^
+  anchor: start           anchor: end
+```
+
+| Goal | `anchor` |
+|------|----------|
+| Insert before the captured node’s text | `start` |
+| Insert after the captured node’s text | `end` |
+
+`replace` and `remove` always act on the whole capture span (no `anchor`).
+
 ## Edit-level `when` / `let`
 
 Use tree-sitter queries on the **current file text** to gate an entire `edit` step or to bind locals that change between sequential ops. Guard queries use the same composition rules as op `query` (inline, `.scm`, library refs, chains). See `codemod-yaml-dsl` `reference.md` for YAML shape and template filters on `let.as`.
@@ -48,7 +67,7 @@ Use tree-sitter queries on the **current file text** to gate an entire `edit` st
 ## Two kinds of “anchor”
 
 - **Tree-sitter query anchor** (`.`) — constrains sibling/first/last child position in the pattern. See [official operators docs](https://tree-sitter.github.io/tree-sitter/using-parsers/queries/2-operators.html).
-- **codemod insert anchor** (`anchor: start|end`) — where `text` is inserted relative to the captured node span.
+- **codemod insert anchor** (`anchor: start|end`) — where `text` is inserted relative to the captured node span (diagram above).
 
 ## Grammar node names
 
@@ -74,6 +93,8 @@ External `.scm` files use the shared resolver in
 
 ## Further reading
 
+- [writing-recipes.md](writing-recipes.md) — end-to-end recipe authoring
+- [generated/dsl-vocabulary.md](generated/dsl-vocabulary.md) — every DSL field
 - [export/.agents/skills/codemod-tree-sitter-queries/reference.md](../export/.agents/skills/codemod-tree-sitter-queries/reference.md) — full agent reference
 - [tree-sitter query syntax](https://tree-sitter.github.io/tree-sitter/using-parsers/queries/1-syntax.html) — official documentation
 - [docs/codemod-mcp.md](codemod-mcp.md) — MCP preview/apply workflow

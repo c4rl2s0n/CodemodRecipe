@@ -4,7 +4,7 @@ Tree-sitter queries are **S-expression patterns** matched against a parsed synta
 
 This guide condenses the [official tree-sitter query documentation](https://tree-sitter.github.io/tree-sitter/using-parsers/queries/1-syntax.html) for recipe authoring. For grammar-specific node names, see skill `codemod-languages`.
 
-Human-oriented copy also lives in [docs/tree-sitter-queries.md](../../../../docs/tree-sitter-queries.md).
+Human-oriented copy also lives in [docs/tree-sitter-queries.md](../../../../docs/tree-sitter-queries.md) and [docs/writing-recipes.md](../../../../docs/writing-recipes.md).
 
 ---
 
@@ -274,23 +274,6 @@ query: settings_update_body.scm
 Search order (engine): recipe directory → `queries/` under recipe →
 `.codemod/` → `.codemod/queries/`. YAML query libraries remain id-based under
 `.codemod/queries/*.yaml`; they are not loaded directly via `query: file.yaml`.
-
-**Jinja on file-backed queries:** `.scm` (and query library entries) are rendered with the same MiniJinja context as inline `query` before tree-sitter parses them.
-
-### Query chains
-
-`query` may be a **list** of steps (registry refs, inline text, or paths). Each step runs on the **match roots** from the previous step (fan-out when multiple matches). The last step uses op `capture:` for the edit span.
-
-```yaml
-query:
-  - dart_queries.class_named
-  - dart_queries.method_body
-  - |
-    (function_body (block) @body)
-capture: body
-```
-
-Global libraries live under `.codemod/queries/*.yaml` (`id` + `queries:`). Recipe-local definitions use top-level `queries:` on the recipe and short refs in the list.
 
 ### Template substitution
 
