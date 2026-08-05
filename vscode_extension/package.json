@@ -184,6 +184,10 @@
       {
         "command": "codemodRecipe.queryTools.selectAstNode",
         "title": "Codemod Recipe: Select AST Node"
+      },
+      {
+        "command": "codemodRecipe.queryTools.astDisplayMode",
+        "title": "Codemod Recipe: Query AST Display Mode…"
       }
     ],
     "jsonValidation": [
@@ -242,6 +246,11 @@
         {
           "command": "codemodRecipe.refresh",
           "when": "view == codemodRecipe.runner",
+          "group": "navigation"
+        },
+        {
+          "command": "codemodRecipe.queryTools.astDisplayMode",
+          "when": "view == codemodRecipe.queryAst",
           "group": "navigation"
         }
       ],
@@ -346,6 +355,17 @@
           "type": "boolean",
           "default": false,
           "description": "When a shortcut would auto-apply a recipe with complete args, ask for confirmation first."
+        },
+        "codemodRecipe.queryTools.astDisplayMode": {
+          "type": "string",
+          "enum": ["kind", "content", "kindPreview"],
+          "default": "kindPreview",
+          "enumDescriptions": [
+            "Show node kind and line range",
+            "Show muted content preview; kind on hover",
+            "Show kind with muted content preview (default)"
+          ],
+          "description": "How Query AST tree rows display node kind vs source text."
         }
       }
     }

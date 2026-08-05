@@ -79,7 +79,7 @@ class AppDatabase extends _$AppDatabase {}
             offset,
             offset + "RulesTable".len(),
             &GenerateOptions {
-                include_text_predicates: true,
+                include_text_predicates: false,
                 capture_leaf: "lastTable".into(),
                 max_depth: Some(6),
             },
@@ -92,6 +92,7 @@ class AppDatabase extends _$AppDatabase {}
             "expected last-child anchor . after capture: {}",
             gen.query
         );
+        assert!(!gen.query.contains("#eq?"), "{}", gen.query);
         assert_eq!(gen.capture_suggestion, "lastTable");
     }
 
@@ -112,5 +113,10 @@ class AppDatabase extends _$AppDatabase {}
         )
         .expect("generate");
         assert!(gen.query.contains("#eq? @lastTable \"RulesTable\""));
+        assert!(
+            !gen.query.contains("@lastTable ."),
+            "pin text should omit last-child .: {}",
+            gen.query
+        );
     }
 }

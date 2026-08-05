@@ -30,6 +30,7 @@ export const COMMANDS = {
   queryToolsCopyYamlRemove: 'codemodRecipe.queryTools.copyYaml.remove',
   queryToolsOpenFromRecipe: 'codemodRecipe.queryTools.openFromRecipe',
   queryToolsGoToEditPath: 'codemodRecipe.queryTools.goToEditPath',
+  queryToolsAstDisplayMode: 'codemodRecipe.queryTools.astDisplayMode',
 } as const;
 
 export const VIEWS = {

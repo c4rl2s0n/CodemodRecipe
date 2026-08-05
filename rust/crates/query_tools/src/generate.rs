@@ -138,7 +138,8 @@ fn emit_chain(
         s.push_str(kind);
         s.push_str(") @");
         s.push_str(capture);
-        if is_last_named_child(node) {
+        // Last-child `.` only when not pinning text — `#eq?` already identifies the node.
+        if !opts.include_text_predicates && is_last_named_child(node) {
             s.push_str(" .");
         }
         if opts.include_text_predicates && (kind == "identifier" || kind.contains("string")) {

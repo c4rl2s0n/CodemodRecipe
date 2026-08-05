@@ -90,9 +90,13 @@ Bidirectional helper (read-only; separate from recipe apply):
 
 CodeLens on recipe `query:` → **Open in Query Tools** (loads query; opens `edit.path` when it Jinja-resolves with empty args). **Go to edit path** on static `path:` values.
 
-**AST refresh:** the Query AST tree updates when the view is visible and you switch files, save, or explicitly reveal — not on every keystroke. While the buffer is dirty, the tree shows a **Stale (unsaved)** badge until you save. **Run** / **Generate** always use the current editor text; the Rust host caches parses by path + content hash (LRU, shared across Query Tools commands).
+**AST refresh:** the Query AST tree updates when the view is visible and you switch files, save, or explicitly reveal — not on every keystroke. While the buffer is dirty, the tree shows a prominent **Stale (unsaved)** warning until you save. **Run** / **Generate** always use the current editor text; the Rust host caches parses by path + content hash (LRU, shared across Query Tools commands). Closing Query AST clears editor highlights.
 
-**Generate helpers:** **Pin text (#eq?)** adds `(#eq? @capture "literal")` when generating from a node. Last list items also get the tree-sitter last-child anchor `.` (e.g. `(identifier) @target .`).
+**Cursor follow:** with Query AST open, moving the cursor reveals the deepest node and regenerates the Query Tools query (same as clicking an AST node). Close Query AST to edit a pasted query without overwrite.
+
+**Generate helpers:** **Pin text (#eq?)** adds `(#eq? @capture "literal")` when generating (and regenerates when you toggle it). Without Pin, last list items get tree-sitter last-child `.`. **Layer highlights** (default on) injects temporary `@__layer_*` for depth coloring on Run; patterns that use `.` skip layer injection so queries stay valid. Turn Layer highlights off if needed.
+
+**AST display:** view title → **Query AST Display Mode…** (`kind` / `content` / `kindPreview`). Default is kind + muted text preview (≤30 chars). Setting: `codemodRecipe.queryTools.astDisplayMode`.
 
 MCP: `dump_ast`, `debug_query`, `generate_query`, `resolve_static_path`.
 

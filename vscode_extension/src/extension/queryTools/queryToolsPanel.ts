@@ -6,7 +6,9 @@ export type QueryToolsPanelState = {
   capture: string;
   anchor: 'start' | 'end';
   pinEq: boolean;
+  instrument: boolean;
   status: string;
+  stale: boolean;
   captures: string[];
   matches: { index: number; summary: string }[];
   focusIndex: number;
@@ -23,7 +25,9 @@ export class QueryToolsPanelProvider
     capture: '',
     anchor: 'end',
     pinEq: false,
+    instrument: true,
     status: 'Open a source file, then Generate or paste a query.',
+    stale: false,
     captures: [],
     matches: [],
     focusIndex: 0,
@@ -35,30 +39,45 @@ export class QueryToolsPanelProvider
   readonly onStateChange = this._onStateChange.event;
   private readonly _onCopy = new vscode.EventEmitter<'query' | 'insert' | 'replace' | 'remove'>();
   readonly onCopy = this._onCopy.event;
+  private readonly _onPinToggle = new vscode.EventEmitter<boolean>();
+  readonly onPinToggle = this._onPinToggle.event;
 
   resolveWebviewView(webviewView: vscode.WebviewView): void {
     this.view = webviewView;
     webviewView.webview.options = { enableScripts: true };
     webviewView.webview.html = this.html();
-    webviewView.webview.onDidReceiveMessage((msg: { type: string; payload?: Partial<QueryToolsPanelState> }) => {
-      if (msg.type === 'state' && msg.payload) {
-        this.state = { ...this.state, ...msg.payload };
-        this.state.captures = extractCaptures(this.state.query);
-        if (!this.state.capture && this.state.captures.length) {
-          this.state.capture = this.state.captures[this.state.captures.length - 1];
+    webviewView.webview.onDidReceiveMessage(
+      (msg: {
+        type: string;
+        payload?: Partial<QueryToolsPanelState> & {
+          kind?: 'query' | 'insert' | 'replace' | 'remove';
+          index?: number;
+        };
+      }) => {
+        if (msg.type === 'state' && msg.payload) {
+          const prevPin = this.state.pinEq;
+          this.state = { ...this.state, ...msg.payload };
+          this.state.captures = extractCaptures(this.state.query);
+          if (!this.state.capture && this.state.captures.length) {
+            this.state.capture = this.state.captures[this.state.captures.length - 1];
+          }
+          this._onStateChange.fire(this.state);
+          this.postState();
+          if (typeof msg.payload.pinEq === 'boolean' && msg.payload.pinEq !== prevPin) {
+            this._onPinToggle.fire(this.state.pinEq);
+          }
+        } else if (msg.type === 'run') {
+          this._onRun.fire(this.getState());
+        } else if (msg.type === 'copy') {
+          this._onCopy.fire(msg.payload?.kind ?? 'query');
+        } else if (msg.type === 'focusMatch') {
+          const idx = msg.payload?.index ?? 0;
+          this.state.focusIndex = idx;
+          this.postState();
+          this._onStateChange.fire(this.state);
         }
-        this._onStateChange.fire(this.state);
-        this.postState();
-      } else if (msg.type === 'run') {
-        this._onRun.fire(this.getState());
-      } else if (msg.type === 'copy') {
-        this._onCopy.fire((msg.payload as { kind?: 'query' | 'insert' | 'replace' | 'remove' })?.kind ?? 'query');
-      } else if (msg.type === 'focusMatch') {
-        const idx = (msg.payload as { index?: number })?.index ?? 0;
-        this.state.focusIndex = idx;
-        this._onStateChange.fire(this.state);
       }
-    });
+    );
     this.postState();
   }
 
@@ -80,8 +99,16 @@ export class QueryToolsPanelProvider
     this.postState();
   }
 
-  setStatus(status: string): void {
+  setStatus(status: string, stale?: boolean): void {
     this.state.status = status;
+    if (typeof stale === 'boolean') {
+      this.state.stale = stale;
+    }
+    this.postState();
+  }
+
+  setStale(stale: boolean): void {
+    this.state.stale = stale;
     this.postState();
   }
 
@@ -98,6 +125,10 @@ export class QueryToolsPanelProvider
     return this.state.pinEq;
   }
 
+  isInstrument(): boolean {
+    return this.state.instrument;
+  }
+
   private postState(): void {
     void this.view?.webview.postMessage({ type: 'state', payload: this.state });
   }
@@ -112,6 +143,7 @@ export class QueryToolsPanelProvider
   select, button { margin: 4px 4px 4px 0; }
   .row { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; margin: 6px 0; }
   .status { opacity: 0.85; white-space: pre-wrap; margin-top: 8px; }
+  .status.warn { color: var(--vscode-editorWarning-foreground); opacity: 1; font-weight: 600; }
   .matches { list-style: none; padding: 0; margin: 4px 0; max-height: 120px; overflow: auto; }
   .matches li { cursor: pointer; padding: 2px 4px; }
   .matches li.active { background: var(--vscode-list-activeSelectionBackground); color: var(--vscode-list-activeSelectionForeground); }
@@ -128,9 +160,10 @@ export class QueryToolsPanelProvider
       <option value="start">start</option>
       <option value="end" selected>end</option>
     </select>
-    <label title="When generating a query, add (#eq? @capture &quot;node text&quot;) so the pattern matches this exact identifier or string."><input type="checkbox" id="pinEq"/> Pin text (#eq?)</label>
+    <label title="On generate: add (#eq? @capture &quot;node text&quot;). Does not change Run. Toggling regenerates the current selection."><input type="checkbox" id="pinEq"/> Pin text (#eq?)</label>
+    <label title="Inject temporary @__layer_* captures for depth coloring. Turn off if Run fails on queries that use tree-sitter ."><input type="checkbox" id="instrument" checked/> Layer highlights</label>
   </div>
-  <p class="hint">Pin text = exact literal match. Last list item also gets tree-sitter <code>.</code> when generated.</p>
+  <p class="hint">Pin text = exact literal on generate (no <code>.</code>). Without Pin, last list items get tree-sitter <code>.</code>. Layer highlights are Run-only visualization.</p>
   <div class="row">
     <button id="run">Run</button>
     <button id="copy">Copy</button>
@@ -150,6 +183,7 @@ export class QueryToolsPanelProvider
   const captureEl = document.getElementById('capture');
   const anchorEl = document.getElementById('anchor');
   const pinEqEl = document.getElementById('pinEq');
+  const instrumentEl = document.getElementById('instrument');
   const copyYamlEl = document.getElementById('copyYaml');
   const statusEl = document.getElementById('status');
   const matchesEl = document.getElementById('matches');
@@ -164,6 +198,7 @@ export class QueryToolsPanelProvider
         capture: captureEl.value,
         anchor: anchorEl.value,
         pinEq: pinEqEl.checked,
+        instrument: instrumentEl.checked,
       }
     });
   }
@@ -173,6 +208,7 @@ export class QueryToolsPanelProvider
   captureEl.addEventListener('change', emitState);
   anchorEl.addEventListener('change', emitState);
   pinEqEl.addEventListener('change', emitState);
+  instrumentEl.addEventListener('change', emitState);
   document.getElementById('run').onclick = () => { emitState(); vscode.postMessage({ type: 'run' }); };
   document.getElementById('copy').onclick = () => vscode.postMessage({ type: 'copy', payload: { kind: 'query' } });
   copyYamlEl.addEventListener('change', () => {
@@ -197,7 +233,11 @@ export class QueryToolsPanelProvider
     });
     anchorEl.value = s.anchor || 'end';
     pinEqEl.checked = !!s.pinEq;
-    statusEl.textContent = s.status || '';
+    instrumentEl.checked = s.instrument !== false;
+    statusEl.textContent = s.stale
+      ? ('⚠ ' + (s.status || 'Stale (unsaved) — save to refresh AST tree.'))
+      : (s.status || '');
+    statusEl.className = s.stale ? 'status warn' : 'status';
     matchesEl.innerHTML = '';
     (s.matches || []).forEach((m) => {
       const li = document.createElement('li');
@@ -216,6 +256,7 @@ export class QueryToolsPanelProvider
     this._onRun.dispose();
     this._onStateChange.dispose();
     this._onCopy.dispose();
+    this._onPinToggle.dispose();
   }
 }
 

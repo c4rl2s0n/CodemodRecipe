@@ -4,7 +4,13 @@ import { COMMANDS, VIEWS } from '../constants';
 import type { ExtensionConfig } from '../config/extensionConfig';
 import type { HostBridge } from '../host/hostBridge';
 import type { DebugMatchDto } from '../../shared';
-import { AstTreeItem, AstTreeProvider } from './astTreeProvider';
+import {
+  AstDisplayMode,
+  AstTreeItem,
+  AstTreeProvider,
+  AST_DISPLAY_MODE_SETTING,
+  readAstDisplayMode,
+} from './astTreeProvider';
 import { QueryToolsDecorations } from './decorations';
 import {
   formatYamlOp,
@@ -28,6 +34,7 @@ export class QueryToolsController implements vscode.Disposable {
   /** Document version when AST was last dumped for the tree view. */
   private lastDumpVersion = -1;
   private astStale = false;
+  private lastGenerateRange: { start: number; end: number } | undefined;
 
   constructor(
     private readonly bridge: HostBridge,
@@ -55,8 +62,13 @@ export class QueryToolsController implements vscode.Disposable {
           this.focusIndex = s.focusIndex;
         }
         if (this.matches.length) {
-          this.paintMatches(s.capture, s.anchor);
+          void this.revealMatchInAst(this.focusIndex).then(() => {
+            this.paintMatches(s.capture, s.anchor);
+          });
         }
+      }),
+      this.panel.onPinToggle(() => {
+        void this.regenerateFromLastOrCursor();
       }),
       this.panel.onCopy((kind) => {
         void this.copy(kind);
@@ -105,9 +117,15 @@ export class QueryToolsController implements vscode.Disposable {
         (doc?: vscode.TextDocument, line?: number) =>
           void this.goToEditPath(doc, line)
       ),
+      vscode.commands.registerCommand(
+        COMMANDS.queryToolsAstDisplayMode,
+        () => void this.pickAstDisplayMode()
+      ),
       this.astTreeView.onDidChangeVisibility((e) => {
         if (e.visible) {
           void this.refreshAstIfVisible(true);
+        } else {
+          this.clearEditorDecorations();
         }
       }),
       vscode.window.onDidChangeActiveTextEditor(() => {
@@ -135,6 +153,11 @@ export class QueryToolsController implements vscode.Disposable {
           return;
         }
         this.scheduleRevealAtCursor();
+      }),
+      vscode.workspace.onDidChangeConfiguration((e) => {
+        if (e.affectsConfiguration(AST_DISPLAY_MODE_SETTING)) {
+          this.astProvider.refreshDisplayFromSettings();
+        }
       })
     );
     context.subscriptions.push(this);
@@ -142,6 +165,13 @@ export class QueryToolsController implements vscode.Disposable {
 
   private isAstViewVisible(): boolean {
     return this.astTreeView?.visible ?? false;
+  }
+
+  private clearEditorDecorations(): void {
+    const ed = this.activeEditor();
+    if (ed) {
+      this.decorations.clear(ed);
+    }
   }
 
   private scheduleRevealAtCursor(): void {
@@ -152,7 +182,7 @@ export class QueryToolsController implements vscode.Disposable {
       clearTimeout(this.revealTimer);
     }
     this.revealTimer = setTimeout(() => {
-      void this.revealAtCursor(false);
+      void this.revealAndGenerateAtCursor(false);
     }, 150);
   }
 
@@ -171,16 +201,19 @@ export class QueryToolsController implements vscode.Disposable {
       ? 'Parse has ERROR nodes — query matching may fail.'
       : '';
     const stale = 'Stale (unsaved) — save to refresh AST tree.';
-    this.panel.setStatus(base ? `${stale}\n${base}` : stale);
+    this.panel.setStatus(base ? `${stale}\n${base}` : stale, true);
     if (this.astTreeView) {
-      this.astTreeView.description = 'Stale (unsaved)';
+      this.astTreeView.description = '$(warning) Stale (unsaved)';
+      this.astTreeView.message = '⚠ Stale (unsaved) — save to refresh AST';
     }
   }
 
   private clearStaleStatus(): void {
     this.astStale = false;
+    this.panel.setStale(false);
     if (this.astTreeView) {
       this.astTreeView.description = undefined;
+      this.astTreeView.message = undefined;
     }
   }
 
@@ -237,26 +270,26 @@ export class QueryToolsController implements vscode.Disposable {
       if (resp.hasError) {
         this.panel.setStatus('Parse has ERROR nodes — query matching may fail.');
       } else if (!this.panel.getState().query.trim()) {
-        this.panel.setStatus('AST ready — select a node or Generate from cursor.');
+        this.panel.setStatus('AST ready — select a node or move the cursor.');
       }
     } catch (e) {
       this.panel.setStatus(e instanceof Error ? e.message : String(e));
     }
   }
 
-  private async revealAtCursor(focusAst: boolean): Promise<void> {
+  private async revealAtCursor(focusAst: boolean): Promise<AstTreeItem | undefined> {
     const ed = this.activeEditor();
     if (!ed || !this.astProvider.getRoot()) {
-      return;
+      return undefined;
     }
     const offset = ed.document.offsetAt(ed.selection.active);
     const pathIdx = this.astProvider.findPathForByte(offset);
     if (!pathIdx) {
-      return;
+      return undefined;
     }
     const item = this.astProvider.getItemForPath(pathIdx);
     if (!item) {
-      return;
+      return undefined;
     }
     this.decorations.showAstSelection(ed, item.node);
     try {
@@ -268,22 +301,33 @@ export class QueryToolsController implements vscode.Disposable {
     } catch {
       // reveal can fail if the item is not yet rendered
     }
+    return item;
   }
 
-  private async onSelectAstNode(item: AstTreeItem): Promise<void> {
+  private async revealAndGenerateAtCursor(focusAst: boolean): Promise<void> {
+    const item = await this.revealAtCursor(focusAst);
+    if (item) {
+      await this.generateForNode(item.node.start.byte, item.node.end.byte, item.node.kind);
+    }
+  }
+
+  private async generateForNode(
+    start: number,
+    end: number,
+    kindHint?: string
+  ): Promise<void> {
     const ed = this.activeEditor();
     if (!ed) {
       return;
     }
-    this.decorations.showAstSelection(ed, item.node);
     const pinEq = this.panel.isPinEq();
     const rel = this.relativePath(ed.document.uri);
     try {
       const resp = await this.bridge.generateQuery({
         source: ed.document.getText(),
         path: rel,
-        start: item.node.start.byte,
-        end: item.node.end.byte,
+        start,
+        end,
         includeTextPredicates: pinEq,
         captureLeaf: 'target',
         maxDepth: 8,
@@ -292,14 +336,45 @@ export class QueryToolsController implements vscode.Disposable {
         this.panel.setStatus(resp.error ?? 'generateQuery failed');
         return;
       }
+      this.lastGenerateRange = { start, end };
       this.panel.setQuery(resp.query, resp.captureSuggestion);
-      this.panel.setStatus(`Generated query for ${item.node.kind}`);
-      if (this.isAstViewVisible()) {
-        await this.refreshAst(true);
-      }
+      this.panel.setStatus(
+        kindHint
+          ? `Generated query for ${kindHint}`
+          : `Regenerated with Pin text ${pinEq ? 'on' : 'off'}`
+      );
     } catch (e) {
       this.panel.setStatus(e instanceof Error ? e.message : String(e));
     }
+  }
+
+  private async regenerateFromLastOrCursor(): Promise<void> {
+    if (this.lastGenerateRange) {
+      await this.generateForNode(
+        this.lastGenerateRange.start,
+        this.lastGenerateRange.end
+      );
+      return;
+    }
+    const ed = this.activeEditor();
+    if (!ed) {
+      return;
+    }
+    const offset = ed.document.offsetAt(ed.selection.active);
+    await this.generateForNode(offset, offset);
+  }
+
+  private async onSelectAstNode(item: AstTreeItem): Promise<void> {
+    const ed = this.activeEditor();
+    if (!ed) {
+      return;
+    }
+    this.decorations.showAstSelection(ed, item.node);
+    await this.generateForNode(
+      item.node.start.byte,
+      item.node.end.byte,
+      item.node.kind
+    );
   }
 
   private async generateFromCursor(): Promise<void> {
@@ -309,32 +384,13 @@ export class QueryToolsController implements vscode.Disposable {
       return;
     }
     const offset = ed.document.offsetAt(ed.selection.active);
-    const rel = this.relativePath(ed.document.uri);
-    const pinEq = this.panel.isPinEq();
-    try {
-      const resp = await this.bridge.generateQuery({
-        source: ed.document.getText(),
-        path: rel,
-        start: offset,
-        end: offset,
-        includeTextPredicates: pinEq,
-        captureLeaf: 'target',
-        maxDepth: 8,
-      });
-      if (!resp.ok || !resp.query) {
-        this.panel.setStatus(resp.error ?? 'generateQuery failed');
-        return;
-      }
-      this.panel.setQuery(resp.query, resp.captureSuggestion);
-      this.panel.setStatus('Generated from cursor');
-      if (this.isAstViewVisible()) {
-        await this.refreshAst(true);
-        await this.revealAtCursor(false);
-      }
-      await vscode.commands.executeCommand(`${VIEWS.queryEditor}.focus`);
-    } catch (e) {
-      this.panel.setStatus(e instanceof Error ? e.message : String(e));
+    await this.generateForNode(offset, offset);
+    this.panel.setStatus('Generated from cursor');
+    if (this.isAstViewVisible()) {
+      await this.refreshAst(true);
+      await this.revealAtCursor(false);
     }
+    await vscode.commands.executeCommand(`${VIEWS.queryEditor}.focus`);
   }
 
   private async revealAstFromCursor(): Promise<void> {
@@ -349,8 +405,35 @@ export class QueryToolsController implements vscode.Disposable {
       this.panel.setStatus('No AST node at cursor');
       return;
     }
-    await this.revealAtCursor(true);
+    await this.revealAndGenerateAtCursor(true);
     await vscode.commands.executeCommand(`${VIEWS.queryAst}.focus`);
+  }
+
+  private async revealMatchInAst(index: number): Promise<void> {
+    if (!this.isAstViewVisible() || this.astStale || !this.matches.length) {
+      return;
+    }
+    const match = this.matches[Math.min(index, this.matches.length - 1)];
+    if (!match) {
+      return;
+    }
+    const pathIdx = this.astProvider.findPathForByte(match.root.start);
+    if (!pathIdx) {
+      return;
+    }
+    const item = this.astProvider.getItemForPath(pathIdx);
+    if (!item) {
+      return;
+    }
+    try {
+      await this.astTreeView?.reveal(item, {
+        expand: true,
+        select: true,
+        focus: false,
+      });
+    } catch {
+      // ignore
+    }
   }
 
   private async runQuery(): Promise<void> {
@@ -370,7 +453,7 @@ export class QueryToolsController implements vscode.Disposable {
         source: ed.document.getText(),
         path: rel,
         query: state.query,
-        instrument: true,
+        instrument: this.panel.isInstrument(),
       });
       if (!resp.ok || !resp.result) {
         this.panel.setStatus(resp.error ?? 'debugQuery failed');
@@ -391,6 +474,7 @@ export class QueryToolsController implements vscode.Disposable {
       this.paintMatches(state.capture, state.anchor);
       if (this.isAstViewVisible()) {
         await this.refreshAst(true);
+        await this.revealMatchInAst(0);
       }
     } catch (e) {
       this.panel.setStatus(e instanceof Error ? e.message : String(e));
@@ -423,6 +507,9 @@ export class QueryToolsController implements vscode.Disposable {
     const state = this.panel.getState();
     this.panel.setMatches(this.matches, this.focusIndex);
     this.paintMatches(state.capture, state.anchor);
+    void this.revealMatchInAst(this.focusIndex).then(() => {
+      this.paintMatches(state.capture, state.anchor);
+    });
   }
 
   private async copy(
@@ -435,6 +522,40 @@ export class QueryToolsController implements vscode.Disposable {
     }
     await vscode.env.clipboard.writeText(text);
     this.panel.setStatus(`Copied ${kind}`);
+  }
+
+  private async pickAstDisplayMode(): Promise<void> {
+    const current = readAstDisplayMode();
+    const pick = await vscode.window.showQuickPick(
+      [
+        {
+          label: 'Kind + preview',
+          description: 'kind in label, muted text snippet',
+          mode: 'kindPreview' as AstDisplayMode,
+        },
+        {
+          label: 'Kind only',
+          description: 'kind + line range',
+          mode: 'kind' as AstDisplayMode,
+        },
+        {
+          label: 'Content',
+          description: 'muted text snippet; kind on hover',
+          mode: 'content' as AstDisplayMode,
+        },
+      ],
+      {
+        title: 'Query AST display',
+        placeHolder: `Current: ${current}`,
+      }
+    );
+    if (!pick) {
+      return;
+    }
+    await vscode.workspace
+      .getConfiguration('codemodRecipe.queryTools')
+      .update('astDisplayMode', pick.mode, vscode.ConfigurationTarget.Global);
+    this.astProvider.setDisplayMode(pick.mode);
   }
 
   async openFromRecipe(

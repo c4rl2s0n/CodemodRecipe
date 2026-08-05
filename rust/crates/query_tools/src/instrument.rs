@@ -86,8 +86,11 @@ fn instrument_slice(
                 // Capture may be inside `(node @c)` or after `(node) @c`
                 let (ext_cap_end, has_ext) = peek_external_capture(bytes, close_end, end);
                 let has_inner = trailing_capture_body(&body);
+                // Do not inject @__layer_* into patterns that use tree-sitter `.`
+                // anchors — placing a capture after `.` is invalid syntax.
+                let has_dot_anchor = body_has_dot_anchor(&body);
 
-                if has_inner || has_ext {
+                if has_inner || has_ext || has_dot_anchor {
                     out.push_str(&rebuilt);
                     out.push(')');
                     if has_ext {
@@ -148,6 +151,36 @@ fn trailing_capture_body(body: &str) -> bool {
         j -= 1;
     }
     j > 0 && bytes[j - 1] == b'@' && end > j
+}
+
+/// True if `body` contains a tree-sitter `.` anchor (not part of an identifier).
+fn body_has_dot_anchor(body: &str) -> bool {
+    let bytes = body.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() {
+        if bytes[i] == b'"' {
+            i += 1;
+            while i < bytes.len() && bytes[i] != b'"' {
+                if bytes[i] == b'\\' {
+                    i += 1;
+                }
+                i += 1;
+            }
+            i += 1;
+            continue;
+        }
+        if bytes[i] == b'.' {
+            let prev_ok = i == 0
+                || (!bytes[i - 1].is_ascii_alphanumeric() && bytes[i - 1] != b'_');
+            let next_ok = i + 1 >= bytes.len()
+                || (!bytes[i + 1].is_ascii_alphanumeric() && bytes[i + 1] != b'_');
+            if prev_ok && next_ok {
+                return true;
+            }
+        }
+        i += 1;
+    }
+    false
 }
 
 fn skip_balanced(bytes: &[u8], start: usize, end: usize) -> Result<usize, QueryToolsError> {
@@ -232,5 +265,37 @@ mod tests {
         let inst = instrument_query(q).unwrap();
         assert_eq!(inst.query.trim(), "(identifier) @n");
         assert!(inst.layer_ranges.is_empty());
+    }
+
+    #[test]
+    fn skips_layer_inject_when_dot_anchor_present() {
+        let q = "(list_literal (identifier) @target .)";
+        let inst = instrument_query(q).unwrap();
+        assert!(
+            !inst.query.contains("@__layer_"),
+            "must not inject layer after .: {}",
+            inst.query
+        );
+        assert!(inst.query.contains("@target ."), "{}", inst.query);
+        // Round-trip: instrumented query must still parse as valid S-expr shape
+        assert!(inst.query.contains("(list_literal"), "{}", inst.query);
+    }
+
+    #[test]
+    fn skips_layer_on_sibling_dot() {
+        let q = "(pair (identifier) @a . (identifier) @b)";
+        let inst = instrument_query(q).unwrap();
+        assert!(
+            !inst.query.contains("@__layer_"),
+            "{}",
+            inst.query
+        );
+    }
+
+    #[test]
+    fn still_layers_parents_without_dot() {
+        let q = "(class_definition (annotation (arguments)))";
+        let inst = instrument_query(q).unwrap();
+        assert!(inst.query.contains("@__layer_"), "{}", inst.query);
     }
 }
