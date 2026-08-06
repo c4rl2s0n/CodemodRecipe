@@ -9,7 +9,8 @@ use codemod_recipe_query_tools::{
 
 use crate::path_sandbox::PathSandbox;
 use crate::protocol::{
-    DebugQueryResponse, DumpAstResponse, GenerateQueryResponse, ResolveStaticPathResponse,
+    DebugQueryResponse, DumpAstResponse, GenerateQueryResponse, HostCommand,
+    ResolveStaticPathResponse,
 };
 use crate::registry::RecipeRegistry;
 use crate::template::try_resolve_static_template;
@@ -53,9 +54,7 @@ fn cached_parse(
 ) -> Result<crate::ast_cache::CachedTree, String> {
     let engine = resolve_engine(registry, language, path_hint)?;
     let lang = engine.language();
-    registry
-        .ast_cache
-        .get_or_parse(path_key, source, &lang)
+    registry.ast_cache.get_or_parse(path_key, source, &lang)
 }
 
 pub fn handle_dump_ast(
@@ -145,7 +144,9 @@ fn debug_query_inner(
     let path_key = path.unwrap_or(&hint);
     let engine = resolve_engine(registry, language, &hint)?;
     let language = engine.language();
-    let cached = registry.ast_cache.get_or_parse(path_key, &text, &language)?;
+    let cached = registry
+        .ast_cache
+        .get_or_parse(path_key, &text, &language)?;
     let opts = DebugOptions {
         instrument,
         include_sexp,
@@ -207,7 +208,9 @@ fn generate_query_inner(
     let path_key = path.unwrap_or(&hint);
     let engine = resolve_engine(registry, language, &hint)?;
     let language = engine.language();
-    let cached = registry.ast_cache.get_or_parse(path_key, &text, &language)?;
+    let cached = registry
+        .ast_cache
+        .get_or_parse(path_key, &text, &language)?;
     let opts = GenerateOptions {
         include_text_predicates,
         capture_leaf: capture_leaf.unwrap_or("target").to_string(),

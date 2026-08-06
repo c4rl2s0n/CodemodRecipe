@@ -200,7 +200,7 @@ pub fn handle_command(registry: &mut RecipeRegistry, cmd: HostCommand) -> serde_
         )),
         HostCommand::ResolveStaticPath { template } => {
             to_value(crate::query_tools::handle_resolve_static_path(&template))
-        },
+        }
         HostCommand::Preview {
             recipe,
             inline_recipe,
@@ -273,7 +273,7 @@ fn preview(
 ) -> serde_json::Value {
     let recipe_key = request.recipe_key();
     let recipe_id = request.recipe_id;
-    let inline_recipe = request.inline_recipe;
+    let inline_recipe: Option<&serde_json::Value> = request.inline_recipe;
     let args = request.args.clone();
     match collect(registry, request) {
         Ok(collected) => {
@@ -304,7 +304,7 @@ fn preview(
                 if change.is_skipped() {
                     continue;
                 }
-                match build_file_preview_from_change(change, include_contents, false, snippet_lines)
+                match build_file_preview_from_change(change, include_contents, true, snippet_lines)
                 {
                     Ok(file) => files.push(file),
                     Err(error) => {
@@ -509,4 +509,24 @@ fn apply(
 
 fn to_value<T: serde::Serialize>(value: T) -> serde_json::Value {
     serde_json::to_value(value).unwrap_or_else(|e| error_json(format!("serialization failed: {e}")))
+}
+
+#[test]
+fn test_handle_preview() {
+    let mut registry = RecipeRegistry::new(
+        "/home/ikusa/workspace/rust/domtree".into(),
+        "/home/ikusa/workspace/rust/domtree/.codemod".into(),
+    );
+    registry.reload();
+    let json = handle_command(
+        &mut registry,
+        HostCommand::Preview {
+            recipe: Some("test".to_string()),
+            inline_recipe: None,
+            args: BTreeMap::new(),
+            snippet_lines: None,
+        },
+    );
+    let jstring = json.to_string();
+    println!("{jstring}");
 }
