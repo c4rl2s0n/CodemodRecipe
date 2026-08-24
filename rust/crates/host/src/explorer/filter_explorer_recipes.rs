@@ -144,17 +144,10 @@ fn resolve_explorer_match(
             path_exists.clone(),
         ) {
             Ok(true) => {
-                return resolve_entry_args(
-                    recipe,
-                    entry.kind,
-                    &entry.args,
-                    path,
-                    context,
-                    maps,
-                    vars,
-                    path_exists,
-                )
-                .ok();
+                if entry.args.is_empty() {
+                    return Some(input_kind_heuristic(recipe, entry.kind, path));
+                }
+                return resolve_entry_args(&entry.args, context, maps, vars, path_exists).ok();
             }
             Ok(false) => continue,
             Err(_) => continue,
@@ -164,18 +157,12 @@ fn resolve_explorer_match(
 }
 
 fn resolve_entry_args(
-    recipe: &Recipe,
-    kind: ExplorerMenuKind,
     entry_args: &BTreeMap<String, String>,
-    path: &str,
     context: &BTreeMap<String, String>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     vars: &BTreeMap<String, BTreeMap<String, String>>,
     path_exists: PathExistsFn,
 ) -> Result<BTreeMap<String, String>, String> {
-    if entry_args.is_empty() {
-        return Ok(input_kind_heuristic(recipe, kind, path));
-    }
     let mut out = BTreeMap::new();
     for (name, expr) in entry_args {
         let value = eval_string_expr(
@@ -196,13 +183,13 @@ fn input_kind_heuristic(
     path: &str,
 ) -> BTreeMap<String, String> {
     let mut out = BTreeMap::new();
-    if let Some(arg) = recipe
-        .args
-        .iter()
-        .find(|a| matches!((kind, &a.input_kind),
-            (ExplorerMenuKind::File, InputKind::File) | (ExplorerMenuKind::Folder, InputKind::Directory)
-        ))
-    {
+    if let Some(arg) = recipe.args.iter().find(|a| {
+        matches!(
+            (kind, &a.input_kind),
+            (ExplorerMenuKind::File, InputKind::File)
+                | (ExplorerMenuKind::Folder, InputKind::Directory)
+        )
+    }) {
         out.insert(arg.name.clone(), path.to_string());
     }
     out

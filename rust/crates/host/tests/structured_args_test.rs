@@ -11,7 +11,8 @@ static N: AtomicUsize = AtomicUsize::new(0);
 
 fn temp_workspace(name: &str) -> PathBuf {
     let n = N.fetch_add(1, Ordering::SeqCst);
-    let dir = std::env::temp_dir().join(format!("structured_args_{name}_{}_{n}", std::process::id()));
+    let dir =
+        std::env::temp_dir().join(format!("structured_args_{name}_{}_{n}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(dir.join("lib")).unwrap();
     std::fs::create_dir_all(dir.join(".codemod/recipes")).unwrap();

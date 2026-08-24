@@ -81,7 +81,9 @@ pub fn validate_typed_args(
     let effective = validate_required_args(recipe, args)?;
     let mut merged_types = types.clone();
     for (id, def) in &recipe.types {
-        merged_types.entry(id.clone()).or_insert_with(|| def.clone());
+        merged_types
+            .entry(id.clone())
+            .or_insert_with(|| def.clone());
     }
     for arg in &recipe.args {
         if let Some(value) = effective.get(&arg.name) {
@@ -134,7 +136,8 @@ fn validate_value(
             Ok(())
         }
         InputKind::Bool => {
-            if value.as_bool().is_some() || matches!(value, Value::String(s) if s == "true" || s == "false")
+            if value.as_bool().is_some()
+                || matches!(value, Value::String(s) if s == "true" || s == "false")
             {
                 Ok(())
             } else {

@@ -80,31 +80,33 @@ impl HostInner {
 const MAX_OPS: usize = 50_000;
 type SharedHost = Rc<Mutex<HostInner>>;
 
-pub fn run_recipe(
-    kind: RunKind,
-    recipe: &Recipe,
-    args: &BTreeMap<String, serde_json::Value>,
-    maps: BTreeMap<String, BTreeMap<String, String>>,
-    vars: BTreeMap<String, BTreeMap<String, String>>,
-    queries: BTreeMap<String, String>,
-    recipes: BTreeMap<String, Recipe>,
-    workspace_root: PathBuf,
-    language_config: RegistryConfig,
-    codemod_root: PathBuf,
-) -> Result<RecipeRunResult, String> {
+pub struct RecipeRunRequest {
+    pub kind: RunKind,
+    pub args: BTreeMap<String, serde_json::Value>,
+    pub maps: BTreeMap<String, BTreeMap<String, String>>,
+    pub vars: BTreeMap<String, BTreeMap<String, String>>,
+    pub queries: BTreeMap<String, String>,
+    pub recipes: BTreeMap<String, Recipe>,
+    pub workspace_root: PathBuf,
+    pub language_config: RegistryConfig,
+    pub codemod_root: PathBuf,
+}
+
+pub fn run_recipe(recipe: &Recipe, request: RecipeRunRequest) -> Result<RecipeRunResult, String> {
     let lua = new_sandbox().map_err(|e| e.to_string())?;
+    let kind = request.kind;
     let inner = Rc::new(Mutex::new(HostInner {
         kind,
         tree: WorkingTree::new(),
-        sandbox: PathSandbox::new(workspace_root),
-        language_registry: LanguageRegistry::with_config(language_config),
-        args: args.clone(),
-        maps,
-        vars,
-        queries,
-        recipes,
+        sandbox: PathSandbox::new(request.workspace_root),
+        language_registry: LanguageRegistry::with_config(request.language_config),
+        args: request.args,
+        maps: request.maps,
+        vars: request.vars,
+        queries: request.queries,
+        recipes: request.recipes,
         recipe_path: recipe.path.clone(),
-        codemod_root,
+        codemod_root: request.codemod_root,
         transcript: Vec::new(),
         saw_post_exec: false,
         op_count: 0,

@@ -116,7 +116,10 @@ fn with_bindings_forward_and_hardcode() {
     assert!(!names.contains(&"suffix"));
 
     let mut args = BTreeMap::new();
-    args.insert("featureName".to_string(), serde_json::Value::String("FeedList".to_string()));
+    args.insert(
+        "featureName".to_string(),
+        serde_json::Value::String("FeedList".to_string()),
+    );
 
     let response = preview_recipe(&mut registry, "jinja.bind.orchestrator", args);
     assert_eq!(response["ok"], true, "{}", response["error"]);
@@ -142,8 +145,14 @@ fn with_bindings_partial_fallthrough() {
     assert!(!names.contains(&"className"));
 
     let mut args = BTreeMap::new();
-    args.insert("featureName".to_string(), serde_json::Value::String("Metrics".to_string()));
-    args.insert("suffix".to_string(), serde_json::Value::String("View".to_string()));
+    args.insert(
+        "featureName".to_string(),
+        serde_json::Value::String("Metrics".to_string()),
+    );
+    args.insert(
+        "suffix".to_string(),
+        serde_json::Value::String("View".to_string()),
+    );
 
     let response = preview_recipe(&mut registry, "jinja.bind.orchestrator_partial", args);
     assert_eq!(response["ok"], true, "{}", response["error"]);
@@ -161,8 +170,14 @@ fn showcase_casing_renders_all_filters() {
     registry.reload();
 
     let mut args = BTreeMap::new();
-    args.insert("name".to_string(), serde_json::Value::String("FeedList".to_string()));
-    args.insert("fieldKey".to_string(), serde_json::Value::String("tickCount".to_string()));
+    args.insert(
+        "name".to_string(),
+        serde_json::Value::String("FeedList".to_string()),
+    );
+    args.insert(
+        "fieldKey".to_string(),
+        serde_json::Value::String("tickCount".to_string()),
+    );
 
     let response = preview_recipe(&mut registry, "jinja.casing.showcase", args);
     assert_eq!(response["ok"], true, "{}", response["error"]);
@@ -193,7 +208,10 @@ fn showcase_path_renders_path_filters() {
         "featureDir".to_string(),
         serde_json::Value::String("lib/features/feed/widgets".to_string()),
     );
-    args.insert("file".to_string(), serde_json::Value::String("lib/foo.dart".to_string()));
+    args.insert(
+        "file".to_string(),
+        serde_json::Value::String("lib/foo.dart".to_string()),
+    );
 
     let response = preview_recipe(&mut registry, "jinja.path.showcase", args);
     assert_eq!(response["ok"], true, "{}", response["error"]);
@@ -215,15 +233,24 @@ fn conditional_create_respects_bool_arg() {
     registry.reload();
 
     let mut args = BTreeMap::new();
-    args.insert("className".to_string(), serde_json::Value::String("Counter".to_string()));
-    args.insert("includeTests".to_string(), serde_json::Value::String("true".to_string()));
+    args.insert(
+        "className".to_string(),
+        serde_json::Value::String("Counter".to_string()),
+    );
+    args.insert(
+        "includeTests".to_string(),
+        serde_json::Value::String("true".to_string()),
+    );
 
     let with_tests = preview_recipe(&mut registry, "jinja.create.conditional", args.clone());
     assert_eq!(with_tests["ok"], true, "{}", with_tests["error"]);
     let content = file_content(&with_tests, "lib/generated/counter_widget.dart");
     assert!(content.contains("void testHook()"));
 
-    args.insert("includeTests".to_string(), serde_json::Value::String("false".to_string()));
+    args.insert(
+        "includeTests".to_string(),
+        serde_json::Value::String("false".to_string()),
+    );
     let without_tests = preview_recipe(&mut registry, "jinja.create.conditional", args);
     assert_eq!(without_tests["ok"], true, "{}", without_tests["error"]);
     let content = file_content(&without_tests, "lib/generated/counter_widget.dart");
@@ -239,7 +266,10 @@ fn create_with_layout_uses_extends_and_include() {
     registry.reload();
 
     let mut args = BTreeMap::new();
-    args.insert("className".to_string(), serde_json::Value::String("FeedList".to_string()));
+    args.insert(
+        "className".to_string(),
+        serde_json::Value::String("FeedList".to_string()),
+    );
 
     let response = preview_recipe(&mut registry, "jinja.create.layout", args);
     assert_eq!(response["ok"], true, "{}", response["error"]);
@@ -258,7 +288,10 @@ fn defaults_orchestrator_applies_child_defaults_to() {
     registry.reload();
 
     let mut args = BTreeMap::new();
-    args.insert("label".to_string(), serde_json::Value::String("Metrics".to_string()));
+    args.insert(
+        "label".to_string(),
+        serde_json::Value::String("Metrics".to_string()),
+    );
 
     let response = preview_recipe(&mut registry, "jinja.defaults.orchestrator", args);
     assert_eq!(response["ok"], true, "{}", response["error"]);
@@ -276,8 +309,14 @@ fn step_if_orchestrator_gates_child_and_file_exists() {
     registry.reload();
 
     let mut args = BTreeMap::new();
-    args.insert("className".to_string(), serde_json::Value::String("Counter".to_string()));
-    args.insert("includeExtra".to_string(), serde_json::Value::String("false".to_string()));
+    args.insert(
+        "className".to_string(),
+        serde_json::Value::String("Counter".to_string()),
+    );
+    args.insert(
+        "includeExtra".to_string(),
+        serde_json::Value::String("false".to_string()),
+    );
 
     let without_extra = preview_recipe(&mut registry, "jinja.step_if.orchestrator", args.clone());
     assert_eq!(without_extra["ok"], true, "{}", without_extra["error"]);
@@ -288,7 +327,10 @@ fn step_if_orchestrator_gates_child_and_file_exists() {
     // markerFile default is absent → skipped_when_marker create runs
     assert!(paths.contains(&"lib/generated/skipped_when_marker.dart"));
 
-    args.insert("includeExtra".to_string(), serde_json::Value::String("true".to_string()));
+    args.insert(
+        "includeExtra".to_string(),
+        serde_json::Value::String("true".to_string()),
+    );
     let with_extra = preview_recipe(&mut registry, "jinja.step_if.orchestrator", args);
     assert_eq!(with_extra["ok"], true, "{}", with_extra["error"]);
     let content = file_content(&with_extra, "lib/generated/counter_extra.dart");

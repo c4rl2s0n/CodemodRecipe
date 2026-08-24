@@ -1,5 +1,5 @@
 use codemod_recipe_engine::engine::QueryContext;
-use codemod_recipe_engine::ops::{EditOp, InsertAnchor, InsertOp, QuerySpec, RemoveOp, ReplaceOp};
+use codemod_recipe_engine::ops::{EditOp, InsertAnchor, QuerySpec, RemoveOp, ReplaceOp};
 
 mod common;
 

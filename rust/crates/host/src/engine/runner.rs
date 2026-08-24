@@ -5,7 +5,7 @@ use codemod_recipe_core::apply::file_change::FileChange;
 use codemod_recipe_lua::load::load_recipe;
 use codemod_recipe_lua::model::Recipe;
 
-use crate::lua_runtime::{run_recipe, RecipeRunResult, RunKind};
+use crate::lua_runtime::{run_recipe, RecipeRunRequest, RecipeRunResult, RunKind};
 use crate::recipe::args;
 use crate::recipe::registry::RecipeRegistry;
 use crate::sandbox::path_sandbox::PathSandbox;
@@ -49,12 +49,8 @@ pub fn collect_recipe_changes(
     args: &BTreeMap<String, serde_json::Value>,
     kind: RunKind,
 ) -> Result<CollectedChanges, String> {
-    let effective = args::validate_typed_args(
-        recipe,
-        registry.types_by_id(),
-        registry.maps_by_id(),
-        args,
-    )?;
+    let effective =
+        args::validate_typed_args(recipe, registry.types_by_id(), registry.maps_by_id(), args)?;
     let mut maps = registry.maps_by_id().clone();
     for (k, v) in &recipe.maps {
         maps.entry(k.clone()).or_insert_with(|| v.clone());
@@ -62,16 +58,18 @@ pub fn collect_recipe_changes(
     let mut queries = registry.queries_by_id().clone();
     queries.extend(recipe.queries.clone());
     let result: RecipeRunResult = run_recipe(
-        kind,
         recipe,
-        &effective,
-        maps,
-        registry.vars_by_id().clone(),
-        queries,
-        registry.recipes_map().clone(),
-        registry.workspace_root.clone(),
-        registry.language_registry.config().clone(),
-        registry.codemod_root().to_path_buf(),
+        RecipeRunRequest {
+            kind,
+            args: effective,
+            maps,
+            vars: registry.vars_by_id().clone(),
+            queries,
+            recipes: registry.recipes_map().clone(),
+            workspace_root: registry.workspace_root.clone(),
+            language_config: registry.language_registry.config().clone(),
+            codemod_root: registry.codemod_root().to_path_buf(),
+        },
     )?;
     Ok(CollectedChanges {
         recipe: recipe.clone(),

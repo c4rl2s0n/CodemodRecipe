@@ -51,10 +51,7 @@ pub fn lua_to_json(value: &LuaValue) -> Result<JsonValue, String> {
             s.to_str().map_err(|e| e.to_string())?.to_string(),
         )),
         LuaValue::Table(tbl) => table_to_json(tbl),
-        other => Err(format!(
-            "cannot convert Lua {} to JSON",
-            other.type_name()
-        )),
+        other => Err(format!("cannot convert Lua {} to JSON", other.type_name())),
     }
 }
 
@@ -85,11 +82,7 @@ fn table_to_json(tbl: &Table) -> Result<JsonValue, String> {
     if is_array {
         let mut items = Vec::with_capacity(max_index);
         for i in 1..=max_index {
-            items.push(
-                object
-                    .remove(&i.to_string())
-                    .unwrap_or(JsonValue::Null),
-            );
+            items.push(object.remove(&i.to_string()).unwrap_or(JsonValue::Null));
         }
         Ok(JsonValue::Array(items))
     } else {

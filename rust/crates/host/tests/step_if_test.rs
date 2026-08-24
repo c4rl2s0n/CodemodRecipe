@@ -50,10 +50,16 @@ return {
 }
 "#;
     let mut args = BTreeMap::new();
-    args.insert("includeFile".to_string(), serde_json::Value::String("false".to_string()));
+    args.insert(
+        "includeFile".to_string(),
+        serde_json::Value::String("false".to_string()),
+    );
     assert!(collect(&workspace, source, &args).is_empty());
 
-    args.insert("includeFile".to_string(), serde_json::Value::String("true".to_string()));
+    args.insert(
+        "includeFile".to_string(),
+        serde_json::Value::String("true".to_string()),
+    );
     let changes = collect(&workspace, source, &args);
     assert_eq!(changes.len(), 1);
     assert!(matches!(&changes[0], FileChange::Create { path, .. } if path == "lib/generated.dart"));
@@ -81,10 +87,16 @@ return {
 }
 "#;
     let mut args = BTreeMap::new();
-    args.insert("file".to_string(), serde_json::Value::String("lib/existing.dart".to_string()));
+    args.insert(
+        "file".to_string(),
+        serde_json::Value::String("lib/existing.dart".to_string()),
+    );
     assert!(collect(&workspace, source, &args).is_empty());
 
-    args.insert("file".to_string(), serde_json::Value::String("lib/missing.dart".to_string()));
+    args.insert(
+        "file".to_string(),
+        serde_json::Value::String("lib/missing.dart".to_string()),
+    );
     let changes = collect(&workspace, source, &args);
     assert_eq!(changes.len(), 1);
 }
@@ -114,7 +126,10 @@ return {
 }
 "#;
     let mut args = BTreeMap::new();
-    args.insert("file".to_string(), serde_json::Value::String("lib/first.dart".to_string()));
+    args.insert(
+        "file".to_string(),
+        serde_json::Value::String("lib/first.dart".to_string()),
+    );
     let changes = collect(&workspace, source, &args);
     assert_eq!(
         changes.len(),
@@ -169,8 +184,14 @@ return {
     let (recipe, path) = registry.load_recipe_ast("parent_gate").unwrap();
 
     let mut args = BTreeMap::new();
-    args.insert("includeChild".to_string(), serde_json::Value::String("false".to_string()));
-    args.insert("file".to_string(), serde_json::Value::String("lib/child.dart".to_string()));
+    args.insert(
+        "includeChild".to_string(),
+        serde_json::Value::String("false".to_string()),
+    );
+    args.insert(
+        "file".to_string(),
+        serde_json::Value::String("lib/child.dart".to_string()),
+    );
     let skipped = collect_recipe_changes(
         &registry,
         &recipe,
@@ -182,7 +203,10 @@ return {
     .changes;
     assert!(skipped.is_empty());
 
-    args.insert("includeChild".to_string(), serde_json::Value::String("true".to_string()));
+    args.insert(
+        "includeChild".to_string(),
+        serde_json::Value::String("true".to_string()),
+    );
     let applied = collect_recipe_changes(
         &registry,
         &recipe,
@@ -211,10 +235,16 @@ return {
 }
 "#;
     let mut args = BTreeMap::new();
-    args.insert("includeExtra".to_string(), serde_json::Value::String("false".to_string()));
+    args.insert(
+        "includeExtra".to_string(),
+        serde_json::Value::String("false".to_string()),
+    );
     assert!(collect(&workspace, source, &args).is_empty());
 
-    args.insert("includeExtra".to_string(), serde_json::Value::String("true".to_string()));
+    args.insert(
+        "includeExtra".to_string(),
+        serde_json::Value::String("true".to_string()),
+    );
     let changes = collect(&workspace, source, &args);
     assert_eq!(changes.len(), 2);
 }
@@ -240,14 +270,26 @@ return {
 }
 "#;
     let mut args = BTreeMap::new();
-    args.insert("includeGroup".to_string(), serde_json::Value::String("true".to_string()));
-    args.insert("includeSecond".to_string(), serde_json::Value::String("false".to_string()));
+    args.insert(
+        "includeGroup".to_string(),
+        serde_json::Value::String("true".to_string()),
+    );
+    args.insert(
+        "includeSecond".to_string(),
+        serde_json::Value::String("false".to_string()),
+    );
     let changes = collect(&workspace, source, &args);
     assert_eq!(changes.len(), 1);
     assert!(matches!(&changes[0], FileChange::Create { path, .. } if path == "lib/one.dart"));
 
-    args.insert("includeGroup".to_string(), serde_json::Value::String("false".to_string()));
-    args.insert("includeSecond".to_string(), serde_json::Value::String("true".to_string()));
+    args.insert(
+        "includeGroup".to_string(),
+        serde_json::Value::String("false".to_string()),
+    );
+    args.insert(
+        "includeSecond".to_string(),
+        serde_json::Value::String("true".to_string()),
+    );
     assert!(collect(&workspace, source, &args).is_empty());
 }
 
@@ -302,7 +344,10 @@ return {
     let (recipe, path) = registry.load_recipe_ast("parent_if").unwrap();
 
     let mut args = BTreeMap::new();
-    args.insert("includeChildren".to_string(), serde_json::Value::String("false".to_string()));
+    args.insert(
+        "includeChildren".to_string(),
+        serde_json::Value::String("false".to_string()),
+    );
     let skipped = collect_recipe_changes(
         &registry,
         &recipe,
@@ -314,7 +359,10 @@ return {
     .changes;
     assert!(skipped.is_empty());
 
-    args.insert("includeChildren".to_string(), serde_json::Value::String("true".to_string()));
+    args.insert(
+        "includeChildren".to_string(),
+        serde_json::Value::String("true".to_string()),
+    );
     let applied = collect_recipe_changes(
         &registry,
         &recipe,

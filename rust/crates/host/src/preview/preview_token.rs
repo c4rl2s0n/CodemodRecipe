@@ -80,7 +80,10 @@ mod tests {
 
     #[test]
     fn token_is_stable_for_same_inputs() {
-        let args = BTreeMap::from([("file".to_string(), serde_json::Value::String("a.dart".to_string()))]);
+        let args = BTreeMap::from([(
+            "file".to_string(),
+            serde_json::Value::String("a.dart".to_string()),
+        )]);
         let file = PathBuf::from("/tmp/example.dart");
         let a = compute_preview_token(Some("r"), None, &args, &[file.as_path()]);
         let b = compute_preview_token(Some("r"), None, &args, &[file.as_path()]);
