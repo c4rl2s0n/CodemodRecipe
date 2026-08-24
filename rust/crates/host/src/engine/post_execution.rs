@@ -1,4 +1,3 @@
-use codemod_recipe_yaml::model::PostExecution;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
@@ -6,14 +5,8 @@ use std::process::Command;
 use crate::template::render_template;
 use codemod_recipe_core::resource_path::resolve_existing_resource;
 
-/// Run post-apply actions after a successful apply.
-///
-/// Each string entry is Jinja-rendered with recipe args/maps/vars. If the rendered
-/// value resolves to an existing file under the codemod root, the file body is
-/// Jinja-rendered and executed via bash. Otherwise the rendered string is run
-/// with `sh -c` (cwd = workspace root). No builtins and no injected path lists.
 pub fn run_post_execution(
-    actions: &[PostExecution],
+    actions: &[String],
     args: &BTreeMap<String, String>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     vars: &BTreeMap<String, BTreeMap<String, String>>,
@@ -21,31 +14,41 @@ pub fn run_post_execution(
     codemod_root: &Path,
     recipe_file: Option<&Path>,
 ) -> Result<(), String> {
-    for action in actions {
-        match action {
-            PostExecution::String(entry) => {
-                let rendered = render_template(entry, args, maps, vars)?;
-                let trimmed = rendered.trim();
-                if trimmed.is_empty() {
-                    return Err("postExecution entry rendered to an empty string".to_string());
-                }
-                if let Some(script_path) =
-                    resolve_existing_script(workspace_root, codemod_root, recipe_file, trimmed)?
-                {
-                    run_script_file(&script_path, args, maps, vars, workspace_root)?;
-                } else {
-                    run_shell_command(trimmed, workspace_root)?;
-                }
-            }
-            PostExecution::Map(_) => {
-                return Err(
-                    "postExecution map/object entries are not supported; use a string command or a script path relative to the codemod root"
-                        .to_string(),
-                );
-            }
-        }
+    for entry in actions {
+        run_post_execution_command(
+            entry,
+            args,
+            maps,
+            vars,
+            workspace_root,
+            codemod_root,
+            recipe_file,
+        )?;
     }
     Ok(())
+}
+
+pub fn run_post_execution_command(
+    entry: &str,
+    args: &BTreeMap<String, String>,
+    maps: &BTreeMap<String, BTreeMap<String, String>>,
+    vars: &BTreeMap<String, BTreeMap<String, String>>,
+    workspace_root: &Path,
+    codemod_root: &Path,
+    recipe_file: Option<&Path>,
+) -> Result<(), String> {
+    let rendered = render_template(entry, args, maps, vars)?;
+    let trimmed = rendered.trim();
+    if trimmed.is_empty() {
+        return Err("postExecution entry rendered to an empty string".to_string());
+    }
+    if let Some(script_path) =
+        resolve_existing_script(workspace_root, codemod_root, recipe_file, trimmed)?
+    {
+        run_script_file(&script_path, args, maps, vars, workspace_root)
+    } else {
+        run_shell_command(trimmed, workspace_root)
+    }
 }
 
 fn resolve_existing_script(
@@ -152,10 +155,7 @@ mod tests {
         let mut args = BTreeMap::new();
         args.insert("name".into(), "world".into());
         run_post_execution(
-            &[PostExecution::String(format!(
-                "printf '{{{{ name }}}}' > '{}'",
-                marker.display()
-            ))],
+            &[format!("printf '{{{{ name }}}}' > '{}'", marker.display())],
             &args,
             &BTreeMap::new(),
             &BTreeMap::new(),
@@ -176,7 +176,7 @@ mod tests {
         let mut args = BTreeMap::new();
         args.insert("name".into(), "scripted".into());
         run_post_execution(
-            &[PostExecution::String("scripts/hi.sh".into())],
+            &["scripts/hi.sh".into()],
             &args,
             &BTreeMap::new(),
             &BTreeMap::new(),
@@ -193,29 +193,10 @@ mod tests {
     }
 
     #[test]
-    fn rejects_map_entries() {
-        let ws = temp_ws("map");
-        let err = run_post_execution(
-            &[PostExecution::Map(serde_yaml::Value::Mapping(
-                serde_yaml::Mapping::new(),
-            ))],
-            &BTreeMap::new(),
-            &BTreeMap::new(),
-            &BTreeMap::new(),
-            &ws,
-            &ws.join(".codemod"),
-            None,
-        )
-        .unwrap_err();
-        assert!(err.contains("map/object"));
-        let _ = std::fs::remove_dir_all(ws);
-    }
-
-    #[test]
     fn rejects_absolute_script_paths() {
         let ws = temp_ws("abs");
         let err = run_post_execution(
-            &[PostExecution::String("/etc/passwd".into())],
+            &["/etc/passwd".into()],
             &BTreeMap::new(),
             &BTreeMap::new(),
             &BTreeMap::new(),
@@ -239,10 +220,10 @@ mod tests {
         )
         .unwrap();
         std::fs::write(recipe_dir.join("scripts/hi.sh"), "printf local > out.txt\n").unwrap();
-        let recipe_file = recipe_dir.join("demo.yaml");
+        let recipe_file = recipe_dir.join("demo.luau");
 
         run_post_execution(
-            &[PostExecution::String("scripts/hi.sh".into())],
+            &["scripts/hi.sh".into()],
             &BTreeMap::new(),
             &BTreeMap::new(),
             &BTreeMap::new(),

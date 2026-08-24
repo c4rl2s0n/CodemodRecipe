@@ -5,15 +5,18 @@ The Rust host renders recipe strings and file-backed templates with
 
 ## Where templates apply
 
-| Location | Render path |
-|----------|-------------|
-| `edit.path`, `edit.when` / `edit.whenNot`, `edit.let[].query` / `capture` / `as`, `edit.ops[].query/capture/text` | Inline `render_str`; guard queries and `let` bindings use the same query resolution as ops. Op `text`/`query`/`capture` re-render **per op** when `let` or guards are present (locals merged with recipe args). Each `query` step (string or list item) after file load |
-| `edit.if` / `edit.ifNot`, `create.if` / `create.ifNot`, `delete.if` / `delete.ifNot`, `recipe.if` / `recipe.ifNot`, `if.if` / `if.ifNot` (group step) | MiniJinja **expressions** (not `{{ … }}` templates) over recipe args; optional `file_exists` filter. Skip step or entire `if` group when the gate fails |
-| `create.path`, `create.template` | Inline `render_str` |
-| `create.templateFile` | File loader (`extends` / `include` supported) |
-| `delete.path` | Inline `render_str` |
+Templates are rendered via **`c:applyTemplate`** and **`c:renderFileTemplate`** inside
+Luau recipes (MiniJinja). Typical uses:
 
-All templated fields share the same argument namespace (`args` + merged `maps`).
+| Call | Role |
+|------|------|
+| `c:applyTemplate({ template = "..." })` | Inline Jinja over recipe args + maps/vars |
+| `c:renderFileTemplate({ path = "templates/x.template" })` | File-backed template (`extends` / `include`) |
+| `c:create({ content = c:applyTemplate(...) })` | New file body from template |
+| `postExecution` / `c:postExec` | Jinja-rendered shell commands |
+
+Maps and variables registered under `.codemod/maps/` and `.codemod/variables/` (Luau modules)
+merge into the MiniJinja context automatically.
 
 ## Canonical syntax
 
@@ -55,21 +58,18 @@ Pure string transforms on file/directory path args (no workspace I/O):
 
 Trailing slashes are stripped; `\` separators are normalized to `/`.
 
-### Numeric helpers (edit `let` / `as` templates)
+### Numeric helpers
 
-Use on string locals from `extract: text` or recipe args:
+Use on recipe args inside templates:
 
 ```jinja
 {{ count | int | add(1) | string }}
-{{ offset | int | sub(2) | string }}
 ```
-
-Also available: `trim`, `string` / `str` (alias).
 
 ### Maps
 
-Workspace maps (schema: `id` + `map:`, anywhere under `.codemod/`) and recipe-local
-`maps:` merge into the render context under **`map`**. Lookup via filter:
+Workspace maps (Luau modules under `.codemod/maps/`) and recipe-local `maps` on the
+return table merge into the render context under **`map`**.
 
 ```jinja
 {{ fieldName | map('field_kind') }}
@@ -83,7 +83,7 @@ Or nested context:
 
 ### Variables
 
-Workspace variables (schema: `id` + `values:`) are exposed under **`var`**:
+Workspace variables (Luau modules under `.codemod/variables/`) are exposed under **`var`**:
 
 ```jinja
 {{ var.paths.feature_root }}
@@ -100,7 +100,7 @@ import '{{ feature | snake_case }}_repository.dart';
 {% endif %}
 ```
 
-### File-backed templates (`create.templateFile`)
+### File-backed templates (`c:renderFileTemplate`)
 
 File-backed templates use the shared resolver in
 `rust/crates/core/src/resource_path.rs`.
@@ -151,7 +151,7 @@ Call `validate_recipes` (MCP), `{ "command": "validate" }` (stdio host), or
 | Code | Severity | Meaning |
 |------|----------|---------|
 | `E_UNDECLARED_ARG` | error | Template references unknown variable |
-| `E_MISSING_TEMPLATE` | error | `templateFile` path not found |
+| `E_MISSING_TEMPLATE` | error | Template path not found (`c:renderFileTemplate`) |
 | `E_TEMPLATE_SYNTAX` | error | MiniJinja parse error |
 | `E_COMPOSE_CYCLE` | error | Recipe reference cycle |
 | `W_MAP_ID_NOT_FOUND` | warning | Unknown map id in template |
@@ -165,32 +165,36 @@ Runnable recipes demonstrating each feature:
 
 | Recipe | Location | Demonstrates |
 |--------|----------|--------------|
-| `add_counter_field` | [`.codemod/recipes/add_counter_field.yaml`](../.codemod/recipes/add_counter_field.yaml) | `{{ field \| camel_case }}` in edit text |
-| `conditional_create` | [`.codemod/recipes/conditional_create.yaml`](../.codemod/recipes/conditional_create.yaml) | `templateFile`, `{% if %}`, `defaultsTo` |
-| `patch_counter` | [`test/fixtures/scaffold_project/.../patch_counter.yaml`](../test/fixtures/scaffold_project/.codemod/recipes/patch_counter.yaml) | `\| map('field_kind')` + `\| camel_case` |
-| `create_repository` | [`test/fixtures/scaffold_project/.../create_repository.yaml`](../test/fixtures/scaffold_project/.codemod/recipes/create_repository.yaml) | `templateFile` with casing filters |
-| `jinja.casing.showcase` | [`test/fixtures/jinja_examples/.../showcase_casing.yaml`](../test/fixtures/jinja_examples/.codemod/recipes/showcase_casing.yaml) | All casing filters + both map syntaxes |
-| `jinja.path.showcase` | [`test/fixtures/jinja_examples/.../showcase_path.yaml`](../test/fixtures/jinja_examples/.codemod/recipes/showcase_path.yaml) | `parent`, `basename`, `stem` path filters |
-| `jinja.create.conditional` | [`test/fixtures/jinja_examples/.../conditional_create.yaml`](../test/fixtures/jinja_examples/.codemod/recipes/conditional_create.yaml) | Bool conditional in template file |
-| `jinja.create.layout` | [`test/fixtures/jinja_examples/.../create_with_layout.yaml`](../test/fixtures/jinja_examples/.codemod/recipes/create_with_layout.yaml) | `extends` + `include` |
-| `jinja.defaults.orchestrator` | [`test/fixtures/jinja_examples/.../defaults_orchestrator.yaml`](../test/fixtures/jinja_examples/.codemod/recipes/defaults_orchestrator.yaml) | `defaultsTo` via recipe composition |
-| `jinja.bind.orchestrator` | [`test/fixtures/jinja_examples/.../with_bind_orchestrator.yaml`](../test/fixtures/jinja_examples/.codemod/recipes/with_bind_orchestrator.yaml) | `recipe.with` forward + hardcode |
-| `jinja.bind.orchestrator_partial` | [`test/fixtures/jinja_examples/.../with_partial_orchestrator.yaml`](../test/fixtures/jinja_examples/.codemod/recipes/with_partial_orchestrator.yaml) | Partial `with` + parent fallthrough |
-| `jinja.step_if.orchestrator` | [`test/fixtures/jinja_examples/.../step_if_orchestrator.yaml`](../test/fixtures/jinja_examples/.codemod/recipes/step_if_orchestrator.yaml) | Step `if` / `ifNot` + `file_exists` on recipe/create (also see group `if:` step kind in yaml-dsl skill) |
+| `add_counter_field` | [`.codemod/recipes/add_counter_field.luau`](../.codemod/recipes/add_counter_field.luau) | `c:applyTemplate` + `{{ field \| camel_case }}` in insert text |
+| `conditional_create` | [`.codemod/recipes/conditional_create.luau`](../.codemod/recipes/conditional_create.luau) | `c:renderFileTemplate`, `{% if %}`, `defaultsTo` |
+| `patch_counter` | [`test/fixtures/scaffold_project/.../patch_counter.luau`](../test/fixtures/scaffold_project/.codemod/recipes/patch_counter.luau) | `\| map('field_kind')` + `\| camel_case` |
+| `create_repository` | [`test/fixtures/scaffold_project/.../create_repository.luau`](../test/fixtures/scaffold_project/.codemod/recipes/create_repository.luau) | File template with casing filters |
+| `jinja.casing.showcase` | [`test/fixtures/jinja_examples/.../showcase_casing.luau`](../test/fixtures/jinja_examples/.codemod/recipes/showcase_casing.luau) | All casing filters + both map syntaxes |
+| `jinja.path.showcase` | [`test/fixtures/jinja_examples/.../showcase_path.luau`](../test/fixtures/jinja_examples/.codemod/recipes/showcase_path.luau) | `parent`, `basename`, `stem` path filters |
+| `jinja.create.conditional` | [`test/fixtures/jinja_examples/.../conditional_create.luau`](../test/fixtures/jinja_examples/.codemod/recipes/conditional_create.luau) | Bool conditional in template file |
+| `jinja.create.layout` | [`test/fixtures/jinja_examples/.../create_with_layout.luau`](../test/fixtures/jinja_examples/.codemod/recipes/create_with_layout.luau) | `extends` + `include` |
+| `jinja.defaults.orchestrator` | [`test/fixtures/jinja_examples/.../defaults_orchestrator.luau`](../test/fixtures/jinja_examples/.codemod/recipes/defaults_orchestrator.luau) | `defaultsTo` via `c:run` |
+| `jinja.bind.orchestrator` | [`test/fixtures/jinja_examples/.../with_bind_orchestrator.luau`](../test/fixtures/jinja_examples/.codemod/recipes/with_bind_orchestrator.luau) | `c:run` remap + hardcode |
+| `jinja.bind.orchestrator_partial` | [`test/fixtures/jinja_examples/.../with_partial_orchestrator.luau`](../test/fixtures/jinja_examples/.codemod/recipes/with_partial_orchestrator.luau) | Partial args + parent fallthrough |
+| `jinja.step_if.orchestrator` | [`test/fixtures/jinja_examples/.../step_if_orchestrator.luau`](../test/fixtures/jinja_examples/.codemod/recipes/step_if_orchestrator.luau) | Luau `if` + file-exists gate on `c:run` / `c:create` |
 
 Integration tests: [`rust/crates/host/tests/jinja_examples_test.rs`](../rust/crates/host/tests/jinja_examples_test.rs).
 
 ### Quick snippets
 
-**Conditional create** (`conditional_create.yaml`):
+**Conditional create** (`conditional_create.luau`):
 
-```yaml
-args:
-  - name: includeTests
-    defaultsTo: "false"
-steps:
-  - create:
-      templateFile: templates/conditional_widget.dart.template
+```lua
+args = {
+  { name = "includeTests", defaultsTo = "false" },
+}
+apply = function(c)
+  c:create({
+    path = c:applyTemplate({ template = "lib/{{ className | snake_case }}/{{ className | snake_case }}_widget.dart" }),
+    content = c:renderFileTemplate({ path = "templates/conditional_widget.dart.template" }),
+    ifExists = "fail",
+  })
+end
 ```
 
 Template (`conditional_widget.dart.template`):
@@ -203,22 +207,25 @@ class {{ className | pascal_case }}Widget {
 }
 ```
 
-**defaultsTo in orchestrator** (`defaults_orchestrator.yaml`):
+**defaultsTo in orchestrator** (`defaults_orchestrator.luau`):
 
-```yaml
-args:
-  - name: label
-    required: true
-steps:
-  - recipe: jinja.defaults.child   # child declares verbose with defaultsTo: "false"
+```lua
+args = {
+  { name = "label", required = true },
+}
+apply = function(c)
+  c:run("jinja.defaults.child")  -- child declares verbose with defaultsTo = "false"
+end
 ```
 
-**Template inheritance** (`create_with_layout.yaml`):
+**Template inheritance** (`create_with_layout.luau`):
 
-```yaml
-steps:
-  - create:
-      templateFile: templates/layout_widget.dart.template
+```lua
+c:create({
+  path = c:applyTemplate({ template = "lib/generated/{{ className | snake_case }}_layout.dart" }),
+  content = c:renderFileTemplate({ path = "templates/layout_widget.dart.template" }),
+  ifExists = "fail",
+})
 ```
 
 Child template uses `{% extends "templates/layouts/base.template" %}` and
@@ -229,4 +236,4 @@ recipe-local first, then fall back to `.codemod/`.
 
 - [codemod-mcp.md](codemod-mcp.md) — MCP tools and host protocol
 - [recipe-design-patterns.md](recipe-design-patterns.md) — scaffold orchestrators
-- Skill `codemod-yaml-dsl` — full YAML DSL reference
+- Skill `codemod-luau-recipes` — host API and template calls

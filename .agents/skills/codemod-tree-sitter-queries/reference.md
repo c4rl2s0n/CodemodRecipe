@@ -1,6 +1,6 @@
 # Tree-sitter query language reference
 
-Tree-sitter queries are **S-expression patterns** matched against a parsed syntax tree. codemod-recipe runs them per `edit` step using the grammar for `edit.language` (or inferred from the file extension).
+Tree-sitter queries are **S-expression patterns** matched against a parsed syntax tree. codemod-recipe runs them per `c:insert` / `c:replace` / `c:remove` using the grammar for `language` on the op (or inferred from the file extension).
 
 This guide condenses the [official tree-sitter query documentation](https://tree-sitter.github.io/tree-sitter/using-parsers/queries/1-syntax.html) for recipe authoring. For grammar-specific node names, see skill `codemod-languages`.
 
@@ -103,16 +103,21 @@ Attach `@name` after a matched node:
 (block) @body
 ```
 
-A single pattern may define **multiple captures**. Use extra captures for filtering (`#eq?`) and pick the edit target with the op’s `capture:` field:
+A single pattern may define **multiple captures**. Use extra captures for filtering (`#eq?`) and pick the edit target with the op’s `capture` field:
 
-```yaml
-query: |
-  (class_definition
-    name: (identifier) @className
-    body: (class_body
-      (declaration) @member)
-    (#eq? @className "Settings"))
-capture: member    # edits @member, not @className
+```lua
+c:replace({
+  path = c.args.file,
+  query = [[
+    (class_definition
+      name: (identifier) @className
+      body: (class_body
+        (declaration) @member)
+      (#eq? @className "Settings"))
+  ]],
+  capture = "member",    -- edits @member, not @className
+  text = "  final int count = 0;\n",
+})
 ```
 
 ### codemod capture semantics
@@ -180,7 +185,7 @@ Anonymous token alternation:
 
 ### Query anchor `.` (not codemod anchor)
 
-The `.` operator constrains **position in the syntax tree** — first/last child or immediate siblings. This is **different** from codemod `anchor: start|end` on `insert` ops.
+The `.` operator constrains **position in the syntax tree** — first/last child or immediate siblings. This is **different** from codemod `anchor = "start"|"end"` on `c:insert`.
 
 | Position | Example | Effect |
 |----------|---------|--------|
@@ -188,7 +193,7 @@ The `.` operator constrains **position in the syntax tree** — first/last child
 | Last child | `(block (_) @last .)` | `@last` only if last named child |
 | Siblings | `(dotted_name (identifier) @a . (identifier) @b)` | consecutive siblings only |
 
-**codemod `anchor: start|end`** chooses whether inserted `text` goes at the **byte start or end** of the captured node span. Only `insert` uses it.
+**codemod `anchor = "start"|"end"`** chooses whether inserted `text` goes at the **byte start or end** of the captured node span. Only `c:insert` uses it.
 
 ---
 
@@ -214,11 +219,11 @@ The Rust engine uses standard `tree_sitter::Query` — predicates supported by t
 | `#any-not-eq?` | for quantified captures: any node does not match |
 
 ```scheme
-(#eq? @className "{{className}}")
+(#eq? @className "Settings")
 (#eq? @a @b)
 ```
 
-After template rendering, `{{className}}` becomes a literal string inside the query.
+Build the predicate literal with Luau (`.. c.args.className`) or MiniJinja (`c:applyTemplate`) so the query parser sees a concrete string.
 
 ### Regular expressions
 
@@ -254,39 +259,42 @@ Directives end with `!` (`#set!`, `#strip!`) and attach metadata. codemod recipe
 
 ### `query` field
 
-Inline (multiline YAML recommended):
+Inline Luau long string:
 
-```yaml
-query: |
+```lua
+query = [[
   (class_definition
     name: (identifier) @className
     body: (class_body (block) @body)
-    (#eq? @className "{{className}}"))
+    (#eq? @className "]] .. c.args.className .. [["))
+]]
 ```
 
 Or path to a `.scm` file (using the shared resolver in
 `rust/crates/core/src/resource_path.rs`):
 
-```yaml
-query: settings_update_body.scm
+```lua
+query = "settings_update_body.scm"
 ```
 
 Search order (engine): recipe directory → `queries/` under recipe →
-`.codemod/` → `.codemod/queries/`. YAML query libraries remain id-based under
-`.codemod/queries/*.yaml`; they are not loaded directly via `query: file.yaml`.
+`.codemod/` → `.codemod/queries/`. Query libraries are Luau modules under
+`.codemod/queries/*.luau` (`{ id, queries = { name = "(...) @x" } }`); look them
+up with `c:queryLib(id)` or by registered query id.
 
-### Template substitution
+### Arg substitution
 
-Recipe args (`{{ name }}`, `{{ field | camel_case }}`, maps) are expanded into `query`, `capture`, and `text` **before** the query is parsed. Use predicates with rendered literals:
+Interpolate into `query` / `text` with Luau or `c:applyTemplate` **before** the
+query is parsed. Use predicates with concrete literals:
 
-```yaml
-args:
-  - name: className
-    required: true
-query: |
-  (class_definition
-    name: (identifier) @className
-    (#eq? @className "{{className}}"))
+```lua
+local query = c:applyTemplate({
+  template = [[
+(class_definition
+  name: (identifier) @className
+  (#eq? @className "{{className}}"))
+]],
+})
 ```
 
 Do not try to parameterize predicate names — only values.
@@ -295,11 +303,11 @@ Do not try to parameterize predicate names — only values.
 
 | Op | `capture` | `anchor` |
 |----|-----------|----------|
-| `insert` | required — node to insert beside/inside | `start` or `end` of capture span |
-| `replace` | required — node span replaced by `text` | n/a |
-| `remove` | required — node span deleted | n/a |
+| `c:insert` | required — node to insert beside/inside | `"start"` or `"end"` of capture span |
+| `c:replace` | required — node span replaced by `text` | n/a |
+| `c:remove` | required — node span deleted | n/a |
 
-Optional `includeLeadingTrivia: true` on `replace`/`remove` expands the span over leading `///` or `//` comments (language-dependent; see `codemod-languages`).
+Optional `includeLeadingTrivia = true` on `c:replace` / `c:remove` expands the span over leading `///` or `//` comments (language-dependent; see `codemod-languages`).
 
 ### Parse errors
 
@@ -313,18 +321,18 @@ Invalid node types for the grammar fail at preview time:
 Invalid node type "class_declaration"
 ```
 
-Use node names from the grammar for `edit.language` (pack Dart uses `class_definition` — see `codemod-languages`).
+Use node names from the grammar for `language` on the op (pack Dart uses `class_definition` — see `codemod-languages`).
 
 ---
 
 ## Authoring workflow
 
-1. **Pick language** — set `edit.language` or rely on extension (`codemod-languages`).
+1. **Pick language** — set `language` on the op or rely on extension (`codemod-languages`).
 2. **Inspect AST** — tree-sitter playground or `tree-sitter parse` / grammar docs for node kinds.
 3. **Write pattern** — start broad, add `field:` and `@captures`.
 4. **Filter** — add `#eq?` / `#match?` until one match per file.
-5. **Choose edit capture** — set `capture:` to the node you will insert beside, replace, or remove.
-6. **Validate** — `validate_recipes` (schema + language id).
+5. **Choose edit capture** — set `capture` to the node you will insert beside, replace, or remove.
+6. **Validate** — `validate_recipes` (Luau load + language id).
 7. **Preview** — `preview_recipe`; inspect `files[].original` and `files[].modified`.
 8. **Idempotency** — re-preview after apply; expect empty `files` when done (`codemod-recipe-authoring`).
 
@@ -334,47 +342,60 @@ Use node names from the grammar for `edit.language` (pack Dart uses `class_defin
 
 ### Insert at end of method body (Dart)
 
-```yaml
-query: |
-  (class_definition
-    name: (identifier) @className
-    body: (class_body
-      (method_signature
-        (function_signature
-          name: (identifier) @methodName))
-      (function_body
-        (block) @body))
-    (#eq? @className "{{className}}")
-    (#eq? @methodName "{{methodName}}"))
-capture: body
-anchor: end
-text: "    print('codemod');\n"
+```lua
+c:insert({
+  path = c.args.file,
+  query = c:applyTemplate({
+    template = [[
+(class_definition
+  name: (identifier) @className
+  body: (class_body
+    (method_signature
+      (function_signature
+        name: (identifier) @methodName))
+    (function_body
+      (block) @body))
+  (#eq? @className "{{className}}")
+  (#eq? @methodName "{{methodName}}"))
+]],
+  }),
+  capture = "body",
+  anchor = "end",
+  text = "    print('codemod');\n",
+})
 ```
 
 ### Remove a field by name (Dart)
 
-```yaml
-query: |
-  (class_definition
-    name: (identifier) @className
-    body: (class_body
-      (declaration
-        (initialized_identifier_list
-          (initialized_identifier
-            (identifier) @fieldName))) @member)
-    (#eq? @className "Settings")
-    (#eq? @fieldName "count"))
-capture: member
+```lua
+c:remove({
+  path = c.args.file,
+  query = [[
+    (class_definition
+      name: (identifier) @className
+      body: (class_body
+        (declaration
+          (initialized_identifier_list
+            (initialized_identifier
+              (identifier) @fieldName))) @member)
+      (#eq? @className "Settings")
+      (#eq? @fieldName "count"))
+  ]],
+  capture = "member",
+})
 ```
 
 ### Rust — any function item
 
-```yaml
-language: rust
-query: "(function_item) @fn"
-capture: fn
-anchor: end
-text: "\n// codemod\n"
+```lua
+c:insert({
+  path = "src/main.rs",
+  language = "rust",
+  query = "(function_item) @fn",
+  capture = "fn",
+  anchor = "end",
+  text = "\n// codemod\n",
+})
 ```
 
 ### External `.scm` file
@@ -396,12 +417,14 @@ text: "\n// codemod\n"
 
 Recipe:
 
-```yaml
-- insert:
-    query: settings_update_body.scm
-    capture: body
-    anchor: end
-    text: "    print('codemod');\n"
+```lua
+c:insert({
+  path = c.args.file,
+  query = "settings_update_body.scm",
+  capture = "body",
+  anchor = "end",
+  text = "    print('codemod');\n",
+})
 ```
 
 ---
@@ -411,10 +434,10 @@ Recipe:
 | Symptom | Likely cause | Fix |
 |---------|--------------|-----|
 | `Invalid node type "…"` | Wrong node name for grammar | Use **Query Tools** / `dump_ast`; check `codemod-languages` |
-| `query matched no nodes` | Typo, wrong language, or predicates too strict | Run `debug_query` / Query Tools; loosen predicates; verify `language:` |
+| `query matched no nodes` | Typo, wrong language, or predicates too strict | Run `debug_query` / Query Tools; loosen predicates; verify `language` |
 | `query matched multiple nodes` | Pattern too broad | Add `#eq?`, `field:`, or structural constraints |
 | Confused insert position | Mixed up anchors | tree-sitter `.` = tree position; codemod `anchor` = byte offset in capture |
-| `Missing capture` | `capture:` name not in query | Align `capture:` with an `@name` in the query (recipe requires explicit `capture:`) |
+| `Missing capture` | `capture` name not in query | Align `capture` with an `@name` in the query (recipe requires explicit `capture`) |
 | `query file not found` | Bad `.scm` path | Place file next to recipe or under `.codemod/queries/` |
 | Predicate ignored | Wrong capture or quantifier | Ensure predicate is inside the pattern that owns the capture |
 | Preview looks like full-file wipe | Patch is whole-file replace | Use Query Tools to see capture spans; not a capture bug by itself |
@@ -429,5 +452,5 @@ Recipe:
 |-------|---------|
 | `codemod-languages` | language ids, per-grammar node names, SQL dialects |
 | `codemod-recipe-authoring` | Dart patterns, idempotency, testing checklist |
-| `codemod-yaml-dsl` | `edit.ops` schema, templates, maps |
+| `codemod-luau-recipes` | host API, templates, maps |
 | `codemod-mcp-playbook` | MCP preview/apply workflow |

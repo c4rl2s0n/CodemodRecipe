@@ -14,9 +14,6 @@ chmod +x "$ROOT/bin/codemod_host"
 
 # Note: For cross-platform builds, run this on each platform or use a build farm.
 
-echo "Generating DSL vocabulary artifacts..."
-"$REPO_ROOT/scripts/generate-dsl-artifacts.sh"
-
 echo "Installing npm dependencies..."
 npm install
 

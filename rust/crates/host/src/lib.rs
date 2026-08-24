@@ -2,6 +2,7 @@ pub mod config;
 pub mod diagnostics;
 pub mod engine;
 pub mod explorer;
+pub mod lua_runtime;
 pub mod preview;
 pub mod protocol;
 pub mod query;

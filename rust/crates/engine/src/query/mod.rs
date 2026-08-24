@@ -3,8 +3,8 @@ pub mod query_chain;
 use std::path::Path;
 
 use crate::engine::EngineError;
+use crate::ops::{looks_like_query_path, QUERIES_DIR};
 use codemod_recipe_core::resource_path::resolve_existing_resource;
-use codemod_recipe_yaml::query_conventions;
 
 /// Resolve unified `query:` field — inline text or path to a `.scm` file.
 pub fn resolve_query_source(
@@ -17,17 +17,13 @@ pub fn resolve_query_source(
         return Err(EngineError::Query("query must not be empty".to_string()));
     }
 
-    if !query_conventions::looks_like_query_path(trimmed) {
+    if !looks_like_query_path(trimmed) {
         return Ok(trimmed.to_string());
     }
 
-    if let Some(candidate) = resolve_existing_resource(
-        trimmed,
-        recipe_file,
-        codemod_root,
-        Some(query_conventions::QUERIES_DIR),
-    )
-    .map_err(|e| EngineError::Query(e.message))?
+    if let Some(candidate) =
+        resolve_existing_resource(trimmed, recipe_file, codemod_root, Some(QUERIES_DIR))
+            .map_err(|e| EngineError::Query(e.message))?
     {
         return std::fs::read_to_string(&candidate).map_err(|e| {
             EngineError::Query(format!(
@@ -64,9 +60,7 @@ mod tests {
 
     #[test]
     fn does_not_treat_yaml_path_as_query_file() {
-        assert!(!query_conventions::looks_like_query_path(
-            "queries/shared.yaml"
-        ));
+        assert!(!looks_like_query_path("queries/shared.yaml"));
     }
 
     #[test]

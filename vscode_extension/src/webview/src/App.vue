@@ -38,6 +38,8 @@ const activeTab = ref<RunnerTab>(RUNNER_TABS.recipes);
 const {
   argValues,
   files,
+  transcript,
+  applyMayDiverge,
   fileSelections,
   activeChangeIndex,
   showReview,
@@ -140,6 +142,8 @@ onUnmounted(() => {
         :error-message="errorMessage"
         :show-review="showReview"
         :files="files"
+        :transcript="transcript"
+        :apply-may-diverge="applyMayDiverge"
         :file-selections="fileSelections"
         :active-change-index="activeChangeIndex"
         :can-apply="canApply"

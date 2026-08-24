@@ -242,6 +242,8 @@ async function handlePreview(
     host.postMessage({
       type: EXTENSION_TO_WEBVIEW.previewResult,
       files: host.state.lastFiles,
+      transcript: response.transcript ?? [],
+      applyMayDiverge: response.applyMayDiverge ?? false,
       requestId,
       argsKey,
     });

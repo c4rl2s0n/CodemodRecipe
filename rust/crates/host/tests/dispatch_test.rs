@@ -21,8 +21,8 @@ fn setup_workspace_with_insert_recipe(name: &str) -> PathBuf {
     let recipes_dir = workspace.join(".codemod/recipes");
     std::fs::create_dir_all(&recipes_dir).unwrap();
     std::fs::copy(
-        repo_root().join(".codemod/recipes/insert_log_line.yaml"),
-        recipes_dir.join("insert_log_line.yaml"),
+        repo_root().join(".codemod/recipes/insert_log_line.luau"),
+        recipes_dir.join("insert_log_line.luau"),
     )
     .unwrap();
     workspace
@@ -147,13 +147,13 @@ fn reload_detects_duplicate_recipe_ids() {
     std::fs::create_dir_all(&recipes_dir).unwrap();
 
     std::fs::copy(
-        repo_root().join("test/fixtures/rust_oracle/insert_log_line.recipe.yaml"),
-        recipes_dir.join("insert_log_line.yaml"),
+        repo_root().join("test/fixtures/rust_oracle/insert_log_line.recipe.luau"),
+        recipes_dir.join("insert_log_line.luau"),
     )
     .unwrap();
     std::fs::copy(
-        repo_root().join("test/fixtures/rust_oracle/duplicate_insert_log_line.recipe.yaml"),
-        recipes_dir.join("duplicate_insert_log_line.yaml"),
+        repo_root().join("test/fixtures/rust_oracle/duplicate_insert_log_line.recipe.luau"),
+        recipes_dir.join("duplicate_insert_log_line.luau"),
     )
     .unwrap();
 
@@ -165,7 +165,7 @@ fn reload_detects_duplicate_recipe_ids() {
     let reloaded = dispatch::handle_command(&mut registry, HostCommand::Reload);
     assert_eq!(reloaded["ok"], true);
     let diagnostics = reloaded["diagnostics"].as_array().unwrap();
-    assert!(diagnostics.iter().any(|d| d["code"] == "E_DUPLICATE_ID"));
+    assert!(diagnostics.iter().any(|d| d["code"] == "E_DUP_ID"));
 
     let _ = std::fs::remove_dir_all(workspace);
 }
@@ -227,17 +227,21 @@ fn apply_runs_post_execution_rustfmt() {
     registry.reload();
 
     let rel = "src/main.rs";
-    let inline_recipe = serde_json::json!({
-        "id": "post_exec_rustfmt",
-        "args": [{ "name": "file", "required": true }],
-        "steps": [{
-            "create": {
-                "path": "{{file}}",
-                "template": "fn main(){println!(\"hi\");}\n"
-            }
-        }],
-        "postExecution": ["rustfmt {{file}}"]
-    });
+    let inline_recipe = serde_json::json!(
+        r#"
+return {
+  id = "post_exec_rustfmt",
+  args = { { name = "file", required = true } },
+  postExecution = { "rustfmt {{file}}" },
+  apply = function(c)
+    c:create({
+      path = c.args.file,
+      content = c:applyTemplate({ template = "fn main(){println!(\"hi\");}\n" }),
+    })
+  end,
+}
+"#
+    );
 
     let mut args = BTreeMap::new();
     args.insert("file".to_string(), rel.to_string());
@@ -281,8 +285,8 @@ fn remove_is_idempotent_on_second_preview() {
     let recipes_dir = workspace.join(".codemod/recipes");
     std::fs::create_dir_all(&recipes_dir).unwrap();
     std::fs::copy(
-        repo_root().join("test/fixtures/rust_oracle/remove_count_field.recipe.yaml"),
-        recipes_dir.join("remove_count_field.yaml"),
+        repo_root().join("test/fixtures/rust_oracle/remove_count_field.recipe.luau"),
+        recipes_dir.join("remove_count_field.luau"),
     )
     .unwrap();
 
@@ -404,7 +408,10 @@ fn apply_rejects_stale_preview_token_after_file_changes() {
     );
     let token = preview["previewToken"].as_str().unwrap().to_string();
 
-    std::fs::write(&settings, "// mutated\n").unwrap();
+    // Bump mtime without changing semantic content so preview can re-run but token is stale.
+    let original = std::fs::read_to_string(&settings).unwrap();
+    std::thread::sleep(std::time::Duration::from_millis(10));
+    std::fs::write(&settings, original).unwrap();
 
     let apply = dispatch::handle_command(
         &mut registry,
@@ -431,13 +438,13 @@ fn validate_reports_duplicate_recipe_ids() {
     let recipes_dir = workspace.join(".codemod/recipes");
     std::fs::create_dir_all(&recipes_dir).unwrap();
     std::fs::copy(
-        repo_root().join("test/fixtures/rust_oracle/insert_log_line.recipe.yaml"),
-        recipes_dir.join("insert_log_line.yaml"),
+        repo_root().join("test/fixtures/rust_oracle/insert_log_line.recipe.luau"),
+        recipes_dir.join("insert_log_line.luau"),
     )
     .unwrap();
     std::fs::copy(
-        repo_root().join("test/fixtures/rust_oracle/duplicate_insert_log_line.recipe.yaml"),
-        recipes_dir.join("duplicate_insert_log_line.yaml"),
+        repo_root().join("test/fixtures/rust_oracle/duplicate_insert_log_line.recipe.luau"),
+        recipes_dir.join("duplicate_insert_log_line.luau"),
     )
     .unwrap();
 
@@ -445,7 +452,7 @@ fn validate_reports_duplicate_recipe_ids() {
     let response = dispatch::handle_command(&mut registry, HostCommand::Validate { recipe: None });
     assert_eq!(response["ok"], false);
     let diagnostics = response["diagnostics"].as_array().unwrap();
-    assert!(diagnostics.iter().any(|d| d["code"] == "E_DUPLICATE_ID"));
+    assert!(diagnostics.iter().any(|d| d["code"] == "E_DUP_ID"));
 
     let _ = std::fs::remove_dir_all(workspace);
 }
@@ -554,8 +561,8 @@ fn preview_create_file_step() {
     let recipes_dir = workspace.join(".codemod/recipes");
     std::fs::create_dir_all(&recipes_dir).unwrap();
     std::fs::copy(
-        repo_root().join("test/fixtures/rust_oracle/scaffold_widget.recipe.yaml"),
-        recipes_dir.join("scaffold_widget.yaml"),
+        repo_root().join("test/fixtures/rust_oracle/scaffold_widget.recipe.luau"),
+        recipes_dir.join("scaffold_widget.luau"),
     )
     .unwrap();
 
@@ -608,8 +615,8 @@ fn preview_delete_file_step() {
     let recipes_dir = workspace.join(".codemod/recipes");
     std::fs::create_dir_all(&recipes_dir).unwrap();
     std::fs::copy(
-        repo_root().join("test/fixtures/rust_oracle/delete_legacy.recipe.yaml"),
-        recipes_dir.join("delete_legacy.yaml"),
+        repo_root().join("test/fixtures/rust_oracle/delete_legacy.recipe.luau"),
+        recipes_dir.join("delete_legacy.luau"),
     )
     .unwrap();
 
@@ -666,23 +673,24 @@ fn inline_recipe_preview_and_apply() {
     let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
     registry.reload();
 
-    let inline_recipe = serde_json::json!({
-        "id": "inline_insert",
-        "args": [{ "name": "file", "required": true }],
-        "steps": [{
-            "edit": {
-                "path": "{{file}}",
-                "ops": [{
-                    "insert": {
-                        "query": "(class_definition name: (identifier) @className body: (class_body (method_signature (function_signature name: (identifier) @methodName)) (function_body (block) @body)) (#eq? @className \"Settings\") (#eq? @methodName \"update\"))",
-                        "capture": "body",
-                        "anchor": "end",
-                        "text": "    print('inline');\n"
-                    }
-                }]
-            }
-        }]
-    });
+    let inline_recipe = serde_json::json!(
+        r#"
+return {
+  id = "inline_insert",
+  args = { { name = "file", required = true } },
+  apply = function(c)
+    c:insert({
+      path = c.args.file,
+      language = "dart",
+      query = "(class_definition name: (identifier) @className body: (class_body (method_signature (function_signature name: (identifier) @methodName)) (function_body (block) @body)) (#eq? @className \"Settings\") (#eq? @methodName \"update\"))",
+      capture = "body",
+      anchor = "end",
+      text = "    print('inline');\n",
+    })
+  end,
+}
+"#
+    );
 
     let mut args = BTreeMap::new();
     args.insert("file".to_string(), "lib/settings.dart".to_string());

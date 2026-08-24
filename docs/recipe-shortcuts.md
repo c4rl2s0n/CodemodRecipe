@@ -65,13 +65,13 @@ Mac uses `cmd` instead of `ctrl` in the shipped defaults.
 
 ### Authoring helpers
 
-On a recipe YAML **top-level** `id:` line (CodeLens):
+On a recipe Luau **top-level** `id = "..."` line (CodeLens):
 
 - **Copy invoke keybinding** — clipboard JSON for `codemodRecipe.invoke`
 - **Assign to slot…** — writes `codemodRecipe.slots` and optionally copies a slot keybinding
 - **Open in Recipe Runner** — opens the webview prefilled
 
-Nested `id:` under a `recipe:` step does **not** get these lenses.
+`c:run("child.id")` string literals do **not** get these lenses.
 
 Commands also appear in the Command Palette:
 `Codemod Recipe: Copy Invoke Keybinding`, `Assign to Slot`, `Copy Slot Keybinding`.
@@ -113,13 +113,11 @@ CodeLens, context menu) shares the same rules.
 
 ### Builtin keys (string form)
 
-```yaml
-args:
-  - name: file
-    required: true
-    from: file
-  - name: className
-    from: word
+```lua
+args = {
+  { name = "file", required = true, from = "file" },
+  { name = "className", from = "word" },
+}
 ```
 
 `contextKey` is a deprecated alias of string `from`.
@@ -142,29 +140,30 @@ args:
 Evaluated against the builtin map (simple `{{ name }}` / `{{ name \| filter }}` in
 the extension; host `deriveArgs` uses full MiniJinja when query forms are involved):
 
-```yaml
-- name: feature
-  from:
-    template: "{{ fileDirname | basename }}"
+```lua
+{ name = "feature", from = { template = "{{ fileDirname | basename }}" } }
 ```
 
 Filters available in the extension shortcut path: `basename`, `dirname`, `stem`.
 
-### Tree-sitter form (like `let`)
+### Tree-sitter form
 
-```yaml
-- name: className
-  required: true
-  from:
-    query: |
+```lua
+{
+  name = "className",
+  required = true,
+  from = {
+    query = [[
       (class_definition
         name: (identifier) @name)
-    capture: name
-    extract: text          # text | kind | exists | count
-    scope: enclosing       # enclosing | selection | first (default: enclosing)
-    language: dart         # optional; else editor language / file extension
-    as: "{{ className }}"  # optional post-template
-    onNoMatch: omit        # omit | empty — omit leaves arg unset → runner
+    ]],
+    capture = "name",
+    extract = "text",          -- text | kind | exists | count
+    scope = "enclosing",       -- enclosing | selection | first (default: enclosing)
+    language = "dart",         -- optional; else editor language / file extension
+    onNoMatch = "omit",        -- omit | empty — omit leaves arg unset → runner
+  },
+}
 ```
 
 | `scope` | Match selection |
@@ -197,15 +196,19 @@ Absent → never listed. Shortcuts and slots ignore this field.
 VS Code only passes the clicked URI into the command; all expression context below is
 derived from that URI plus the workspace root.
 
-```yaml
-explorerMenu:
-  - kind: file
-    if: path is startingwith("lib/") and fileExt == "dart"
-    args:
-      file: path
-      folderName: fileBasename
-      featureDir: fileDirname
-      absFile: absolutePath
+```lua
+explorerMenu = {
+  {
+    kind = "file",
+    ["if"] = [[path is startingwith("lib/") and fileExt == "dart"]],
+    args = {
+      file = "path",
+      folderName = "fileBasename",
+      featureDir = "fileDirname",
+      absFile = "absolutePath",
+    },
+  },
+}
 ```
 
 Match rules for click kind `K` and path `P`:
@@ -230,20 +233,20 @@ Match rules for click kind `K` and path `P`:
 | `file` | Same as `path` when kind is file; empty for folder |
 | `directory` | Click path when folder; parent dir when file |
 
-Same MiniJinja dialect as step `if` (comparisons, `and` / `or` / `not`,
+Same MiniJinja dialect as other `if` expressions (comparisons, `and` / `or` / `not`,
 `| basename` / `| parent` / `| stem`, `is startingwith`). Do not encode
 file-vs-folder in `if` — use separate entries.
 
-**Arg bindings (`args` map):** left of `:` is the recipe arg name; right of `:` is
-an expression over the context above (recipe args are not in scope on the RHS).
-Example: `path: path | parent` sets recipe arg `path` to the parent of the click path.
+**Arg bindings (`args` map):** keys are recipe arg names; values are expressions
+over the context above (recipe args are not in scope on the RHS).
+Example: `path = "path | parent"` sets recipe arg `path` to the parent of the click path.
 
 String concat uses Jinja `~`. Filters bind tighter than `~`, so prefer parentheses or
 named builtins:
 
-```yaml
-sibling: fileDirname ~ "/" ~ fileStem ~ "_test.dart"
-# or: (path | parent) ~ "/" ~ (path | stem) ~ "_test.dart"
+```lua
+sibling = [[fileDirname ~ "/" ~ fileStem ~ "_test.dart"]]
+-- or: (path | parent) ~ "/" ~ (path | stem) ~ "_test.dart"
 ```
 
 When `args` is present on the winning entry, those rendered values are used.
@@ -257,4 +260,4 @@ Empty match list → info toast (no full-catalog fallback).
 - [vscode_extension/README.md](../vscode_extension/README.md) — extension setup
 - [docs/recipe-templates.md](recipe-templates.md) — MiniJinja in recipe steps
 - [docs/tree-sitter-queries.md](tree-sitter-queries.md) — query language
-- Agent skill `codemod-yaml-dsl` — YAML `args` / `from` / `explorerMenu` reference
+- Agent skill `codemod-luau-recipes` — args / `from` / `explorerMenu` reference

@@ -1,6 +1,6 @@
 # Tree-sitter query language
 
-codemod-recipe uses [tree-sitter](https://tree-sitter.github.io/) queries to match AST nodes before applying insert, replace, or remove patches. Queries are S-expression patterns written in recipe `edit.ops` or external `.scm` files.
+codemod-recipe uses [tree-sitter](https://tree-sitter.github.io/) queries to match AST nodes before applying insert, replace, or remove patches. Queries are S-expression patterns passed to `c:insert` / `c:replace` / `c:remove` or external `.scm` files.
 
 **How this fits recipe authoring:** [writing-recipes.md](writing-recipes.md) (workflow, `capture` / `anchor` mental model).
 
@@ -10,38 +10,37 @@ codemod-recipe uses [tree-sitter](https://tree-sitter.github.io/) queries to mat
 
 1. Write a pattern matching the target node: `(node_type field: (child) @capture)`.
 2. Filter with predicates: `(#eq? @capture "{{arg}}")`.
-3. Set `capture:` on the op to the `@name` you want to edit (omit the `@`).
-4. For `insert`, set `anchor: start` or `end` on the capture span.
+3. Set `capture` on the op spec to the `@name` you want to edit (omit the `@`).
+4. For `c:insert`, set `anchor = "start"` or `"end"` on the capture span.
 
-```yaml
-- edit:
-    path: "lib/settings.dart"
-    ops:
-      - insert:
-          query: |
-            (class_definition
-              name: (identifier) @className
-              body: (class_body
-                (function_body
-                  (block) @body))
-              (#eq? @className "Settings"))
-          capture: body
-          anchor: end
-          text: "    print('codemod');\n"
+```lua
+c:insert({
+  path = "lib/settings.dart",
+  query = [[
+    (class_definition
+      name: (identifier) @className
+      body: (class_body
+        (function_body
+          (block) @body))
+      (#eq? @className "Settings"))
+  ]],
+  capture = "body",
+  anchor = "end",
+  text = "    print('codemod');\n",
+})
 ```
 
 ## Key concepts
 
-| Concept | Recipe field / syntax | Notes |
-|---------|----------------------|-------|
-| Pattern | `query:` | Node types and children from the grammar for `edit.language` |
-| Capture | `@name` in query, `capture:` on op | One edit target per op |
+| Concept | Op spec / syntax | Notes |
+|---------|------------------|-------|
+| Pattern | `query` | Node types from the grammar for `language` |
+| Capture | `@name` in query, `capture` on op | One edit target per op |
 | Filter | `#eq?`, `#match?`, `#any-of?` | Predicates inside the pattern |
-| Insert position | `anchor: start\|end` | Byte offset in capture span — **not** tree-sitter `.` anchor |
-| External query | `query: path/to/file.scm` | Shared path resolver: recipe-local first, `.codemod/` fallback; bare names also check `queries/` under each root |
-| Args in queries | `{{className}}` | Expanded before tree-sitter parses the query |
-| Edit guards | `edit.when`, `edit.whenNot` | Same query specs as ops; evaluated once before the edit (skip step if guards fail) |
-| Step locals | `edit.let[].query` | Per-op bindings; `capture` + `extract` (`text`, `kind`, `exists`, `count`) feed Jinja in later ops |
+| Insert position | `anchor = "start"\|"end"` | Byte offset in capture span |
+| External query | `query = "path/to/file.scm"` | Recipe-local first, `.codemod/` fallback |
+| Args in queries | string concat or `c:applyTemplate` | Build query text in Luau |
+| Idempotency guards | `c:queryExists`, `c:queryCount` | Luau control flow before mutating |
 
 ## Insert `anchor` (codemod)
 
@@ -60,9 +59,10 @@ Only `insert` uses `anchor`. It picks the **byte** edge of the node named by `ca
 
 `replace` and `remove` always act on the whole capture span (no `anchor`).
 
-## Edit-level `when` / `let`
+## Idempotency and guards
 
-Use tree-sitter queries on the **current file text** to gate an entire `edit` step or to bind locals that change between sequential ops. Guard queries use the same composition rules as op `query` (inline, `.scm`, library refs, chains). See `codemod-yaml-dsl` `reference.md` for YAML shape and template filters on `let.as`.
+Use `c:queryExists`, `c:queryCount`, or `c:query` inside `apply` before mutating.
+See skill `codemod-luau-recipes` for the host API.
 
 ## Two kinds of “anchor”
 
@@ -110,14 +110,13 @@ External `.scm` files use the shared resolver in
 - Exact path lookup: referencing recipe directory first, `.codemod/` fallback.
 - Bare file names also try `queries/` under each root as a query-specific
   convention.
-- Query-library YAML stays registry-loaded and id-based
-  (`.codemod/queries/*.yaml` + `library_id.query_key`), not direct
-  `query: path/to/file.yaml`.
+- Query libraries are Luau modules under `.codemod/queries/*.luau`
+  (`c:queryLib("id")` or query id strings resolved via the registry).
 
 ## Further reading
 
 - [writing-recipes.md](writing-recipes.md) — end-to-end recipe authoring
-- [generated/dsl-vocabulary.md](generated/dsl-vocabulary.md) — every DSL field
+- skill `codemod-luau-recipes` — host API reference
 - [export/.agents/skills/codemod-tree-sitter-queries/reference.md](../export/.agents/skills/codemod-tree-sitter-queries/reference.md) — full agent reference
 - [tree-sitter query syntax](https://tree-sitter.github.io/tree-sitter/using-parsers/queries/1-syntax.html) — official documentation
 - [docs/codemod-mcp.md](codemod-mcp.md) — MCP preview/apply workflow

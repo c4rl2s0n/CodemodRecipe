@@ -33,15 +33,16 @@ flowchart LR
 
 ## Setup
 
-### YAML recipes
+### Luau recipes
 
 1. Create a `.codemod/` directory in your workspace root — or run
    **Codemod Recipe: Scaffold Project** (also offered when `.codemod` is missing).
-2. Add YAML recipe files (`.yaml` or `.yml`) under `.codemod/` (conventionally
-   `.codemod/recipes/`). Each recipe must have `id:` and `steps:`.
+2. Add Luau recipe modules (`.luau` or `.lua`) under `.codemod/recipes/`.
+   Each recipe must `return { id, apply = function(c) ... end }`.
    Use dotted ids like `rust.data.add_log_line` to organize the Recipes tab tree.
-3. Optionally add maps (`id` + `map:`), variables (`id` + `values:`), and templates
-   (e.g. under `.codemod/maps/`, `.codemod/variables/`, `.codemod/templates/`).
+3. Optionally add maps, variables, query libraries (Luau modules under
+   `.codemod/maps/`, `.codemod/variables/`, `.codemod/queries/`) and templates
+   (e.g. under `.codemod/templates/`).
 4. Build and install the extension from `vscode_extension/` (`./build.sh`, or
    `npm run compile` then package/install the VSIX).
 5. Open your project in VS Code and configure settings if needed:
@@ -56,42 +57,11 @@ flowchart LR
 }
 ```
 
-All YAML, `.template`, and `.scm` files under the codemod root are automatically
-discovered and reloaded when changed (file-system watch plus reload on editor
-save). Recipe load errors appear in the Recipes tab and the Problems panel.
-Use **Re-scan recipes** only if the catalog looks stale after adding files outside
-the watched patterns or after a host restart failure.
-
-JSON Schema files under `schemas/` validate recipe/map/variable YAML (via
-`contributes.jsonValidation`, and Red Hat YAML `yaml.schemas` when that extension
-is installed).
-
-### Syntax highlighting
-
-Recipe YAML keeps the built-in `yaml` language mode. The extension injects a
-TextMate grammar that assigns **scopes** (not fixed colors) to known DSL keys
-and values — for example `keyword.control.codemod-recipe.step` for `edit` /
-`create`, `storage.type.codemod-recipe.op` for `insert` / `replace` / `remove`,
-and `entity.name.tag.codemod-recipe.field` for fields like `query` and `capture`.
-Your active color theme maps those scopes to colors, so Dark+, Light+, High
-Contrast, and third-party themes all work without extension-shipped hex colors.
-
-To customize further, override scopes in user or workspace settings:
-
-```json
-"editor.tokenColorCustomizations": {
-  "textMateRules": [
-    {
-      "scope": "keyword.control.codemod-recipe.step",
-      "settings": { "foreground": "#C586C0", "fontStyle": "bold" }
-    }
-  ]
-}
-```
-
-Useful scopes: `keyword.control.codemod-recipe.step`,
-`storage.type.codemod-recipe.op`, `entity.name.tag.codemod-recipe.field`,
-`constant.language.codemod-recipe.enum`.
+All `.luau`, `.lua`, `.template`, and `.scm` files under the codemod root are
+automatically discovered and reloaded when changed (file-system watch plus reload
+on editor save). Recipe load errors appear in the Recipes tab and the Problems
+panel. Use **Re-scan recipes** only if the catalog looks stale after adding files
+outside the watched patterns or after a host restart failure.
 
 ### Custom codemod root
 
@@ -137,26 +107,13 @@ Default chords: `Ctrl+Shift+I` then `1` (run/auto), `Ctrl+Shift+T` then `1` (ope
 
 ### Editor navigation (Recipe Language Toolkit)
 
-Under `codemodRecipe.codemodRoot` (default `.codemod/**`) YAML files:
+Under `codemodRecipe.codemodRoot` (default `.codemod/**`) Luau recipe files:
 
-- **Structural completions** from `generated-dsl-surface.json` (codegen from Rust
-  `model.rs` via schemars) — e.g. after `recipe:` + newline, keys like `id` /
-  `with` / `if` / `ifNot`
-- **Runtime completions** — recipe ids, `language:` ids, and `with:` arg names from
-  the host catalog / `describe` (not hand-maintained lists)
-- **Go to Definition** on `recipe:` / nested `id:` and `templateFile:` (recipe-local
-  then codemod root)
-- **Hover** on DSL keywords, recipe ids, and template previews
-- **CodeLens** on the **top-level** `id:` only: Open in Recipe Runner, Copy invoke
-  keybinding, Assign to slot…; on `query:` → **Open in Query Tools**; on static
-  `path:` → **Go to edit path**; **Preview recipe on file…** for full recipe preview
-  (file picker)
-- **Diagnostics** come from the Rust host validate of **saved** files (Problems
-  panel source `codemod-recipe`)
+- **Completions** for recipe ids, `language` values, and arg names from the host catalog
+- **Go to Definition** on `c:run("recipe.id")` targets when statically known
+- **Diagnostics** from the Rust host validate of **saved** recipe files
 
-DSL structure for editors: edit `model.rs` (+ `JsonSchema`) + `dsl::` + `ENTRIES`
-prose, then run `scripts/generate-dsl-artifacts.sh` (schema, surface, keyword-docs,
-TextMate). Do not hardcode container children in TypeScript or hand-edit generated schemas.
+Recipe authoring reference: [docs/writing-recipes.md](../docs/writing-recipes.md) and skill `codemod-luau-recipes`.
 
 You can also run **Codemod Recipe: Run From Cursor Context** (`Cmd+Alt+R` on
 macOS, `Ctrl+Alt+R` elsewhere). Context keys include `file`, `selection`, `word`,

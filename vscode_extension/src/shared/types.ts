@@ -131,12 +131,20 @@ export type ListResponse = RecipeCatalogResponse;
 /** @deprecated Use {@link RecipeCatalogResponse} */
 export type ReloadResponse = RecipeCatalogResponse;
 
+export interface TranscriptEvent {
+  kind: string;
+  detail: string;
+  includedInPreview?: boolean;
+}
+
 export interface PreviewResponse {
   ok: boolean;
   error?: string;
   recipe?: string;
   previewToken?: string;
   files?: FilePreview[];
+  transcript?: TranscriptEvent[];
+  applyMayDiverge?: boolean;
 }
 
 export interface DescribeResponse {
@@ -355,6 +363,8 @@ export interface PersistedWebviewState {
   activeTab: RunnerTab;
   argValues: Record<string, string>;
   files: FilePreview[];
+  transcript?: TranscriptEvent[];
+  applyMayDiverge?: boolean;
   activeChangeIndex: number;
   lastPreviewArgsKey: string;
   lastPreviewSuccess: boolean;

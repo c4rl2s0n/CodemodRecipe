@@ -1,6 +1,6 @@
 # Recipe Design Patterns (Create vs Modify)
 
-How to organize codemod-recipe YAML recipes around **concepts or features**, with
+How to organize codemod-recipe **Luau recipes** around **concepts or features**, with
 a clear split between **creation** (greenfield scaffolding) and **modification**
 (brownfield AST edits).
 
@@ -17,20 +17,20 @@ For the authoring workflow (queries, capture, anchor, step types), see
 | `remove_` | Tear down members or files |
 
 **One recipe = one coherent change.** Compose upward with `scaffold_*`
-orchestrators. For incremental changes after scaffolding, call atomic `add_*`
-recipes.
+orchestrators that `c:run` atomics. For incremental changes after scaffolding,
+call atomic `add_*` recipes.
 
 Prefer idempotent brownfield recipes: a second apply should produce no patches
 ([writing-recipes.md](writing-recipes.md#idempotency)).
 
 ## Layout tips
 
-- Group recipes by feature under `.codemod/recipes/` (directory names are
-  convention; discovery is schema-based).
+- Group recipes by feature under `.codemod/recipes/*.luau` (directory names are
+  convention; discovery scans Luau modules).
 - Use dotted `id`s (`feature.area.recipe_name`) so the VS Code Recipes tab nests
   them.
 - Keep AST edits small; put multi-file workflows in a `scaffold_*` that
-  references atomics with `- recipe: …`.
+  calls atomics with `c:run("atomic.id")`.
 
 ## Related docs
 
@@ -51,5 +51,5 @@ After `bootstrap_project`, the full playbook also lives at:
   reference.md   # full playbook — read when designing recipes
 ```
 
-Related modular skills: `codemod-yaml-dsl`, `codemod-recipe-authoring`,
+Related modular skills: `codemod-luau-recipes`, `codemod-recipe-authoring`,
 `codemod-languages`, `codemod-mcp-playbook`.

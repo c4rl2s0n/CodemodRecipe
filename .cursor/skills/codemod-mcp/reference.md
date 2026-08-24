@@ -1,4 +1,4 @@
-# codemod-mcp Playbook (Rust + YAML)
+# codemod-mcp Playbook (Rust + Luau)
 
 MCP server `codemod-mcp` wraps the Rust host and returns JSON text.
 Always parse tool output and branch on `ok`.
@@ -53,7 +53,7 @@ Show metadata for a registered recipe.
 
 ### `validate_recipes`
 
-Reload and validate YAML assets under `.codemod/` (recipes, maps, variables — schema-based).
+Reload and validate Luau assets under `.codemod/` (recipes, maps, variables, query libs).
 
 - Args: optional `recipe` (string) — validate one recipe by id; omit to validate all
 - Returns: `ok` + `diagnostics[]` (may include `hint`, `relatedRecipe`)
@@ -64,7 +64,7 @@ Dry-run and compute a `previewToken`.
 
 Provide exactly one of:
 - `recipe` (registered id), or
-- `inlineRecipe` (full v2 recipe object)
+- `inlineRecipe` (Luau source string)
 
 Optional:
 - `args` (string map)
@@ -73,6 +73,7 @@ Optional:
 Success includes:
 - `previewToken`
 - `files[]` with patch previews
+- `transcript[]`
 
 ### `apply_recipe`
 
@@ -88,62 +89,29 @@ Also provide:
 Optional:
 - `selection` for partial patch apply
 
-## v2 inlineRecipe schema (Rust model)
+## inlineRecipe (Luau source)
 
-Inline recipe mirrors the standard YAML recipe shape:
+`inlineRecipe` is a **Luau source string** that `return`s a recipe table with `apply`:
 
 ```json
 {
-  "id": "__inline_id",
-  "args": [],
-  "maps": {},
-  "steps": [
-    {
-      "edit": {
-        "path": "lib/file.dart",
-        "ops": [
-          { "insert":  { "query": "...", "capture": "x", "anchor": "start", "text": "..." } },
-          { "replace": { "query": "...", "capture": "x", "text": "..." } },
-          { "remove":  { "query": "...", "capture": "x" } }
-        ]
-      }
-    },
-    {
-      "create": {
-        "path": "lib/new_file.dart",
-        "template": "class X {}",
-        "ifExists": "fail",
-        "format": true
-      }
-    },
-    {
-      "delete": {
-        "path": "lib/legacy/old.dart",
-        "ifMissing": "skip"
-      }
-    }
-  ],
-  "postExecution": ["dart format ."]
+  "inlineRecipe": "return { id = \"__inline\", apply = function(c) c:insert({ path = \"lib/a.dart\", query = \"(program) @root\", capture = \"root\", anchor = \"end\", text = \"// x\\n\" }) end }"
 }
 ```
 
-## Edit-op rules (v2)
+Edit-op rules on the spec table:
 
-- `insert` requires: `query`, `capture`, `anchor`, `text`
-  - `anchor` must be `start` or `end`
-- `replace` requires: `query`, `capture`, `text`
-  - optional: `includeLeadingTrivia`
-- `remove` requires: `query`, `capture`
-  - optional: `includeLeadingTrivia`
+- `c:insert` requires: `path`, `query`, `capture`, `anchor`, `text`
+- `c:replace` requires: `path`, `query`, `capture`, `text`
+- `c:remove` requires: `path`, `query`, `capture`
 
-`query` is a tree-sitter query string. `capture` names the capture whose node
-range is used for the operation.
+Set `language` when the path is ambiguous. See skill `codemod-luau-recipes`.
 
 ## Recommended agent workflow
 
 1. Locate target code context
-2. Select a registered recipe or craft v2 `inlineRecipe`
-3. `preview_recipe` and inspect `files[]`
+2. Select a registered recipe or craft `inlineRecipe` (Luau source)
+3. `preview_recipe` and inspect `files[]` / `transcript[]`
 4. Save `previewToken`
 5. `apply_recipe` with same recipe/args and token
 6. Re-preview to verify idempotency (`files: []` expected)
@@ -181,25 +149,7 @@ range is used for the operation.
 
 ```json
 {
-  "inlineRecipe": {
-    "id": "__inline_replace",
-    "steps": [
-      {
-        "edit": {
-          "path": "lib/settings.dart",
-          "ops": [
-            {
-              "replace": {
-                "query": "(class_definition name: (identifier) @className body: (class_body (declaration (initialized_identifier_list (initialized_identifier (identifier) @fieldName))) @member) (#eq? @className \"Settings\") (#eq? @fieldName \"count\"))",
-                "capture": "member",
-                "text": "  final int count = 0;"
-              }
-            }
-          ]
-        }
-      }
-    ]
-  }
+  "inlineRecipe": "return {\n  id = \"__inline_replace\",\n  apply = function(c)\n    c:replace({\n      path = \"lib/settings.dart\",\n      query = \"(class_definition name: (identifier) @className body: (class_body (declaration (initialized_identifier_list (initialized_identifier (identifier) @fieldName))) @member) (#eq? @className \\\"Settings\\\") (#eq? @fieldName \\\"count\\\"))\",\n      capture = \"member\",\n      text = \"  final int count = 0;\"\n    })\n  end,\n}"
 }
 ```
 

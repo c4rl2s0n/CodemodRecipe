@@ -106,9 +106,7 @@ pub fn source_for_recipe_parse_error(
     if let Some(near) = extract_near_preview(&message) {
         return source_with_needle(file, Some(text), &near);
     }
-    if let Some((line, column)) = err.recipe_parse_location() {
-        return source_at(file, line, column);
-    }
+    let _ = err;
     if message.contains("'group'") {
         return source_with_needle(file, Some(text), "group");
     }

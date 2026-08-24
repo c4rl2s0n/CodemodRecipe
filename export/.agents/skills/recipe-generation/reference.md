@@ -31,7 +31,7 @@ list_recipes → skim descriptions
   │    → REUSE: propose id + mapped args from selection
   │
   ├─ Several atomics together cover the change?
-  │    → COMPOSE: scaffold_<feature> with - recipe: child_id steps
+  │    → COMPOSE: scaffold_<feature> with c:run("child.id", { ... })
   │      Args = union of children; pass through
   │
   └─ Otherwise
@@ -65,20 +65,20 @@ Present this (adapt fields) and wait for approval before writing:
 | file | file | lib/foo.dart | yes |
 | className | symbol | Foo | yes |
 
-### Steps (sketch)
+### apply() sketch
 
-- edit / create / delete / recipe / if: …
+- `c:insert` / `c:create` / `c:delete` / `c:run` / Luau `if` …
 
 OK to write, or tell me which args to drop/rename?
 ```
 
-For **reuse**, replace “Steps” with the existing recipe id and how selection maps to its args.
+For **reuse**, replace “apply sketch” with the existing recipe id and how selection maps to its args.
 
 For **compose**, list child recipe ids and the orchestrator `scaffold_*` id.
 
 ## After confirmation
 
-1. Write YAML only if decision is compose or new (and orchestrator/children as needed).
+1. Write Luau only if decision is compose or new (and orchestrator/children as needed).
 2. `validate_recipes`
 3. `preview_recipe` with the sample args from the table
 4. Stop — apply only if the user asks
@@ -86,6 +86,6 @@ For **compose**, list child recipe ids and the orchestrator `scaffold_*` id.
 ## Related skills
 
 - `codemod-recipe-design-patterns` — taxonomy and directory layout
-- `codemod-yaml-dsl` — YAML / templates / composition
+- `codemod-luau-recipes` — host API, templates, composition
 - `codemod-recipe-authoring` — Dart queries and idempotency
 - `codemod-mcp-playbook` — MCP tool envelopes

@@ -18,22 +18,7 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
-    "grammars": [
-      {
-        "scopeName": "codemod-recipe.keys.injection",
-        "path": "./syntaxes/codemod-recipe.tmLanguage.json",
-        "injectTo": [
-          "source.yaml"
-        ]
-      },
-      {
-        "scopeName": "codemod-recipe.values.injection",
-        "path": "./syntaxes/codemod-recipe-values.tmLanguage.json",
-        "injectTo": [
-          "source.yaml"
-        ]
-      }
-    ],
+    "grammars": [],
     "viewsContainers": {
       "activitybar": [
         {
@@ -190,29 +175,7 @@
         "title": "Codemod Recipe: Query AST Display Mode…"
       }
     ],
-    "jsonValidation": [
-      {
-        "fileMatch": [
-          ".codemod/**/*.yaml",
-          ".codemod/**/*.yml"
-        ],
-        "url": "./schemas/recipe.schema.json"
-      },
-      {
-        "fileMatch": [
-          ".codemod/maps/**/*.yaml",
-          ".codemod/maps/**/*.yml"
-        ],
-        "url": "./schemas/map.schema.json"
-      },
-      {
-        "fileMatch": [
-          ".codemod/variables/**/*.yaml",
-          ".codemod/variables/**/*.yml"
-        ],
-        "url": "./schemas/variables.schema.json"
-      }
-    ],
+    "jsonValidation": [],
     "keybindings": [
       {
         "command": "codemodRecipe.runFromCursorContext",

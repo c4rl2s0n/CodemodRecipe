@@ -1,11 +1,8 @@
+use codemod_recipe_engine::ops::{EditOp, InsertAnchor, InsertOp, QuerySpec};
 use codemod_recipe_engine::{
     ensure_language_downloaded, is_known_language, language_from_extension, LanguageRegistry,
     RegistryConfig,
 };
-use codemod_recipe_yaml::model::{EditOp, EditStep, InsertAnchor, InsertOp, Recipe, Step};
-use codemod_recipe_yaml::validate::{validate_recipe_with, ValidationError};
-use codemod_recipe_yaml::QuerySpec;
-use std::collections::BTreeMap;
 
 mod common;
 
@@ -108,33 +105,8 @@ fn rejects_unsupported_explicit_language() {
 }
 
 #[test]
-fn validates_unknown_explicit_language() {
-    let recipe = Recipe {
-        id: "bad".to_string(),
-        name: None,
-        description: None,
-        args: vec![],
-        maps: BTreeMap::new(),
-        queries: BTreeMap::new(),
-        steps: vec![Step::Edit(EditStep {
-            path: "a.rs".to_string(),
-            language: Some("not_a_real_language_xyz".to_string()),
-            ops: vec![EditOp::Insert(InsertOp {
-                query: QuerySpec::single("(identifier) @x"),
-                capture: "x".to_string(),
-                anchor: InsertAnchor::End,
-                text: "x".to_string(),
-            })],
-            ..Default::default()
-        })],
-        post_execution: vec![],
-        explorer_menu: None,
-    };
-
-    let errors = validate_recipe_with(&recipe, is_known_language).unwrap_err();
-    assert!(errors
-        .iter()
-        .any(|e| matches!(e, ValidationError::LanguageNotSupported(id) if id == "not_a_real_language_xyz")));
+fn is_known_language_false_for_unknown() {
+    assert!(!is_known_language("not_a_real_language_xyz"));
 }
 
 #[test]
@@ -156,75 +128,37 @@ fn smoke_sqlite_native_override() {
     assert!(is_known_language("sqlite"));
 }
 
+fn insert_ops(query: &str, capture: &str, text: &str) -> Vec<EditOp> {
+    vec![EditOp::Insert(InsertOp {
+        query: QuerySpec::single(query),
+        capture: capture.to_string(),
+        anchor: InsertAnchor::End,
+        text: text.to_string(),
+    })]
+}
+
 #[test]
 fn rust_insert_at_function_item_end() {
     ensure_language_downloaded("rust");
     let source = "fn hello() {\n}\n";
-    let recipe = Recipe {
-        id: "rust_insert".to_string(),
-        name: None,
-        description: None,
-        args: vec![],
-        maps: BTreeMap::new(),
-        queries: BTreeMap::new(),
-        steps: vec![Step::Edit(EditStep {
-            path: "main.rs".to_string(),
-            language: Some("rust".to_string()),
-            ops: vec![EditOp::Insert(InsertOp {
-                query: QuerySpec::single("(function_item) @fn"),
-                capture: "fn".to_string(),
-                anchor: InsertAnchor::End,
-                text: "\n// inserted".to_string(),
-            })],
-            ..Default::default()
-        })],
-        post_execution: vec![],
-        explorer_menu: None,
-    };
-
+    let ops = insert_ops("(function_item) @fn", "fn", "\n// inserted");
     let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
     let codemod = repo.join(".codemod");
     let ctx = codemod_recipe_engine::engine::QueryContext {
         recipe_file: None,
         codemod_root: &codemod,
     };
-
-    let out = common::with_engine("rust", |engine| {
-        let edit = match &recipe.steps[0] {
-            Step::Edit(edit) => edit,
-            _ => panic!("edit step"),
-        };
-        engine.collect_patches_for_edit(&ctx, edit, source).unwrap()
+    let patches = common::with_engine("rust", |engine| {
+        engine.collect_patches_for_ops(&ctx, &ops, source).unwrap()
     });
-
-    assert!(!out.is_empty());
+    assert!(!patches.is_empty());
 }
 
 #[test]
 fn smoke_sqlite_parses_create_table() {
     let mut registry = LanguageRegistry::new();
     let source = "CREATE TABLE users (id INTEGER PRIMARY KEY);";
-    let recipe = Recipe {
-        id: "sqlite_create".to_string(),
-        name: None,
-        description: None,
-        args: vec![],
-        maps: BTreeMap::new(),
-        queries: BTreeMap::new(),
-        steps: vec![Step::Edit(EditStep {
-            path: "schema.sql".to_string(),
-            language: Some("sqlite".to_string()),
-            ops: vec![EditOp::Insert(InsertOp {
-                query: QuerySpec::single("(create_table_statement) @stmt"),
-                capture: "stmt".to_string(),
-                anchor: InsertAnchor::End,
-                text: "\n-- codemod".to_string(),
-            })],
-            ..Default::default()
-        })],
-        post_execution: vec![],
-        explorer_menu: None,
-    };
+    let ops = insert_ops("(create_table_statement) @stmt", "stmt", "\n-- codemod");
     let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
     let codemod = repo.join(".codemod");
     let ctx = codemod_recipe_engine::engine::QueryContext {
@@ -232,12 +166,8 @@ fn smoke_sqlite_parses_create_table() {
         codemod_root: &codemod,
     };
     let engine = registry.get("sqlite").expect("sqlite");
-    let edit = match &recipe.steps[0] {
-        Step::Edit(edit) => edit,
-        _ => panic!("edit"),
-    };
     let patches = engine
-        .collect_patches_for_edit(&ctx, edit, source)
+        .collect_patches_for_ops(&ctx, &ops, source)
         .expect("sqlite patches");
     assert!(!patches.is_empty());
 }

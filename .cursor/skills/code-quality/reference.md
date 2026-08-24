@@ -8,8 +8,8 @@ practices review.
 | Crate | Owns | Must not |
 |-------|------|----------|
 | `core` | patches, atomic apply, `resource_path` | recipe DSL parsing, tree-sitter edits |
-| `yaml` | model (+ JsonSchema), validate, `dsl::`, vocabulary/codegen | host I/O, MCP |
-| `engine` | tree-sitter query ops | YAML schema surface |
+| `lua` | recipe module parse/validate, map/var/query-lib loaders | host I/O, MCP |
+| `engine` | tree-sitter query ops | recipe authoring surface |
 | `host` | registry, dispatch, MCP, bootstrap | ad-hoc path joins outside `resource_path` |
 
 Workspace lints ([`rust/Cargo.toml`](../../../rust/Cargo.toml)):
@@ -18,25 +18,15 @@ Workspace lints ([`rust/Cargo.toml`](../../../rust/Cargo.toml)):
 - Clippy `all = warn`; `pedantic = allow` (do not enable pedantic globally unless asked)
 - CI: `cargo clippy --all-targets -- -D warnings`
 
-### DSL and vocabulary
+### Luau recipes
 
-Prefer centralized owners over string literals:
+Prefer centralized owners:
 
-- `rust/crates/yaml/src/model.rs` — structural SSOT (parse AST + `JsonSchema`); schemas/surface are codegen outputs
-- `rust/crates/yaml/src/dsl/` — wire constants (`dsl::recipe::…`, maps, variables)
-- `rust/crates/yaml/src/dsl_vocabulary.rs` — author descriptions only (`ENTRIES`)
+- `rust/crates/lua/src/load.rs` — parse recipe/map/variable/query-lib tables
+- `rust/crates/host/src/lua_runtime.rs` — sandboxed `apply(c)` host API
 - `rust/crates/host/src/protocol_keys.rs` — host transport keys only
 
-After changing model fields, `dsl::`, or `ENTRIES`:
-
-```bash
-scripts/generate-dsl-artifacts.sh
-```
-
-Do not hand-edit generated schemas or maintain a parallel container inventory.
-
-Commit refreshed `vscode_extension/schemas/*`, `generated-dsl-surface.json`,
-`generated-keyword-docs.json`, and TextMate lists. CI fails if generated files drift.
+YAML DSL codegen (`scripts/generate-dsl-artifacts.sh`) is **deprecated**.
 
 ### Path / resource resolution
 
@@ -46,7 +36,7 @@ Use `rust/crates/core/src/resource_path.rs`:
 - Recipe resources (`.scm`, templates, `postExecution`, extends/include) resolve
   recipe-local first, then `.codemod/`
 - Bare query names also try `queries/` under each root
-- YAML query libraries are id-based under `.codemod/queries/*.yaml`
+- Luau query libraries under `.codemod/queries/*.luau`
 
 Do not add new ad-hoc `canonicalize`, `join("..")`, or absolute-path checks in
 individual crates.

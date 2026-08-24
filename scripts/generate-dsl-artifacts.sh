@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-set -euo pipefail
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-cd "$ROOT/rust"
-cargo run -q -p codemod_recipe_yaml --bin codemod_dsl_codegen
+# Deprecated: recipes are Luau modules; YAML DSL codegen was removed.
+# This script is kept as a stub so old docs/CI references fail clearly.
+echo "generate-dsl-artifacts.sh is deprecated — recipes are Luau (.codemod/recipes/*.luau)." >&2
+echo "See docs/writing-recipes.md and .agents/skills/codemod-luau-recipes/." >&2
+exit 1

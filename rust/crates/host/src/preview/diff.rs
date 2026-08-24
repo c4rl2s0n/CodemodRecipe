@@ -1,6 +1,11 @@
 use crate::protocol::FilePreview;
 use codemod_recipe_core::apply::file_change::FileChange;
-use codemod_recipe_yaml::preview_kinds;
+
+mod preview_kinds {
+    pub const EDIT: &str = "edit";
+    pub const CREATE: &str = "create";
+    pub const DELETE: &str = "delete";
+}
 
 /// Prefer a window around the first differing line when comparing two file texts.
 pub fn snippet_from_original_and_modified(

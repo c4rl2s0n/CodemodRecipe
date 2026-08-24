@@ -138,6 +138,116 @@ impl WorkingTree {
         Ok(())
     }
 
+    /// Current overlay content for `relative` (seed from disk if needed).
+    pub fn current_content(
+        &mut self,
+        sandbox: &PathSandbox,
+        relative: &str,
+    ) -> Result<String, String> {
+        match self.entries.get(relative) {
+            Some(Entry::Deleted { .. }) => Err(format!(
+                "Cannot read {relative}: path was deleted earlier in this recipe"
+            )),
+            Some(Entry::New { content })
+            | Some(Entry::Existing {
+                current: content, ..
+            }) => Ok(content.clone()),
+            None => {
+                let absolute = sandbox
+                    .resolve_workspace_relative(relative)
+                    .map_err(|e| e.message)?;
+                if !absolute.exists() {
+                    return Err(format!("Failed to read {relative}: file not found"));
+                }
+                let original = read_file(&absolute, relative)?;
+                self.entries.insert(
+                    relative.to_string(),
+                    Entry::Existing {
+                        original: original.clone(),
+                        current: original.clone(),
+                    },
+                );
+                Ok(original)
+            }
+        }
+    }
+
+    pub fn staged_paths(&self) -> Vec<String> {
+        self.entries.keys().cloned().collect()
+    }
+
+    /// Write staged overlay to disk (used before apply-mode postExec).
+    pub fn flush_to_disk(&self, sandbox: &PathSandbox) -> Result<Vec<String>, String> {
+        let mut flushed = Vec::new();
+        for (relative, entry) in &self.entries {
+            let absolute = sandbox
+                .resolve_workspace_relative(relative)
+                .map_err(|e| e.message)?;
+            match entry {
+                Entry::New { content }
+                | Entry::Existing {
+                    current: content, ..
+                } => {
+                    if let Some(parent) = absolute.parent() {
+                        std::fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+                    }
+                    std::fs::write(&absolute, content).map_err(|e| e.to_string())?;
+                    flushed.push(relative.clone());
+                }
+                Entry::Deleted { .. } => {
+                    if absolute.exists() {
+                        std::fs::remove_file(&absolute).map_err(|e| e.to_string())?;
+                    }
+                    flushed.push(relative.clone());
+                }
+            }
+        }
+        Ok(flushed)
+    }
+
+    /// Re-read `relative` from disk into the overlay (after a script mutates it).
+    pub fn reload_from_disk(
+        &mut self,
+        sandbox: &PathSandbox,
+        relative: &str,
+    ) -> Result<(), String> {
+        let absolute = sandbox
+            .resolve_workspace_relative(relative)
+            .map_err(|e| e.message)?;
+        if !absolute.exists() {
+            if let Some(Entry::Existing { original, .. }) = self.entries.get(relative) {
+                let original = original.clone();
+                self.entries
+                    .insert(relative.to_string(), Entry::Deleted { original });
+            } else {
+                self.entries.remove(relative);
+            }
+            return Ok(());
+        }
+        let current = read_file(&absolute, relative)?;
+        match self.entries.get(relative) {
+            Some(Entry::New { .. }) => {
+                self.entries
+                    .insert(relative.to_string(), Entry::New { content: current });
+            }
+            Some(Entry::Existing { original, .. }) | Some(Entry::Deleted { original }) => {
+                let original = original.clone();
+                self.entries
+                    .insert(relative.to_string(), Entry::Existing { original, current });
+            }
+            None => {
+                self.entries.insert(
+                    relative.to_string(),
+                    Entry::Existing {
+                        original: current.clone(),
+                        current,
+                    },
+                );
+            }
+        }
+        Ok(())
+    }
+
     pub fn delete(
         &mut self,
         sandbox: &PathSandbox,

@@ -1,0 +1,17 @@
+return {
+	id = "dart_queries",
+	queries = {
+		class_named = [[
+(class_definition
+  name: (identifier) @className
+  body: (class_body) @classBody
+  (#eq? @className "{{className}}"))
+]],
+		method_body = [[
+(method_signature
+  (function_signature name: (identifier) @methodName))
+(function_body (block) @body)
+(#eq? @methodName "{{methodName}}")
+]],
+	},
+}

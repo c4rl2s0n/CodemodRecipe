@@ -1,115 +1,135 @@
 # Writing recipes
 
-How to author YAML recipes for codemod-recipe: the usual workflow, what
-`query` / `capture` / `anchor` mean, step types, and where to go next.
+How to author **Luau recipes** for codemod-recipe: the usual workflow, what
+`query` / `capture` / `anchor` mean, the host API, and where to go next.
 
 Day-1 product overview: [getting-started.md](getting-started.md).
-Complete field inventory (generated from the schema): [generated/dsl-vocabulary.md](generated/dsl-vocabulary.md).
+Full host API: skill `codemod-luau-recipes` → `reference.md`.
 
 ## Authoring workflow
 
 1. **Pick the target** — which file and AST node should change (method body,
-   class member, import, …). Inspect the tree in a tree-sitter playground or by
-   iterating with preview.
+   class member, import, …). Inspect the tree in Query Tools or iterate with preview.
 2. **Write a query** — S-expression pattern with `@names` for nodes you filter
    on and the node you will edit.
-3. **Set `capture:`** — the `@name` whose **text span** the op edits (omit the
-   `@` in YAML: `@body` → `capture: body`).
-4. **For `insert` only** — set `anchor: start` or `end` (before or after that
-   span).
-5. **Fill `text` / `args`** — declare dynamics as recipe args (`{{name}}` in
-   path, query, and text).
+3. **Set `capture`** — the `@name` whose **text span** the op edits (omit the
+   `@` in the spec: `@body` → `capture = "body"`).
+4. **For `c:insert` only** — set `anchor = "start"` or `"end"`.
+5. **Use `c.args`** — declare dynamics as recipe args; build query/text strings in Luau
+   or render with `c:applyTemplate`.
 6. **Validate → preview → apply** — then re-preview; an idempotent recipe
    returns no patches.
 
-Dart is the default language. For other files, set `language:` on the `edit`
-step — see [language-support.md](language-support.md).
+Dart is the default language. For other files, set `language` on the edit spec —
+see [language-support.md](language-support.md).
 
 ## Recipe shape
 
-```yaml
-id: feature.area.recipe_id    # dotted ids nest in the VS Code Recipes tab
-name: Human-readable name     # optional
-description: What it does     # optional
-args: []                      # optional parameters
-steps: []                     # required — ordered operations
-postExecution:                # optional — after successful apply
-  - "dart format ."
+Recipes live at `.codemod/recipes/*.luau` (also `.lua`). They **return a table**:
+
+```lua
+return {
+  id = "feature.area.recipe_id",  -- dotted ids nest in VS Code Recipes tab
+  name = "Human-readable name",   -- optional
+  description = "What it does",   -- optional
+  args = {},                      -- optional parameters
+  maps = {},                      -- optional recipe-local maps
+  queries = {},                   -- optional inline query ids
+  postExecution = { "dart format ." },  -- optional; apply only
+  explorerMenu = {},              -- optional Explorer submenu
+  apply = function(c)
+    -- all mutations here
+  end,
+}
 ```
 
-Every field and enum value: [generated/dsl-vocabulary.md](generated/dsl-vocabulary.md).
+**`apply(c)` is the only mutation entrypoint.** Use Luau `if`/`for` for guards and
+idempotency checks (e.g. `c:queryExists` before insert).
 
 ### Arguments (`args`)
 
-```yaml
-args:
-  - name: file
-    required: true
-    inputKind: file
-  - name: className
-    required: true
-    inputKind: symbol
+```lua
+args = {
+  { name = "file", required = true, inputKind = "file" },
+  { name = "className", required = true, inputKind = "symbol" },
+  { name = "flag", defaultsTo = "false", inputKind = "choice", options = { "true", "false" } },
+}
 ```
 
-Common `inputKind` values: `text`, `file`, `directory`, `choice`. Defaults use
-`defaultsTo` (not `defaultValue`). In the VS Code extension, `from:` can derive
-args from the active editor — see [recipe-shortcuts.md](recipe-shortcuts.md).
+Common `inputKind` values: `text`, `file`, `directory`, `choice`, `symbol`.
+Defaults use `defaultsTo`. In VS Code, `from` can derive args from the editor —
+see [recipe-shortcuts.md](recipe-shortcuts.md).
 
-## Step types
+## Host API
 
-Each entry in `steps` is a single-key object:
+Access arguments as `c.args.name`. All mutation methods are on `c`:
 
-| Step | Role |
-|------|------|
-| `edit` | AST `insert` / `replace` / `remove` in an existing file |
-| `create` | New file from inline `template` or `templateFile` |
-| `delete` | Remove a file (`ifMissing: fail` \| `skip`) |
-| `recipe` | Compose another recipe by id (optional `with:` bindings) |
-| `if` | Conditional group of nested steps |
+### AST edits
 
-### Edit
+```lua
+c:insert({
+  path = c.args.file,
+  language = "dart",       -- optional when extension is unambiguous
+  query = "(class_definition ...) @body",
+  capture = "body",
+  anchor = "end",          -- "start" | "end" (default "end")
+  text = "    print('codemod');\n",
+})
 
-```yaml
-- edit:
-    path: "{{file}}"
-    language: dart          # optional for .dart; required when ambiguous
-    when: …                 # optional — all must match or step is skipped
-    whenNot: …              # optional — none may match
-    let: …                  # optional — locals for later ops
-    ops:
-      - insert: { … }
+c:replace({ path = c.args.file, query = "...", capture = "member", text = "  final int x = 0;\n" })
+c:remove({ path = c.args.file, query = "...", capture = "member", includeLeadingTrivia = true })
 ```
 
-### Create / delete
+### File create/delete
 
-```yaml
-- create:
-    path: "lib/new_file.dart"
-    template: "class X {}\n"
-    ifExists: fail          # or skip
+```lua
+c:create({
+  path = "lib/new_file.dart",
+  content = c:renderFileTemplate({ path = "templates/widget.dart.template" }),
+  ifExists = "fail",   -- or "skip"
+})
 
-- delete:
-    path: "lib/legacy.dart"
-    ifMissing: skip         # or fail
+c:delete({ path = "lib/legacy.dart", ifMissing = "skip" })
 ```
 
-File-backed templates use `templateFile` (recipe-local first, then `.codemod/`).
-Jinja details: [recipe-templates.md](recipe-templates.md).
+### Read-only helpers
+
+```lua
+local text = c:read(c.args.file)
+local spans = c:query({ path = c.args.file, query = "...", capture = "body" })
+if c:queryExists({ path = c.args.file, query = "..." }) then return end
+```
 
 ### Composition
 
-```yaml
-steps:
-  - recipe: dart.settings.add_counter_field
-  - recipe:
-      id: dart.logging.add_log_line
-      with:
-        file: "{{file}}"
+```lua
+c:run("dart.settings.add_counter_field")
+c:run("dart.logging.add_log_line", { file = c.args.file, className = c.args.className })
 ```
 
-## Query, capture, and anchor
+### Templates
 
-This is the mental model behind every AST op.
+```lua
+local rendered = c:applyTemplate({
+  template = "class {{ name | pascal_case }} {}\n",
+  env = { name = c.args.className },
+})
+```
+
+See [recipe-templates.md](recipe-templates.md).
+
+### Post-execution
+
+Top-level `postExecution` or inline:
+
+```lua
+c:postExec({ command = "dart format {{file}}" })
+```
+
+Preview records postExec in the **transcript** but does not run it. Apply flushes
+the WorkingTree first, then executes commands.
+
+## Query, capture, and anchor
 
 ```text
 source file  →  parse  →  query match  →  capture span  →  patch
@@ -117,40 +137,19 @@ source file  →  parse  →  query match  →  capture span  →  patch
 
 ### Captures in the query
 
-In the tree-sitter query, `@name` labels a matched node:
-
 ```scheme
 (class_definition
   name: (identifier) @className
   body: (class_body
     (function_body (block) @body))
-  (#eq? @className "{{className}}"))
+  (#eq? @className "Settings"))
 ```
-
-You often have **several** captures: some for filters (`#eq?`), one for the
-edit target.
 
 ### The `capture` field
 
-On the op, `capture:` picks **which** named match is edited. Use the name
-**without** `@`:
-
-| In query | On op |
-|----------|--------|
-| `(block) @body` | `capture: body` |
-| `(declaration) @member` | `capture: member` |
-
-`insert` / `replace` / `remove` all require `capture`. If the name is missing,
-unmatched, or ambiguous, the run fails.
-
-In the VS Code extension, completing on `capture:` suggests `@names` scraped
-from the sibling `query` (inline text or a `.scm` path).
+On the op spec, `capture` picks **which** named match is edited (name without `@`).
 
 ### The `anchor` field (insert only)
-
-`anchor` chooses where `text` is inserted relative to the **captured node’s
-byte span** — not tree-sitter’s `.` operator (that constrains sibling position
-inside the pattern).
 
 ```text
   …[===== capture span =====]…
@@ -158,72 +157,32 @@ inside the pattern).
   anchor: start           anchor: end
 ```
 
-| Goal | `anchor` |
-|------|----------|
-| Insert before the captured node | `start` |
-| Insert after the captured node | `end` |
-
-Example: capture a method’s `(block) @body` and `anchor: end` to append a
-statement at the end of the body.
-
 Full query language: [tree-sitter-queries.md](tree-sitter-queries.md).
 
-## Edit ops
+## Worked insert example
 
-| Op | Required | Notes |
-|----|----------|--------|
-| `insert` | `query`, `capture`, `anchor`, `text` | Insert at capture boundary |
-| `replace` | `query`, `capture`, `text` | Replace the capture span |
-| `remove` | `query`, `capture` | Delete the capture span |
-
-Optional on `replace` / `remove`: `includeLeadingTrivia` (e.g. leading doc
-comments).
-
-### Worked insert
-
-```yaml
-- edit:
-    path: "{{file}}"
-    ops:
-      - insert:
-          query: |
-            (class_definition
-              name: (identifier) @className
-              body: (class_body
-                (method_signature
-                  (function_signature
-                    name: (identifier) @methodName))
-                (function_body
-                  (block) @body))
-              (#eq? @className "{{className}}")
-              (#eq? @methodName "{{methodName}}"))
-          capture: body
-          anchor: end
-          text: "    print('codemod');\n"
+```lua
+apply = function(c)
+  c:insert({
+    path = c.args.file,
+    query = [[
+      (class_definition
+        name: (identifier) @className
+        body: (class_body
+          (method_signature
+            (function_signature
+              name: (identifier) @methodName))
+          (function_body
+            (block) @body))
+        (#eq? @className "]] .. c.args.className .. [[")
+        (#eq? @methodName "]] .. c.args.methodName .. [["))
+    ]],
+    capture = "body",
+    anchor = "end",
+    text = "    print('codemod');\n",
+  })
+end,
 ```
-
-- `@className` / `@methodName` — filter which method
-- `@body` + `capture: body` — edit the method body block
-- `anchor: end` — insert after the closing of that block’s content span
-
-### Insert before a member
-
-Capture the member node and use `anchor: start`:
-
-```yaml
-capture: member
-anchor: start
-text: "  final int count = 0;\n"
-```
-
-## Guards, locals, and ordering
-
-- **`when` / `whenNot`** — evaluated once on the file before any op; if guards
-  fail, the edit step is skipped.
-- **`let`** — bindings recomputed before each op; available in later op
-  templates (see vocabulary for `extract`, `onNoMatch`, …).
-- Steps and ops run **in order** against an in-memory tree; disk writes only on
-  apply. `create` then `edit` on the same path is supported.
 
 ## Idempotency
 
@@ -231,8 +190,25 @@ Prefer recipes that produce **no patches** on a second apply:
 
 - **replace** — idempotent when `text` is already the desired final state
 - **remove** — idempotent when the target is already gone
-- **insert** — often needs a `whenNot` (or a query that only matches when the
-  snippet is absent) so a second run does nothing
+- **insert** — guard with `c:queryExists` / `c:queryCount` or a query that only
+  matches when the snippet is absent
+
+```lua
+if c:queryExists({ path = c.args.file, query = alreadyThereQuery }) then
+  return
+end
+c:insert({ ... })
+```
+
+## Maps, variables, query libraries
+
+Shared Luau modules under `.codemod/maps/`, `.codemod/variables/`, `.codemod/queries/`:
+
+```lua
+local types = c:map("column_type")
+local defaults = c:var("project_defaults")
+local q = c:queryLib("dart")
+```
 
 ## Naming and organization
 
@@ -240,29 +216,38 @@ Prefer recipes that produce **no patches** on a second apply:
 |--------|---------|
 | `create_` | Greenfield files from templates |
 | `add_` / `patch_` | Brownfield AST edits (one change each) |
-| `scaffold_` | Feature workflow (compose atomics) |
+| `scaffold_` | Feature workflow (`c:run` atomics) |
 | `remove_` | Tear down members or files |
 
-**One recipe = one coherent change.** Details:
-[recipe-design-patterns.md](recipe-design-patterns.md).
+Details: [recipe-design-patterns.md](recipe-design-patterns.md).
 
 ## Validate and run
 
 | Client | Flow |
 |--------|------|
-| VS Code | Recipes tab → fill args → review diffs → Apply Selected |
+| VS Code | Recipes tab → fill args → review Files + Transcript → Apply Selected |
 | MCP | `validate_recipes` → `preview_recipe` → `apply_recipe` with `previewToken` |
 
 See [getting-started.md](getting-started.md#day-1-success-run-a-recipe) and
 [codemod-mcp.md](codemod-mcp.md).
 
+## Inline recipes (MCP)
+
+`inlineRecipe` is a **Luau source string** that `return`s the same table (must include `apply`):
+
+```json
+{
+  "inlineRecipe": "return { id = \"__inline\", apply = function(c) c:insert({ path = \"lib/a.dart\", query = \"(program) @root\", capture = \"root\", anchor = \"end\", text = \"// x\\n\" }) end }"
+}
+```
+
 ## Further reading
 
-| Doc | Contents |
-|-----|----------|
-| [generated/dsl-vocabulary.md](generated/dsl-vocabulary.md) | Every DSL field and enum (generated) |
+| Doc / skill | Contents |
+|-------------|----------|
+| `codemod-luau-recipes` → `reference.md` | Complete host API |
 | [tree-sitter-queries.md](tree-sitter-queries.md) | Query syntax, captures, predicates |
 | [recipe-templates.md](recipe-templates.md) | MiniJinja, maps, variables |
-| [language-support.md](language-support.md) | `language:` and grammars |
+| [language-support.md](language-support.md) | `language` and grammars |
 | [recipe-design-patterns.md](recipe-design-patterns.md) | create / add / scaffold taxonomy |
-| [recipe-shortcuts.md](recipe-shortcuts.md) | Slots, `from:`, explorer menu |
+| [recipe-shortcuts.md](recipe-shortcuts.md) | Slots, `from`, explorer menu |

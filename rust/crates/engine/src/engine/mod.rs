@@ -1,10 +1,9 @@
 use std::path::Path;
 
 use crate::language::adapter::LanguageAdapter;
+use crate::ops::{EditOp, InsertAnchor, QuerySpec};
 use crate::query::query_chain::match_root_node;
 use codemod_recipe_core::apply::patch::{apply_patches, SourcePatch};
-use codemod_recipe_yaml::model::{EditOp, EditStep, InsertAnchor, Recipe, Step};
-use codemod_recipe_yaml::QuerySpec;
 use thiserror::Error;
 use tree_sitter::StreamingIterator;
 use tree_sitter::{Node, Parser, Query, QueryCursor, Tree};
@@ -18,13 +17,6 @@ pub struct QueryContext<'a> {
 
 #[derive(Debug, Error)]
 pub enum EngineError {
-    #[error("failed to parse yaml recipe: {message}")]
-    RecipeParse {
-        message: String,
-        line: Option<u32>,
-        column: Option<u32>,
-    },
-
     #[error("syntax errors present in file: {path}")]
     SyntaxError { path: String },
 
@@ -53,44 +45,9 @@ pub enum EngineError {
     Patch(#[from] codemod_recipe_core::apply::patch::PatchError),
 }
 
-impl EngineError {
-    /// 1-based line/column when this is a recipe YAML parse error with a known mark.
-    pub fn recipe_parse_location(&self) -> Option<(u32, u32)> {
-        match self {
-            Self::RecipeParse {
-                line: Some(line),
-                column: Some(column),
-                ..
-            } => Some((*line, *column)),
-            _ => None,
-        }
-    }
-
-    fn recipe_parse_from_yaml(err: serde_yaml::Error) -> Self {
-        let loc = err.location();
-        Self::RecipeParse {
-            message: err.to_string(),
-            line: loc.as_ref().map(|l| l.line() as u32),
-            column: loc.as_ref().map(|l| l.column() as u32),
-        }
-    }
-
-    fn recipe_parse_message(message: impl Into<String>) -> Self {
-        Self::RecipeParse {
-            message: message.into(),
-            line: None,
-            column: None,
-        }
-    }
-}
-
 pub struct Engine {
     parser: Parser,
     adapter: Box<dyn LanguageAdapter>,
-}
-
-pub struct ApplyResult {
-    pub modified: String,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -202,20 +159,19 @@ impl Engine {
                 );
                 Ok(vec![SourcePatch::new(start, end, "")])
             }
-            EditOp::Unknown(_, _) => Ok(vec![]),
         }
     }
 
-    /// Collect patches for all ops in an edit against one `source` (non-sequential).
+    /// Collect patches for all ops against one `source` (non-sequential).
     /// Prefer [`Self::apply_edit_ops_sequential`] when later ops depend on earlier ones.
-    pub fn collect_patches_for_edit(
+    pub fn collect_patches_for_ops(
         &mut self,
         ctx: &QueryContext<'_>,
-        edit: &EditStep,
+        ops: &[EditOp],
         source: &str,
     ) -> Result<Vec<SourcePatch>, EngineError> {
         let mut patches: Vec<SourcePatch> = Vec::new();
-        for op in &edit.ops {
+        for op in ops {
             patches.extend(self.collect_patches_for_single_op(ctx, op, source)?);
         }
         Ok(patches)
@@ -225,36 +181,17 @@ impl Engine {
     pub fn apply_edit_ops_sequential(
         &mut self,
         ctx: &QueryContext<'_>,
-        edit: &EditStep,
+        ops: &[EditOp],
         source: &str,
     ) -> Result<String, EngineError> {
         let mut current = source.to_string();
-        for op in &edit.ops {
+        for op in ops {
             let patches = self.collect_patches_for_single_op(ctx, op, &current)?;
             if !patches.is_empty() {
                 current = apply_patches(&current, &patches)?;
             }
         }
         Ok(current)
-    }
-
-    /// Apply all edit steps for `file_path` sequentially against evolving source.
-    pub fn apply_recipe_to_source(
-        &mut self,
-        ctx: &QueryContext<'_>,
-        recipe: &Recipe,
-        file_path: &str,
-        source: &str,
-    ) -> Result<ApplyResult, EngineError> {
-        let mut current = source.to_string();
-        for step in &recipe.steps {
-            let Step::Edit(edit) = step else { continue };
-            if edit.path != file_path {
-                continue;
-            }
-            current = self.apply_edit_ops_sequential(ctx, edit, &current)?;
-        }
-        Ok(ApplyResult { modified: current })
     }
 
     pub(crate) fn parse_tree(&mut self, source: &str) -> Result<Tree, EngineError> {
@@ -419,26 +356,6 @@ pub(crate) fn resolve_step_text(ctx: &QueryContext<'_>, raw: &str) -> Result<Str
 
 fn whitespace_normalized(text: &str) -> String {
     text.split_whitespace().collect::<Vec<_>>().join(" ")
-}
-
-pub fn parse_recipe_yaml(yaml_text: &str) -> Result<Recipe, EngineError> {
-    // Reject deprecated `group` before typed parse (`Recipe` ignores unknown fields).
-    match serde_yaml::from_str::<serde_yaml::Value>(yaml_text) {
-        Ok(value)
-            if value.as_mapping().is_some_and(|map| {
-                map.contains_key(serde_yaml::Value::String("group".to_string()))
-            }) =>
-        {
-            return Err(EngineError::recipe_parse_message(
-                "top-level field 'group' is no longer supported; use a dotted recipe id instead",
-            ));
-        }
-        Err(e) => return Err(EngineError::recipe_parse_from_yaml(e)),
-        Ok(_) => {}
-    }
-
-    // Single-pass typed parse preserves serde_yaml line/column on model errors.
-    serde_yaml::from_str::<Recipe>(yaml_text).map_err(EngineError::recipe_parse_from_yaml)
 }
 
 pub mod query_eval;

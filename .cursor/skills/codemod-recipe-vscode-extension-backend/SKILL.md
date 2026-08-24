@@ -22,14 +22,11 @@ Use this skill when you need to:
   - `activate(...)`: config, `HostBridge`, `RecipeRepository`, `LanguageSession`, diagnostics, watcher, commands
   - Recreates `LanguageSession` when `codemodRoot` / `workspaceRoot` change
 
-### Recipe Language Toolkit
-- `vscode_extension/src/extension/language/session.ts` — provider registration (dynamic selectors)
-- `yamlContext.ts` — indent parent/siblings (pure)
-- `dslSurface.ts` — loads `schemas/generated-dsl-surface.json`
-- `providers/` — completion, hover, definition, codelens
-- `diagnostics.ts` — host `RecipeDiagnostic` → Problems panel
+### Recipe language support
+- Luau recipe files under `.codemod/recipes/` — diagnostics from host validate
+- `providers/` — completion from host catalog where applicable
 
-Structural completions come from codegen surface; recipe ids / languages / `with:` args come from the host catalog at runtime. Do **not** hardcode DSL container children in TypeScript.
+Recipe ids / languages / args come from the host catalog at runtime.
 
 ### Persistent Rust host bridge + protocol framing
 - `vscode_extension/src/extension/host/hostBridge.ts`
@@ -44,12 +41,7 @@ Structural completions come from codegen surface; recipe ids / languages / `with
 - `vscode_extension/src/extension/views/recipeRunnerViewProvider.ts`
 - Shared messages: `vscode_extension/src/shared/messages.ts`
 
-## DSL codegen (maintainers)
+## Recipe runtime (maintainers)
 
-Structural SSOT is `rust/crates/yaml/src/model.rs` (`JsonSchema`). After changing `model.rs`, `dsl::`, or `ENTRIES`, run:
-
-```bash
-scripts/generate-dsl-artifacts.sh
-```
-
-Outputs under `vscode_extension/schemas/`: JSON Schema files, `generated-dsl-surface.json`, `generated-keyword-docs.json`, plus TextMate patches. Do not hand-edit those outputs or maintain a parallel container inventory.
+Luau recipe loading: `rust/crates/lua/src/load.rs`. Host API: `rust/crates/host/src/lua_runtime.rs`.
+Human/agent docs: skill `codemod-luau-recipes`.

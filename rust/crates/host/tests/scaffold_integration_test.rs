@@ -228,15 +228,16 @@ fn scaffold_project_delete_if_missing_skip_is_idempotent() {
     let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
     registry.reload();
 
-    let inline = serde_json::json!({
-        "id": "delete_only",
-        "steps": [{
-            "delete": {
-                "path": "lib/legacy/stale.dart",
-                "ifMissing": "skip"
-            }
-        }]
-    });
+    let inline = serde_json::json!(
+        r#"
+return {
+  id = "delete_only",
+  apply = function(c)
+    c:delete({ path = "lib/legacy/stale.dart", ifMissing = "skip" })
+  end,
+}
+"#
+    );
 
     let preview = dispatch::handle_command(
         &mut registry,

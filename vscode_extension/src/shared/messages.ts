@@ -1,4 +1,4 @@
-import type { FilePreview, SelectionPayload, RecipeViewState } from './types';
+import type { FilePreview, SelectionPayload, RecipeViewState, TranscriptEvent } from './types';
 
 export const WEBVIEW_TO_EXTENSION = {
   ready: 'ready',
@@ -61,6 +61,8 @@ export type ExtensionToWebviewMessage =
   | {
       type: typeof EXTENSION_TO_WEBVIEW.previewResult;
       files: FilePreview[];
+      transcript?: TranscriptEvent[];
+      applyMayDiverge?: boolean;
       requestId?: number;
       argsKey?: string;
     }
@@ -174,7 +176,9 @@ export function isExtensionToWebviewMessage(
       return (
         Array.isArray(value.files) &&
         (value.requestId === undefined || typeof value.requestId === 'number') &&
-        (value.argsKey === undefined || typeof value.argsKey === 'string')
+        (value.argsKey === undefined || typeof value.argsKey === 'string') &&
+        (value.transcript === undefined || Array.isArray(value.transcript)) &&
+        (value.applyMayDiverge === undefined || typeof value.applyMayDiverge === 'boolean')
       );
     case EXTENSION_TO_WEBVIEW.applyResult:
       return (

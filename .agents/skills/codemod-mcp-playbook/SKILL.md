@@ -1,6 +1,6 @@
 ---
 name: codemod-mcp-playbook
-description: MCP tool reference and agent workflow for codemod-recipe preview/apply with YAML recipes and inlineRecipe.
+description: MCP tool reference and agent workflow for codemod-recipe preview/apply with Luau recipes and inlineRecipe.
 ---
 
 # Codemod MCP Playbook
@@ -11,18 +11,16 @@ MCP server `codemod-mcp` returns JSON text. Parse output and branch on `ok`.
 
 | Tool | Purpose |
 |------|---------|
-| `bootstrap_project` | Install `.agents/skills/`, `.cursor/rules/`, `.codemod/` scaffolding. Args: optional `force`, `edit_policy` (`recommend`\|`strict`), `companions` (e.g. `["codebase-memory"]`) |
+| `bootstrap_project` | Install `.agents/skills/`, `.cursor/rules/`, `.codemod/` scaffolding |
 | `list_recipes` | Discover registered recipe ids |
 | `describe_recipe` | Args + metadata for one recipe |
-| `validate_recipes` | Reload + validate recipes/maps/variables under `.codemod/` |
-| `preview_recipe` | Dry-run; returns `previewToken` |
+| `validate_recipes` | Reload + validate Luau under `.codemod/` |
+| `preview_recipe` | Dry-run; returns `previewToken` + `transcript` |
 | `apply_recipe` | Atomic apply; requires `previewToken` |
 | `dump_ast` | Dump AST for Query Tools / debugging |
 | `debug_query` | Run tree-sitter query; return captures |
 | `generate_query` | Generate starter query from byte range |
 | `resolve_static_path` | Probe whether a Jinja path needs args |
-
-Default bootstrap is soft (`edit_policy: "recommend"`). Use `"strict"` for recipe-first edits; add `"companions": ["codebase-memory"]` when that MCP is available.
 
 ## Response envelope
 
@@ -33,11 +31,11 @@ Default bootstrap is soft (`edit_policy: "recommend"`). Use `"strict"` for recip
 
 ## preview_recipe
 
-Provide one of `recipe` (id) or `inlineRecipe` (full recipe object).
+Provide one of `recipe` (id) or `inlineRecipe` (Luau source string).
 
 Optional: `args` (string map), `snippetLines` (number).
 
-Returns `previewToken` and `files[]` with patch previews.
+Returns `previewToken`, `files[]`, and `transcript[]`.
 
 ## apply_recipe
 
@@ -47,39 +45,27 @@ Also: same `recipe` or `inlineRecipe`, same `args`.
 
 Optional: `selection` for partial patch apply.
 
-Optional host flags: `--sql-default` (default `sqlite` for `.sql` files). See skill `codemod-languages`.
+## inlineRecipe
 
-## inlineRecipe shape
+Luau source that `return`s a recipe table with `apply`:
 
 ```json
 {
-  "id": "__inline_id",
-  "steps": [{
-    "edit": {
-      "path": "lib/file.dart",
-      "language": "dart",
-      "ops": [{
-        "insert": {
-          "query": "(class_definition ... @body)",
-          "capture": "body",
-          "anchor": "end",
-          "text": "    print('ok');\n"
-        }
-      }]
-    }
-  }]
+  "inlineRecipe": "return { id = \"__inline\", apply = function(c) c:insert({ path = \"lib/a.dart\", query = \"(program) @root\", capture = \"root\", anchor = \"end\", text = \"// x\\n\" }) end }"
 }
 ```
 
-- `insert`: `query`, `capture`, `anchor` (`start`|`end`), `text`
-- `replace`: `query`, `capture`, `text`
-- `remove`: `query`, `capture`
+## Preview vs apply
+
+- Both run `apply(c)`. Preview skips postExec (transcript only).
+- Apply re-runs Luau and flushes before postExec.
+- When apply may diverge, UI shows `applyMayDiverge`.
 
 ## Agent workflow
 
 1. Locate target (codebase-memory if available)
 2. Pick registered recipe or craft `inlineRecipe`
-3. `preview_recipe` → inspect `files[]`
+3. `preview_recipe` → inspect `files[]` and `transcript[]`
 4. `apply_recipe` with token
 5. Re-preview for idempotency
 
@@ -88,14 +74,12 @@ Optional host flags: `--sql-default` (default `sqlite` for `.sql` files). See sk
 - `Stale previewToken` — re-preview after file changes
 - Empty `files` — query matched nothing or already applied
 - `Missing required arguments` — check `describe_recipe`
-- `Invalid node type "class_declaration"` — use `class_definition` (pack Dart); see `codemod-languages`
-- `language not supported` — set valid `language:` id; see `codemod-languages`
-- `file type not supported` — set `language:` or use a known file extension; see `codemod-languages`
+- `Invalid node type "class_declaration"` — use `class_definition` (pack Dart)
 
 ## Related skills
 
 | Skill | Use for |
 |-------|---------|
-| `codemod-languages` | `language:` field, SQL dialects, grammar loading |
-| `codemod-yaml-dsl` | inlineRecipe step shape |
+| `codemod-luau-recipes` | recipe shape and host API |
+| `codemod-languages` | `language` on ops |
 | `codemod-recipe-authoring` | tree-sitter queries |

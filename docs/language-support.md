@@ -1,32 +1,31 @@
 # Multi-language support
 
-codemod-recipe applies tree-sitter queries per **`edit` step** using a lazy-loaded grammar registry. Dart remains the primary workflow, but Rust, Java, Kotlin, SQL/SQLite, and 300+ other languages are available via [tree-sitter-language-pack](https://docs.tree-sitter-language-pack.xberg.io/).
+codemod-recipe applies tree-sitter queries per **edit op** (`c:insert`, `c:replace`, `c:remove`) using a lazy-loaded grammar registry. Dart remains the primary workflow, but Rust, Java, Kotlin, SQL/SQLite, and 300+ other languages are available via [tree-sitter-language-pack](https://docs.tree-sitter-language-pack.xberg.io/).
 
 **Agent skill:** `.agents/skills/codemod-languages/` (installed by `bootstrap_project` from `export/.agents/skills/codemod-languages/`).
 
 ## Quick start
 
-1. Add `language:` to `edit` steps when targeting non-Dart files (or to be explicit).
+1. Set `language = "rust"` (etc.) on edit ops when targeting non-Dart files (or to be explicit).
 2. Write queries using node names for **that** grammar (queries do not port across languages).
 3. Run `validate_recipes` → `preview_recipe` → `apply_recipe` as usual.
 
-```yaml
-- edit:
-    path: "src/lib.rs"
-    language: rust
-    ops:
-      - insert:
-          query: "(function_item) @fn"
-          capture: fn
-          anchor: end
-          text: "\n// codemod\n"
+```lua
+c:insert({
+  path = "src/lib.rs",
+  language = "rust",
+  query = "(function_item) @fn",
+  capture = "fn",
+  anchor = "end",
+  text = "\n// codemod\n",
+})
 ```
 
 ## Language resolution
 
 | Priority | Source |
 |----------|--------|
-| 1 | `edit.language` if set (must be a known id) |
+| 1 | `language` on the edit op if set (must be a known id) |
 | 2 | File extension (`.rs` → `rust`, `.java` → `java`, `.dart` → `dart`, …) |
 
 If `language:` is omitted and the extension cannot be mapped, preview/apply fails with `file type not supported`. An unknown explicit `language:` fails with `language not supported`.

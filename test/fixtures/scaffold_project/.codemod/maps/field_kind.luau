@@ -1,0 +1,7 @@
+return {
+	id = "field_kind",
+	map = {
+		tickCount = "int",
+		label = "String",
+	},
+}

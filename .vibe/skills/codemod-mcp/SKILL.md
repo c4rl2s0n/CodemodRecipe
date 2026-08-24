@@ -8,8 +8,8 @@ user-invocable: true
 
 ## When to use
 
-- Preview/apply codemod recipes (registered YAML or inline)
-- Multi-language tree-sitter edits via YAML recipes
+- Preview/apply registered Luau recipes or `inlineRecipe` source
+- Multi-language tree-sitter edits via Luau recipes (`language` on ops)
 
 ## Instructions
 

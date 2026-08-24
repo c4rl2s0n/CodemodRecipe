@@ -71,12 +71,10 @@ edit sites.
 
 Verify:
 
-- Crate boundaries (`core` / `yaml` / `engine` / `host`) — see reference table
-- DSL vocabulary via `yaml` `model` (`JsonSchema`) / `dsl::` / `ENTRIES`, not ad-hoc strings or hand-edited schemas
+- Crate boundaries (`core` / `lua` / `engine` / `host`) — see reference table
+- Luau recipe loading in `rust/crates/lua/` and host API in `lua_runtime.rs`
 - Paths via `codemod_recipe_core::resource_path`, not ad-hoc `join` / `..` checks
-- After DSL/structure changes: `scripts/generate-dsl-artifacts.sh` and committed
-  generated schemas
-- Extension: no hardcoded DSL container children; use generated surface + host catalog
+- Extension: host catalog for recipe ids / args; no YAML schema codegen
 - Do not hand-edit `vscode_extension/media/*`
 - Host JSON shapes stay in sync: Rust `protocol.rs` / `dispatch.rs` ↔
   `vscode_extension/src/shared/messages.ts`

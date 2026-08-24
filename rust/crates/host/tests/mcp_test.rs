@@ -18,8 +18,8 @@ fn setup_workspace() -> std::path::PathBuf {
     let recipes_dir = workspace.join(".codemod/recipes");
     std::fs::create_dir_all(&recipes_dir).unwrap();
     std::fs::copy(
-        repo_root().join(".codemod/recipes/insert_log_line.yaml"),
-        recipes_dir.join("insert_log_line.yaml"),
+        repo_root().join(".codemod/recipes/insert_log_line.luau"),
+        recipes_dir.join("insert_log_line.luau"),
     )
     .unwrap();
     workspace

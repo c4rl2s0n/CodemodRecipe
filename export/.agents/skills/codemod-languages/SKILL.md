@@ -7,7 +7,7 @@ description: Multi-language tree-sitter support in codemod-recipe — language I
 
 ## When to use
 
-- Choosing a `language:` id for an `edit` step (Dart, Rust, Java, Kotlin, SQL, SQLite, …)
+- Choosing a `language` id for an edit op (Dart, Rust, Java, Kotlin, SQL, SQLite, …)
 - Editing non-Dart files with tree-sitter queries
 - Configuring SQL dialect defaults (`.sql` → `sqlite` vs generic `sql`)
 - Understanding first-use grammar download or offline/CI setup
@@ -15,13 +15,13 @@ description: Multi-language tree-sitter support in codemod-recipe — language I
 
 ## When not to use
 
-- YAML step syntax → `codemod-yaml-dsl`
+- Host API / `c:insert` shape → `codemod-luau-recipes`
 - Dart-specific query patterns → `codemod-recipe-authoring`
 - Running preview/apply → `codemod-mcp-playbook`
 
 ## Quick rules
 
-1. Set `language:` on every `edit` step when the file is **not** Dart, or when inference is ambiguous.
+1. Set `language` on every insert/replace/remove when the file is **not** Dart, or when inference is ambiguous.
 2. Queries are **not portable** across languages — write per-language node names.
 3. `.sql` defaults to **`sqlite`** (native grammar). Use `language: sql` for generic ANSI-ish SQL.
 4. Grammars load **lazily** on first use via `tree-sitter-language-pack` (cached under `~/.cache/tree-sitter-language-pack`).
@@ -44,43 +44,41 @@ description: Multi-language tree-sitter support in codemod-recipe — language I
 
 **Rust edit (explicit language):**
 
-```yaml
-- edit:
-    path: "src/main.rs"
-    language: rust
-    ops:
-      - insert:
-          query: "(function_item) @fn"
-          capture: fn
-          anchor: end
-          text: "\n// codemod\n"
+```lua
+c:insert({
+  path = "src/main.rs",
+  language = "rust",
+  query = "(function_item) @fn",
+  capture = "fn",
+  anchor = "end",
+  text = "\n// codemod\n",
+})
 ```
 
 **SQLite schema (default for `.sql`):**
 
-```yaml
-- edit:
-    path: "schema/init.sql"
-    language: sqlite
-    ops:
-      - insert:
-          query: "(create_table_statement) @stmt"
-          capture: stmt
-          anchor: end
-          text: "\n-- migrated\n"
+```lua
+c:insert({
+  path = "schema/init.sql",
+  language = "sqlite",
+  query = "(create_table_statement) @stmt",
+  capture = "stmt",
+  anchor = "end",
+  text = "\n-- migrated\n",
+})
 ```
 
 ## Instructions
 
 1. **Read and follow** [reference.md](reference.md) for resolution order, SQL dialects, Dart pack grammar notes, host flags, and troubleshooting.
-2. Call `validate_recipes` after setting `language:` — unknown IDs fail at validate time.
+2. Call `validate_recipes` after setting `language` — unknown IDs fail at validate time.
 3. Preview before apply; query node names must match the grammar for the chosen `language`.
 
 ## Related skills
 
 | Skill | Use for |
 |-------|---------|
-| `codemod-yaml-dsl` | `edit.language` field and step shape |
+| `codemod-luau-recipes` | `language` on edit ops |
 | `codemod-tree-sitter-queries` | query syntax, captures, predicates |
 | `codemod-recipe-authoring` | tree-sitter queries (Dart pack grammar) |
 | `codemod-mcp-playbook` | preview/apply workflow |

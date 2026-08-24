@@ -1,0 +1,7 @@
+return {
+	id = "column_type",
+	map = {
+		int = "int",
+		String = "String",
+	},
+}

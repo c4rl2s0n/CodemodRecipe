@@ -1,9 +1,8 @@
 use codemod_recipe_core::apply::atomic_apply::apply_operations_atomically;
 use std::collections::BTreeMap;
-use std::path::PathBuf;
 
-use crate::engine::post_execution::run_post_execution;
 use crate::engine::runner::{collect_recipe_changes, planned_snapshot_paths, resolve_recipe};
+use crate::lua_runtime::RunKind;
 use crate::preview::diff::build_file_preview_from_change;
 use crate::preview::patch_selector::{apply_changes_with_selection, parse_selection};
 use crate::preview::preview_token::{compute_preview_token, validate_preview_token};
@@ -254,17 +253,28 @@ pub fn handle_command(registry: &mut RecipeRegistry, cmd: HostCommand) -> serde_
 fn collect(
     registry: &RecipeRegistry,
     request: RecipeRequest<'_>,
+    kind: RunKind,
 ) -> Result<crate::engine::runner::CollectedChanges, String> {
     let (recipe, recipe_path) = resolve_recipe(registry, request.recipe_id, request.inline_recipe)?;
-    collect_recipe_changes(registry, &recipe, recipe_path.as_deref(), request.args)
+    collect_recipe_changes(
+        registry,
+        &recipe,
+        recipe_path.as_deref(),
+        request.args,
+        kind,
+    )
 }
 
-fn snapshot_paths_for_request(
-    registry: &RecipeRegistry,
-    request: RecipeRequest<'_>,
-) -> Result<Vec<PathBuf>, String> {
-    let (recipe, _) = resolve_recipe(registry, request.recipe_id, request.inline_recipe)?;
-    planned_snapshot_paths(registry, &recipe, request.args)
+fn preview_fail(recipe_key: String, error: String) -> serde_json::Value {
+    to_value(PreviewResponse {
+        ok: false,
+        error: Some(error),
+        recipe: Some(recipe_key),
+        preview_token: None,
+        files: None,
+        transcript: None,
+        apply_may_diverge: None,
+    })
 }
 
 fn preview(
@@ -277,27 +287,10 @@ fn preview(
     let recipe_id = request.recipe_id;
     let inline_recipe: Option<&serde_json::Value> = request.inline_recipe;
     let args = request.args.clone();
-    match collect(registry, request) {
+    match collect(registry, request, RunKind::Preview) {
         Ok(collected) => {
-            let snapshot_paths = match snapshot_paths_for_request(
-                registry,
-                RecipeRequest {
-                    recipe_id,
-                    inline_recipe,
-                    args: &args,
-                },
-            ) {
-                Ok(paths) => paths,
-                Err(error) => {
-                    return to_value(PreviewResponse {
-                        ok: false,
-                        error: Some(error),
-                        recipe: Some(recipe_key),
-                        preview_token: None,
-                        files: None,
-                    });
-                }
-            };
+            let snapshot_paths =
+                planned_snapshot_paths(&registry.workspace_root, &collected.changes);
             let path_refs: Vec<_> = snapshot_paths.iter().map(|p| p.as_path()).collect();
             let preview_token = compute_preview_token(recipe_id, inline_recipe, &args, &path_refs);
 
@@ -309,13 +302,7 @@ fn preview(
                 match build_file_preview_from_change(change, include_contents, snippet_lines) {
                     Ok(file) => files.push(file),
                     Err(error) => {
-                        return to_value(PreviewResponse {
-                            ok: false,
-                            error: Some(error.to_string()),
-                            recipe: Some(recipe_key),
-                            preview_token: None,
-                            files: None,
-                        });
+                        return preview_fail(recipe_key, error.to_string());
                     }
                 }
             }
@@ -326,21 +313,17 @@ fn preview(
                 recipe: Some(recipe_key),
                 preview_token: Some(preview_token),
                 files: Some(files),
+                transcript: Some(collected.transcript),
+                apply_may_diverge: Some(collected.saw_post_exec),
             })
         }
-        Err(error) => to_value(PreviewResponse {
-            ok: false,
-            error: Some(error),
-            recipe: Some(recipe_key),
-            preview_token: None,
-            files: None,
-        }),
+        Err(error) => preview_fail(recipe_key, error),
     }
 }
 
 fn diff(registry: &RecipeRegistry, request: RecipeRequest<'_>, path: &str) -> serde_json::Value {
     let recipe_key = request.recipe_key();
-    match collect(registry, request) {
+    match collect(registry, request, RunKind::Preview) {
         Ok(collected) => {
             let Some(change) = collected.changes.iter().find(|c| c.path() == path) else {
                 return to_value(DiffResponse {
@@ -385,15 +368,16 @@ fn apply(
     let inline_recipe = request.inline_recipe;
     let args = request.args.clone();
 
-    let snapshot_paths = match snapshot_paths_for_request(
+    let preview_collected = match collect(
         registry,
         RecipeRequest {
             recipe_id,
             inline_recipe,
             args: &args,
         },
+        RunKind::Preview,
     ) {
-        Ok(paths) => paths,
+        Ok(c) => c,
         Err(error) => {
             return to_value(ApplyResponse {
                 ok: false,
@@ -403,6 +387,8 @@ fn apply(
             });
         }
     };
+    let snapshot_paths =
+        planned_snapshot_paths(&registry.workspace_root, &preview_collected.changes);
     let path_refs: Vec<_> = snapshot_paths.iter().map(|p| p.as_path()).collect();
     if let Err(error) =
         validate_preview_token(recipe_id, inline_recipe, &args, preview_token, &path_refs)
@@ -422,6 +408,7 @@ fn apply(
             inline_recipe,
             args: &args,
         },
+        RunKind::Apply,
     ) {
         Ok(c) => c,
         Err(error) => {
@@ -434,7 +421,26 @@ fn apply(
         }
     };
 
-    let selection_map = parse_selection(selection);
+    if collected.saw_post_exec {
+        let applied_paths: Vec<String> = collected
+            .changes
+            .iter()
+            .filter(|c| !c.is_skipped())
+            .map(|c| c.path().to_string())
+            .collect();
+        return to_value(ApplyResponse {
+            ok: true,
+            error: None,
+            recipe: Some(recipe_key),
+            applied: Some(applied_paths),
+        });
+    }
+
+    let selection_map = if preview_collected.saw_post_exec {
+        BTreeMap::new()
+    } else {
+        parse_selection(selection)
+    };
     let workspace = registry.workspace_root.clone();
     let applied_changes = match apply_changes_with_selection(
         |relative| {
@@ -482,23 +488,6 @@ fn apply(
         .iter()
         .map(|c| c.relative_path.clone())
         .collect();
-
-    if let Err(error) = run_post_execution(
-        &collected.recipe.post_execution,
-        &args,
-        registry.maps_by_id(),
-        registry.vars_by_id(),
-        &registry.workspace_root,
-        registry.codemod_root(),
-        collected.recipe_path.as_deref(),
-    ) {
-        return to_value(ApplyResponse {
-            ok: false,
-            error: Some(error),
-            recipe: Some(recipe_key),
-            applied: None,
-        });
-    }
 
     to_value(ApplyResponse {
         ok: true,

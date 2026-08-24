@@ -1,18 +1,17 @@
 # codemod-mcp (Rust Host)
 
 MCP server that exposes the Rust `CodemodHost` protocol as tools for AI agents.
-Use it to preview and apply deterministic AST edits from registered YAML
-recipes (`.codemod/recipes/*.yaml`) or `inlineRecipe` payloads. Supports
-Dart, Rust, Java, Kotlin, SQL/SQLite, and 300+ languages via lazy-loaded
+Use it to preview and apply deterministic AST edits from registered **Luau
+recipes** (`.codemod/recipes/*.luau`) or `inlineRecipe` Luau source strings.
+Supports Dart, Rust, Java, Kotlin, SQL/SQLite, and 300+ languages via lazy-loaded
 tree-sitter grammars.
 
-**Agent playbook:** `.cursor/skills/codemod-mcp/reference.md`  
+**Agent playbook:** `.agents/skills/codemod-mcp-playbook/`  
+**Recipe API:** `.agents/skills/codemod-luau-recipes/`  
 **Templates:** [recipe-templates.md](recipe-templates.md)  
-**Multi-language:** [language-support.md](language-support.md) and skill `codemod-languages`  
-**Query language:** [tree-sitter-queries.md](tree-sitter-queries.md) and skill `codemod-tree-sitter-queries`
+**Multi-language:** [language-support.md](language-support.md)
 
 ## Quick start
-
 
 Build the Rust MCP server:
 
@@ -20,7 +19,6 @@ Build the Rust MCP server:
 cd /path/to/codemod_recipe
 cargo build -q --manifest-path rust/Cargo.toml -p codemod_recipe_host --bin codemod_mcp --release
 ```
-
 
 Run the Rust MCP server:
 
@@ -35,28 +33,24 @@ The server speaks MCP over stdio. It appears idle when healthy.
 
 ## Target workspace layout
 
-In the target workspace:
-
 ```text
 .codemod/
-  recipes/    # recommended for recipes (*.yaml with steps)
-  maps/       # recommended for maps (id + map:)
-  variables/  # recommended for variables (id + values:)
-  templates/  # optional (create.templateFile)
+  recipes/    # Luau recipe modules (*.luau / *.lua)
+  maps/       # Luau map modules (id + map table)
+  variables/  # Luau variable modules (id + values table)
+  queries/    # Luau query libraries (id + queries table)
+  templates/  # optional (renderFileTemplate)
 ```
 
-Discovery is schema-based under `.codemod/` (dirs are convention only).
+Discovery scans `.codemod/` for Luau modules with the expected return shapes.
 
-You can also use inline-only workflows with `inlineRecipe`.
+You can also use inline-only workflows with `inlineRecipe` (Luau source string).
 
-File-backed recipe resources use the shared safe resolver in
-`rust/crates/core/src/resource_path.rs`:
+Path resolution (`rust/crates/core/src/resource_path.rs`):
 
 - workspace mutation targets resolve exactly under the workspace root
-- recipe resources (`query` `.scm`, `create.templateFile`, `postExecution`,
-  template `extends` / `include`) resolve recipe-local first, then `.codemod/`
+- recipe resources (`.scm`, templates, postExecution scripts) resolve recipe-local first, then `.codemod/`
 - bare query names also try `queries/` under each root
-- YAML query libraries remain id-based under `.codemod/queries/*.yaml`
 
 ## Setup in Cursor
 
@@ -93,12 +87,11 @@ Reload MCP servers and call `list_recipes` to verify connectivity.
 
 ## Multi-language support
 
-- Set `language:` on `edit` steps for non-Dart files (or to be explicit).
-- Queries must use node names for that grammar — they do not port across languages.
-- `.sql` paths default to `sqlite`; use `language: sql` for generic SQL or `--sql-default sql`.
-- First use of a language may download its parser (cached under `~/.cache/tree-sitter-language-pack`).
+- Set `language` on edit specs (`c:insert`, etc.) for non-Dart files.
+- Queries must use node names for that grammar.
+- `.sql` paths default to `sqlite`; pass `language = "sql"` or `--sql-default sql`.
 
-See [language-support.md](language-support.md) for language ids, SQL dialects, Dart `class_definition` notes, and troubleshooting.
+See [language-support.md](language-support.md).
 
 ## Tools
 
@@ -106,26 +99,31 @@ All tools return a JSON string. Parse it, then check `ok`.
 
 | Tool | Purpose |
 |------|---------|
-| `bootstrap_project` | Install agent skills, rules, and `.codemod/` scaffolding (`edit_policy`, optional `companions`) |
+| `bootstrap_project` | Install agent skills, rules, `.codemod/` scaffolding |
 | `list_recipes` | Discover registered recipe ids and argument schemas |
 | `describe_recipe` | Show metadata/args for one recipe |
-| `validate_recipes` | Reload + validate recipes/maps (optional `recipe` id) |
-| `preview_recipe` | Dry-run recipe; returns `previewToken` |
-| `apply_recipe` | Apply recipe atomically; requires `previewToken` |
-| `dump_ast` | Dump tree-sitter AST (`path` and/or `source`, optional `language`) |
-| `debug_query` | Run a query; return match roots and captures (`query` required) |
+| `validate_recipes` | Reload + validate Luau recipes/maps/variables/queries |
+| `preview_recipe` | Dry-run; returns `previewToken` + transcript |
+| `apply_recipe` | Apply atomically; requires `previewToken` |
+| `dump_ast` | Dump tree-sitter AST |
+| `debug_query` | Run a query; return match roots and captures |
 | `generate_query` | Starter query from byte `start`/`end` in a file |
 | `resolve_static_path` | Jinja-render a path with empty args (static paths only) |
 
 ## End-to-end workflow
 
-0. `bootstrap_project` (once per workspace; default soft `edit_policy: "recommend"`, optional `companions`)
-1. `validate_recipes` after recipe edits (or VS Code **Validate Recipes**)
-2. `list_recipes`
-3. `describe_recipe`
-4. `preview_recipe` (save `previewToken`)
-5. `apply_recipe` with the same recipe/args and that token
-6. Optional: preview again to verify idempotency (`files: []`)
+0. `bootstrap_project` (once per workspace)
+1. `validate_recipes` after recipe edits
+2. `list_recipes` / `describe_recipe`
+3. `preview_recipe` (save `previewToken`; inspect `files` + `transcript`)
+4. `apply_recipe` with the same recipe/args and that token
+5. Optional: preview again to verify idempotency (`files: []`)
+
+## Preview vs apply
+
+- Both run `apply(c)`. Preview uses a WorkingTree; **postExec is skipped** (listed in transcript).
+- Apply **re-runs** Luau and flushes before postExec / `postExecution`.
+- `previewToken` = hash(recipe + args + starting file contents).
 
 ## Registered recipe examples
 
@@ -133,11 +131,9 @@ All tools return a JSON string. Parse it, then check `ok`.
 
 ```json
 {
-  "recipe": "add_log_line",
+  "recipe": "insert_log_line",
   "args": {
-    "file": "lib/settings.dart",
-    "className": "Settings",
-    "methodName": "update"
+    "file": "lib/settings.dart"
   },
   "snippetLines": 5
 }
@@ -147,158 +143,50 @@ All tools return a JSON string. Parse it, then check `ok`.
 
 ```json
 {
-  "recipe": "add_log_line",
+  "recipe": "insert_log_line",
   "args": {
-    "file": "lib/settings.dart",
-    "className": "Settings",
-    "methodName": "update"
+    "file": "lib/settings.dart"
   },
   "previewToken": "<from preview_recipe>",
   "selection": {
     "files": {
-      "lib/settings.dart": {
-        "include": true
-      }
+      "lib/settings.dart": { "include": true }
     }
   }
 }
 ```
 
-`selection` is optional; omit to apply all files.
+## Inline recipe (`inlineRecipe`)
 
-Validate all recipes:
-
-```json
-{}
-```
-
-Validate one recipe:
-
-```json
-{ "recipe": "scaffold_feature" }
-```
-
-Host stdio equivalent: `{ "command": "validate" }` or `{ "command": "validate", "recipe": "scaffold_feature" }`.
-
-## Inline recipe examples (v2 shape)
-
-`inlineRecipe` follows the Rust YAML model:
-
-- top-level: `id`, `steps`, optional `args`, `maps`, `postExecution`
-- edit step: `edit.path`, optional `edit.language`, `edit.ops[]`
-- ops: `insert`, `replace`, `remove`
-
-### Inline insert
+`inlineRecipe` is a **Luau source string** that `return`s a recipe table with `apply`:
 
 ```json
 {
-  "inlineRecipe": {
-    "id": "__inline_insert_log",
-    "steps": [
-      {
-        "edit": {
-          "path": "lib/settings.dart",
-          "ops": [
-            {
-              "insert": {
-                "query": "(class_definition name: (identifier) @className body: (class_body (method_signature (function_signature name: (identifier) @methodName)) (function_body (block) @body)) (#eq? @className \"Settings\") (#eq? @methodName \"update\"))",
-                "capture": "body",
-                "anchor": "end",
-                "text": "    print('codemod');\\n"
-              }
-            }
-          ]
-        }
-      }
-    ]
-  }
+  "inlineRecipe": "return {\n  id = \"__inline_insert\",\n  apply = function(c)\n    c:insert({\n      path = \"lib/settings.dart\",\n      query = \"(class_definition name: (identifier) @className body: (class_body (method_signature (function_signature name: (identifier) @methodName)) (function_body (block) @body)) (#eq? @className \\\"Settings\\\") (#eq? @methodName \\\"update\\\"))\",\n      capture = \"body\",\n      anchor = \"end\",\n      text = \"    print('codemod');\\n\",\n    })\n  end,\n}"
 }
 ```
 
-### Inline replace
+Field rules on edit specs (same as registered recipes):
 
-```json
-{
-  "inlineRecipe": {
-    "id": "__inline_replace_count",
-    "steps": [
-      {
-        "edit": {
-          "path": "lib/settings.dart",
-          "ops": [
-            {
-              "replace": {
-                "query": "(class_definition name: (identifier) @className body: (class_body (declaration (initialized_identifier_list (initialized_identifier (identifier) @fieldName))) @member) (#eq? @className \"Settings\") (#eq? @fieldName \"count\"))",
-                "capture": "member",
-                "text": "  final int count = 0;"
-              }
-            }
-          ]
-        }
-      }
-    ]
-  }
-}
-```
-
-### Inline remove
-
-```json
-{
-  "inlineRecipe": {
-    "id": "__inline_remove_count",
-    "steps": [
-      {
-        "edit": {
-          "path": "lib/settings.dart",
-          "ops": [
-            {
-              "remove": {
-                "query": "(class_definition name: (identifier) @className body: (class_body (declaration (initialized_identifier_list (initialized_identifier (identifier) @fieldName))) @member) (#eq? @className \"Settings\") (#eq? @fieldName \"count\"))",
-                "capture": "member"
-              }
-            }
-          ]
-        }
-      }
-    ]
-  }
-}
-```
-
-### Field rules
-
-- `insert`: requires `query`, `capture`, `anchor` (`start` or `end`), `text`
-- `replace`: requires `query`, `capture`, `text`
-- `remove`: requires `query`, `capture`
-- `includeLeadingTrivia` is optional for `replace` and `remove`
-
-## Create/delete in v2 recipes
-
-You can combine file creation/deletion with edit ops in one recipe:
-
-- Create example: `test/fixtures/scaffold_project/.codemod/recipes/create_repository.yaml`
-- Delete example: `test/fixtures/rust_oracle/delete_legacy.recipe.yaml`
-- Design patterns: bootstrap skill `.agents/skills/codemod-recipe-design-patterns/` (or [recipe-design-patterns.md](recipe-design-patterns.md) stub)
+- `insert`: `path`, `query`, `capture`, `anchor` (`start`|`end`), `text`
+- `replace`: `path`, `query`, `capture`, `text`
+- `remove`: `path`, `query`, `capture`
 
 ## Troubleshooting
 
 | Symptom | Action |
 |---------|--------|
 | `Unknown recipe` | Call `list_recipes`, verify id and workspace root |
-| `Missing previewToken` | Call `preview_recipe` first and pass token to apply |
-| `Stale previewToken` | Re-run preview after any file change |
-| `Invalid node type "class_declaration"` | Use `class_definition` in Dart queries — see [language-support.md](language-support.md) |
-| `language not supported` | Set valid `language:` id; see skill `codemod-languages` |
-| `file type not supported` | Set `language:` or use a known extension; see skill `codemod-languages` |
-| Empty `files` in preview | Query/capture matched nothing, or recipe already applied |
-| `Missing required arguments: ...` | Supply required args from `describe_recipe` |
+| `Missing previewToken` | Call `preview_recipe` first |
+| `Stale previewToken` | Re-run preview after file changes |
+| `Invalid node type "class_declaration"` | Use `class_definition` in Dart queries |
+| `language not supported` | Set valid `language` on the op |
+| Empty `files` in preview | Query matched nothing, or recipe already applied |
+| Apply differs from preview | Expected when postExec ran on apply only — check transcript |
 
 ## Related docs
 
-- [tree-sitter-queries.md](tree-sitter-queries.md) — tree-sitter query language for recipes
-- [language-support.md](language-support.md) — multi-language tree-sitter support
-- `docs/recipe-design-patterns.md` — human stub pointing to agent skills
-- `docs/new-project-rust-mcp.md`
-- `.cursor/skills/codemod-mcp/reference.md`
-- `README.md`
+- [writing-recipes.md](writing-recipes.md) — Luau authoring
+- [new-project-rust-mcp.md](new-project-rust-mcp.md)
+- [tree-sitter-queries.md](tree-sitter-queries.md)
+- [language-support.md](language-support.md)

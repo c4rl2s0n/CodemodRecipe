@@ -14,6 +14,7 @@ import {
   type PersistedWebviewState,
   type RecipeSchema,
   type RecipeViewState,
+  type TranscriptEvent,
 } from '../shared';
 import type { ExtensionClient } from '../extensionClient';
 import type { ExtensionInbound } from '../extensionInbound';
@@ -29,6 +30,8 @@ export function useRunnerController(params: {
 }) {
   const argValues = ref<Record<string, string>>({});
   const files = ref<FilePreview[]>([]);
+  const transcript = ref<TranscriptEvent[]>([]);
+  const applyMayDiverge = ref(false);
   const fileSelections = ref<FileCardSelection[]>([]);
   const activeChangeIndex = ref(0);
   const showReview = ref(false);
@@ -54,7 +57,7 @@ export function useRunnerController(params: {
       lastPreviewSuccess.value &&
       missing.length === 0 &&
       !previewOutOfDate &&
-      files.value.length > 0
+      (files.value.length > 0 || transcript.value.length > 0)
     );
   });
 
@@ -64,6 +67,8 @@ export function useRunnerController(params: {
       activeTab: params.activeTab.value as PersistedWebviewState['activeTab'],
       argValues: { ...argValues.value },
       files: files.value,
+      transcript: transcript.value,
+      applyMayDiverge: applyMayDiverge.value,
       activeChangeIndex: activeChangeIndex.value,
       lastPreviewArgsKey: lastPreviewArgsKey.value,
       lastPreviewSuccess: lastPreviewSuccess.value,
@@ -79,11 +84,15 @@ export function useRunnerController(params: {
     params.setActiveTab(persisted.activeTab);
     argValues.value = { ...persisted.argValues };
     files.value = persisted.files;
+    transcript.value = persisted.transcript ?? [];
+    applyMayDiverge.value = persisted.applyMayDiverge ?? false;
     fileSelections.value = defaultFileSelections(persisted.files);
     activeChangeIndex.value = persisted.activeChangeIndex;
     lastPreviewArgsKey.value = persisted.lastPreviewArgsKey;
     lastPreviewSuccess.value = persisted.lastPreviewSuccess;
-    showReview.value = persisted.files.length > 0 && persisted.lastPreviewSuccess;
+    showReview.value =
+      persisted.lastPreviewSuccess &&
+      (persisted.files.length > 0 || (persisted.transcript ?? []).length > 0);
   }
 
   function setPreviewStatus(text: string, kind: 'warn' | 'ok' | '' = '') {
@@ -137,6 +146,8 @@ export function useRunnerController(params: {
 
   function clearPreviewState(): void {
     files.value = [];
+    transcript.value = [];
+    applyMayDiverge.value = false;
     fileSelections.value = [];
     showReview.value = false;
     activeChangeIndex.value = 0;
@@ -193,6 +204,8 @@ export function useRunnerController(params: {
       latestHandledRequestId.value = msg.requestId;
     }
     files.value = msg.files;
+    transcript.value = msg.transcript ?? [];
+    applyMayDiverge.value = msg.applyMayDiverge ?? false;
     fileSelections.value = defaultFileSelections(msg.files);
     activeChangeIndex.value = 0;
     lastPreviewSuccess.value = true;
@@ -201,7 +214,7 @@ export function useRunnerController(params: {
         ? msg.argsKey
         : argsKey(collectArgs(params.recipe.value, argValues.value));
     previewInFlight.value = false;
-    if (!msg.files.length) {
+    if (!msg.files.length && !(msg.transcript ?? []).length) {
       setPreviewStatus('');
       showError('No changes produced by this recipe.');
       showReview.value = false;
@@ -221,6 +234,8 @@ export function useRunnerController(params: {
     params.inbound.on(EXTENSION_TO_WEBVIEW.applyResult, () => {
       showReview.value = false;
       files.value = [];
+      transcript.value = [];
+      applyMayDiverge.value = false;
       fileSelections.value = [];
       persistUiState();
     }),
@@ -264,21 +279,29 @@ export function useRunnerController(params: {
     params.setActiveTab(persisted.activeTab);
     argValues.value = persisted.argValues;
     files.value = persisted.files;
+    transcript.value = persisted.transcript ?? [];
+    applyMayDiverge.value = persisted.applyMayDiverge ?? false;
     fileSelections.value = defaultFileSelections(persisted.files);
     activeChangeIndex.value = persisted.activeChangeIndex;
     lastPreviewArgsKey.value = persisted.lastPreviewArgsKey;
     lastPreviewSuccess.value = persisted.lastPreviewSuccess;
-    showReview.value = persisted.files.length > 0 && persisted.lastPreviewSuccess;
+    showReview.value =
+      persisted.lastPreviewSuccess &&
+      (persisted.files.length > 0 || (persisted.transcript ?? []).length > 0);
     lastSyncedRecipeId.value = persisted.recipeId;
   }
 
-  watch([() => params.activeTab.value, argValues, files, activeChangeIndex], persistUiState, {
-    deep: true,
-  });
+  watch(
+    [() => params.activeTab.value, argValues, files, transcript, applyMayDiverge, activeChangeIndex],
+    persistUiState,
+    { deep: true }
+  );
 
   return {
     argValues,
     files,
+    transcript,
+    applyMayDiverge,
     fileSelections,
     activeChangeIndex,
     showReview,

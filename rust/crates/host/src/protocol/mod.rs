@@ -298,6 +298,10 @@ pub struct PreviewResponse {
     pub preview_token: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub files: Option<Vec<FilePreview>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub transcript: Option<Vec<codemod_recipe_lua::TranscriptEvent>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub apply_may_diverge: Option<bool>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -413,6 +417,8 @@ mod tests {
             recipe: Some("r".to_string()),
             preview_token: Some("abc".to_string()),
             files: None,
+            transcript: None,
+            apply_may_diverge: None,
         };
         let value = serde_json::to_value(&resp).unwrap();
         assert_eq!(value["previewToken"], "abc");

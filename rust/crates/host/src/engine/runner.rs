@@ -1,33 +1,32 @@
-use codemod_recipe_core::apply::file_change::{FileChange, IfExists, IfMissing};
-use codemod_recipe_engine::engine::{EngineError, QueryContext};
-use codemod_recipe_engine::LanguageRegistry;
-use codemod_recipe_yaml::model::{
-    CreateStep, EditStep, IfExistsStrategy, IfMissingStrategy, Recipe, ScopedStep, Step,
-};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
 
-use crate::engine::step_condition::step_conditions_pass;
-use crate::engine::working_tree::WorkingTree;
+use codemod_recipe_core::apply::file_change::FileChange;
+use codemod_recipe_lua::load::load_recipe;
+use codemod_recipe_lua::model::Recipe;
+
+use crate::lua_runtime::{run_recipe, RecipeRunResult, RunKind};
 use crate::recipe::args;
-use crate::recipe::registry::{render_recipe_templates_with_root, RecipeRegistry};
-use crate::recipe::render_context::RecipeRenderContext;
+use crate::recipe::registry::RecipeRegistry;
 use crate::sandbox::path_sandbox::PathSandbox;
-use crate::template::{render_template_file, PathExistsFn};
-
-fn engine_error_to_string(error: EngineError) -> String {
-    error.to_string()
-}
 
 pub struct CollectedChanges {
     pub recipe: Recipe,
     pub recipe_path: Option<PathBuf>,
     pub changes: Vec<FileChange>,
+    pub transcript: Vec<codemod_recipe_lua::TranscriptEvent>,
+    pub saw_post_exec: bool,
 }
 
 pub fn parse_inline_recipe(value: &serde_json::Value) -> Result<Recipe, String> {
-    serde_json::from_value(value.clone()).map_err(|e| format!("Invalid inlineRecipe: {e}"))
+    let source = if let Some(s) = value.as_str() {
+        s.to_string()
+    } else if let Some(s) = value.get("source").and_then(|v| v.as_str()) {
+        s.to_string()
+    } else {
+        return Err("inlineRecipe must be a Luau source string".to_string());
+    };
+    load_recipe(&source, "<inline>").map_err(|e| e.to_string())
 }
 
 pub fn resolve_recipe(
@@ -37,344 +36,51 @@ pub fn resolve_recipe(
 ) -> Result<(Recipe, Option<PathBuf>), String> {
     match (recipe_id, inline_recipe) {
         (Some(id), None) => registry.load_recipe_ast(id).map(|(r, p)| (r, Some(p))),
-        (None, Some(value)) => {
-            let recipe = parse_inline_recipe(value)?;
-            Ok((recipe, None))
-        }
+        (None, Some(value)) => Ok((parse_inline_recipe(value)?, None)),
         (Some(_), Some(_)) => Err("Provide either recipe or inlineRecipe, not both".to_string()),
         (None, None) => Err("Missing recipe or inlineRecipe".to_string()),
     }
 }
 
-pub fn validate_required_args(
-    recipe: &Recipe,
-    caller: &BTreeMap<String, String>,
-) -> Result<(), String> {
-    args::validate_required_args(recipe, caller).map(|_| ())
-}
-
 pub fn collect_recipe_changes(
     registry: &RecipeRegistry,
     recipe: &Recipe,
-    recipe_path: Option<&Path>,
+    _recipe_path: Option<&Path>,
     args: &BTreeMap<String, String>,
+    kind: RunKind,
 ) -> Result<CollectedChanges, String> {
     let effective = args::validate_required_args(recipe, args)?;
-    let merged_maps = registry.merged_maps_for(recipe);
-    let vars = registry.vars_by_id();
-    let rendered = render_recipe_templates_with_root(
+    let mut maps = registry.maps_by_id().clone();
+    for (k, v) in &recipe.maps {
+        maps.entry(k.clone()).or_insert_with(|| v.clone());
+    }
+    let mut queries = registry.queries_by_id().clone();
+    queries.extend(recipe.queries.clone());
+    let result: RecipeRunResult = run_recipe(
+        kind,
         recipe,
         &effective,
-        &merged_maps,
-        vars,
-        Some(registry.codemod_root()),
-        Some(registry),
-        recipe_path,
+        maps,
+        registry.vars_by_id().clone(),
+        queries,
+        registry.recipes_map().clone(),
+        registry.workspace_root.clone(),
+        registry.language_registry.config().clone(),
+        registry.codemod_root().to_path_buf(),
     )?;
-
-    let sandbox = PathSandbox::new(registry.workspace_root.clone());
-    let mut tree = WorkingTree::new();
-    let mut language_registry = LanguageRegistry::with_config(registry.language_config.clone());
-    let ctx = QueryContext {
-        recipe_file: recipe_path,
-        codemod_root: registry.codemod_root(),
-    };
-    let render_ctx = RecipeRenderContext::with_registry(
-        &rendered,
-        registry,
-        recipe_path,
-        &effective,
-        &merged_maps,
-        vars,
-    );
-
-    apply_steps(
-        &rendered.steps,
-        &mut tree,
-        &sandbox,
-        &mut language_registry,
-        &ctx,
-        &render_ctx,
-        &effective,
-        &merged_maps,
-        vars,
-    )?;
-
     Ok(CollectedChanges {
-        recipe: rendered,
-        recipe_path: recipe_path.map(Path::to_path_buf),
-        changes: tree.finalize(),
+        recipe: recipe.clone(),
+        recipe_path: recipe.path.clone(),
+        changes: result.changes,
+        transcript: result.transcript,
+        saw_post_exec: result.saw_post_exec,
     })
 }
 
-#[allow(clippy::too_many_arguments)]
-fn apply_steps(
-    steps: &[Step],
-    tree: &mut WorkingTree,
-    sandbox: &PathSandbox,
-    language_registry: &mut LanguageRegistry,
-    ctx: &QueryContext<'_>,
-    render_ctx: &RecipeRenderContext<'_>,
-    args: &BTreeMap<String, String>,
-    maps: &BTreeMap<String, BTreeMap<String, String>>,
-    vars: &BTreeMap<String, BTreeMap<String, String>>,
-) -> Result<(), String> {
-    for step in steps {
-        match step {
-            Step::Scoped(scoped) => {
-                apply_scoped_step(
-                    scoped,
-                    tree,
-                    sandbox,
-                    language_registry,
-                    ctx,
-                    render_ctx,
-                    args,
-                    maps,
-                    vars,
-                )?;
-            }
-            Step::Edit(edit) => {
-                if !conditions_pass(
-                    edit.if_expr.as_deref(),
-                    edit.if_not.as_deref(),
-                    args,
-                    maps,
-                    vars,
-                    tree,
-                    sandbox,
-                )? {
-                    continue;
-                }
-                apply_edit_step(edit, tree, sandbox, language_registry, ctx, render_ctx)?;
-            }
-            Step::Create(create) => {
-                if !conditions_pass(
-                    create.if_expr.as_deref(),
-                    create.if_not.as_deref(),
-                    args,
-                    maps,
-                    vars,
-                    tree,
-                    sandbox,
-                )? {
-                    continue;
-                }
-                apply_create_to_tree(tree, sandbox, create, render_ctx)?;
-            }
-            Step::Delete(delete) => {
-                if !conditions_pass(
-                    delete.if_expr.as_deref(),
-                    delete.if_not.as_deref(),
-                    args,
-                    maps,
-                    vars,
-                    tree,
-                    sandbox,
-                )? {
-                    continue;
-                }
-                let if_missing = match delete.if_missing {
-                    IfMissingStrategy::Fail => IfMissing::Fail,
-                    IfMissingStrategy::Skip => IfMissing::Skip,
-                };
-                tree.delete(sandbox, &delete.path, if_missing)?;
-            }
-            Step::RecipeRef(_) => {}
-            Step::Unknown(kind, _) => {
-                return Err(format!("Unsupported step kind: {kind}"));
-            }
-        }
-    }
-    Ok(())
-}
-
-#[allow(clippy::too_many_arguments)]
-fn apply_scoped_step(
-    scoped: &ScopedStep,
-    tree: &mut WorkingTree,
-    sandbox: &PathSandbox,
-    language_registry: &mut LanguageRegistry,
-    ctx: &QueryContext<'_>,
-    render_ctx: &RecipeRenderContext<'_>,
-    args: &BTreeMap<String, String>,
-    maps: &BTreeMap<String, BTreeMap<String, String>>,
-    vars: &BTreeMap<String, BTreeMap<String, String>>,
-) -> Result<(), String> {
-    if !conditions_pass(
-        scoped.if_expr.as_deref(),
-        scoped.if_not.as_deref(),
-        args,
-        maps,
-        vars,
-        tree,
-        sandbox,
-    )? {
-        return Ok(());
-    }
-    apply_steps(
-        &scoped.steps,
-        tree,
-        sandbox,
-        language_registry,
-        ctx,
-        render_ctx,
-        args,
-        maps,
-        vars,
-    )
-}
-
-fn conditions_pass(
-    if_expr: Option<&str>,
-    if_not: Option<&str>,
-    args: &BTreeMap<String, String>,
-    maps: &BTreeMap<String, BTreeMap<String, String>>,
-    vars: &BTreeMap<String, BTreeMap<String, String>>,
-    tree: &WorkingTree,
-    sandbox: &PathSandbox,
-) -> Result<bool, String> {
-    if if_expr.is_none() && if_not.is_none() {
-        return Ok(true);
-    }
-    let path_exists = path_exists_checker(tree, sandbox);
-    step_conditions_pass(if_expr, if_not, args, maps, vars, path_exists)
-}
-
-fn path_exists_checker(tree: &WorkingTree, sandbox: &PathSandbox) -> PathExistsFn {
-    let staged = tree.staged_existence();
-    let root = sandbox.workspace_root().to_path_buf();
-    Arc::new(move |relative: &str| {
-        if let Some(exists) = staged.get(relative) {
-            return *exists;
-        }
-        match codemod_recipe_core::resource_path::resolve_under_root(&root, relative) {
-            Ok(absolute) => absolute.is_file(),
-            Err(_) => false,
-        }
-    })
-}
-
-fn apply_edit_step(
-    edit: &EditStep,
-    tree: &mut WorkingTree,
-    sandbox: &PathSandbox,
-    language_registry: &mut LanguageRegistry,
-    ctx: &QueryContext<'_>,
-    render_ctx: &RecipeRenderContext<'_>,
-) -> Result<(), String> {
-    let relative = edit.path.clone();
-    let engine = language_registry
-        .resolve_for_edit(edit.language.as_deref(), &relative)
-        .map_err(engine_error_to_string)?;
-    tree.apply_edit(sandbox, &relative, |source| {
-        crate::engine::edit_apply::apply_edit_step_with_guards(
-            engine, ctx, edit, render_ctx, source,
-        )
-        .map(|opt| opt.unwrap_or_else(|| source.to_string()))
-    })?;
-    Ok(())
-}
-
-fn apply_create_to_tree(
-    tree: &mut WorkingTree,
-    sandbox: &PathSandbox,
-    create: &CreateStep,
-    ctx: &RecipeRenderContext<'_>,
-) -> Result<(), String> {
-    let if_exists = match create.if_exists {
-        IfExistsStrategy::Fail => IfExists::Fail,
-        IfExistsStrategy::Skip => IfExists::Skip,
-    };
-
-    // When skipping an existing file we never need template content.
-    let absolute = sandbox
-        .resolve_workspace_relative(&create.path)
-        .map_err(|e| e.message)?;
-    if absolute.exists() && if_exists == IfExists::Skip {
-        return tree.create(sandbox, &create.path, String::new(), if_exists);
-    }
-    if absolute.exists() && if_exists == IfExists::Fail {
-        return Err(format!("File already exists: {}", create.path));
-    }
-
-    let content = if let Some(inline) = &create.template {
-        inline.clone()
-    } else if let Some(file) = &create.template_file {
-        let codemod_root = ctx
-            .codemod_root
-            .or_else(|| ctx.registry.map(RecipeRegistry::codemod_root))
-            .ok_or_else(|| "create step missing codemod root".to_string())?;
-        render_template_file(
-            file,
-            ctx.args,
-            ctx.maps,
-            ctx.vars,
-            codemod_root,
-            ctx.recipe_file,
-        )?
-    } else {
-        return Err("create step missing template".to_string());
-    };
-
-    tree.create(sandbox, &create.path, content, if_exists)
-}
-
-pub fn planned_snapshot_paths(
-    registry: &RecipeRegistry,
-    recipe: &Recipe,
-    args: &BTreeMap<String, String>,
-) -> Result<Vec<PathBuf>, String> {
-    let merged_maps = registry.merged_maps_for(recipe);
-    let effective = crate::recipe::args::resolve_effective_args(recipe, args);
-    let rendered = render_recipe_templates_with_root(
-        recipe,
-        &effective,
-        &merged_maps,
-        registry.vars_by_id(),
-        Some(registry.codemod_root()),
-        Some(registry),
-        None,
-    )?;
-    let sandbox = PathSandbox::new(registry.workspace_root.clone());
-    let mut paths = Vec::new();
-    collect_planned_paths(&rendered.steps, &sandbox, &mut paths)?;
-    paths.sort();
-    paths.dedup();
-    Ok(paths)
-}
-
-fn collect_planned_paths(
-    steps: &[Step],
-    sandbox: &PathSandbox,
-    paths: &mut Vec<PathBuf>,
-) -> Result<(), String> {
-    for step in steps {
-        match step {
-            Step::Edit(edit) => {
-                paths.push(
-                    sandbox
-                        .resolve_workspace_relative(&edit.path)
-                        .map_err(|e| e.message)?,
-                );
-            }
-            Step::Create(create) => {
-                paths.push(
-                    sandbox
-                        .resolve_workspace_relative(&create.path)
-                        .map_err(|e| e.message)?,
-                );
-            }
-            Step::Delete(delete) => {
-                paths.push(
-                    sandbox
-                        .resolve_workspace_relative(&delete.path)
-                        .map_err(|e| e.message)?,
-                );
-            }
-            Step::Scoped(scoped) => collect_planned_paths(&scoped.steps, sandbox, paths)?,
-            Step::RecipeRef(_) | Step::Unknown(_, _) => {}
-        }
-    }
-    Ok(())
+pub fn planned_snapshot_paths(workspace: &Path, changes: &[FileChange]) -> Vec<PathBuf> {
+    let sandbox = PathSandbox::new(workspace.to_path_buf());
+    changes
+        .iter()
+        .filter_map(|c| sandbox.resolve_workspace_relative(c.path()).ok())
+        .collect()
 }

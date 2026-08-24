@@ -1,6 +1,7 @@
 //! Query chain + query library resolution.
 
-use codemod_recipe_host::engine::runner::collect_recipe_changes;
+use codemod_recipe_host::engine::runner::{collect_recipe_changes, parse_inline_recipe};
+use codemod_recipe_host::lua_runtime::RunKind;
 use codemod_recipe_host::recipe::registry::RecipeRegistry;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
@@ -16,33 +17,33 @@ fn chained_query_inserts_into_method_body() {
     let mut registry = RecipeRegistry::new(workspace.clone(), codemod);
     registry.reload();
 
-    assert!(registry.queries_by_id().contains_key("dart_queries"));
+    assert!(registry
+        .queries_by_id()
+        .contains_key("dart_queries.class_named"));
 
-    let inline = serde_json::json!({
-        "id": "chain_test",
-        "args": [
-            { "name": "className", "required": true },
-            { "name": "methodName", "required": true }
-        ],
-        "steps": [{
-            "edit": {
-                "path": "lib/foo.dart",
-                "ops": [{
-                    "insert": {
-                        "query": [
-                            "dart_queries.class_named",
-                            "dart_queries.method_body"
-                        ],
-                        "capture": "body",
-                        "anchor": "end",
-                        "text": "    print('codemod');\n"
-                    }
-                }]
-            }
-        }]
-    });
+    let inline = r#"
+return {
+  id = "chain_test",
+  args = {
+    { name = "className", required = true },
+    { name = "methodName", required = true },
+  },
+  apply = function(c)
+    local classQuery = c:applyTemplate({ template = c:queryLib("dart_queries.class_named") })
+    local methodQuery = c:applyTemplate({ template = c:queryLib("dart_queries.method_body") })
+    c:insert({
+      path = "lib/foo.dart",
+      language = "dart",
+      query = { classQuery, methodQuery },
+      capture = "body",
+      anchor = "end",
+      text = "    print('codemod');\n",
+    })
+  end,
+}
+"#;
 
-    let recipe = codemod_recipe_host::engine::runner::parse_inline_recipe(&inline).unwrap();
+    let recipe = parse_inline_recipe(&serde_json::Value::String(inline.to_string())).unwrap();
     let args = BTreeMap::from([
         ("className".to_string(), "Settings".to_string()),
         ("methodName".to_string(), "update".to_string()),
@@ -52,7 +53,8 @@ fn chained_query_inserts_into_method_body() {
     std::fs::create_dir_all(workspace.join("lib")).ok();
     std::fs::write(workspace.join("lib/foo.dart"), source).unwrap();
 
-    let collected = collect_recipe_changes(&registry, &recipe, None, &args).unwrap();
+    let collected =
+        collect_recipe_changes(&registry, &recipe, None, &args, RunKind::Preview).unwrap();
     let modified = collected
         .changes
         .iter()
@@ -71,31 +73,28 @@ fn chained_query_mixed_library_ref_and_inline_step() {
     let mut registry = RecipeRegistry::new(workspace.clone(), codemod);
     registry.reload();
 
-    let inline = serde_json::json!({
-        "id": "chain_mixed",
-        "args": [
-            { "name": "className", "required": true },
-            { "name": "methodName", "required": true }
-        ],
-        "steps": [{
-            "edit": {
-                "path": "lib/foo.dart",
-                "ops": [{
-                    "insert": {
-                        "query": [
-                            "dart_queries.class_named",
-                            "(function_body (block) @body)"
-                        ],
-                        "capture": "body",
-                        "anchor": "end",
-                        "text": "    print('mixed');\n"
-                    }
-                }]
-            }
-        }]
-    });
+    let inline = r#"
+return {
+  id = "chain_mixed",
+  args = {
+    { name = "className", required = true },
+    { name = "methodName", required = true },
+  },
+  apply = function(c)
+    local classQuery = c:applyTemplate({ template = c:queryLib("dart_queries.class_named") })
+    c:insert({
+      path = "lib/foo.dart",
+      language = "dart",
+      query = { classQuery, "(function_body (block) @body)" },
+      capture = "body",
+      anchor = "end",
+      text = "    print('mixed');\n",
+    })
+  end,
+}
+"#;
 
-    let recipe = codemod_recipe_host::engine::runner::parse_inline_recipe(&inline).unwrap();
+    let recipe = parse_inline_recipe(&serde_json::Value::String(inline.to_string())).unwrap();
     let args = BTreeMap::from([
         ("className".to_string(), "Settings".to_string()),
         ("methodName".to_string(), "update".to_string()),
@@ -105,7 +104,8 @@ fn chained_query_mixed_library_ref_and_inline_step() {
     std::fs::create_dir_all(workspace.join("lib")).ok();
     std::fs::write(workspace.join("lib/foo.dart"), source).unwrap();
 
-    let collected = collect_recipe_changes(&registry, &recipe, None, &args).unwrap();
+    let collected =
+        collect_recipe_changes(&registry, &recipe, None, &args, RunKind::Preview).unwrap();
     let modified = collected
         .changes
         .iter()

@@ -6,10 +6,6 @@ import { ExtensionConfig } from './config/extensionConfig';
 import { DiffContentProvider } from './diff/diffContentProvider';
 import { HostBridge } from './host/hostBridge';
 import { RecipeDiagnostics } from './language/diagnostics';
-import {
-  LanguageSession,
-  registerRecipeLanguageSupport,
-} from './language/session';
 import { resolveEditorContext } from './recipes/recipeContext';
 import { matchRecipesToEditorContext } from './recipes/recipeContextMatch';
 import {
@@ -50,7 +46,6 @@ export function activate(context: vscode.ExtensionContext): void {
 
   let recipeReloadTimer: NodeJS.Timeout | undefined;
   let recipeReloadGeneration = 0;
-  let languageSession: LanguageSession | undefined;
   let codemodWatcher: vscode.FileSystemWatcher | undefined;
   let scaffoldOfferShown = false;
 
@@ -63,21 +58,6 @@ export function activate(context: vscode.ExtensionContext): void {
       vscode.workspace.workspaceFolders?.length || configHasAbsoluteWorkspaceRoot()
     );
   };
-
-  registerYamlSchemas(context);
-  const ensureLanguageSession = (): void => {
-    languageSession?.dispose();
-    languageSession = undefined;
-    if (hasUsableWorkspaceRoot()) {
-      languageSession = registerRecipeLanguageSupport(
-        context,
-        repository,
-        bridge,
-        config
-      );
-    }
-  };
-  ensureLanguageSession();
 
   const syncRunnerFromRepository = async (): Promise<void> => {
     await runner.refreshRecipes(
@@ -212,7 +192,7 @@ export function activate(context: vscode.ExtensionContext): void {
 
   const createCodemodWatcher = (): void => {
     disposeCodemodWatcher();
-    const pattern = '**/*.{yaml,yml,template,scm}';
+    const pattern = '**/*.{luau,lua,template,scm}';
     const folder = vscode.workspace.workspaceFolders?.[0];
     const relativePattern =
       folder && !path.isAbsolute(config.codemodRoot)
@@ -267,7 +247,6 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     { dispose: () => bridge.dispose() },
     { dispose: () => disposeCodemodWatcher() },
-    { dispose: () => languageSession?.dispose() },
     diagnostics.disposable,
     registerContextMatchUpdates({ repository, config, runner }),
     vscode.workspace.onDidSaveTextDocument((document) => {
@@ -284,7 +263,6 @@ export function activate(context: vscode.ExtensionContext): void {
         event.affectsConfiguration('codemodRecipe.workspaceRoot')
       ) {
         bridge.dispose();
-        ensureLanguageSession();
         void bootstrap(true);
       }
     }),
@@ -604,48 +582,3 @@ async function pickInvokeMode(
   return (picked?.label as InvokeMode | undefined) ?? undefined;
 }
 
-function registerYamlSchemas(context: vscode.ExtensionContext): void {
-  const recipeSchema = vscode.Uri.joinPath(
-    context.extensionUri,
-    'schemas',
-    'recipe.schema.json'
-  ).toString();
-  const mapSchema = vscode.Uri.joinPath(
-    context.extensionUri,
-    'schemas',
-    'map.schema.json'
-  ).toString();
-  const variablesSchema = vscode.Uri.joinPath(
-    context.extensionUri,
-    'schemas',
-    'variables.schema.json'
-  ).toString();
-
-  try {
-    const yamlConfig = vscode.workspace.getConfiguration('yaml');
-    const current = yamlConfig.get<Record<string, string | string[]>>('schemas') ?? {};
-    const next: Record<string, string | string[]> = { ...current };
-    let changed = false;
-    const ensure = (schemaUri: string, patterns: string[]) => {
-      if (next[schemaUri] === undefined) {
-        next[schemaUri] = patterns;
-        changed = true;
-      }
-    };
-    ensure(recipeSchema, ['.codemod/**/*.yaml', '.codemod/**/*.yml']);
-    ensure(mapSchema, ['.codemod/maps/**/*.yaml', '.codemod/maps/**/*.yml']);
-    ensure(variablesSchema, [
-      '.codemod/variables/**/*.yaml',
-      '.codemod/variables/**/*.yml',
-    ]);
-    if (changed) {
-      void yamlConfig.update(
-        'schemas',
-        next,
-        vscode.ConfigurationTarget.Workspace
-      );
-    }
-  } catch {
-    // Red Hat YAML extension may be absent; jsonValidation still contributes.
-  }
-}

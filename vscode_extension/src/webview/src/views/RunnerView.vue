@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { FilePreview, RecipeSchema } from '../shared';
+import type { FilePreview, RecipeSchema, TranscriptEvent } from '../shared';
 import type { FileCardSelection } from '../lib/selection';
 import RecipeArgForm from '../components/RecipeArgForm.vue';
 import ReviewPanel from '../components/ReviewPanel.vue';
@@ -15,6 +15,8 @@ const props = defineProps<{
   errorMessage: string;
   showReview: boolean;
   files: FilePreview[];
+  transcript: TranscriptEvent[];
+  applyMayDiverge: boolean;
   fileSelections: FileCardSelection[];
   activeChangeIndex: number;
   canApply: boolean;
@@ -71,8 +73,10 @@ function showRecipe() {
   <div v-if="errorMessage" class="error">{{ errorMessage }}</div>
 
   <ReviewPanel
-    v-if="showReview && files.length"
+    v-if="showReview && (files.length || transcript.length)"
     :files="files"
+    :transcript="transcript"
+    :apply-may-diverge="applyMayDiverge"
     :file-selections="fileSelections"
     :active-change-index="activeChangeIndex"
     :can-apply="canApply"

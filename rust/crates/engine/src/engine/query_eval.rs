@@ -1,7 +1,6 @@
-//! Guard and `let` query evaluation (match existence, extract capture values).
+//! Query match existence, counts, and capture spans.
 
-use codemod_recipe_yaml::let_binding::{LetBinding, LetExtract, LetOnManyMatches, LetOnNoMatch};
-use codemod_recipe_yaml::QuerySpec;
+use crate::ops::QuerySpec;
 use tree_sitter::StreamingIterator;
 use tree_sitter::{Query, QueryCursor, Tree};
 
@@ -22,48 +21,19 @@ impl Engine {
         Ok(count > 0)
     }
 
-    /// Evaluate one `let` binding against `source`.
-    pub fn evaluate_let_binding(
+    /// Number of matches (or capture hits when `capture_name` is set).
+    pub fn query_match_count(
         &mut self,
         ctx: &QueryContext<'_>,
         source: &str,
-        binding: &LetBinding,
-    ) -> Result<String, EngineError> {
-        let query = binding.query.as_ref().ok_or_else(|| {
-            EngineError::Query(format!(
-                "let binding '{}' requires query unless only `as` is used",
-                binding.name
-            ))
-        })?;
+        query_spec: &QuerySpec,
+        capture_name: Option<&str>,
+    ) -> Result<usize, EngineError> {
         let tree = self.parse_tree(source)?;
-        match binding.extract {
-            LetExtract::Exists => {
-                let capture = binding.capture.as_deref();
-                let count = self.count_query_matches(ctx, source, &tree, query, capture)?;
-                Ok(if count > 0 {
-                    "true".to_string()
-                } else {
-                    "false".to_string()
-                })
-            }
-            LetExtract::Count => {
-                let capture = binding.capture.as_deref();
-                let count = self.count_query_matches(ctx, source, &tree, query, capture)?;
-                Ok(count.to_string())
-            }
-            LetExtract::Text | LetExtract::Kind => {
-                let capture = binding.capture.as_deref().ok_or_else(|| {
-                    EngineError::Query(format!(
-                        "let binding '{}' requires capture for extract {:?}",
-                        binding.name, binding.extract
-                    ))
-                })?;
-                self.extract_single_capture_value(ctx, source, &tree, query, capture, binding)
-            }
-        }
+        self.count_query_matches(ctx, source, &tree, query_spec, capture_name)
     }
 
-    /// Collect all spans for `capture_name` (for editor derive / scope filtering).
+    /// Collect all spans for `capture_name` (for editor derive / Lua query results).
     pub fn query_capture_spans(
         &mut self,
         ctx: &QueryContext<'_>,
@@ -73,46 +43,6 @@ impl Engine {
     ) -> Result<Vec<CaptureSpan>, EngineError> {
         let tree = self.parse_tree(source)?;
         self.collect_all_capture_spans(ctx, source, &tree, query_spec, capture_name)
-    }
-
-    fn extract_single_capture_value(
-        &mut self,
-        ctx: &QueryContext<'_>,
-        source: &str,
-        tree: &Tree,
-        query_spec: &QuerySpec,
-        capture_name: &str,
-        binding: &LetBinding,
-    ) -> Result<String, EngineError> {
-        let spans = self.collect_all_capture_spans(ctx, source, tree, query_spec, capture_name)?;
-        if spans.is_empty() {
-            return match binding.on_no_match {
-                LetOnNoMatch::Error => Err(EngineError::NoMatch {
-                    capture: capture_name.to_string(),
-                }),
-                LetOnNoMatch::UseEmpty => Ok(String::new()),
-            };
-        }
-        match spans.len() {
-            1 => node_projection(source, tree, &spans[0], binding.extract),
-            _ => match binding.on_many_matches {
-                LetOnManyMatches::Error => Err(EngineError::MultipleMatches {
-                    capture: capture_name.to_string(),
-                    count: spans.len(),
-                }),
-                LetOnManyMatches::First => {
-                    node_projection(source, tree, &spans[0], binding.extract)
-                }
-                LetOnManyMatches::Join => {
-                    let sep = binding.join.as_deref().unwrap_or(",");
-                    let parts: Vec<String> = spans
-                        .iter()
-                        .map(|s| node_projection(source, tree, s, binding.extract))
-                        .collect::<Result<_, _>>()?;
-                    Ok(parts.join(sep))
-                }
-            },
-        }
     }
 
     fn count_query_matches(
@@ -227,23 +157,5 @@ fn resolved_steps(
     match query_spec {
         QuerySpec::Single(s) => Ok(vec![resolve_step_text(ctx, s)?]),
         QuerySpec::Chain(v) => v.iter().map(|s| resolve_step_text(ctx, s)).collect(),
-    }
-}
-
-fn node_projection(
-    source: &str,
-    tree: &Tree,
-    span: &CaptureSpan,
-    extract: LetExtract,
-) -> Result<String, EngineError> {
-    match extract {
-        LetExtract::Text => Ok(source[span.start..span.end].to_string()),
-        LetExtract::Kind => {
-            let node = node_for_byte_range(tree, span.start, span.end);
-            Ok(node.kind().to_string())
-        }
-        LetExtract::Exists | LetExtract::Count => Err(EngineError::Query(
-            "internal: node_projection used with exists/count".to_string(),
-        )),
     }
 }

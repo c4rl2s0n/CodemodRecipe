@@ -1,6 +1,6 @@
 ---
 name: codemod-mcp
-description: Use when applying deterministic codemod edits via the Rust codemod-mcp MCP server — preview/apply recipes and inline YAML edits (insert/remove/replace). Read the playbook before calling tools.
+description: Use when applying deterministic codemod edits via the Rust codemod-mcp MCP server — preview/apply Luau recipes and inlineRecipe. Read the playbook before calling tools.
 ---
 
 # Codemod MCP
@@ -8,14 +8,14 @@ description: Use when applying deterministic codemod edits via the Rust codemod-
 ## When to use
 
 - Applying **structural Dart edits** (insert, remove, replace) with AST-safe targeting
-- Running registered `.codemod/recipes/*.yaml` recipes headlessly from an agent
-- Building **inline recipes** without adding files on disk
+- Running registered `.codemod/recipes/*.luau` recipes headlessly from an agent
+- Building **inline recipes** (Luau source strings) without adding files on disk
 - Previewing changes before apply (required `previewToken` flow)
 
 ## When not to use
 
 - General codebase exploration → use **codebase-memory** first
-- Non-Dart files or text-only search/replace → edit files directly
+- Non-Dart files or text-only search/replace → edit files directly, or set `language` on ops
 - Full-file diffs → MCP exposes preview snippets only, not the host `diff` command
 
 ## Instructions
@@ -25,7 +25,7 @@ description: Use when applying deterministic codemod edits via the Rust codemod-
    - `cargo run -q --manifest-path rust/Cargo.toml -p codemod_recipe_host --bin codemod_mcp -- --workspace-root . --codemod-root .codemod`
 3. Pair with **codebase-memory** for locate → impact → edit workflows (see playbook § Agent workflow).
 4. Always **preview before apply**; pass `previewToken` from preview to `apply_recipe`.
-5. For inline edits, use YAML `edit.ops` with tree-sitter `query` + `capture`.
+5. For inline edits, pass `inlineRecipe` as a Luau source string that `return`s a table with `apply`.
 
 ## Quick tool map
 
@@ -34,7 +34,7 @@ description: Use when applying deterministic codemod edits via the Rust codemod-
 | `bootstrap_project` | Install skills/rules and `.codemod/` scaffolding (`edit_policy`, optional `companions`) |
 | `list_recipes` | Discover registered recipe ids |
 | `describe_recipe` | Args + metadata for one recipe |
-| `validate_recipes` | YAML/schema diagnostics |
+| `validate_recipes` | Reload + validate Luau under `.codemod/` |
 | `preview_recipe` | Dry-run; returns `previewToken` |
 | `apply_recipe` | Write changes; requires `previewToken` |
 

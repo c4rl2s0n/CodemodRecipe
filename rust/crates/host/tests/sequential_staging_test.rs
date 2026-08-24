@@ -40,40 +40,24 @@ fn create_skip_then_create_skip_then_edit_is_single_create() {
     let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
     registry.reload();
 
-    let inline = serde_json::json!({
-        "id": "ensure_barrel_twice",
-        "steps": [
-            {
-                "create": {
-                    "path": "lib/barrel.dart",
-                    "template": "// barrel\n",
-                    "ifExists": "skip",
-                    "format": false
-                }
-            },
-            {
-                "create": {
-                    "path": "lib/barrel.dart",
-                    "template": "// unused ensure\n",
-                    "ifExists": "skip",
-                    "format": false
-                }
-            },
-            {
-                "edit": {
-                    "path": "lib/barrel.dart",
-                    "ops": [{
-                        "insert": {
-                            "query": "(program) @root",
-                            "capture": "root",
-                            "anchor": "end",
-                            "text": "export 'foo.dart';\n"
-                        }
-                    }]
-                }
-            }
-        ]
-    });
+    let inline = serde_json::json!(
+        r#"
+return {
+  id = "ensure_barrel_twice",
+  apply = function(c)
+    c:create({ path = "lib/barrel.dart", content = "// barrel\n", ifExists = "skip" })
+    c:create({ path = "lib/barrel.dart", content = "// unused ensure\n", ifExists = "skip" })
+    c:insert({
+      path = "lib/barrel.dart",
+      query = "(program) @root",
+      capture = "root",
+      anchor = "end",
+      text = "export 'foo.dart';\n",
+    })
+  end,
+}
+"#
+    );
 
     let response = preview_inline(&mut registry, inline, BTreeMap::new());
     assert_eq!(response["ok"], true, "{}", response["error"]);
@@ -97,32 +81,23 @@ fn create_then_edit_missing_file_is_single_create() {
     let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
     registry.reload();
 
-    let inline = serde_json::json!({
-        "id": "ensure_barrel",
-        "steps": [
-            {
-                "create": {
-                    "path": "lib/barrel.dart",
-                    "template": "// barrel\n",
-                    "ifExists": "skip",
-                    "format": false
-                }
-            },
-            {
-                "edit": {
-                    "path": "lib/barrel.dart",
-                    "ops": [{
-                        "insert": {
-                            "query": "(program) @root",
-                            "capture": "root",
-                            "anchor": "end",
-                            "text": "export 'foo.dart';\n"
-                        }
-                    }]
-                }
-            }
-        ]
-    });
+    let inline = serde_json::json!(
+        r#"
+return {
+  id = "ensure_barrel",
+  apply = function(c)
+    c:create({ path = "lib/barrel.dart", content = "// barrel\n", ifExists = "skip" })
+    c:insert({
+      path = "lib/barrel.dart",
+      query = "(program) @root",
+      capture = "root",
+      anchor = "end",
+      text = "export 'foo.dart';\n",
+    })
+  end,
+}
+"#
+    );
 
     let response = preview_inline(&mut registry, inline, BTreeMap::new());
     assert_eq!(response["ok"], true, "{}", response["error"]);
@@ -147,32 +122,23 @@ fn create_skip_then_edit_existing_is_patch() {
     let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
     registry.reload();
 
-    let inline = serde_json::json!({
-        "id": "ensure_barrel",
-        "steps": [
-            {
-                "create": {
-                    "path": "lib/barrel.dart",
-                    "template": "// unused\n",
-                    "ifExists": "skip",
-                    "format": false
-                }
-            },
-            {
-                "edit": {
-                    "path": "lib/barrel.dart",
-                    "ops": [{
-                        "insert": {
-                            "query": "(program) @root",
-                            "capture": "root",
-                            "anchor": "end",
-                            "text": "export 'foo.dart';\n"
-                        }
-                    }]
-                }
-            }
-        ]
-    });
+    let inline = serde_json::json!(
+        r#"
+return {
+  id = "ensure_barrel",
+  apply = function(c)
+    c:create({ path = "lib/barrel.dart", content = "// unused\n", ifExists = "skip" })
+    c:insert({
+      path = "lib/barrel.dart",
+      query = "(program) @root",
+      capture = "root",
+      anchor = "end",
+      text = "export 'foo.dart';\n",
+    })
+  end,
+}
+"#
+    );
 
     let response = preview_inline(&mut registry, inline, BTreeMap::new());
     assert_eq!(response["ok"], true, "{}", response["error"]);
@@ -194,37 +160,29 @@ fn edit_then_edit_dependent_class_and_constructor() {
     let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
     registry.reload();
 
-    let inline = serde_json::json!({
-        "id": "class_then_ctor",
-        "steps": [
-            {
-                "edit": {
-                    "path": "lib/foo.dart",
-                    "ops": [{
-                        "insert": {
-                            "query": "(class_definition name: (identifier) @n body: (class_body) @body (#eq? @n \"Foo\"))",
-                            "capture": "body",
-                            "anchor": "end",
-                            "text": "  void bar() {}\n"
-                        }
-                    }]
-                }
-            },
-            {
-                "edit": {
-                    "path": "lib/foo.dart",
-                    "ops": [{
-                        "insert": {
-                            "query": "(class_definition name: (identifier) @className body: (class_body (method_signature (function_signature name: (identifier) @methodName)) @member) (#eq? @className \"Foo\") (#eq? @methodName \"bar\"))",
-                            "capture": "member",
-                            "anchor": "end",
-                            "text": "\n  Foo();"
-                        }
-                    }]
-                }
-            }
-        ]
-    });
+    let inline = serde_json::json!(
+        r#"
+return {
+  id = "class_then_ctor",
+  apply = function(c)
+    c:insert({
+      path = "lib/foo.dart",
+      query = "(class_definition name: (identifier) @n body: (class_body) @body (#eq? @n \"Foo\"))",
+      capture = "body",
+      anchor = "end",
+      text = "  void bar() {}\n",
+    })
+    c:insert({
+      path = "lib/foo.dart",
+      query = "(class_definition name: (identifier) @className body: (class_body (method_signature (function_signature name: (identifier) @methodName)) @member) (#eq? @className \"Foo\") (#eq? @methodName \"bar\"))",
+      capture = "member",
+      anchor = "end",
+      text = "\n  Foo();",
+    })
+  end,
+}
+"#
+    );
 
     let response = preview_inline(&mut registry, inline.clone(), BTreeMap::new());
     assert_eq!(response["ok"], true, "{}", response["error"]);
@@ -259,17 +217,16 @@ fn create_fail_when_exists() {
     let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
     registry.reload();
 
-    let inline = serde_json::json!({
-        "id": "fail_create",
-        "steps": [{
-            "create": {
-                "path": "lib/a.dart",
-                "template": "y\n",
-                "ifExists": "fail",
-                "format": false
-            }
-        }]
-    });
+    let inline = serde_json::json!(
+        r#"
+return {
+  id = "fail_create",
+  apply = function(c)
+    c:create({ path = "lib/a.dart", content = "y\n", ifExists = "fail" })
+  end,
+}
+"#
+    );
 
     let response = preview_inline(&mut registry, inline, BTreeMap::new());
     assert_eq!(response["ok"], false);
@@ -292,32 +249,23 @@ fn edit_then_create_same_path_errors() {
     let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
     registry.reload();
 
-    let inline = serde_json::json!({
-        "id": "bad_order",
-        "steps": [
-            {
-                "edit": {
-                    "path": "lib/a.dart",
-                    "ops": [{
-                        "insert": {
-                            "query": "(class_definition name: (identifier) @n body: (class_body) @body (#eq? @n \"A\"))",
-                            "capture": "body",
-                            "anchor": "end",
-                            "text": "  // x\n"
-                        }
-                    }]
-                }
-            },
-            {
-                "create": {
-                    "path": "lib/a.dart",
-                    "template": "class A {}\n",
-                    "ifExists": "fail",
-                    "format": false
-                }
-            }
-        ]
-    });
+    let inline = serde_json::json!(
+        r#"
+return {
+  id = "bad_order",
+  apply = function(c)
+    c:insert({
+      path = "lib/a.dart",
+      query = "(class_definition name: (identifier) @n body: (class_body) @body (#eq? @n \"A\"))",
+      capture = "body",
+      anchor = "end",
+      text = "  // x\n",
+    })
+    c:create({ path = "lib/a.dart", content = "class A {}\n", ifExists = "fail" })
+  end,
+}
+"#
+    );
 
     let response = preview_inline(&mut registry, inline, BTreeMap::new());
     assert_eq!(response["ok"], false);
@@ -340,32 +288,23 @@ fn create_and_edit_different_paths() {
     let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
     registry.reload();
 
-    let inline = serde_json::json!({
-        "id": "multi",
-        "steps": [
-            {
-                "create": {
-                    "path": "lib/new.dart",
-                    "template": "class N {}\n",
-                    "ifExists": "fail",
-                    "format": false
-                }
-            },
-            {
-                "edit": {
-                    "path": "lib/existing.dart",
-                    "ops": [{
-                        "insert": {
-                            "query": "(class_definition name: (identifier) @n body: (class_body) @body (#eq? @n \"E\"))",
-                            "capture": "body",
-                            "anchor": "end",
-                            "text": "  // patched\n"
-                        }
-                    }]
-                }
-            }
-        ]
-    });
+    let inline = serde_json::json!(
+        r#"
+return {
+  id = "multi",
+  apply = function(c)
+    c:create({ path = "lib/new.dart", content = "class N {}\n", ifExists = "fail" })
+    c:insert({
+      path = "lib/existing.dart",
+      query = "(class_definition name: (identifier) @n body: (class_body) @body (#eq? @n \"E\"))",
+      capture = "body",
+      anchor = "end",
+      text = "  // patched\n",
+    })
+  end,
+}
+"#
+    );
 
     let response = preview_inline(&mut registry, inline, BTreeMap::new());
     assert_eq!(response["ok"], true, "{}", response["error"]);

@@ -1,10 +1,9 @@
-//! Direct tests for guard / `let` query evaluation on the engine.
+//! Engine query evaluation helpers.
 
 mod common;
 
-use codemod_recipe_engine::engine::{EngineError, QueryContext};
-use codemod_recipe_yaml::let_binding::{LetBinding, LetExtract, LetOnManyMatches, LetOnNoMatch};
-use codemod_recipe_yaml::QuerySpec;
+use codemod_recipe_engine::engine::QueryContext;
+use codemod_recipe_engine::ops::QuerySpec;
 use std::path::PathBuf;
 
 const SOURCE: &str = r#"class Demo {
@@ -45,24 +44,6 @@ fn two_fields_query() -> QuerySpec {
     )
 }
 
-fn binding(
-    extract: LetExtract,
-    on_no_match: LetOnNoMatch,
-    on_many: LetOnManyMatches,
-    join: Option<&str>,
-) -> LetBinding {
-    LetBinding {
-        name: "v".to_string(),
-        query: Some(two_fields_query()),
-        capture: Some("fieldName".to_string()),
-        extract,
-        on_no_match,
-        on_many_matches: on_many,
-        join: join.map(str::to_string),
-        r#as: None,
-    }
-}
-
 #[test]
 fn query_has_match_true_and_false() {
     let ctx = ctx();
@@ -87,130 +68,18 @@ fn query_has_match_true_and_false() {
 }
 
 #[test]
-fn let_extract_text_and_kind() {
+fn query_capture_spans_and_count() {
     let ctx = ctx();
-    let b_text = binding(
-        LetExtract::Text,
-        LetOnNoMatch::Error,
-        LetOnManyMatches::First,
-        None,
-    );
-    let b_kind = binding(
-        LetExtract::Kind,
-        LetOnNoMatch::Error,
-        LetOnManyMatches::First,
-        None,
-    );
     common::with_engine("dart", |engine| {
-        let text = engine.evaluate_let_binding(&ctx, SOURCE, &b_text).unwrap();
-        assert_eq!(text, "alpha");
-        let kind = engine.evaluate_let_binding(&ctx, SOURCE, &b_kind).unwrap();
-        assert_eq!(kind, "identifier");
-    });
-}
-
-#[test]
-fn let_extract_exists_and_count() {
-    let ctx = ctx();
-    let exists = binding(
-        LetExtract::Exists,
-        LetOnNoMatch::Error,
-        LetOnManyMatches::Error,
-        None,
-    );
-    let count = binding(
-        LetExtract::Count,
-        LetOnNoMatch::Error,
-        LetOnManyMatches::Error,
-        None,
-    );
-    common::with_engine("dart", |engine| {
-        assert_eq!(
-            engine.evaluate_let_binding(&ctx, SOURCE, &exists).unwrap(),
-            "true"
-        );
-        assert_eq!(
-            engine.evaluate_let_binding(&ctx, SOURCE, &count).unwrap(),
-            "2"
-        );
-    });
-}
-
-#[test]
-fn let_on_no_match_use_empty() {
-    let ctx = ctx();
-    let mut b = binding(
-        LetExtract::Text,
-        LetOnNoMatch::UseEmpty,
-        LetOnManyMatches::First,
-        None,
-    );
-    b.query = Some(QuerySpec::single(
-        r#"(class_definition
-  name: (identifier) @n
-  (#eq? @n "Nope"))"#,
-    ));
-    b.capture = Some("n".to_string());
-    common::with_engine("dart", |engine| {
-        let v = engine.evaluate_let_binding(&ctx, SOURCE, &b).unwrap();
-        assert_eq!(v, "");
-    });
-}
-
-#[test]
-fn let_on_no_match_errors_by_default() {
-    let ctx = ctx();
-    let mut b = binding(
-        LetExtract::Text,
-        LetOnNoMatch::Error,
-        LetOnManyMatches::First,
-        None,
-    );
-    b.query = Some(QuerySpec::single(
-        r#"(class_definition
-  name: (identifier) @n
-  (#eq? @n "Nope"))"#,
-    ));
-    b.capture = Some("n".to_string());
-    common::with_engine("dart", |engine| {
-        let err = engine.evaluate_let_binding(&ctx, SOURCE, &b).unwrap_err();
-        assert!(matches!(err, EngineError::NoMatch { .. }));
-    });
-}
-
-#[test]
-fn let_on_many_matches_first_join_and_error() {
-    let ctx = ctx();
-    let first = binding(
-        LetExtract::Text,
-        LetOnNoMatch::Error,
-        LetOnManyMatches::First,
-        None,
-    );
-    let join = binding(
-        LetExtract::Text,
-        LetOnNoMatch::Error,
-        LetOnManyMatches::Join,
-        Some("|"),
-    );
-    let err_binding = binding(
-        LetExtract::Text,
-        LetOnNoMatch::Error,
-        LetOnManyMatches::Error,
-        None,
-    );
-    common::with_engine("dart", |engine| {
-        assert_eq!(
-            engine.evaluate_let_binding(&ctx, SOURCE, &first).unwrap(),
-            "alpha"
-        );
-        assert_eq!(
-            engine.evaluate_let_binding(&ctx, SOURCE, &join).unwrap(),
-            "alpha|beta"
-        );
-        let err = engine
-            .evaluate_let_binding(&ctx, SOURCE, &err_binding)
-            .unwrap_err();
-        assert!(matches!(err, EngineError::MultipleMatches { .. }));
+        let spans = engine
+            .query_capture_spans(&ctx, SOURCE, &two_fields_query(), "fieldName")
+            .unwrap();
+        assert_eq!(spans.len(), 2);
+        let count = engine
+            .query_match_count(&ctx, SOURCE, &two_fields_query(), Some("fieldName"))
+            .unwrap();
+        assert_eq!(count, 2);
+        let text0 = &SOURCE[spans[0].start..spans[0].end];
+        assert_eq!(text0, "alpha");
     });
 }

@@ -1,12 +1,9 @@
-use codemod_recipe_engine::engine::{parse_recipe_yaml, QueryContext};
-use codemod_recipe_yaml::model::{EditOp, EditStep, Recipe, RemoveOp, ReplaceOp, Step};
-use codemod_recipe_yaml::QuerySpec;
-use std::collections::BTreeMap;
+use codemod_recipe_engine::engine::QueryContext;
+use codemod_recipe_engine::ops::{EditOp, InsertAnchor, InsertOp, QuerySpec, RemoveOp, ReplaceOp};
 
 mod common;
 
 const SETTINGS: &str = "class Settings {\n  final int count = 0;\n}\n";
-
 const SETTINGS_WITHOUT_COUNT: &str = "class Settings {\n}\n";
 
 const FIELD_QUERY: &str = r#"(class_definition
@@ -26,62 +23,32 @@ fn inline_ctx<'a>(codemod_root: &'a std::path::Path) -> QueryContext<'a> {
     }
 }
 
-fn remove_count_recipe() -> Recipe {
-    Recipe {
-        id: "remove_count".to_string(),
-        name: None,
-        description: None,
-        args: vec![],
-        maps: BTreeMap::new(),
-        queries: BTreeMap::new(),
-        steps: vec![Step::Edit(EditStep {
-            path: "test.dart".to_string(),
-            ops: vec![EditOp::Remove(RemoveOp {
-                query: QuerySpec::single(FIELD_QUERY),
-                capture: "member".to_string(),
-                include_leading_trivia: false,
-            })],
-            ..Default::default()
-        })],
-        post_execution: vec![],
-        explorer_menu: None,
-    }
+fn remove_ops() -> Vec<EditOp> {
+    vec![EditOp::Remove(RemoveOp {
+        query: QuerySpec::single(FIELD_QUERY),
+        capture: "member".to_string(),
+        include_leading_trivia: false,
+    })]
 }
 
-fn replace_count_recipe(text: &str) -> Recipe {
-    Recipe {
-        id: "replace_count".to_string(),
-        name: None,
-        description: None,
-        args: vec![],
-        maps: BTreeMap::new(),
-        queries: BTreeMap::new(),
-        steps: vec![Step::Edit(EditStep {
-            path: "test.dart".to_string(),
-            ops: vec![EditOp::Replace(ReplaceOp {
-                query: QuerySpec::single(FIELD_QUERY),
-                capture: "member".to_string(),
-                text: text.to_string(),
-                include_leading_trivia: false,
-            })],
-            ..Default::default()
-        })],
-        post_execution: vec![],
-        explorer_menu: None,
-    }
+fn replace_ops(text: &str) -> Vec<EditOp> {
+    vec![EditOp::Replace(ReplaceOp {
+        query: QuerySpec::single(FIELD_QUERY),
+        capture: "member".to_string(),
+        text: text.to_string(),
+        include_leading_trivia: false,
+    })]
 }
 
 #[test]
 fn remove_deletes_field_declaration() {
     let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
     let codemod = repo.join(".codemod");
-    let recipe = remove_count_recipe();
     let ctx = inline_ctx(&codemod);
     let out = common::with_engine("dart", |engine| {
         engine
-            .apply_recipe_to_source(&ctx, &recipe, "test.dart", SETTINGS)
+            .apply_edit_ops_sequential(&ctx, &remove_ops(), SETTINGS)
             .unwrap()
-            .modified
     });
     assert_eq!(out, SETTINGS_WITHOUT_COUNT);
 }
@@ -90,13 +57,11 @@ fn remove_deletes_field_declaration() {
 fn remove_no_ops_when_field_absent() {
     let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
     let codemod = repo.join(".codemod");
-    let recipe = remove_count_recipe();
     let ctx = inline_ctx(&codemod);
     let out = common::with_engine("dart", |engine| {
         engine
-            .apply_recipe_to_source(&ctx, &recipe, "test.dart", SETTINGS_WITHOUT_COUNT)
+            .apply_edit_ops_sequential(&ctx, &remove_ops(), SETTINGS_WITHOUT_COUNT)
             .unwrap()
-            .modified
     });
     assert_eq!(out, SETTINGS_WITHOUT_COUNT);
 }
@@ -105,22 +70,16 @@ fn remove_no_ops_when_field_absent() {
 fn replace_no_ops_when_whitespace_normalized_text_matches() {
     let repo = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
     let codemod = repo.join(".codemod");
-    let recipe = replace_count_recipe("final int count = 0;");
     let ctx = inline_ctx(&codemod);
     let out = common::with_engine("dart", |engine| {
         engine
-            .apply_recipe_to_source(&ctx, &recipe, "test.dart", SETTINGS)
+            .apply_edit_ops_sequential(&ctx, &replace_ops("final int count = 0;"), SETTINGS)
             .unwrap()
-            .modified
     });
     assert_eq!(out, SETTINGS);
 }
 
 #[test]
-fn golden_remove_count_field_fixture_parses() {
-    let repo_root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../..");
-    let recipe_path = repo_root.join("test/fixtures/rust_oracle/remove_count_field.recipe.yaml");
-    let text = std::fs::read_to_string(recipe_path).unwrap();
-    let recipe = parse_recipe_yaml(&text).unwrap();
-    assert_eq!(recipe.id, "remove_count_field");
+fn insert_anchor_start_is_available() {
+    let _ = InsertAnchor::Start;
 }
