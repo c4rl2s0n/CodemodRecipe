@@ -9,8 +9,12 @@ fn edit_schema_lists_model_fields() {
     let schema = recipe_schema();
     let edit = resolve_definition(&schema, "editStep").expect("editStep");
     let keys = object_property_keys(edit);
-    assert!(keys.iter().any(|k| k == dsl::recipe::steps::edit::field::PATH));
-    assert!(keys.iter().any(|k| k == dsl::recipe::steps::edit::field::OPS));
+    assert!(keys
+        .iter()
+        .any(|k| k == dsl::recipe::steps::edit::field::PATH));
+    assert!(keys
+        .iter()
+        .any(|k| k == dsl::recipe::steps::edit::field::OPS));
     assert!(keys
         .iter()
         .any(|k| k == dsl::recipe::steps::edit::field::WHEN_NOT));
@@ -64,8 +68,9 @@ fn recipe_schema_has_required_id_and_steps() {
     let required = schema["required"].as_array().unwrap();
     assert!(required.iter().any(|v| v == "id"));
     assert!(required.iter().any(|v| v == "steps"));
-    assert!(schema["definitions"]["editStep"].is_object()
-        || schema["$defs"]["editStep"].is_object());
+    assert!(
+        schema["definitions"]["editStep"].is_object() || schema["$defs"]["editStep"].is_object()
+    );
 }
 
 #[test]

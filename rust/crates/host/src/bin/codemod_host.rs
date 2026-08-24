@@ -1,5 +1,6 @@
 use codemod_recipe_host::{
-    config::HostConfig, dispatch, protocol_keys, registry::RecipeRegistry, RESULT_BEGIN, RESULT_END,
+    config::HostConfig, protocol::dispatch, protocol::keys as protocol_keys,
+    recipe::registry::RecipeRegistry, RESULT_BEGIN, RESULT_END,
 };
 use std::io::{self, BufRead, Write};
 

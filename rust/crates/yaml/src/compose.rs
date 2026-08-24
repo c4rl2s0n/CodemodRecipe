@@ -1,4 +1,4 @@
-use crate::model::*;
+use crate::model::model::*;
 use crate::QueryDefinition;
 use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, BTreeSet};
@@ -692,10 +692,7 @@ mod tests {
             post_execution: vec![],
             explorer_menu: None,
         };
-        let registry = BTreeMap::from([
-            ("leaf".to_string(), leaf),
-            ("mid".to_string(), mid),
-        ]);
+        let registry = BTreeMap::from([("leaf".to_string(), leaf), ("mid".to_string(), mid)]);
 
         let expanded = expand_recipe_references(&parent, &registry).unwrap();
         let description = expanded

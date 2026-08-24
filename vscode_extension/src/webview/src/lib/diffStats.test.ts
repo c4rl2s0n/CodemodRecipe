@@ -4,7 +4,6 @@ import {
   countLines,
   lineChangeStats,
   statsForFile,
-  statsForPatch,
   sumStats,
 } from './diffStats';
 
@@ -53,7 +52,7 @@ describe('lineChangeStats', () => {
   });
 });
 
-describe('statsForPatch', () => {
+describe('statsForFile', () => {
   const file: FilePreview = {
     path: 'a.dart',
     kind: 'edit',
@@ -61,38 +60,18 @@ describe('statsForPatch', () => {
     skipped: false,
     original: 'hello world',
     modified: 'hello brave world',
-    patches: [
-      {
-        index: 0,
-        offset: 6,
-        length: 0,
-        replacement: 'brave ',
-        description: 'insert',
-      },
-    ],
   };
 
-  it('derives hunk stats from offset and replacement', () => {
-    expect(statsForPatch(file, file.patches[0])).toEqual({
+  it('derives file-level stats from original and modified', () => {
+    expect(statsForFile(file)).toEqual({
       additions: 1,
-      deletions: 0,
+      deletions: 1,
     });
-  });
-
-  it('uses whole file for synthetic patch index -1', () => {
-    expect(
-      statsForPatch(file, {
-        index: -1,
-        offset: 0,
-        length: 0,
-        description: null,
-      })
-    ).toEqual(statsForFile(file));
   });
 });
 
 describe('sumStats', () => {
-  it('aggregates patch hunks', () => {
+  it('aggregates file stats', () => {
     expect(
       sumStats([
         { additions: 2, deletions: 1 },

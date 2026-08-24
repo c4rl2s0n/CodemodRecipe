@@ -1,5 +1,5 @@
 use codemod_recipe_engine::engine::{parse_recipe_yaml, QueryContext};
-use codemod_recipe_host::registry::render_recipe_templates;
+use codemod_recipe_host::recipe::registry::render_recipe_templates;
 use pretty_assertions::assert_eq;
 use std::collections::BTreeMap;
 

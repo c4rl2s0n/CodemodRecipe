@@ -85,15 +85,6 @@ export interface FilterExplorerRecipesResponse {
   matches?: ExplorerRecipeMatch[];
 }
 
-export interface PatchInfo {
-  index: number;
-  offset: number;
-  length: number;
-  replacement?: string;
-  replacementPreview?: string;
-  description: string | null;
-}
-
 export interface FilePreview {
   path: string;
   kind: FilePreviewKind;
@@ -102,8 +93,6 @@ export interface FilePreview {
   snippet?: string;
   original?: string;
   modified?: string;
-  preview?: string;
-  patches: PatchInfo[];
 }
 
 export interface RecipeDiagnostic {
@@ -329,7 +318,6 @@ export interface ResolveStaticPathResponse {
 
 export interface FileSelection {
   include: boolean;
-  patches?: number[];
 }
 
 export interface SelectionPayload {

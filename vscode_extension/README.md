@@ -186,7 +186,7 @@ Commands accepted by the host (one JSON object per line on stdin):
 { "command": "apply", "recipe": "add_log_line",
   "args": { "file": "lib/foo.dart", "className": "Foo", "methodName": "bar" },
   "previewToken": "<from preview>",
-  "selection": { "files": { "lib/foo.dart": { "include": true, "patches": [0] } } } }
+  "selection": { "files": { "lib/foo.dart": { "include": true } } } }
 
 { "command": "dumpAst", "path": "lib/foo.dart" }
 
@@ -198,8 +198,7 @@ Commands accepted by the host (one JSON object per line on stdin):
 { "command": "resolveStaticPath", "pathTemplate": "lib/{{ file }}.dart" }
 ```
 
-Omitting a file from `selection.files` keeps all of its patches. Setting
-`include: false` (or an empty `patches` list) drops the file.
+Omitting a file from `selection.files` keeps it. Setting `include: false` drops the file.
 
 ## Development
 

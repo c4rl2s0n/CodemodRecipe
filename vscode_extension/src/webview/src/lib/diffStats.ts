@@ -1,4 +1,4 @@
-import type { FilePreview, PatchInfo } from '../shared';
+import type { FilePreview } from '../shared';
 
 export interface LineChangeStats {
   additions: number;
@@ -61,22 +61,6 @@ export function lineChangeStats(removed: string, added: string): LineChangeStats
     additions: Math.max(0, addedLines.length - common),
     deletions: Math.max(0, removedLines.length - common),
   };
-}
-
-export function statsForPatch(
-  file: FilePreview,
-  patch: PatchInfo
-): LineChangeStats {
-  if (patch.index < 0) {
-    return statsForFile(file);
-  }
-  const original = file.original ?? '';
-  const removed = original.slice(patch.offset, patch.offset + patch.length);
-  const added =
-    patch.replacement ??
-    patch.replacementPreview ??
-    '';
-  return lineChangeStats(removed, added);
 }
 
 export function statsForFile(file: FilePreview): LineChangeStats {

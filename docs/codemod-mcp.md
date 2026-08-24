@@ -164,7 +164,7 @@ All tools return a JSON string. Parse it, then check `ok`.
 }
 ```
 
-`selection` is optional; omit to apply all patches.
+`selection` is optional; omit to apply all files.
 
 Validate all recipes:
 

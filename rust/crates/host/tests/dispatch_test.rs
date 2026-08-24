@@ -1,6 +1,6 @@
-use codemod_recipe_host::dispatch;
+use codemod_recipe_host::protocol::dispatch;
 use codemod_recipe_host::protocol::HostCommand;
-use codemod_recipe_host::registry::RecipeRegistry;
+use codemod_recipe_host::recipe::registry::RecipeRegistry;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -108,8 +108,9 @@ fn preview_returns_preview_token_and_modified_content() {
         .is_some_and(|t| !t.is_empty()));
     let files = response["files"].as_array().unwrap();
     assert_eq!(files.len(), 1);
-    let patches = files[0]["patches"].as_array().unwrap();
-    assert!(!patches.is_empty());
+    assert!(files[0]["original"].as_str().is_some());
+    assert!(files[0]["modified"].as_str().is_some());
+    assert!(files[0]["patches"].is_null());
 
     let _ = std::fs::remove_dir_all(workspace);
 }
@@ -450,8 +451,8 @@ fn validate_reports_duplicate_recipe_ids() {
 }
 
 #[test]
-fn preview_includes_structured_patches() {
-    let workspace = setup_workspace_with_insert_recipe("preview_patches");
+fn preview_includes_original_and_modified() {
+    let workspace = setup_workspace_with_insert_recipe("preview_original_modified");
     let rel = "test/fixtures/ast_paths/settings.dart";
     let settings = workspace.join(rel);
     std::fs::create_dir_all(settings.parent().unwrap()).unwrap();
@@ -478,9 +479,10 @@ fn preview_includes_structured_patches() {
     );
     assert_eq!(response["ok"], true);
     let files = response["files"].as_array().unwrap();
-    let patches = files[0]["patches"].as_array().unwrap();
-    assert!(!patches.is_empty());
-    assert!(patches[0]["offset"].is_number());
+    assert!(!files.is_empty());
+    assert!(files[0]["original"].as_str().is_some());
+    assert!(files[0]["modified"].as_str().is_some());
+    assert!(files[0]["patches"].is_null());
 
     let _ = std::fs::remove_dir_all(workspace);
 }

@@ -1,7 +1,7 @@
-use codemod_recipe_host::dispatch::handle_command;
+use codemod_recipe_host::protocol::dispatch::handle_command;
+use codemod_recipe_host::protocol::keys as protocol_keys;
 use codemod_recipe_host::protocol::HostCommand;
-use codemod_recipe_host::protocol_keys;
-use codemod_recipe_host::{config::HostConfig, registry::RecipeRegistry};
+use codemod_recipe_host::{config::HostConfig, recipe::registry::RecipeRegistry};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::BTreeMap;
@@ -281,11 +281,11 @@ fn handle_request(
                         })
                         .unwrap_or_default();
                     match (
-                        codemod_recipe_host::bootstrap::EditPolicy::parse(edit_policy_raw),
-                        codemod_recipe_host::bootstrap::parse_companions(&companions_raw),
+                        codemod_recipe_host::config::bootstrap::EditPolicy::parse(edit_policy_raw),
+                        codemod_recipe_host::config::bootstrap::parse_companions(&companions_raw),
                     ) {
                         (Ok(edit_policy), Ok(companions)) => {
-                            codemod_recipe_host::bootstrap::bootstrap_project(
+                            codemod_recipe_host::config::bootstrap::bootstrap_project(
                                 &registry.workspace_root,
                                 force,
                                 edit_policy,

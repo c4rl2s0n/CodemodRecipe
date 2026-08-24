@@ -1,8 +1,8 @@
 //! Jinja2 / MiniJinja showcase fixtures — casing, maps, conditionals, defaultsTo, inheritance.
 
-use codemod_recipe_host::dispatch;
+use codemod_recipe_host::protocol::dispatch;
 use codemod_recipe_host::protocol::HostCommand;
-use codemod_recipe_host::registry::RecipeRegistry;
+use codemod_recipe_host::recipe::registry::RecipeRegistry;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};

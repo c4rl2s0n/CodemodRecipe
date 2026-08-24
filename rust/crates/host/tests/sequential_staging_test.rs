@@ -1,8 +1,8 @@
 //! Sequential staging: create→edit, edit→edit, skip+edit, conflicts.
 
-use codemod_recipe_host::dispatch;
+use codemod_recipe_host::protocol::dispatch;
 use codemod_recipe_host::protocol::HostCommand;
-use codemod_recipe_host::registry::RecipeRegistry;
+use codemod_recipe_host::recipe::registry::RecipeRegistry;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -181,8 +181,8 @@ fn create_skip_then_edit_existing_is_patch() {
     assert_eq!(files[0]["kind"], "edit");
     assert_eq!(files[0]["path"], "lib/barrel.dart");
     assert!(!files[0]["isNew"].as_bool().unwrap());
-    let patches = files[0]["patches"].as_array().unwrap();
-    assert_eq!(patches.len(), 1);
+    assert!(files[0]["original"].as_str().is_some());
+    assert!(files[0]["modified"].as_str().is_some());
 
     let _ = std::fs::remove_dir_all(workspace);
 }

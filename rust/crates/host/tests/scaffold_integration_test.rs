@@ -1,8 +1,8 @@
 //! End-to-end scaffold: compose, create (templateFile), multi-file edit, maps, delete.
 
-use codemod_recipe_host::dispatch;
+use codemod_recipe_host::protocol::dispatch;
 use codemod_recipe_host::protocol::HostCommand;
-use codemod_recipe_host::registry::RecipeRegistry;
+use codemod_recipe_host::recipe::registry::RecipeRegistry;
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
@@ -126,7 +126,8 @@ fn scaffold_project_preview_covers_create_edit_and_delete() {
         .iter()
         .find(|f| f["path"] == "lib/counter/counter.dart")
         .unwrap();
-    assert!(!counter_preview["patches"].as_array().unwrap().is_empty());
+    assert!(counter_preview["original"].as_str().is_some());
+    assert!(counter_preview["modified"].as_str().is_some());
     assert!(counter_preview["snippet"]
         .as_str()
         .unwrap_or("")

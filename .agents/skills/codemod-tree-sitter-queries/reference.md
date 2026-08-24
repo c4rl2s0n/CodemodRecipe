@@ -325,7 +325,7 @@ Use node names from the grammar for `edit.language` (pack Dart uses `class_defin
 4. **Filter** — add `#eq?` / `#match?` until one match per file.
 5. **Choose edit capture** — set `capture:` to the node you will insert beside, replace, or remove.
 6. **Validate** — `validate_recipes` (schema + language id).
-7. **Preview** — `preview_recipe`; inspect `files[].patches`.
+7. **Preview** — `preview_recipe`; inspect `files[].original` and `files[].modified`.
 8. **Idempotency** — re-preview after apply; expect empty `files` when done (`codemod-recipe-authoring`).
 
 ---

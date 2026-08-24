@@ -76,7 +76,7 @@ Node type names are **per grammar**. Dart pack grammar uses `class_definition`, 
 ## Workflow
 
 1. Inspect AST with **Query Tools** (VS Code Codemod sidebar → Query AST / Query Tools), or a tree-sitter playground, for node kinds.
-2. `validate_recipes` → `preview_recipe` → inspect patches (preview may show a full-file replace; use Query Tools to see capture spans).
+2. `validate_recipes` → `preview_recipe` → inspect files (preview shows original vs modified; use Query Tools to see capture spans).
 3. Tighten predicates if preview is empty or matches multiple nodes.
 
 ## Query Tools (VS Code)

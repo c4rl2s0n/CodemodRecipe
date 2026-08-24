@@ -118,7 +118,7 @@ Or compose with `- recipe: other_recipe_id`, or bind child args via
 
 1. `validate_recipes` — no schema errors (including unknown `language`)
 2. `preview_recipe` with realistic `args`
-3. Review `files[].patches` / `replacementPreview`
+3. Review `files[].original` / `files[].modified`
 4. `apply_recipe` with `previewToken`
 5. Re-preview — confirm idempotency
 6. Run `dart format` / analyzer if not using `postExecution: ["dart format ."]`

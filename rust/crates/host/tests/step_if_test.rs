@@ -1,9 +1,9 @@
 //! Step-level `if` / `ifNot` integration.
 
-use codemod_recipe_core::file_change::FileChange;
+use codemod_recipe_core::apply::file_change::FileChange;
 use codemod_recipe_engine::engine::parse_recipe_yaml;
-use codemod_recipe_host::registry::RecipeRegistry;
-use codemod_recipe_host::runner::collect_recipe_changes;
+use codemod_recipe_host::engine::runner::collect_recipe_changes;
+use codemod_recipe_host::recipe::registry::RecipeRegistry;
 use std::collections::BTreeMap;
 use std::sync::atomic::{AtomicUsize, Ordering};
 

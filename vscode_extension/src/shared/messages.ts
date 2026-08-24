@@ -41,7 +41,7 @@ export type WebviewToExtensionMessage =
       args: Record<string, string>;
       requestId?: number;
     }
-  | { type: typeof WEBVIEW_TO_EXTENSION.openDiff; path: string; patchIndex: number }
+  | { type: typeof WEBVIEW_TO_EXTENSION.openDiff; path: string }
   | { type: typeof WEBVIEW_TO_EXTENSION.apply; selection: SelectionPayload }
   | {
       type: typeof WEBVIEW_TO_EXTENSION.invokeRecipe;
@@ -135,7 +135,7 @@ export function isWebviewToExtensionMessage(
         (value.requestId === undefined || typeof value.requestId === 'number')
       );
     case WEBVIEW_TO_EXTENSION.openDiff:
-      return typeof value.path === 'string' && typeof value.patchIndex === 'number';
+      return typeof value.path === 'string';
     case WEBVIEW_TO_EXTENSION.apply:
       return isSelectionPayload(value.selection);
     case WEBVIEW_TO_EXTENSION.invokeRecipe:

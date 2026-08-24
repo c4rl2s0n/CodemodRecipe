@@ -1,7 +1,7 @@
 //! Query chain + query library resolution.
 
-use codemod_recipe_host::registry::RecipeRegistry;
-use codemod_recipe_host::runner::collect_recipe_changes;
+use codemod_recipe_host::engine::runner::collect_recipe_changes;
+use codemod_recipe_host::recipe::registry::RecipeRegistry;
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
@@ -42,7 +42,7 @@ fn chained_query_inserts_into_method_body() {
         }]
     });
 
-    let recipe = codemod_recipe_host::runner::parse_inline_recipe(&inline).unwrap();
+    let recipe = codemod_recipe_host::engine::runner::parse_inline_recipe(&inline).unwrap();
     let args = BTreeMap::from([
         ("className".to_string(), "Settings".to_string()),
         ("methodName".to_string(), "update".to_string()),
@@ -95,7 +95,7 @@ fn chained_query_mixed_library_ref_and_inline_step() {
         }]
     });
 
-    let recipe = codemod_recipe_host::runner::parse_inline_recipe(&inline).unwrap();
+    let recipe = codemod_recipe_host::engine::runner::parse_inline_recipe(&inline).unwrap();
     let args = BTreeMap::from([
         ("className".to_string(), "Settings".to_string()),
         ("methodName".to_string(), "update".to_string()),

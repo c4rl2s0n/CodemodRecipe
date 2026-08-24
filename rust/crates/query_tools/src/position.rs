@@ -1,4 +1,4 @@
-use crate::dump::Position;
+use crate::query::dump::Position;
 
 /// Convert a UTF-8 byte offset to 0-based line/column (column in UTF-8 bytes).
 pub fn byte_to_position(source: &str, byte: usize) -> Position {

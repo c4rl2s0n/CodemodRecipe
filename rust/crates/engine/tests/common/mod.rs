@@ -1,5 +1,5 @@
 use codemod_recipe_engine::engine::Engine;
-use codemod_recipe_engine::registry::{ensure_language_downloaded, LanguageRegistry};
+use codemod_recipe_engine::{ensure_language_downloaded, LanguageRegistry};
 
 pub fn engine_for(language_id: &str) -> (LanguageRegistry, String) {
     ensure_language_downloaded(language_id);

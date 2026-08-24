@@ -1,5 +1,5 @@
 use crate::dsl;
-use crate::model::*;
+use crate::model::model::*;
 use thiserror::Error;
 
 #[derive(Debug, Error, Clone, PartialEq, Eq)]

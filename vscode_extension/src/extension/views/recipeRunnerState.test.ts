@@ -28,7 +28,7 @@ describe('RecipeRunnerState.syncRecipesAfterRefresh', () => {
     const state = new RecipeRunnerState();
     state.currentRecipe = recipeA;
     state.lastArgs = { file: 'lib/a.dart' };
-    state.lastFiles = [{ path: 'lib/a.dart', kind: 'patch', isNew: false, skipped: false, patches: [] }];
+    state.lastFiles = [{ path: 'lib/a.dart', kind: 'patch', isNew: false, skipped: false }];
 
     state.syncRecipesAfterRefresh([recipeAUpdated, recipeB]);
 

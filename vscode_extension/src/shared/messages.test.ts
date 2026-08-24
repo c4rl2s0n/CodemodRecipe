@@ -28,7 +28,6 @@ describe('isWebviewToExtensionMessage', () => {
       isWebviewToExtensionMessage({
         type: WEBVIEW_TO_EXTENSION.openDiff,
         path: 'lib/a.dart',
-        patchIndex: -1,
       })
     ).toBe(true);
     expect(
@@ -47,11 +46,10 @@ describe('isWebviewToExtensionMessage', () => {
     ).toBe(true);
   });
 
-  it('rejects openDiff without patchIndex', () => {
+  it('rejects openDiff without path', () => {
     expect(
       isWebviewToExtensionMessage({
         type: WEBVIEW_TO_EXTENSION.openDiff,
-        path: 'lib/a.dart',
       })
     ).toBe(false);
     expect(isWebviewToExtensionMessage({ type: 'not-a-message' })).toBe(false);

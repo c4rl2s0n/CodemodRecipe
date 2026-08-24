@@ -2,10 +2,9 @@
 import { computed } from 'vue';
 import type { FilePreview } from '../shared';
 import type { FileCardSelection } from '../lib/selection';
-import { allPatchRows } from '../lib/selection';
+import { buildSelection } from '../lib/selection';
 import FileCard from './FileCard.vue';
 import { useExtensionClient } from '../composables/useExtensionClient';
-import { buildSelection } from '../lib/selection';
 
 const client = useExtensionClient();
 
@@ -21,41 +20,29 @@ const emit = defineEmits<{
   'update:activeChangeIndex': [value: number];
 }>();
 
-const activePatchKey = computed(() => {
-  const rows = allPatchRows(props.fileSelections);
-  const row = rows[props.activeChangeIndex];
-  return row ? `${row.path}:${row.index}` : null;
-});
-
 function updateFileSelection(index: number, selection: FileCardSelection) {
   const next = [...props.fileSelections];
   next[index] = selection;
   emit('update:fileSelections', next);
 }
 
-function selectPatch(path: string, index: number) {
-  const rows = allPatchRows(props.fileSelections);
-  const idx = rows.findIndex((r) => r.path === path && r.index === index);
-  if (idx >= 0) {
-    emit('update:activeChangeIndex', idx);
-    client.openDiff(path, index);
-  }
+function selectFile(index: number) {
+  emit('update:activeChangeIndex', index);
+  client.openDiff(props.files[index].path, -1);
 }
 
 function previousChange() {
-  const rows = allPatchRows(props.fileSelections);
-  if (!rows.length) return;
+  if (!props.files.length) return;
   const next = Math.max(0, props.activeChangeIndex - 1);
   emit('update:activeChangeIndex', next);
-  client.openDiff(rows[next].path, rows[next].index);
+  client.openDiff(props.files[next].path, -1);
 }
 
 function nextChange() {
-  const rows = allPatchRows(props.fileSelections);
-  if (!rows.length) return;
-  const next = Math.min(rows.length - 1, props.activeChangeIndex + 1);
+  if (!props.files.length) return;
+  const next = Math.min(props.files.length - 1, props.activeChangeIndex + 1);
   emit('update:activeChangeIndex', next);
-  client.openDiff(rows[next].path, rows[next].index);
+  client.openDiff(props.files[next].path, -1);
 }
 
 function applySelected() {
@@ -79,12 +66,16 @@ function applySelected() {
       :key="file.path"
       :file="file"
       :selection="fileSelections[index]"
-      :active-patch-key="activePatchKey"
+      :active="activeChangeIndex === index"
       @update:selection="updateFileSelection(index, $event)"
-      @select-patch="selectPatch"
+      @select="selectFile(index)"
     />
     <div class="toolbar">
-      <button type="button" :disabled="!canApply" @click="applySelected">
+      <button
+        type="button"
+        :disabled="!canApply"
+        @click="applySelected"
+      >
         Apply Selected
       </button>
     </div>

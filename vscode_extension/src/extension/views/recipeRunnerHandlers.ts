@@ -80,7 +80,7 @@ export async function handleWebviewMessage(
       await handlePreview(host, message.args, message.requestId);
       break;
     case WEBVIEW_TO_EXTENSION.openDiff:
-      await handleOpenDiffByPath(host, message.path, message.patchIndex);
+      await handleOpenDiffByPath(host, message.path);
       break;
     case WEBVIEW_TO_EXTENSION.apply:
       await handleApply(host, message.selection);
@@ -295,15 +295,14 @@ async function handleApply(
 
 async function handleOpenDiffByPath(
   host: RecipeRunnerHandlerHost,
-  filePath: string,
-  patchIndex: number
+  filePath: string
 ): Promise<void> {
   const file = host.state.lastFiles.find((item) => item.path === filePath);
   if (!file) {
     return;
   }
   const materialized = await ensureDiffMaterialized(host, file);
-  await openDiff(host, materialized, patchIndex);
+  await openDiff(host, materialized);
 }
 
 function isNewFilePreview(file: FilePreview): boolean {
@@ -331,8 +330,7 @@ async function openNewFilePreview(
 
 async function openDiff(
   host: RecipeRunnerHandlerHost,
-  file: FilePreview,
-  patchIndex: number
+  file: FilePreview
 ): Promise<void> {
   if (isNewFilePreview(file)) {
     await openNewFilePreview(host, file);
@@ -340,31 +338,16 @@ async function openDiff(
   }
 
   const safe = file.path.replace(/[^a-zA-Z0-9]/g, '_');
-  let originalText = file.original ?? '';
-  let modifiedText = file.modified ?? '';
-  let title = file.path;
-
-  if (patchIndex >= 0) {
-    const patch = file.patches[patchIndex];
-    if (patch) {
-      originalText = originalText.slice(
-        patch.offset,
-        patch.offset + patch.length
-      );
-      modifiedText =
-        patch.replacement ?? patch.replacementPreview ?? '';
-      title = `${file.path} (change ${patchIndex + 1})`;
-    }
-  } else {
-    title = `${file.path} (proposed)`;
-  }
+  const originalText = file.original ?? '';
+  const modifiedText = file.modified ?? '';
+  const title = `${file.path} (proposed)`;
 
   const originalUri = host.diffProvider.store(
-    `${DIFF.originalPrefix}/${safe}/${patchIndex}`,
+    `${DIFF.originalPrefix}/${safe}`,
     originalText
   );
   const modifiedUri = host.diffProvider.store(
-    `${DIFF.modifiedPrefix}/${safe}/${patchIndex}`,
+    `${DIFF.modifiedPrefix}/${safe}`,
     modifiedText
   );
   await vscode.commands.executeCommand(

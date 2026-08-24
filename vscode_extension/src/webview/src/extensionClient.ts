@@ -24,7 +24,7 @@ export interface ExtensionClient {
   pickDirectory(arg: string): void;
   pickPath(arg: string, directory: boolean): Promise<string>;
   requestPreview(args: Record<string, string>, requestId: number): void;
-  openDiff(path: string, patchIndex: number): void;
+  openDiff(path: string): void;
   apply(selection: SelectionPayload): void;
   invokeRecipe(
     recipeId: string,
@@ -87,8 +87,8 @@ export function createExtensionClient(deps: ExtensionClientDeps): ExtensionClien
     requestPreview(args: Record<string, string>, requestId: number) {
       post({ type: WEBVIEW_TO_EXTENSION.preview, args, requestId });
     },
-    openDiff(path: string, patchIndex: number) {
-      post({ type: WEBVIEW_TO_EXTENSION.openDiff, path, patchIndex });
+    openDiff(path: string) {
+      post({ type: WEBVIEW_TO_EXTENSION.openDiff, path });
     },
     apply(selection: SelectionPayload) {
       post({ type: WEBVIEW_TO_EXTENSION.apply, selection });

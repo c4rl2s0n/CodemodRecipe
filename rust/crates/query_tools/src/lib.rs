@@ -1,20 +1,14 @@
-//! Tree-sitter query authoring helpers: AST dump, match debug, and query generation.
-//!
-//! Pure `Language` + source APIs — no recipe YAML, Jinja, or workspace coupling.
+pub mod debug;
+pub mod position;
+pub mod query;
 
-mod dump;
-mod generate;
-mod instrument;
-mod match_debug;
-mod position;
-
-pub use dump::{dump_ast, AstNode, DumpOptions, Position};
-pub use generate::{generate_query, GenerateOptions, GeneratedQuery};
-pub use instrument::{instrument_query, InstrumentedQuery};
-pub use match_debug::{
+pub use debug::instrument::{instrument_query, InstrumentedQuery};
+pub use debug::match_debug::{
     debug_query, parse_tree, CaptureInfo, DebugMatch, DebugOptions, DebugQueryResult, NodeSpan,
 };
 pub use position::{byte_to_position, positions_for_range};
+pub use query::dump::{dump_ast, AstNode, DumpOptions, Position};
+pub use query::generate::{generate_query, GenerateOptions, GeneratedQuery};
 
 use thiserror::Error;
 

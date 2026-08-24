@@ -251,14 +251,7 @@ function selectionIncludingAll(files: FilePreview[]): SelectionPayload {
     if (file.skipped) {
       continue;
     }
-    const patches =
-      file.patches.length > 0
-        ? file.patches.map((p) => p.index)
-        : undefined;
-    selection.files[file.path] = {
-      include: true,
-      ...(patches ? { patches } : {}),
-    };
+    selection.files[file.path] = { include: true };
   }
   return selection;
 }
