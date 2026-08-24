@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import type {
+  ArgValues,
   ContextRecipeMatch,
   RecipeDiagnostic,
   RecipeSchema,
@@ -31,7 +32,7 @@ const contextExpanded = ref(true);
 
 type RecipeContextMenuState = {
   recipeId: string;
-  args?: Record<string, string>;
+  args?: ArgValues;
   x: number;
   y: number;
 };
@@ -177,9 +178,9 @@ function formatSource(diagnostic: RecipeDiagnostic): string {
   return location;
 }
 
-function formatArgs(args: Record<string, string>): string {
+function formatArgs(args: ArgValues): string {
   return Object.entries(args)
-    .map(([k, v]) => `${k}: ${v}`)
+    .map(([k, v]) => `${k}: ${typeof v === 'string' ? v : JSON.stringify(v)}`)
     .join(', ');
 }
 </script>

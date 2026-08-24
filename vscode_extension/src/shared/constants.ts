@@ -17,12 +17,10 @@ export type BootstrapPhase =
 
 export const ARG_INPUT_KIND = {
   text: 'text',
+  bool: 'bool',
+  choice: 'choice',
   file: 'file',
   directory: 'directory',
-  enum: 'enum',
-  dartType: 'dartType',
-  symbol: 'symbol',
-  bool: 'bool',
 } as const;
 
 export type ArgInputKind = (typeof ARG_INPUT_KIND)[keyof typeof ARG_INPUT_KIND];

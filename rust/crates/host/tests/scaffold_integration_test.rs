@@ -40,10 +40,10 @@ fn setup_scaffold_workspace(name: &str) -> PathBuf {
     workspace
 }
 
-fn scaffold_args() -> BTreeMap<String, String> {
+fn scaffold_args() -> BTreeMap<String, serde_json::Value> {
     let mut args = BTreeMap::new();
-    args.insert("className".to_string(), "Counter".to_string());
-    args.insert("fieldName".to_string(), "tickCount".to_string());
+    args.insert("className".to_string(), serde_json::json!("Counter"));
+    args.insert("fieldName".to_string(), serde_json::json!("tickCount"));
     args
 }
 

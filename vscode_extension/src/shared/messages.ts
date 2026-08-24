@@ -1,4 +1,4 @@
-import type { FilePreview, SelectionPayload, RecipeViewState, TranscriptEvent } from './types';
+import type { ArgValues, FilePreview, SelectionPayload, RecipeViewState, TranscriptEvent } from './types';
 
 export const WEBVIEW_TO_EXTENSION = {
   ready: 'ready',
@@ -38,7 +38,7 @@ export type WebviewToExtensionMessage =
   | { type: typeof WEBVIEW_TO_EXTENSION.pickDirectory; arg: string }
   | {
       type: typeof WEBVIEW_TO_EXTENSION.preview;
-      args: Record<string, string>;
+      args: ArgValues;
       requestId?: number;
     }
   | { type: typeof WEBVIEW_TO_EXTENSION.openDiff; path: string }
@@ -47,12 +47,12 @@ export type WebviewToExtensionMessage =
       type: typeof WEBVIEW_TO_EXTENSION.invokeRecipe;
       recipeId: string;
       mode: 'auto' | 'run' | 'open';
-      args?: Record<string, string>;
+      args?: ArgValues;
     }
   | {
       type: typeof WEBVIEW_TO_EXTENSION.createShortcut;
       recipeId: string;
-      args?: Record<string, string>;
+      args?: ArgValues;
     };
 
 export type ExtensionToWebviewMessage =
@@ -90,11 +90,24 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-function isStringRecord(value: unknown): value is Record<string, string> {
-  if (!isRecord(value)) {
+function isArgValue(value: unknown): value is import('./types').ArgValue {
+  if (typeof value === 'string' || typeof value === 'boolean') {
+    return true;
+  }
+  if (Array.isArray(value)) {
+    return value.every(isArgValue);
+  }
+  if (isRecord(value)) {
+    return Object.values(value).every(isArgValue);
+  }
+  return false;
+}
+
+function isArgRecord(value: unknown): value is ArgValues {
+  if (!isRecord(value) || Array.isArray(value)) {
     return false;
   }
-  return Object.values(value).every((v) => typeof v === 'string');
+  return Object.values(value).every(isArgValue);
 }
 
 function isSelectionPayload(value: unknown): boolean {
@@ -133,7 +146,7 @@ export function isWebviewToExtensionMessage(
       return typeof value.arg === 'string';
     case WEBVIEW_TO_EXTENSION.preview:
       return (
-        isStringRecord(value.args) &&
+        isArgRecord(value.args) &&
         (value.requestId === undefined || typeof value.requestId === 'number')
       );
     case WEBVIEW_TO_EXTENSION.openDiff:
@@ -146,12 +159,12 @@ export function isWebviewToExtensionMessage(
         (value.mode === 'auto' ||
           value.mode === 'run' ||
           value.mode === 'open') &&
-        (value.args === undefined || isStringRecord(value.args))
+        (value.args === undefined || isArgRecord(value.args))
       );
     case WEBVIEW_TO_EXTENSION.createShortcut:
       return (
         typeof value.recipeId === 'string' &&
-        (value.args === undefined || isStringRecord(value.args))
+        (value.args === undefined || isArgRecord(value.args))
       );
     default:
       return false;

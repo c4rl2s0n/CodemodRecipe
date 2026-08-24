@@ -15,6 +15,7 @@ Rust implementation: `rust/crates/lua/src/load.rs` (parse/validate), `rust/crate
 | `description` | no | Short description |
 | `args` | no | List of arg definitions (see below) |
 | `maps` | no | Recipe-local map tables `{ mapId = { key = "value" } }` |
+| `types` | no | Recipe-local named types `{ TypeId = { fields = { ... } } }` |
 | `queries` | no | Inline query strings `{ queryId = "(...) @cap" }` |
 | `postExecution` | no | Shell commands after successful apply (Jinja-rendered) |
 | `explorerMenu` | no | VS Code Explorer submenu entries |
@@ -26,15 +27,20 @@ args = {
   {
     name = "file",
     required = true,
-    inputKind = "file",       -- text | file | directory | choice | symbol
+    inputKind = "file",       -- text | bool | choice | file | directory | TypeId | { TypeId }
     defaultsTo = "lib/foo.dart",
     help = "Target Dart file",
     abbr = "f",
-    options = { "a", "b" },   -- for choice
+    options = { "a", "b" },   -- choice = closed list; text = suggestions
+    optionsFromMap = "column_type",
     from = "activeFile",      -- or a table for query-based derivation
   },
 }
 ```
+
+`inputKind` is the type. `{ "ClassProperty" }` means a list. Named types live in
+`.codemod/types/*.luau` or `*.lua` (`return { id, fields }`) or recipe-local `types`. Nested
+lists belong on a type field, not as `{{ "text" }}`.
 
 Arg defaults use `defaultsTo`. Unknown keys on an arg entry fail validation.
 
@@ -42,7 +48,7 @@ Arg defaults use `defaultsTo`. Unknown keys on an arg entry fail validation.
 
 ### `c.args`
 
-String map of resolved recipe arguments. Access as `c.args.file`, `c.args.className`, etc.
+Resolved recipe arguments: strings, bools, lists, and objects (`c.args.file`, `c.args.properties[1].name`).
 
 ### AST edits
 

@@ -234,9 +234,9 @@ Use a consistent vocabulary across related recipes:
 | Arg | `inputKind` | Used by |
 |-----|-------------|---------|
 | `file` | `file` | Generic edit recipes |
-| `feature` | `symbol` | Scaffold orchestrators (drives paths via `c:applyTemplate`) |
-| `className` | `symbol` | Class-targeted edits |
-| `fieldName` / `eventName` | `symbol` | Domain symbols; type resolved via map |
+| `feature` | `text` | Scaffold orchestrators (drives paths via `c:applyTemplate`) |
+| `className` | `text` | Class-targeted edits |
+| `fieldName` / `eventName` | `text` | Domain names; type resolved via map |
 | `fieldType` | optional or map-backed | When not inferable from map |
 
 **Path convention:** pick one style per project and stick to it.
@@ -262,7 +262,7 @@ return {
   id = "scaffold_bloc_feature",
   description = "Scaffold a new Bloc feature (state, event, bloc files + app wiring)",
   args = {
-    { name = "feature", required = true, inputKind = "symbol" },
+    { name = "feature", required = true, inputKind = "text" },
   },
   apply = function(c)
     c:run("create_bloc_state")
@@ -280,8 +280,8 @@ return {
   id = "add_bloc_state_field",
   description = "Add a typed field to an existing Bloc state class",
   args = {
-    { name = "feature", required = true, inputKind = "symbol" },
-    { name = "fieldName", required = true, inputKind = "symbol" },
+    { name = "feature", required = true, inputKind = "text" },
+    { name = "fieldName", required = true, inputKind = "text" },
   },
   maps = {
     dart_types = { email = "String", count = "int" },

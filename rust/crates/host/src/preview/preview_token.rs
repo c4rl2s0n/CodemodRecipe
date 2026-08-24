@@ -27,7 +27,7 @@ pub fn file_snapshot(path: &Path) -> FileSnapshot {
 pub fn compute_preview_token(
     recipe: Option<&str>,
     inline_recipe: Option<&serde_json::Value>,
-    args: &BTreeMap<String, String>,
+    args: &BTreeMap<String, serde_json::Value>,
     snapshot_paths: &[&Path],
 ) -> String {
     let snapshots: BTreeMap<String, FileSnapshot> = snapshot_paths
@@ -59,7 +59,7 @@ pub fn compute_preview_token(
 pub fn validate_preview_token(
     recipe: Option<&str>,
     inline_recipe: Option<&serde_json::Value>,
-    args: &BTreeMap<String, String>,
+    args: &BTreeMap<String, serde_json::Value>,
     provided: &str,
     snapshot_paths: &[&Path],
 ) -> Result<(), String> {
@@ -80,7 +80,7 @@ mod tests {
 
     #[test]
     fn token_is_stable_for_same_inputs() {
-        let args = BTreeMap::from([("file".to_string(), "a.dart".to_string())]);
+        let args = BTreeMap::from([("file".to_string(), serde_json::Value::String("a.dart".to_string()))]);
         let file = PathBuf::from("/tmp/example.dart");
         let a = compute_preview_token(Some("r"), None, &args, &[file.as_path()]);
         let b = compute_preview_token(Some("r"), None, &args, &[file.as_path()]);
@@ -90,12 +90,12 @@ mod tests {
     #[test]
     fn token_is_stable_for_arg_key_order() {
         let args1 = BTreeMap::from([
-            ("a".to_string(), "1".to_string()),
-            ("b".to_string(), "2".to_string()),
+            ("a".to_string(), serde_json::Value::String("1".to_string())),
+            ("b".to_string(), serde_json::Value::String("2".to_string())),
         ]);
         let args2 = BTreeMap::from([
-            ("b".to_string(), "2".to_string()),
-            ("a".to_string(), "1".to_string()),
+            ("b".to_string(), serde_json::Value::String("2".to_string())),
+            ("a".to_string(), serde_json::Value::String("1".to_string())),
         ]);
         let file = PathBuf::from("/tmp/example.dart");
         let a = compute_preview_token(Some("r"), None, &args1, &[file.as_path()]);

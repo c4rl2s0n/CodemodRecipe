@@ -9,6 +9,7 @@ import {
   WEBVIEW_TO_EXTENSION,
   assertNever,
   FILE_PREVIEW_KIND,
+  type ArgValues,
   type FilePreview,
   type SelectionPayload,
   type WebviewToExtensionMessage,
@@ -31,12 +32,12 @@ export interface RecipeRunnerHandlerHost {
   postMessage(message: unknown): void;
   run(
     recipe: import('../../shared').RecipeSchema,
-    initialArgs?: Record<string, string>
+    initialArgs?: ArgValues
   ): void;
   ensureRecipeDetails(
     recipe: import('../../shared').RecipeSchema
   ): Promise<import('../../shared').RecipeSchema>;
-  argsKey(args: Record<string, string>): string;
+  argsKey(args: ArgValues): string;
   get recipeRepository(): RecipeRepository | undefined;
 }
 
@@ -105,7 +106,7 @@ async function handleInvokeRecipe(
   host: RecipeRunnerHandlerHost,
   recipeId: string,
   mode: 'auto' | 'run' | 'open',
-  args?: Record<string, string>
+  args?: ArgValues
 ): Promise<void> {
   const repository = host.recipeRepository;
   if (!repository) {
@@ -125,16 +126,24 @@ async function handleInvokeRecipe(
 async function handleCreateShortcut(
   host: RecipeRunnerHandlerHost,
   recipeId: string,
-  args?: Record<string, string>
+  args?: ArgValues
 ): Promise<void> {
   const repository = host.recipeRepository;
   if (!repository) {
     return;
   }
+  const scalar: Record<string, string> = {};
+  if (args) {
+    for (const [k, v] of Object.entries(args)) {
+      if (typeof v === 'string') {
+        scalar[k] = v;
+      }
+    }
+  }
   await createShortcutForRecipe(
     { config: host.config, repository },
     recipeId,
-    args
+    Object.keys(scalar).length > 0 ? scalar : undefined
   );
 }
 
@@ -205,7 +214,7 @@ async function handlePickPath(
 
 async function handlePreview(
   host: RecipeRunnerHandlerHost,
-  args: Record<string, string>,
+  args: ArgValues,
   requestId?: number
 ): Promise<void> {
   const recipe = host.state.currentRecipe;

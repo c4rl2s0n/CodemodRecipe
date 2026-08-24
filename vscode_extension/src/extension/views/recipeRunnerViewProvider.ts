@@ -6,6 +6,7 @@ import { HostBridge } from '../host/hostBridge';
 import {
   EXTENSION_TO_WEBVIEW,
   isWebviewToExtensionMessage,
+  type ArgValues,
   type RecipeDiagnostic,
   type RecipeSchema,
 } from '../../shared';
@@ -150,7 +151,7 @@ export class RecipeRunnerViewProvider
     this.postState();
   }
 
-  run(recipe: RecipeSchema, initialArgs: Record<string, string> = {}): void {
+  run(recipe: RecipeSchema, initialArgs: ArgValues = {}): void {
     void this.runInternal(recipe, initialArgs);
   }
 
@@ -174,13 +175,8 @@ export class RecipeRunnerViewProvider
     void this.view?.webview.postMessage(message);
   }
 
-  argsKey(args: Record<string, string>): string {
-    const keys = Object.keys(args).sort();
-    const ordered: Record<string, string> = {};
-    for (const key of keys) {
-      ordered[key] = args[key];
-    }
-    return JSON.stringify(ordered);
+  argsKey(args: ArgValues): string {
+    return JSON.stringify(args);
   }
 
   private async handleMessage(message: unknown): Promise<void> {
@@ -190,7 +186,7 @@ export class RecipeRunnerViewProvider
 
   private async runInternal(
     recipe: RecipeSchema,
-    initialArgs: Record<string, string>
+    initialArgs: ArgValues
   ): Promise<void> {
     const hydrated = await this.ensureRecipeDetails(recipe);
     this.state.selectRecipe(hydrated, initialArgs);

@@ -67,7 +67,7 @@ Provide exactly one of:
 - `inlineRecipe` (Luau source string)
 
 Optional:
-- `args` (string map)
+- `args` (JSON: strings, bools, lists, objects)
 - `snippetLines` (number)
 
 Success includes:

@@ -1,4 +1,16 @@
-import type { BootstrapPhase, RunnerTab, ArgInputKind, FilePreviewKind } from './constants';
+import type { BootstrapPhase, RunnerTab, FilePreviewKind } from './constants';
+
+/** JSON-native recipe argument value. */
+export type ArgValue =
+  | string
+  | boolean
+  | ArgValue[]
+  | { [key: string]: ArgValue };
+
+export type ArgValues = Record<string, ArgValue>;
+
+/** Builtin kind name, registered type id, or a one-element list (`["ClassProperty"]`). */
+export type ArgInputKindSpec = string | string[];
 
 
 /** How to derive an arg from editor context (string builtin or structured spec). */
@@ -21,8 +33,9 @@ export interface RecipeArg {
   help: string | null;
   required: boolean;
   defaultsTo: string | null;
-  inputKind: ArgInputKind;
+  inputKind: ArgInputKindSpec;
   options: string[];
+  optionsFromMap?: string | null;
   allowCustomValue: boolean;
   /** @deprecated Prefer {@link from}. */
   contextKey: string | null;
@@ -30,6 +43,8 @@ export interface RecipeArg {
   from?: ArgFrom | null;
   /** Nested recipe ids that contribute this unbound arg (absent/empty when parent-declared). */
   fromRecipes?: string[];
+  /** Resolved fields when `inputKind` is a named type or list of a named type. */
+  fields?: RecipeArg[];
 }
 
 export interface DeriveArgsRequest {
@@ -46,7 +61,7 @@ export interface DeriveArgsRequest {
 export interface DeriveArgsResponse {
   ok: boolean;
   error?: string;
-  args?: Record<string, string>;
+  args?: ArgValues;
 }
 
 export interface RecipeSchema {
@@ -60,6 +75,12 @@ export interface RecipeSchema {
   explorerMenu?: ExplorerMenuEntry[] | null;
   templatesLoaded?: boolean;
   previewTemplates?: { label: string; path: string; content?: string }[];
+}
+
+export interface TypeSchema {
+  id: string;
+  description?: string | null;
+  fields: RecipeArg[];
 }
 
 export interface ExplorerMenuEntry {
@@ -113,6 +134,8 @@ export interface RecipeCatalogResponse {
   mapsLoaded?: number;
   mapIds?: string[];
   varIds?: string[];
+  typeIds?: string[];
+  types?: TypeSchema[];
   languageIds?: string[];
 }
 
@@ -178,17 +201,17 @@ export type HostCommand =
   | { command: 'reload' }
   | { command: 'validate'; recipe?: string }
   | { command: 'describe'; recipe: string }
-  | { command: 'diff'; recipe: string; args: Record<string, string>; path: string }
+  | { command: 'diff'; recipe: string; args: ArgValues; path: string }
   | {
       command: 'preview';
       recipe: string;
-      args: Record<string, string>;
+      args: ArgValues;
       snippetLines?: number;
     }
   | {
       command: 'apply';
       recipe: string;
-      args: Record<string, string>;
+      args: ArgValues;
       previewToken: string;
       selection: SelectionPayload;
     }
@@ -336,7 +359,7 @@ export interface ContextRecipeMatch {
   recipeId: string;
   name: string;
   description: string;
-  args: Record<string, string>;
+  args: ArgValues;
   complete: boolean;
 }
 
@@ -349,7 +372,7 @@ export interface RecipeViewState {
   bootstrapPhase: BootstrapPhase;
   bootstrapError?: string;
   recipe?: RecipeSchema;
-  initialArgs: Record<string, string>;
+  initialArgs: ArgValues;
   activeTab: RunnerTab;
   autoPreviewDebounceMs?: number;
   /** Recipes matching local editor context (Tier A). */
@@ -361,7 +384,7 @@ export interface RecipeViewState {
 export interface PersistedWebviewState {
   recipeId?: string;
   activeTab: RunnerTab;
-  argValues: Record<string, string>;
+  argValues: ArgValues;
   files: FilePreview[];
   transcript?: TranscriptEvent[];
   applyMayDiverge?: boolean;

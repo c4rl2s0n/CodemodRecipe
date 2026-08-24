@@ -25,7 +25,7 @@ pub fn derive_args(registry: &RecipeRegistry, req: DeriveArgsRequest<'_>) -> Der
     for arg in &recipe.args {
         if let Some(codemod_recipe_lua::ArgFrom::Builtin(key)) = &arg.from {
             if let Some(v) = req.context.get(key) {
-                args.insert(arg.name.clone(), v.clone());
+                args.insert(arg.name.clone(), serde_json::Value::String(v.clone()));
             }
         }
     }

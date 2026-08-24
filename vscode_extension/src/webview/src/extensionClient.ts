@@ -1,6 +1,7 @@
 import {
   EXTENSION_TO_WEBVIEW,
   WEBVIEW_TO_EXTENSION,
+  type ArgValues,
   type SelectionPayload,
   type WebviewToExtensionMessage,
 } from './shared';
@@ -22,15 +23,15 @@ export interface ExtensionClient {
   pickFile(arg: string): void;
   pickDirectory(arg: string): void;
   pickPath(arg: string, directory: boolean): Promise<string>;
-  requestPreview(args: Record<string, string>, requestId: number): void;
+  requestPreview(args: ArgValues, requestId: number): void;
   openDiff(path: string): void;
   apply(selection: SelectionPayload): void;
   invokeRecipe(
     recipeId: string,
     mode: 'auto' | 'run' | 'open',
-    args?: Record<string, string>
+    args?: ArgValues
   ): void;
-  createShortcut(recipeId: string, args?: Record<string, string>): void;
+  createShortcut(recipeId: string, args?: ArgValues): void;
 }
 
 export function createExtensionClient(deps: ExtensionClientDeps): ExtensionClient {
@@ -83,7 +84,7 @@ export function createExtensionClient(deps: ExtensionClientDeps): ExtensionClien
       post({ type: WEBVIEW_TO_EXTENSION.pickDirectory, arg });
     },
     pickPath,
-    requestPreview(args: Record<string, string>, requestId: number) {
+    requestPreview(args: ArgValues, requestId: number) {
       post({ type: WEBVIEW_TO_EXTENSION.preview, args, requestId });
     },
     openDiff(path: string) {

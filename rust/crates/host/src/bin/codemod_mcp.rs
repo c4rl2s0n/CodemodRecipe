@@ -477,14 +477,10 @@ fn error_json(message: impl Into<String>) -> serde_json::Value {
     serde_json::Value::Object(value)
 }
 
-fn json_args_to_btreemap(arguments: &serde_json::Value) -> BTreeMap<String, String> {
+fn json_args_to_btreemap(arguments: &serde_json::Value) -> BTreeMap<String, serde_json::Value> {
     arguments
         .get("args")
         .and_then(|v| v.as_object())
-        .map(|obj| {
-            obj.iter()
-                .filter_map(|(k, v)| v.as_str().map(|s| (k.clone(), s.to_string())))
-                .collect()
-        })
+        .map(|obj| obj.iter().map(|(k, v)| (k.clone(), v.clone())).collect())
         .unwrap_or_default()
 }

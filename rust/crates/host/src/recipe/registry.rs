@@ -1,11 +1,16 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use codemod_recipe_lua::load::{load_map, load_query_lib, load_recipe, load_variables, LoadError};
-use codemod_recipe_lua::model::{Arg, ArgFrom, ExplorerMenuEntry, Recipe};
+use codemod_recipe_lua::load::{
+    load_map, load_query_lib, load_recipe, load_type, load_variables, LoadError,
+};
+use codemod_recipe_lua::model::{Arg, ArgFrom, ExplorerMenuEntry, Recipe, TypeDef};
+use codemod_recipe_lua::InputKind;
 
 use crate::diagnostics::diag_source::source_file_only;
-use crate::protocol::{ExplorerMenuEntrySchema, RecipeArg, RecipeDiagnostic, RecipeSchema};
+use crate::protocol::{
+    ExplorerMenuEntrySchema, RecipeArg, RecipeDiagnostic, RecipeSchema, TypeSchema,
+};
 
 pub struct RecipeRegistry {
     pub workspace_root: PathBuf,
@@ -15,6 +20,7 @@ pub struct RecipeRegistry {
     maps_by_id: BTreeMap<String, BTreeMap<String, String>>,
     vars_by_id: BTreeMap<String, BTreeMap<String, String>>,
     queries_by_id: BTreeMap<String, String>,
+    types_by_id: BTreeMap<String, TypeDef>,
     recipes: BTreeMap<String, Recipe>,
     diagnostics: Vec<RecipeDiagnostic>,
 }
@@ -29,6 +35,7 @@ impl RecipeRegistry {
             maps_by_id: BTreeMap::new(),
             vars_by_id: BTreeMap::new(),
             queries_by_id: BTreeMap::new(),
+            types_by_id: BTreeMap::new(),
             recipes: BTreeMap::new(),
             diagnostics: Vec::new(),
         }
@@ -48,6 +55,21 @@ impl RecipeRegistry {
 
     pub fn queries_by_id(&self) -> &BTreeMap<String, String> {
         &self.queries_by_id
+    }
+
+    pub fn types_by_id(&self) -> &BTreeMap<String, TypeDef> {
+        &self.types_by_id
+    }
+
+    pub fn type_ids(&self) -> Vec<String> {
+        self.types_by_id.keys().cloned().collect()
+    }
+
+    pub fn type_schemas(&self) -> Vec<TypeSchema> {
+        self.types_by_id
+            .values()
+            .map(|t| type_schema(t, &self.maps_by_id, &self.types_by_id))
+            .collect()
     }
 
     pub fn maps_count(&self) -> usize {
@@ -78,6 +100,7 @@ impl RecipeRegistry {
         self.maps_by_id.clear();
         self.vars_by_id.clear();
         self.queries_by_id.clear();
+        self.types_by_id.clear();
         self.recipes.clear();
         self.diagnostics.clear();
         self.ast_cache.clear();
@@ -103,6 +126,22 @@ impl RecipeRegistry {
                     }
                     Err(err) => self.push_load_error(&relative, err),
                 }
+            } else if path_is_under(&path, &self.codemod_root.join("types")) {
+                match load_type(&text, &name) {
+                    Ok(asset) => {
+                        if self.types_by_id.contains_key(&asset.id) {
+                            self.diagnostics.push(RecipeDiagnostic::simple(
+                                "error",
+                                "E_DUP_ID",
+                                format!("Duplicate type id {}", asset.id),
+                                vec![source_file_only(&relative)],
+                            ));
+                        } else {
+                            self.types_by_id.insert(asset.id.clone(), asset);
+                        }
+                    }
+                    Err(err) => self.push_load_error(&relative, err),
+                }
             } else if path_is_under(&path, &self.codemod_root.join("queries")) {
                 match load_query_lib(&text, &name) {
                     Ok(asset) => {
@@ -118,6 +157,9 @@ impl RecipeRegistry {
                         recipe.path = Some(path.clone());
                         for (k, v) in recipe.maps.clone() {
                             self.maps_by_id.entry(k).or_insert(v);
+                        }
+                        for (k, v) in recipe.types.clone() {
+                            self.types_by_id.entry(k).or_insert(v);
                         }
                         if self.recipes.contains_key(&recipe.id) {
                             self.diagnostics.push(RecipeDiagnostic::simple(
@@ -191,7 +233,11 @@ impl RecipeRegistry {
             name: recipe.name.clone().unwrap_or_else(|| recipe.id.clone()),
             description: recipe.description.clone().unwrap_or_default(),
             source_file: relative,
-            args: recipe.args.iter().map(arg_schema).collect(),
+            args: recipe
+                .args
+                .iter()
+                .map(|a| arg_schema(a, &self.maps_by_id, &self.types_by_id))
+                .collect(),
             explorer_menu: if recipe.explorer_menu.is_empty() {
                 None
             } else {
@@ -201,16 +247,31 @@ impl RecipeRegistry {
     }
 }
 
-fn arg_schema(arg: &Arg) -> RecipeArg {
+fn arg_schema(
+    arg: &Arg,
+    maps: &BTreeMap<String, BTreeMap<String, String>>,
+    types: &BTreeMap<String, TypeDef>,
+) -> RecipeArg {
+    let options = crate::recipe::args::choice_options(arg, maps);
+    let allow_custom = !matches!(arg.input_kind, InputKind::Choice);
+    let fields = arg.input_kind.type_id().and_then(|id| {
+        types.get(id).map(|def| {
+            def.fields
+                .iter()
+                .map(|f| arg_schema(f, maps, types))
+                .collect()
+        })
+    });
     RecipeArg {
         name: arg.name.clone(),
         abbr: arg.abbr.clone(),
         help: arg.help.clone(),
         required: arg.required,
         defaults_to: arg.defaults_to.clone(),
-        input_kind: arg.input_kind.clone().unwrap_or_else(|| "text".to_string()),
-        options: arg.options.clone(),
-        allow_custom_value: arg.allow_custom_value.unwrap_or(false),
+        input_kind: arg.input_kind.to_json(),
+        options,
+        options_from_map: arg.options_from_map.clone(),
+        allow_custom_value: arg.allow_custom_value.unwrap_or(allow_custom),
         context_key: None,
         from: arg.from.as_ref().map(|f| match f {
             ArgFrom::Builtin(s) => serde_json::Value::String(s.clone()),
@@ -221,6 +282,23 @@ fn arg_schema(arg: &Arg) -> RecipeArg {
             }),
         }),
         from_recipes: vec![],
+        fields,
+    }
+}
+
+fn type_schema(
+    def: &TypeDef,
+    maps: &BTreeMap<String, BTreeMap<String, String>>,
+    types: &BTreeMap<String, TypeDef>,
+) -> TypeSchema {
+    TypeSchema {
+        id: def.id.clone(),
+        description: def.description.clone(),
+        fields: def
+            .fields
+            .iter()
+            .map(|f| arg_schema(f, maps, types))
+            .collect(),
     }
 }
 

@@ -21,7 +21,7 @@ fn temp_workspace(name: &str) -> PathBuf {
 fn preview_inline(
     registry: &mut RecipeRegistry,
     inline: serde_json::Value,
-    args: BTreeMap<String, String>,
+    args: BTreeMap<String, serde_json::Value>,
 ) -> serde_json::Value {
     dispatch::handle_command(
         registry,

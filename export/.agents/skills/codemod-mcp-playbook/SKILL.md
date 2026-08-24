@@ -33,7 +33,7 @@ MCP server `codemod-mcp` returns JSON text. Parse output and branch on `ok`.
 
 Provide one of `recipe` (id) or `inlineRecipe` (Luau source string).
 
-Optional: `args` (string map), `snippetLines` (number).
+Optional: `args` (JSON values: strings, bools, lists, objects), `snippetLines` (number).
 
 Returns `previewToken`, `files[]`, and `transcript[]`.
 

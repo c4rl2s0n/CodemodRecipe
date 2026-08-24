@@ -81,7 +81,7 @@ export function buildUriContextValues(
 
 /** Prefill the first matching `inputKind` arg from the Explorer click path. */
 export function prefillArgsFromUriClick(
-  recipe: { args: readonly { name: string; inputKind: string }[] },
+  recipe: { args: readonly { name: string; inputKind: string | string[] }[] },
   kind: ExplorerResourceKind,
   clickPath: string
 ): Record<string, string> {

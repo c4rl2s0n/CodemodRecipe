@@ -27,7 +27,7 @@ pub enum HostCommand {
         #[serde(default, rename = "inlineRecipe")]
         inline_recipe: Option<serde_json::Value>,
         #[serde(default)]
-        args: std::collections::BTreeMap<String, String>,
+        args: std::collections::BTreeMap<String, serde_json::Value>,
         #[serde(default, rename = "snippetLines")]
         snippet_lines: Option<u32>,
     },
@@ -38,7 +38,7 @@ pub enum HostCommand {
         #[serde(default, rename = "inlineRecipe")]
         inline_recipe: Option<serde_json::Value>,
         #[serde(default)]
-        args: std::collections::BTreeMap<String, String>,
+        args: std::collections::BTreeMap<String, serde_json::Value>,
         #[serde(rename = "previewToken")]
         preview_token: String,
         #[serde(default)]
@@ -51,7 +51,7 @@ pub enum HostCommand {
         #[serde(default, rename = "inlineRecipe")]
         inline_recipe: Option<serde_json::Value>,
         #[serde(default)]
-        args: std::collections::BTreeMap<String, String>,
+        args: std::collections::BTreeMap<String, serde_json::Value>,
         path: String,
     },
     #[serde(rename = "generateAstPath")]
@@ -143,8 +143,10 @@ pub struct RecipeArg {
     pub help: Option<String>,
     pub required: bool,
     pub defaults_to: Option<String>,
-    pub input_kind: String,
+    pub input_kind: serde_json::Value,
     pub options: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub options_from_map: Option<String>,
     pub allow_custom_value: bool,
     pub context_key: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -152,6 +154,9 @@ pub struct RecipeArg {
     /// Nested recipe ids that contribute this unbound arg (empty when parent-declared).
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub from_recipes: Vec<String>,
+    /// Resolved fields when `inputKind` is a named type or list of a named type.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub fields: Option<Vec<RecipeArg>>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -161,7 +166,7 @@ pub struct DeriveArgsResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub args: Option<std::collections::BTreeMap<String, String>>,
+    pub args: Option<std::collections::BTreeMap<String, serde_json::Value>>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -176,6 +181,15 @@ pub struct RecipeSchema {
     pub args: Vec<RecipeArg>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub explorer_menu: Option<Vec<ExplorerMenuEntrySchema>>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct TypeSchema {
+    pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    pub fields: Vec<RecipeArg>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -258,6 +272,10 @@ pub struct RecipeCatalogResponse {
     pub map_ids: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none", rename = "varIds")]
     pub var_ids: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "typeIds")]
+    pub type_ids: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub types: Option<Vec<TypeSchema>>,
     #[serde(skip_serializing_if = "Option::is_none", rename = "languageIds")]
     pub language_ids: Option<Vec<String>>,
 }

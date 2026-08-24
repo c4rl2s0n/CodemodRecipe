@@ -20,7 +20,7 @@ describe('isWebviewToExtensionMessage', () => {
     expect(
       isWebviewToExtensionMessage({
         type: WEBVIEW_TO_EXTENSION.preview,
-        args: { a: 'b' },
+        args: { properties: [{ type: 'int', name: 'count' }] },
         requestId: 1,
       })
     ).toBe(true);

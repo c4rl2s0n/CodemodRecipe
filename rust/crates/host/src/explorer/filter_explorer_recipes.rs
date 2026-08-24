@@ -5,6 +5,7 @@ use std::sync::Arc;
 
 use codemod_recipe_core::resource_path::resolve_under_root;
 use codemod_recipe_lua::model::{ExplorerMenuKind, Recipe};
+use codemod_recipe_lua::InputKind;
 
 use crate::engine::step_condition::{condition_expr_passes, eval_string_expr};
 use crate::protocol::{ExplorerRecipeMatch, FilterExplorerRecipesResponse};
@@ -135,7 +136,13 @@ fn resolve_explorer_match(
             .as_deref()
             .map(str::trim)
             .filter(|s| !s.is_empty());
-        match condition_expr_passes(if_expr, context, maps, vars, path_exists.clone()) {
+        match condition_expr_passes(
+            if_expr,
+            &crate::recipe::args::strings_to_arg_map(context),
+            maps,
+            vars,
+            path_exists.clone(),
+        ) {
             Ok(true) => {
                 return resolve_entry_args(
                     recipe,
@@ -171,7 +178,13 @@ fn resolve_entry_args(
     }
     let mut out = BTreeMap::new();
     for (name, expr) in entry_args {
-        let value = eval_string_expr(expr, context, maps, vars, path_exists.clone())?;
+        let value = eval_string_expr(
+            expr,
+            &crate::recipe::args::strings_to_arg_map(context),
+            maps,
+            vars,
+            path_exists.clone(),
+        )?;
         out.insert(name.clone(), value);
     }
     Ok(out)
@@ -182,15 +195,13 @@ fn input_kind_heuristic(
     kind: ExplorerMenuKind,
     path: &str,
 ) -> BTreeMap<String, String> {
-    let want = match kind {
-        ExplorerMenuKind::File => "file",
-        ExplorerMenuKind::Folder => "directory",
-    };
     let mut out = BTreeMap::new();
     if let Some(arg) = recipe
         .args
         .iter()
-        .find(|a| a.input_kind.as_deref() == Some(want))
+        .find(|a| matches!((kind, &a.input_kind),
+            (ExplorerMenuKind::File, InputKind::File) | (ExplorerMenuKind::Folder, InputKind::Directory)
+        ))
     {
         out.insert(arg.name.clone(), path.to_string());
     }
@@ -201,6 +212,7 @@ fn input_kind_heuristic(
 mod tests {
     use super::*;
     use codemod_recipe_lua::model::{Arg, ExplorerMenuEntry, Recipe};
+    use codemod_recipe_lua::InputKind;
 
     fn recipe_with_menu(id: &str, kind: ExplorerMenuKind) -> Recipe {
         Recipe {
@@ -210,15 +222,17 @@ mod tests {
             args: vec![Arg {
                 name: "file".to_string(),
                 required: true,
-                input_kind: Some("file".to_string()),
+                input_kind: InputKind::File,
                 abbr: None,
                 help: None,
                 defaults_to: None,
                 options: vec![],
+                options_from_map: None,
                 allow_custom_value: None,
                 from: None,
             }],
             maps: BTreeMap::new(),
+            types: BTreeMap::new(),
             queries: BTreeMap::new(),
             post_execution: vec![],
             explorer_menu: vec![ExplorerMenuEntry {

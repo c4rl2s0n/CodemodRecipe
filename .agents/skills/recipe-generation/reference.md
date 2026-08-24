@@ -5,8 +5,8 @@
 | Kind of value in the selection | Treat as | `inputKind` |
 |--------------------------------|----------|-------------|
 | File path the edit targets | Arg `file` (or path arg) | `file` |
-| Class / method / field / type name that **locates** the edit | Arg + `{{name}}` in query predicates | `symbol` |
-| Payload that should vary across runs (inserted text, message, type literal, field name being added) | Required arg + `{{…}}` in `text` / template | `symbol` or omit kind |
+| Class / method / field / type name that **locates** the edit | Arg + `{{name}}` in query predicates | `text` |
+| Payload that should vary across runs (inserted text, message, type literal, field name being added) | Required arg + `{{…}}` in `text` / template | `text` |
 | Stable AST / grammar shape (node types, structural anchors) | Hardcode in `query` | — |
 | Project convention that never changes | Hardcode or map filter | — |
 

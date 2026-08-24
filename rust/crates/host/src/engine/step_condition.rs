@@ -9,7 +9,7 @@ use crate::template::{build_condition_environment, build_template_context, PathE
 /// Returns `Ok(true)` when the condition expression is truthy (or empty/absent).
 pub fn condition_expr_passes(
     if_expr: Option<&str>,
-    args: &BTreeMap<String, String>,
+    args: &BTreeMap<String, serde_json::Value>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     vars: &BTreeMap<String, BTreeMap<String, String>>,
     path_exists: PathExistsFn,
@@ -24,7 +24,7 @@ pub fn condition_expr_passes(
 pub fn step_conditions_pass(
     if_expr: Option<&str>,
     if_not: Option<&str>,
-    args: &BTreeMap<String, String>,
+    args: &BTreeMap<String, serde_json::Value>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     vars: &BTreeMap<String, BTreeMap<String, String>>,
     path_exists: PathExistsFn,
@@ -44,7 +44,7 @@ pub fn step_conditions_pass(
 
 fn eval_condition_expr(
     expr: &str,
-    args: &BTreeMap<String, String>,
+    args: &BTreeMap<String, serde_json::Value>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     vars: &BTreeMap<String, BTreeMap<String, String>>,
     path_exists: PathExistsFn,
@@ -56,7 +56,7 @@ fn eval_condition_expr(
 /// Evaluate a MiniJinja expression and stringify the result (for explorerMenu args).
 pub fn eval_string_expr(
     expr: &str,
-    args: &BTreeMap<String, String>,
+    args: &BTreeMap<String, serde_json::Value>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     vars: &BTreeMap<String, BTreeMap<String, String>>,
     path_exists: PathExistsFn,
@@ -67,7 +67,7 @@ pub fn eval_string_expr(
 
 fn eval_expression_value(
     expr: &str,
-    args: &BTreeMap<String, String>,
+    args: &BTreeMap<String, serde_json::Value>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     vars: &BTreeMap<String, BTreeMap<String, String>>,
     path_exists: PathExistsFn,
@@ -112,7 +112,7 @@ mod tests {
     #[test]
     fn bool_arg_gates() {
         let mut args = BTreeMap::new();
-        args.insert("includeTests".to_string(), "true".to_string());
+        args.insert("includeTests".to_string(), serde_json::Value::String("true".to_string()));
         let maps = BTreeMap::new();
         let vars = BTreeMap::new();
         let exists = checker(|_p| false);
@@ -125,7 +125,7 @@ mod tests {
             exists.clone()
         )
         .unwrap());
-        args.insert("includeTests".to_string(), "false".to_string());
+        args.insert("includeTests".to_string(), serde_json::Value::String("false".to_string()));
         assert!(
             !step_conditions_pass(Some("includeTests"), None, &args, &maps, &vars, exists).unwrap()
         );
@@ -134,7 +134,7 @@ mod tests {
     #[test]
     fn if_not_skips_when_true() {
         let mut args = BTreeMap::new();
-        args.insert("file".to_string(), "lib/a.dart".to_string());
+        args.insert("file".to_string(), serde_json::Value::String("lib/a.dart".to_string()));
         let maps = BTreeMap::new();
         let vars = BTreeMap::new();
         assert!(!step_conditions_pass(
@@ -160,7 +160,7 @@ mod tests {
     #[test]
     fn comparison_expression() {
         let mut args = BTreeMap::new();
-        args.insert("kind".to_string(), "widget".to_string());
+        args.insert("kind".to_string(), serde_json::Value::String("widget".to_string()));
         let maps = BTreeMap::new();
         let vars = BTreeMap::new();
         let exists = checker(|_p| false);

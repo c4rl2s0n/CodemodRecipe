@@ -3,6 +3,8 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
+use crate::input_kind::InputKind;
+
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Recipe {
     pub id: String,
@@ -10,6 +12,7 @@ pub struct Recipe {
     pub description: Option<String>,
     pub args: Vec<Arg>,
     pub maps: BTreeMap<String, BTreeMap<String, String>>,
+    pub types: BTreeMap<String, TypeDef>,
     pub queries: BTreeMap<String, String>,
     pub post_execution: Vec<String>,
     pub explorer_menu: Vec<ExplorerMenuEntry>,
@@ -18,14 +21,22 @@ pub struct Recipe {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TypeDef {
+    pub id: String,
+    pub description: Option<String>,
+    pub fields: Vec<Arg>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Arg {
     pub name: String,
     pub required: bool,
-    pub input_kind: Option<String>,
+    pub input_kind: InputKind,
     pub abbr: Option<String>,
     pub help: Option<String>,
     pub defaults_to: Option<String>,
     pub options: Vec<String>,
+    pub options_from_map: Option<String>,
     pub allow_custom_value: Option<bool>,
     pub from: Option<ArgFrom>,
 }

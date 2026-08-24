@@ -31,6 +31,7 @@ Each recipe `return`s metadata plus `apply(c)`. The Rust MCP server exposes prev
 .codemod/
   recipes/     # Luau recipe modules (*.luau / *.lua)
   maps/        # Luau map modules (id + map table)
+  types/       # Named arg types (id + fields)
   variables/   # Luau variable modules (id + values table)
   queries/     # Luau query libraries (id + queries table)
   templates/   # optional (renderFileTemplate)

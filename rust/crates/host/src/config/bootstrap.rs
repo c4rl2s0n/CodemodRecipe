@@ -121,6 +121,7 @@ pub fn bootstrap_project(
     let _ = std::fs::create_dir_all(workspace_root.join(".codemod/recipes"));
     let _ = std::fs::create_dir_all(workspace_root.join(".codemod/maps"));
     let _ = std::fs::create_dir_all(workspace_root.join(".codemod/variables"));
+    let _ = std::fs::create_dir_all(workspace_root.join(".codemod/types"));
 
     let companions_json: Vec<&str> = companions.iter().map(String::as_str).collect();
 

@@ -51,12 +51,37 @@ idempotency checks (e.g. `c:queryExists` before insert).
 ```lua
 args = {
   { name = "file", required = true, inputKind = "file" },
-  { name = "className", required = true, inputKind = "symbol" },
-  { name = "flag", defaultsTo = "false", inputKind = "choice", options = { "true", "false" } },
+  { name = "className", required = true, inputKind = "text" },
+  { name = "includeTests", inputKind = "bool", defaultsTo = "false" },
 }
 ```
 
-Common `inputKind` values: `text`, `file`, `directory`, `choice`, `symbol`.
+Builtin `inputKind` values: `text`, `bool`, `choice`, `file`, `directory`.
+A registered type id (from `.codemod/types/*.luau` or `*.lua`) is one object; `{ "TypeId" }` is a
+list of that type. `choice` needs `options` or `optionsFromMap`. `text` with options
+is a combobox (suggestions plus free typing). `symbol` still loads as `text`.
+
+```lua
+-- .codemod/types/class_property.luau
+return {
+  id = "ClassProperty",
+  fields = {
+    { name = "type", inputKind = "text", required = true },
+    { name = "name", inputKind = "text", required = true },
+    { name = "initialValue", inputKind = "text" },
+  },
+}
+```
+
+```lua
+args = {
+  { name = "properties", inputKind = { "ClassProperty" } },
+}
+-- in apply:
+for _, p in ipairs(c.args.properties or {}) do
+  c:run("add_property", { type = p.type, name = p.name })
+end
+```
 Defaults use `defaultsTo`. In VS Code, `from` can derive args from the editor —
 see [recipe-shortcuts.md](recipe-shortcuts.md).
 

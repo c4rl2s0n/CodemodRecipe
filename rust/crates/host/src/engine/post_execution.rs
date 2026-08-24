@@ -7,7 +7,7 @@ use codemod_recipe_core::resource_path::resolve_existing_resource;
 
 pub fn run_post_execution(
     actions: &[String],
-    args: &BTreeMap<String, String>,
+    args: &BTreeMap<String, serde_json::Value>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     vars: &BTreeMap<String, BTreeMap<String, String>>,
     workspace_root: &Path,
@@ -30,7 +30,7 @@ pub fn run_post_execution(
 
 pub fn run_post_execution_command(
     entry: &str,
-    args: &BTreeMap<String, String>,
+    args: &BTreeMap<String, serde_json::Value>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     vars: &BTreeMap<String, BTreeMap<String, String>>,
     workspace_root: &Path,
@@ -77,7 +77,7 @@ fn resolve_existing_script(
 
 fn run_script_file(
     script_path: &Path,
-    args: &BTreeMap<String, String>,
+    args: &BTreeMap<String, serde_json::Value>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     vars: &BTreeMap<String, BTreeMap<String, String>>,
     workspace_root: &Path,

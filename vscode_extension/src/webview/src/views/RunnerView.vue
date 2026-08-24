@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { FilePreview, RecipeSchema, TranscriptEvent } from '../shared';
+import type { ArgValues, FilePreview, RecipeSchema, TranscriptEvent } from '../shared';
 import type { FileCardSelection } from '../lib/selection';
 import RecipeArgForm from '../components/RecipeArgForm.vue';
 import ReviewPanel from '../components/ReviewPanel.vue';
@@ -9,7 +9,7 @@ const props = defineProps<{
   recipe?: RecipeSchema;
   runnerTitle: string;
   runnerDescription: string;
-  argValues: Record<string, string>;
+  argValues: ArgValues;
   previewStatus: string;
   previewStatusKind: 'warn' | 'ok' | '';
   errorMessage: string;
@@ -23,7 +23,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{
-  'update:argValues': [value: Record<string, string>];
+  'update:argValues': [value: ArgValues];
   argsChanged: [immediate: boolean];
   'update:fileSelections': [value: FileCardSelection[]];
   'update:activeChangeIndex': [value: number];

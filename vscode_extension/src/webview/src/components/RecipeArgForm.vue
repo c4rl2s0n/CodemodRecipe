@@ -1,13 +1,14 @@
 <script setup lang="ts">
 import { watch } from 'vue';
-import type { RecipeArg, RecipeSchema } from '../shared';
+import { formatInputKind } from '../lib/args';
+import type { ArgValues, RecipeArg, RecipeSchema } from '../shared';
 import ArgField from './ArgField.vue';
 
 defineProps<{
   recipe: RecipeSchema | undefined;
 }>();
 
-const argValues = defineModel<Record<string, string>>('argValues', {
+const argValues = defineModel<ArgValues>('argValues', {
   required: true,
 });
 
@@ -25,7 +26,7 @@ watch(
 );
 
 function paramMeta(arg: RecipeArg): string {
-  const parts: string[] = [arg.inputKind || 'text'];
+  const parts: string[] = [formatInputKind(arg.inputKind)];
   if (arg.contextKey) {
     parts.push('from ' + arg.contextKey);
   }

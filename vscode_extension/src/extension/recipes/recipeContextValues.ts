@@ -1,12 +1,12 @@
 import * as path from 'path';
-import type { ArgFrom, RecipeArg, RecipeSchema } from '../../shared';
+import type { ArgFrom, ArgValue, ArgValues, RecipeArg, RecipeSchema } from '../../shared';
 
 /** Resolve string `from` / `contextKey` and template `from` against builtin context. */
 export function prefillArgs(
   recipe: RecipeSchema,
   contextValues: Record<string, string>
-): Record<string, string> {
-  const args: Record<string, string> = {};
+): ArgValues {
+  const args: ArgValues = {};
   for (const arg of recipe.args) {
     const value = resolveLocalFrom(arg, contextValues);
     if (value) {
@@ -95,25 +95,26 @@ function applyFilter(value: string, filter: string): string {
 
 export function missingRequiredArgNames(
   recipe: RecipeSchema,
-  argValues: Record<string, string>
+  argValues: ArgValues
 ): string[] {
-  const withDefaults: Record<string, string> = { ...argValues };
+  const withDefaults: ArgValues = { ...argValues };
   for (const arg of recipe.args) {
-    if (
-      (withDefaults[arg.name] === undefined || withDefaults[arg.name] === '') &&
-      arg.defaultsTo
-    ) {
+    if (isUnset(withDefaults[arg.name]) && arg.defaultsTo) {
       withDefaults[arg.name] = arg.defaultsTo;
     }
   }
   return recipe.args
-    .filter((arg) => arg.required && !withDefaults[arg.name])
+    .filter((arg) => arg.required && isUnset(withDefaults[arg.name]))
     .map((arg) => arg.name);
 }
 
+function isUnset(value: ArgValue | undefined): boolean {
+  return value === undefined || value === '';
+}
+
 export function mergeArgLayers(
-  derived: Record<string, string>,
-  overrides: Record<string, string>
-): Record<string, string> {
+  derived: ArgValues,
+  overrides: ArgValues
+): ArgValues {
   return { ...derived, ...overrides };
 }

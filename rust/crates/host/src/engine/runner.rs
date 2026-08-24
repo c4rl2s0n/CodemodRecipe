@@ -46,10 +46,15 @@ pub fn collect_recipe_changes(
     registry: &RecipeRegistry,
     recipe: &Recipe,
     _recipe_path: Option<&Path>,
-    args: &BTreeMap<String, String>,
+    args: &BTreeMap<String, serde_json::Value>,
     kind: RunKind,
 ) -> Result<CollectedChanges, String> {
-    let effective = args::validate_required_args(recipe, args)?;
+    let effective = args::validate_typed_args(
+        recipe,
+        registry.types_by_id(),
+        registry.maps_by_id(),
+        args,
+    )?;
     let mut maps = registry.maps_by_id().clone();
     for (k, v) in &recipe.maps {
         maps.entry(k.clone()).or_insert_with(|| v.clone());

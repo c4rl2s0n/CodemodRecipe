@@ -17,7 +17,7 @@ use crate::recipe::validate::{validate_recipe, validate_workspace};
 struct RecipeRequest<'a> {
     recipe_id: Option<&'a str>,
     inline_recipe: Option<&'a serde_json::Value>,
-    args: &'a BTreeMap<String, String>,
+    args: &'a BTreeMap<String, serde_json::Value>,
 }
 
 impl<'a> RecipeRequest<'a> {
@@ -63,6 +63,8 @@ fn catalog_response(registry: &RecipeRegistry) -> serde_json::Value {
         maps_loaded: Some(registry.maps_count()),
         map_ids: Some(registry.map_ids()),
         var_ids: Some(registry.var_ids()),
+        type_ids: Some(registry.type_ids()),
+        types: Some(registry.type_schemas()),
         language_ids: Some(
             codemod_recipe_engine::language::native::native_language_ids()
                 .iter()

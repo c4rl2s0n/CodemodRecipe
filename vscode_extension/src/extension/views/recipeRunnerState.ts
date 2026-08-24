@@ -1,5 +1,6 @@
 import {
   RUNNER_TABS,
+  type ArgValues,
   type ContextRecipeMatch,
   type FilePreview,
   type RecipeDiagnostic,
@@ -17,8 +18,8 @@ export class RecipeRunnerState {
   bootstrapPhase: 'startingHost' | 'loadingRecipes' | 'ready' | 'error' = 'startingHost';
   bootstrapError: string | undefined;
   currentRecipe: RecipeSchema | undefined;
-  initialArgs: Record<string, string> = {};
-  lastArgs: Record<string, string> = {};
+  initialArgs: ArgValues = {};
+  lastArgs: ArgValues = {};
   lastPreviewToken: string | undefined;
   lastFiles: FilePreview[] = [];
   activeTab: RunnerTab = RUNNER_TABS.recipes;
@@ -75,7 +76,7 @@ export class RecipeRunnerState {
     this.bootstrapError = state.error;
   }
 
-  selectRecipe(recipe: RecipeSchema, initialArgs: Record<string, string>): void {
+  selectRecipe(recipe: RecipeSchema, initialArgs: ArgValues): void {
     this.currentRecipe = recipe;
     this.initialArgs = initialArgs;
     this.lastArgs = {};

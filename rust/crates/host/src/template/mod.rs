@@ -34,13 +34,13 @@ pub fn try_resolve_static_template(template: &str) -> Result<String, String> {
 }
 
 /// Render a template string (recipe paths, queries, inline create.template).
-pub fn render_string(template: &str, args: &BTreeMap<String, String>) -> Result<String, String> {
+pub fn render_string(template: &str, args: &BTreeMap<String, serde_json::Value>) -> Result<String, String> {
     render_template(template, args, &BTreeMap::new(), &BTreeMap::new())
 }
 
 pub fn render_template(
     template: &str,
-    args: &BTreeMap<String, String>,
+    args: &BTreeMap<String, serde_json::Value>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     vars: &BTreeMap<String, BTreeMap<String, String>>,
 ) -> Result<String, String> {
@@ -53,7 +53,7 @@ pub fn render_template(
 /// Render a file-backed template with `extends` / `include` support.
 pub fn render_template_file(
     template_name: &str,
-    args: &BTreeMap<String, String>,
+    args: &BTreeMap<String, serde_json::Value>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     vars: &BTreeMap<String, BTreeMap<String, String>>,
     templates_root: &Path,
@@ -188,7 +188,7 @@ fn build_environment_inner(
 }
 
 pub(crate) fn build_template_context(
-    args: &BTreeMap<String, String>,
+    args: &BTreeMap<String, serde_json::Value>,
     maps: &BTreeMap<String, BTreeMap<String, String>>,
     vars: &BTreeMap<String, BTreeMap<String, String>>,
 ) -> BTreeMap<String, Value> {
@@ -201,11 +201,14 @@ pub(crate) fn build_template_context(
     ctx
 }
 
-fn coerce_value(raw: &str) -> Value {
+fn coerce_value(raw: &serde_json::Value) -> Value {
     match raw {
-        "true" => Value::from(true),
-        "false" => Value::from(false),
-        other => Value::from(other.to_string()),
+        serde_json::Value::String(s) => match s.as_str() {
+            "true" => Value::from(true),
+            "false" => Value::from(false),
+            other => Value::from(other.to_string()),
+        },
+        other => Value::from_serialize(other),
     }
 }
 
@@ -335,13 +338,13 @@ fn parse_quoted_map_args(text: &str) -> Option<(String, String)> {
 mod tests {
     use super::*;
 
-    fn render_ok(template: &str, args: &BTreeMap<String, String>) -> String {
+    fn render_ok(template: &str, args: &BTreeMap<String, serde_json::Value>) -> String {
         render_string(template, args).expect("render")
     }
 
     fn render_tpl(
         template: &str,
-        args: &BTreeMap<String, String>,
+        args: &BTreeMap<String, serde_json::Value>,
         maps: &BTreeMap<String, BTreeMap<String, String>>,
     ) -> String {
         render_template(template, args, maps, &BTreeMap::new()).expect("render")
@@ -359,7 +362,7 @@ mod tests {
     #[test]
     fn replaces_placeholders() {
         let mut args = BTreeMap::new();
-        args.insert("file".to_string(), "lib/foo.dart".to_string());
+        args.insert("file".to_string(), serde_json::Value::String("lib/foo.dart".to_string()));
         assert_eq!(render_ok("path: {{file}}", &args), "path: lib/foo.dart");
     }
 
@@ -386,21 +389,21 @@ mod tests {
     #[test]
     fn preserves_special_characters_in_values() {
         let mut args = BTreeMap::new();
-        args.insert("x".to_string(), "a$b".to_string());
+        args.insert("x".to_string(), serde_json::Value::String("a$b".to_string()));
         assert_eq!(render_ok("{{x}}", &args), "a$b");
     }
 
     #[test]
     fn renders_unicode_values() {
         let mut args = BTreeMap::new();
-        args.insert("emoji".to_string(), "🚀".to_string());
+        args.insert("emoji".to_string(), serde_json::Value::String("🚀".to_string()));
         assert_eq!(render_ok("// {{emoji}}", &args), "// 🚀");
     }
 
     #[test]
     fn renders_explicit_casing_helpers() {
         let mut args = BTreeMap::new();
-        args.insert("feature".to_string(), "FeedList".to_string());
+        args.insert("feature".to_string(), serde_json::Value::String("FeedList".to_string()));
         assert_eq!(
             render_ok(
                 "{{feature}} {{$snake feature}} {{$camel feature}} {{$pascal feature}}",
@@ -413,7 +416,7 @@ mod tests {
     #[test]
     fn renders_jinja_casing_filters() {
         let mut args = BTreeMap::new();
-        args.insert("feature".to_string(), "FeedList".to_string());
+        args.insert("feature".to_string(), serde_json::Value::String("FeedList".to_string()));
         assert_eq!(
             render_ok(
                 "{{ feature | snake_case }} {{ feature | screaming_snake }}",
@@ -428,9 +431,9 @@ mod tests {
         let mut args = BTreeMap::new();
         args.insert(
             "featureDir".to_string(),
-            "lib/features/feed/widgets".to_string(),
+            serde_json::Value::String("lib/features/feed/widgets".to_string()),
         );
-        args.insert("file".to_string(), "lib/foo.dart".to_string());
+        args.insert("file".to_string(), serde_json::Value::String("lib/foo.dart".to_string()));
         assert_eq!(
             render_ok(
                 "{{ featureDir | parent }} {{ featureDir | basename }} {{ featureDir | parent | basename }} {{ file | stem }}",
@@ -443,7 +446,7 @@ mod tests {
     #[test]
     fn path_filters_strip_trailing_slash_and_normalize_separators() {
         let mut args = BTreeMap::new();
-        args.insert("dir".to_string(), "lib\\features\\feed\\".to_string());
+        args.insert("dir".to_string(), serde_json::Value::String("lib\\features\\feed\\".to_string()));
         assert_eq!(
             render_ok("{{ dir | parent }}/{{ dir | basename }}", &args),
             "lib/features/feed"
@@ -453,17 +456,17 @@ mod tests {
     #[test]
     fn conditional_if_block() {
         let mut args = BTreeMap::new();
-        args.insert("include_tests".to_string(), "true".to_string());
+        args.insert("include_tests".to_string(), serde_json::Value::String("true".to_string()));
         let tmpl = "{% if include_tests %}YES{% else %}NO{% endif %}";
         assert_eq!(render_ok(tmpl, &args), "YES");
-        args.insert("include_tests".to_string(), "false".to_string());
+        args.insert("include_tests".to_string(), serde_json::Value::String("false".to_string()));
         assert_eq!(render_ok(tmpl, &args), "NO");
     }
 
     #[test]
     fn renders_camel_field_in_recipe_snippet() {
         let mut args = BTreeMap::new();
-        args.insert("field".to_string(), "counter".to_string());
+        args.insert("field".to_string(), serde_json::Value::String("counter".to_string()));
         assert_eq!(
             render_ok("final int {{$camel field}};", &args),
             "final int counter;"
@@ -473,7 +476,7 @@ mod tests {
     #[test]
     fn resolves_map_helper_with_arg_key() {
         let mut args = BTreeMap::new();
-        args.insert("type".to_string(), "int".to_string());
+        args.insert("type".to_string(), serde_json::Value::String("int".to_string()));
         let mut maps = BTreeMap::new();
         let mut entries = BTreeMap::new();
         entries.insert("int".to_string(), "intColumn".to_string());
@@ -488,7 +491,7 @@ mod tests {
     #[test]
     fn map_helper_falls_back_to_lookup_key_when_map_missing() {
         let mut args = BTreeMap::new();
-        args.insert("type".to_string(), "int".to_string());
+        args.insert("type".to_string(), serde_json::Value::String("int".to_string()));
         assert_eq!(
             render_tpl("{{$map 'missing' type}}", &args, &BTreeMap::new()),
             "int"
@@ -498,7 +501,7 @@ mod tests {
     #[test]
     fn jinja_map_filter() {
         let mut args = BTreeMap::new();
-        args.insert("fieldName".to_string(), "tickCount".to_string());
+        args.insert("fieldName".to_string(), serde_json::Value::String("tickCount".to_string()));
         let mut maps = BTreeMap::new();
         let mut entries = BTreeMap::new();
         entries.insert("tickCount".to_string(), "int".to_string());
@@ -512,7 +515,7 @@ mod tests {
     #[test]
     fn numeric_filters_for_let_locals() {
         let mut args = BTreeMap::new();
-        args.insert("schemaVersion".to_string(), "7".to_string());
+        args.insert("schemaVersion".to_string(), serde_json::Value::String("7".to_string()));
         assert_eq!(
             render_ok("{{ schemaVersion | int | add(1) | string }}", &args),
             "8"
@@ -525,7 +528,7 @@ mod tests {
         let root = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../../test/fixtures/template_inheritance/.codemod");
         let mut args = BTreeMap::new();
-        args.insert("className".to_string(), "FeedList".to_string());
+        args.insert("className".to_string(), serde_json::Value::String("FeedList".to_string()));
         let rendered = render_template_file(
             "templates/feature.template",
             &args,
@@ -575,7 +578,7 @@ mod tests {
         )
         .unwrap();
 
-        let args = BTreeMap::from([("className".to_string(), "FeedList".to_string())]);
+        let args = BTreeMap::from([("className".to_string(), serde_json::Value::String("FeedList".to_string()))]);
         let rendered = render_template_file(
             "templates/widget.template",
             &args,

@@ -83,6 +83,7 @@ In the target project:
 .codemod/
   recipes/     # Luau recipe modules (*.luau or *.lua)
   maps/        # Luau map modules (id + map table)
+  types/       # Named arg types (id + fields)
   variables/   # Luau variable modules (id + values table)
   queries/     # Luau query libraries (id + queries table)
   templates/   # optional (renderFileTemplate)
@@ -138,8 +139,8 @@ return {
   name = "Add log line",
   args = {
     { name = "file", required = true, inputKind = "file" },
-    { name = "className", required = true, inputKind = "symbol" },
-    { name = "methodName", required = true, inputKind = "symbol" },
+    { name = "className", required = true, inputKind = "text" },
+    { name = "methodName", required = true, inputKind = "text" },
   },
   postExecution = { "dart format ." },
   apply = function(c)
@@ -167,6 +168,10 @@ return {
 
 **`apply(c)` is the only mutation entrypoint.** Use Luau `if` / `for` in `apply` for
 guards and idempotency.
+
+Args are JSON values, not only strings: builtins are `text`, `bool`, `choice`,
+`file`, and `directory`. A registered type id is one object; `{ "TypeId" }` is a
+list (VS Code repeats a field group). Details: [writing-recipes.md](writing-recipes.md#arguments-args).
 
 #### How an insert finds its place
 
@@ -228,15 +233,16 @@ local path = c:applyTemplate({ template = "lib/{{ feature | snake_case }}.dart" 
 
 Full guide: [recipe-templates.md](recipe-templates.md).
 
-### Maps, variables, and query libraries
+### Maps, variables, types, and query libraries
 
-Shared assets are Luau modules:
+Shared assets are Luau modules (`*.luau` or `*.lua`):
 
 | Kind | Path | Return shape |
 |------|------|--------------|
-| Maps | `.codemod/maps/*.luau` | `{ id, map = { ... } }` |
-| Variables | `.codemod/variables/*.luau` | `{ id, values = { ... } }` |
-| Query libs | `.codemod/queries/*.luau` | `{ id, queries = { ... } }` |
+| Maps | `.codemod/maps/` | `{ id, map = { ... } }` |
+| Types | `.codemod/types/` | `{ id, fields = { ... } }` |
+| Variables | `.codemod/variables/` | `{ id, values = { ... } }` |
+| Query libs | `.codemod/queries/` | `{ id, queries = { ... } }` |
 
 Lookup in recipes: `c:map("id")`, `c:var("id")`, `c:queryLib("id")`.
 

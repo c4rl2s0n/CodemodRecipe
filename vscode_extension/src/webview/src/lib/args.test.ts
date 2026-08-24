@@ -49,6 +49,23 @@ describe('collectMissingRequiredArgs', () => {
       collectMissingRequiredArgs(sampleRecipe, { optional: 'y' })
     ).toEqual(['file']);
   });
+
+  it('treats an empty list as present', () => {
+    const listRecipe: RecipeSchema = {
+      ...sampleRecipe,
+      args: [
+        {
+          ...sampleRecipe.args[0],
+          name: 'properties',
+          required: true,
+          inputKind: ['ClassProperty'],
+        },
+      ],
+    };
+    expect(collectMissingRequiredArgs(listRecipe, { properties: [] })).toEqual(
+      []
+    );
+  });
 });
 
 describe('collectArgs', () => {

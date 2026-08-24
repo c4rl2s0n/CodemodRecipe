@@ -25,7 +25,7 @@ import {
   ResolveStaticPathResponse,
   parseHostResponse,
 } from './hostProtocol';
-import type { RecipeSchema, SelectionPayload, BootstrapResponse, DeriveArgsRequest, DeriveArgsResponse, FilterExplorerRecipesResponse } from '../../shared';
+import type { ArgValues, RecipeSchema, SelectionPayload, BootstrapResponse, DeriveArgsRequest, DeriveArgsResponse, FilterExplorerRecipesResponse } from '../../shared';
 import type { RecipeLoadResult } from '../recipes/recipeRepository';
 
 type PendingRequest = {
@@ -156,7 +156,7 @@ export class HostBridge {
 
   preview(
     recipe: string,
-    args: Record<string, string>,
+    args: ArgValues,
     snippetLines?: number
   ): Promise<PreviewResponse> {
     return this.send<PreviewResponse>({
@@ -169,7 +169,7 @@ export class HostBridge {
 
   async diff(
     recipe: string,
-    args: Record<string, string>,
+    args: ArgValues,
     path: string
   ): Promise<DiffResponse> {
     return this.send<DiffResponse>({ command: 'diff', recipe, args, path });
@@ -177,7 +177,7 @@ export class HostBridge {
 
   apply(
     recipe: string,
-    args: Record<string, string>,
+    args: ArgValues,
     selection: SelectionPayload,
     previewToken: string
   ): Promise<ApplyResponse> {

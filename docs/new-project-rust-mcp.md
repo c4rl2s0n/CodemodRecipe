@@ -23,7 +23,7 @@ After connecting the MCP server, call **`bootstrap_project`** once. It installs:
   - `codemod-recipe-authoring` — tree-sitter query patterns
   - `recipe-generation` — generate Luau recipes from `@` code refs
 - `.cursor/rules/codemod-recipe.mdc` — always-on orientation
-- `.codemod/recipes/`, `.codemod/maps/`, `.codemod/variables/` scaffolding
+- `.codemod/recipes/`, `.codemod/maps/`, `.codemod/types/`, `.codemod/variables/` scaffolding
 
 ```json
 { "force": false, "edit_policy": "recommend", "companions": [] }
@@ -33,8 +33,9 @@ After connecting the MCP server, call **`bootstrap_project`** once. It installs:
 
 ```text
 .codemod/
-  recipes/     # Luau recipe modules (*.luau)
+  recipes/     # Luau recipe modules (*.luau or *.lua)
   maps/        # Luau map modules
+  types/       # Named arg types
   variables/   # Luau variable modules
   queries/     # Luau query libraries
   templates/   # optional (renderFileTemplate)
@@ -55,8 +56,8 @@ return {
 
   args = {
     { name = "file", required = true, inputKind = "file" },
-    { name = "className", required = true, inputKind = "symbol" },
-    { name = "methodName", required = true, inputKind = "symbol" },
+    { name = "className", required = true, inputKind = "text" },
+    { name = "methodName", required = true, inputKind = "text" },
   },
 
   postExecution = { "dart format ." },

@@ -51,7 +51,7 @@ return {
 
 | Method | Role |
 |--------|------|
-| `c.args` | Recipe argument string map |
+| `c.args` | Recipe arguments (strings, bools, lists, objects) |
 | `c:insert` / `c:replace` / `c:remove` | AST edits (table: `path`, `query`, `capture`, …) |
 | `c:query` / `c:queryExists` / `c:queryCount` | Read-only query evaluation |
 | `c:read` | Current file content (WorkingTree-aware) |

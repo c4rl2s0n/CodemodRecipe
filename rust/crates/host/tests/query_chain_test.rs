@@ -45,8 +45,8 @@ return {
 
     let recipe = parse_inline_recipe(&serde_json::Value::String(inline.to_string())).unwrap();
     let args = BTreeMap::from([
-        ("className".to_string(), "Settings".to_string()),
-        ("methodName".to_string(), "update".to_string()),
+        ("className".to_string(), serde_json::json!("Settings")),
+        ("methodName".to_string(), serde_json::json!("update")),
     ]);
 
     let source = "class Settings {\n  void update() {}\n}\n";
@@ -96,8 +96,8 @@ return {
 
     let recipe = parse_inline_recipe(&serde_json::Value::String(inline.to_string())).unwrap();
     let args = BTreeMap::from([
-        ("className".to_string(), "Settings".to_string()),
-        ("methodName".to_string(), "update".to_string()),
+        ("className".to_string(), serde_json::json!("Settings")),
+        ("methodName".to_string(), serde_json::json!("update")),
     ]);
 
     let source = "class Settings {\n  void update() {}\n}\n";

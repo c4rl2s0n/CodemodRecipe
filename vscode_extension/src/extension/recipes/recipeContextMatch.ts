@@ -2,16 +2,9 @@ import {
   missingRequiredArgNames,
   prefillArgs,
 } from './recipeContextValues';
-import type { RecipeSchema } from '../../shared';
+import type { RecipeSchema, ContextRecipeMatch } from '../../shared';
 
-export interface ContextRecipeMatch {
-  recipeId: string;
-  name: string;
-  description: string;
-  args: Record<string, string>;
-  /** True when all required args are filled (after defaultsTo). */
-  complete: boolean;
-}
+export type { ContextRecipeMatch } from '../../shared';
 
 /**
  * Tier A: recipes where local `from` / `contextKey` prefills at least one arg.

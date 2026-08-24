@@ -3,6 +3,7 @@ import type { ExtensionConfig } from '../config/extensionConfig';
 import type { HostBridge } from '../host/hostBridge';
 import type { RecipeRepository } from '../recipes/recipeRepository';
 import type {
+  ArgValues,
   FilePreview,
   RecipeSchema,
   SelectionPayload,
@@ -21,7 +22,7 @@ export type InvokeMode = 'auto' | 'run' | 'open';
 export interface InvokeArgs {
   recipeId?: string;
   mode?: InvokeMode;
-  args?: Record<string, string>;
+  args?: ArgValues;
   /** When set, used instead of active-editor context for `from` prefills. */
   contextValues?: Record<string, string>;
   source?: string;
@@ -35,7 +36,7 @@ export interface InvokeArgs {
 export interface InvokeSlotArgs {
   slot?: string;
   mode?: InvokeMode;
-  args?: Record<string, string>;
+  args?: ArgValues;
 }
 
 export async function invokeRecipe(
@@ -43,7 +44,7 @@ export async function invokeRecipe(
     repository: RecipeRepository;
     bridge: HostBridge;
     config: ExtensionConfig;
-    runner: { run(recipe: RecipeSchema, initialArgs?: Record<string, string>): void };
+    runner: { run(recipe: RecipeSchema, initialArgs?: import('../../shared').ArgValues): void };
   },
   invoke: InvokeArgs
 ): Promise<void> {
@@ -134,7 +135,7 @@ export async function invokeSlot(
     repository: RecipeRepository;
     bridge: HostBridge;
     config: ExtensionConfig;
-    runner: { run(recipe: RecipeSchema, initialArgs?: Record<string, string>): void };
+    runner: { run(recipe: RecipeSchema, initialArgs?: import('../../shared').ArgValues): void };
   },
   slotArgs: InvokeSlotArgs
 ): Promise<void> {
@@ -175,10 +176,10 @@ async function executeRecipe(
   deps: {
     bridge: HostBridge;
     config: ExtensionConfig;
-    runner: { run(recipe: RecipeSchema, initialArgs?: Record<string, string>): void };
+    runner: { run(recipe: RecipeSchema, initialArgs?: import('../../shared').ArgValues): void };
   },
   recipe: RecipeSchema,
-  args: Record<string, string>
+  args: ArgValues
 ): Promise<void> {
   if (deps.config.shortcutConfirmApply) {
     const choice = await vscode.window.showInformationMessage(

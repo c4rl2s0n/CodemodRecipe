@@ -9,6 +9,7 @@ import {
 import { defaultFileSelections, type FileCardSelection } from '../lib/selection';
 import {
   EXTENSION_TO_WEBVIEW,
+  type ArgValues,
   type ExtensionToWebviewMessage,
   type FilePreview,
   type PersistedWebviewState,
@@ -28,7 +29,7 @@ export function useRunnerController(params: {
   activeTab: Readonly<{ value: string }>;
   setActiveTab: (tab: string) => void;
 }) {
-  const argValues = ref<Record<string, string>>({});
+  const argValues = ref<ArgValues>({});
   const files = ref<FilePreview[]>([]);
   const transcript = ref<TranscriptEvent[]>([]);
   const applyMayDiverge = ref(false);

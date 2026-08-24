@@ -9,7 +9,7 @@ use codemod_recipe_core::apply::file_change::{FileChange, IfExists, IfMissing};
 use codemod_recipe_engine::engine::{Engine, QueryContext};
 use codemod_recipe_engine::ops::{EditOp, InsertAnchor, InsertOp, QuerySpec, RemoveOp, ReplaceOp};
 use codemod_recipe_engine::{LanguageRegistry, RegistryConfig};
-use codemod_recipe_lua::load::{eval_return_table, new_sandbox};
+use codemod_recipe_lua::json_lua::{json_to_lua, lua_to_json};
 use codemod_recipe_lua::model::{Recipe, TranscriptEvent};
 use mlua::{Lua, Table, Value};
 
@@ -17,6 +17,7 @@ use crate::engine::post_execution::run_post_execution_command;
 use crate::engine::working_tree::WorkingTree;
 use crate::sandbox::path_sandbox::PathSandbox;
 use crate::template::{render_template, render_template_file};
+use codemod_recipe_lua::{eval_return_table, new_sandbox};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum RunKind {
@@ -35,7 +36,7 @@ struct HostInner {
     tree: WorkingTree,
     sandbox: PathSandbox,
     language_registry: LanguageRegistry,
-    args: BTreeMap<String, String>,
+    args: BTreeMap<String, serde_json::Value>,
     maps: BTreeMap<String, BTreeMap<String, String>>,
     vars: BTreeMap<String, BTreeMap<String, String>>,
     queries: BTreeMap<String, String>,
@@ -82,7 +83,7 @@ type SharedHost = Rc<Mutex<HostInner>>;
 pub fn run_recipe(
     kind: RunKind,
     recipe: &Recipe,
-    args: &BTreeMap<String, String>,
+    args: &BTreeMap<String, serde_json::Value>,
     maps: BTreeMap<String, BTreeMap<String, String>>,
     vars: BTreeMap<String, BTreeMap<String, String>>,
     queries: BTreeMap<String, String>,
@@ -151,7 +152,7 @@ fn build_ctx(lua: &Lua, host: SharedHost) -> Result<Table, String> {
         let inner = host.lock().map_err(|e| e.to_string())?;
         for (k, v) in &inner.args {
             args_tbl
-                .set(k.as_str(), v.as_str())
+                .set(k.as_str(), json_to_lua(lua, v)?)
                 .map_err(|e| e.to_string())?;
         }
     }
@@ -619,13 +620,13 @@ fn post_exec_cmd(host: &SharedHost, cmd: &str) -> Result<(), String> {
     }
 }
 
-fn extra_env(spec: &Table) -> Result<BTreeMap<String, String>, String> {
+fn extra_env(spec: &Table) -> Result<BTreeMap<String, serde_json::Value>, String> {
     match spec.get::<Value>("env") {
         Ok(Value::Table(t)) => {
             let mut out = BTreeMap::new();
-            for pair in t.pairs::<String, String>() {
+            for pair in t.pairs::<String, Value>() {
                 let (k, v) = pair.map_err(|e| e.to_string())?;
-                out.insert(k, v);
+                out.insert(k, lua_to_json(&v)?);
             }
             Ok(out)
         }
@@ -720,9 +721,9 @@ fn do_run(host: &SharedHost, lua: &Lua, id: &str, args: Option<Table>) -> Result
         child_args = inner.args.clone();
     }
     if let Some(tbl) = args {
-        for pair in tbl.pairs::<String, String>() {
+        for pair in tbl.pairs::<String, Value>() {
             let (k, v) = pair.map_err(|e| e.to_string())?;
-            child_args.insert(k, v);
+            child_args.insert(k, lua_to_json(&v)?);
         }
     }
     {

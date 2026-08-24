@@ -89,7 +89,7 @@ fn preview_returns_preview_token_and_modified_content() {
     let mut args = BTreeMap::new();
     args.insert(
         "file".to_string(),
-        "test/fixtures/ast_paths/settings.dart".to_string(),
+        serde_json::Value::String("test/fixtures/ast_paths/settings.dart".to_string()),
     );
 
     let response = dispatch::handle_command(
@@ -186,7 +186,7 @@ fn apply_writes_transformed_file() {
     registry.reload();
 
     let mut args = BTreeMap::new();
-    args.insert("file".to_string(), rel.to_string());
+    args.insert("file".to_string(), serde_json::Value::String(rel.to_string()));
 
     let preview = dispatch::handle_command(
         &mut registry,
@@ -244,7 +244,7 @@ return {
     );
 
     let mut args = BTreeMap::new();
-    args.insert("file".to_string(), rel.to_string());
+    args.insert("file".to_string(), serde_json::Value::String(rel.to_string()));
 
     let preview = dispatch::handle_command(
         &mut registry,
@@ -303,7 +303,7 @@ fn remove_is_idempotent_on_second_preview() {
     registry.reload();
 
     let mut args = BTreeMap::new();
-    args.insert("file".to_string(), rel.to_string());
+    args.insert("file".to_string(), serde_json::Value::String(rel.to_string()));
 
     let first = dispatch::handle_command(
         &mut registry,
@@ -361,7 +361,7 @@ fn apply_rejects_missing_preview_token() {
     registry.reload();
 
     let mut args = BTreeMap::new();
-    args.insert("file".to_string(), rel.to_string());
+    args.insert("file".to_string(), serde_json::Value::String(rel.to_string()));
 
     let apply = dispatch::handle_command(
         &mut registry,
@@ -395,7 +395,7 @@ fn apply_rejects_stale_preview_token_after_file_changes() {
     registry.reload();
 
     let mut args = BTreeMap::new();
-    args.insert("file".to_string(), rel.to_string());
+    args.insert("file".to_string(), serde_json::Value::String(rel.to_string()));
 
     let preview = dispatch::handle_command(
         &mut registry,
@@ -473,7 +473,7 @@ fn preview_includes_original_and_modified() {
     registry.reload();
 
     let mut args = BTreeMap::new();
-    args.insert("file".to_string(), rel.to_string());
+    args.insert("file".to_string(), serde_json::Value::String(rel.to_string()));
 
     let response = dispatch::handle_command(
         &mut registry,
@@ -510,7 +510,7 @@ fn diff_returns_full_file_data() {
     registry.reload();
 
     let mut args = BTreeMap::new();
-    args.insert("file".to_string(), rel.to_string());
+    args.insert("file".to_string(), serde_json::Value::String(rel.to_string()));
 
     let response = dispatch::handle_command(
         &mut registry,
@@ -536,9 +536,9 @@ fn preview_add_log_line_with_class_and_method_args() {
 
     let rel = "test/fixtures/ast_paths/settings.dart";
     let mut args = BTreeMap::new();
-    args.insert("file".to_string(), rel.to_string());
-    args.insert("className".to_string(), "Settings".to_string());
-    args.insert("methodName".to_string(), "update".to_string());
+    args.insert("file".to_string(), serde_json::Value::String(rel.to_string()));
+    args.insert("className".to_string(), serde_json::Value::String("Settings".to_string()));
+    args.insert("methodName".to_string(), serde_json::Value::String("update".to_string()));
 
     let response = dispatch::handle_command(
         &mut registry,
@@ -570,8 +570,8 @@ fn preview_create_file_step() {
     registry.reload();
 
     let mut args = BTreeMap::new();
-    args.insert("featurePath".to_string(), "lib/features".to_string());
-    args.insert("name".to_string(), "Counter".to_string());
+    args.insert("featurePath".to_string(), serde_json::Value::String("lib/features".to_string()));
+    args.insert("name".to_string(), serde_json::Value::String("Counter".to_string()));
 
     let response = dispatch::handle_command(
         &mut registry,
@@ -628,7 +628,7 @@ fn preview_delete_file_step() {
     registry.reload();
 
     let mut args = BTreeMap::new();
-    args.insert("legacyPath".to_string(), "lib/legacy.dart".to_string());
+    args.insert("legacyPath".to_string(), serde_json::Value::String("lib/legacy.dart".to_string()));
 
     let preview = dispatch::handle_command(
         &mut registry,
@@ -693,7 +693,7 @@ return {
     );
 
     let mut args = BTreeMap::new();
-    args.insert("file".to_string(), "lib/settings.dart".to_string());
+    args.insert("file".to_string(), serde_json::Value::String("lib/settings.dart".to_string()));
 
     let preview = dispatch::handle_command(
         &mut registry,
