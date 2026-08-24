@@ -11,7 +11,7 @@ MCP server `codemod-mcp` returns JSON text. Parse output and branch on `ok`.
 
 | Tool | Purpose |
 |------|---------|
-| `bootstrap_project` | Install `.agents/skills/`, `.cursor/rules/`, `.codemod/` scaffolding (`edit_policy`, optional `companions`) |
+| `bootstrap_project` | Install `.agents/skills/`, `.cursor/rules/`, `.codemod/` scaffolding. Args: optional `force`, `edit_policy` (`recommend`\|`strict`), `companions` (e.g. `["codebase-memory"]`) |
 | `list_recipes` | Discover registered recipe ids |
 | `describe_recipe` | Args + metadata for one recipe |
 | `validate_recipes` | Reload + validate recipes/maps/variables under `.codemod/` |
@@ -21,6 +21,8 @@ MCP server `codemod-mcp` returns JSON text. Parse output and branch on `ok`.
 | `debug_query` | Run tree-sitter query; return captures |
 | `generate_query` | Generate starter query from byte range |
 | `resolve_static_path` | Probe whether a Jinja path needs args |
+
+Default bootstrap is soft (`edit_policy: "recommend"`). Use `"strict"` for recipe-first edits; add `"companions": ["codebase-memory"]` when that MCP is available.
 
 ## Response envelope
 

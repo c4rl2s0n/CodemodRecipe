@@ -25,7 +25,7 @@ watch(
 );
 
 function paramMeta(arg: RecipeArg): string {
-  const parts = [arg.inputKind || 'text'];
+  const parts: string[] = [arg.inputKind || 'text'];
   if (arg.contextKey) {
     parts.push('from ' + arg.contextKey);
   }

@@ -81,20 +81,6 @@ impl FileChange {
             }
         }
     }
-
-    pub fn original_content(&self) -> &str {
-        match self {
-            Self::Patch { source, .. } | Self::Delete { source, .. } => source,
-            Self::Create { .. } => "",
-        }
-    }
-
-    pub fn patches(&self) -> Option<&[SourcePatch]> {
-        match self {
-            Self::Patch { patches, .. } => Some(patches),
-            _ => None,
-        }
-    }
 }
 
 /// Merge file changes, combining patches per path and rejecting incompatible mixes.

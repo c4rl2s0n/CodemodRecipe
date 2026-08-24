@@ -3,7 +3,7 @@ pub mod dsl_structure;
 pub mod explorer_menu;
 pub mod guard_list;
 pub mod let_binding;
-pub mod model;
 pub mod query_spec;
+pub mod types;
 
-pub use model::*;
+pub use types::*;

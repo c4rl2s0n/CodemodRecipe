@@ -103,7 +103,7 @@ fn emit_chain(
     source: &str,
     capture: &str,
     opts: &GenerateOptions,
-    predicates: &mut Vec<String>,
+    _predicates: &mut Vec<String>,
     index: usize,
 ) -> String {
     let node = chain[index];
@@ -148,7 +148,7 @@ fn emit_chain(
                         escape_str(lit)
                     ));
 
-                    // predicates.push(format!("(#eq? @{} \"{}\")", capture, escape_str(lit)));
+                    // _predicates.push(format!("(#eq? @{} \"{}\")", capture, escape_str(lit)));
                 }
             }
         }
@@ -163,7 +163,7 @@ fn emit_chain(
         source,
         capture,
         opts,
-        predicates,
+        _predicates,
         index + 1,
     ));
     s.push('\n');

@@ -1,6 +1,6 @@
 ---
 name: codemod-recipe-webview-ui-development
-description: Use when implementing or refactoring the Vue 3 webview UI in this repo (`vscode_extension/webview-ui`). Covers the project’s component binding patterns (`defineModel`, typed `defineProps`/`defineEmits`), state/controller composables, and persisted UI state via vsCodeApi.
+description: Use when implementing or refactoring the Vue 3 webview UI in this repo (`vscode_extension/src/webview`). Covers the project’s component binding patterns (`defineModel`, typed `defineProps`/`defineEmits`), state/controller composables, and persisted UI state via vsCodeApi.
 disable-model-invocation: true
 ---
 
@@ -9,7 +9,7 @@ disable-model-invocation: true
 ## When to use
 
 Use this skill when you need to:
-- Add/modify Vue components in `vscode_extension/webview-ui`
+- Add/modify Vue components in `vscode_extension/src/webview`
 - Understand how webview state is stored, updated, and persisted
 - Keep UI event contracts consistent with typed extension messaging
 - Debug why UI doesn’t update (or updates with stale data)
@@ -17,13 +17,13 @@ Use this skill when you need to:
 ## Where to look (main structure)
 
 ### App bootstrap + routing between tabs
-- `vscode_extension/webview-ui/src/App.vue`
+- `vscode_extension/src/webview/src/App.vue`
   - holds `hostState` (recipes, bootstrap state, active tab)
   - creates/uses `useRunnerController`
   - listens to `onExtensionMessage(...)` and routes messages
 
 ### Controller composable (runner state)
-- `vscode_extension/webview-ui/src/composables/useRunnerController.ts`
+- `vscode_extension/src/webview/src/composables/useRunnerController.ts`
   - owns:
     - `argValues`
     - `files` + `fileSelections`
@@ -34,13 +34,13 @@ Use this skill when you need to:
   - persists and restores UI state via vsCodeApi
 
 ### Host state composable (bootstrap + readiness)
-- `vscode_extension/webview-ui/src/composables/useHostState.ts`
+- `vscode_extension/src/webview/src/composables/useHostState.ts`
   - posts `WEBVIEW_TO_EXTENSION.ready`
   - listens for `EXTENSION_TO_WEBVIEW.state`
   - tracks bootstrap flags
 
 ### VS Code webview persistence + message plumbing
-- `vscode_extension/webview-ui/src/vsCodeApi.ts`
+- `vscode_extension/src/webview/src/vsCodeApi.ts`
   - `postToExtension(...)`
   - `onExtensionMessage(...)` subscription system
   - `getPersistedState()` / `setPersistedState()` wrappers
@@ -53,10 +53,10 @@ Use this skill when you need to:
   - `defineEmits<...>()` for emitted events
 
 Examples:
-- [`RecipeArgForm.vue`](vscode_extension/webview-ui/src/components/RecipeArgForm.vue)
-- [`FileCard.vue`](vscode_extension/webview-ui/src/components/FileCard.vue)
-- [`PatchRow.vue`](vscode_extension/webview-ui/src/components/PatchRow.vue)
-- [`RunnerView.vue`](vscode_extension/webview-ui/src/views/RunnerView.vue)
+- [`RecipeArgForm.vue`](vscode_extension/src/webview/src/components/RecipeArgForm.vue)
+- [`FileCard.vue`](vscode_extension/src/webview/src/components/FileCard.vue)
+- [`ReviewPanel.vue`](vscode_extension/src/webview/src/components/ReviewPanel.vue)
+- [`RunnerView.vue`](vscode_extension/src/webview/src/views/RunnerView.vue)
 
 ### Two-way binding with `defineModel`
 - For user-editable values, use `defineModel` rather than manual `modelValue` plumbing.
@@ -92,7 +92,7 @@ Persistence is handled in `useRunnerController.ts`:
   - `restorePersistedOnMount()`
 
 Always use `setPersistedState(...)` and `getPersistedState()`:
-- `vscode_extension/webview-ui/src/vsCodeApi.ts`
+- `vscode_extension/src/webview/src/vsCodeApi.ts`
 
 ## Stale request/preview ordering (UI side)
 
@@ -110,8 +110,8 @@ Red flag:
 ## Red flags (stop and fix)
 
 - Updating message protocol types without updating UI handler:
-  - `vscode_extension/webview-ui/src/messages.ts`
-  - `vscode_extension/webview-ui/src/composables/useRunnerController.ts`
+  - `vscode_extension/src/shared/messages.ts`
+  - `vscode_extension/src/webview/src/composables/useRunnerController.ts`
 - Bypassing vsCode persistence:
   - calling `window.acquireVsCodeApi()` directly in random components
   - instead use `vsCodeApi.ts` wrappers

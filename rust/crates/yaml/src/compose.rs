@@ -1,4 +1,4 @@
-use crate::model::model::*;
+use crate::model::types::*;
 use crate::QueryDefinition;
 use std::collections::btree_map::Entry;
 use std::collections::{BTreeMap, BTreeSet};

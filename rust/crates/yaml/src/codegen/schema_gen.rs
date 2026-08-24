@@ -3,7 +3,7 @@
 use crate::codegen::dsl_vocabulary::{all_entries, VocabKind};
 use crate::description_for_key;
 use crate::dsl;
-use crate::model::model::{MapAsset, Recipe, VariablesAsset};
+use crate::model::types::{MapAsset, Recipe, VariablesAsset};
 use schemars::gen::SchemaSettings;
 use schemars::schema::RootSchema;
 use serde_json::{Map, Value};

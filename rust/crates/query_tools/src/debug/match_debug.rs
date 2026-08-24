@@ -185,6 +185,8 @@ pub fn parse_tree(language: &Language, source: &str) -> Result<Tree, QueryToolsE
         .ok_or(QueryToolsError::ParseFailed)
 }
 
+/// Formatting a capture needs several optional knobs; grouping them would add boilerplate.
+#[allow(clippy::too_many_arguments)]
 fn span_to_capture(
     source: &str,
     name: &str,

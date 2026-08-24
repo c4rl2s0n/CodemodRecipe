@@ -1,7 +1,4 @@
-import {
-  EXTENSION_TO_WEBVIEW,
-  type ExtensionToWebviewMessage,
-} from './shared';
+import { type ExtensionToWebviewMessage } from './shared';
 import { onExtensionMessage } from './vsCodeApi';
 
 type ExtensionMessageType = ExtensionToWebviewMessage['type'];

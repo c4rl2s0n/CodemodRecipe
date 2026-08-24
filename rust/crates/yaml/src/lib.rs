@@ -31,4 +31,4 @@ pub use model::let_binding::{LetBinding, LetBindings, LetExtract, LetOnManyMatch
 pub use model::query_spec;
 pub use model::query_spec::{QueryDefinition, QuerySpec};
 
-pub use model::model::{parse_if_step, parse_recipe_ref, RecipeRef, ScopedStep};
+pub use model::types::{parse_if_step, parse_recipe_ref, RecipeRef, ScopedStep};

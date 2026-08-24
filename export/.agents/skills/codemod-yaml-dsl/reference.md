@@ -200,8 +200,7 @@ Later steps see earlier mutations on the same path — disk is written only on a
 - Ops inside one `edit` also apply sequentially (each op reparses the current text).
 - Invalid orders error (e.g. `edit` then `create` with `ifExists: fail` on an existing file).
 - Preview for a multi-step same-path file is the **final** original vs modified content.
-  Per-patch selection on that file is file-level (all-or-nothing); independent single-edit
-  files still expose patches.
+  Selection is file-level (all-or-nothing).
 
 ### `insert`
 

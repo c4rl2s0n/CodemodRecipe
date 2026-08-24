@@ -1,7 +1,5 @@
 //! Host handlers for Query Tools (dump_ast / debug_query / generate_query).
 
-use std::path::Path;
-
 use codemod_recipe_engine::engine::Engine;
 use codemod_recipe_query_tools::{
     debug_query, dump_ast, generate_query, DebugOptions, DumpOptions, GenerateOptions,
@@ -155,6 +153,8 @@ fn debug_query_inner(
     serde_json::to_value(result).map_err(|e| e.to_string())
 }
 
+/// Protocol handler with one knob per generate_query option; grouping would not help callers.
+#[allow(clippy::too_many_arguments)]
 pub fn handle_generate_query(
     registry: &mut RecipeRegistry,
     path: Option<&str>,
@@ -192,6 +192,8 @@ pub fn handle_generate_query(
     }
 }
 
+/// Internal counterpart to [`handle_generate_query`]; mirrors its options.
+#[allow(clippy::too_many_arguments)]
 fn generate_query_inner(
     registry: &mut RecipeRegistry,
     path: Option<&str>,
@@ -233,15 +235,4 @@ pub fn handle_resolve_static_path(template: &str) -> ResolveStaticPathResponse {
             static_resolvable: false,
         },
     }
-}
-
-/// True when `relative` exists under the workspace root as a file.
-#[allow(dead_code)]
-pub fn workspace_file_exists(registry: &RecipeRegistry, relative: &str) -> bool {
-    let sandbox = PathSandbox::new(registry.workspace_root.clone());
-    sandbox
-        .resolve_workspace_relative(relative)
-        .ok()
-        .map(|p| Path::new(&p).is_file())
-        .unwrap_or(false)
 }

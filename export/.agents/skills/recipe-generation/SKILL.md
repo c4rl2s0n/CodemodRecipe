@@ -78,7 +78,7 @@ Write `.codemod/recipes/<id>.yaml` (or concept subdirs when the project already 
 
 1. `validate_recipes`
 2. `preview_recipe` with sample args from the confirmation
-3. Fix query/args until patches look right
+3. Fix query/args until `files[].original` / `files[].modified` look right
 
 **Do not** call `apply_recipe` unless the user explicitly asks.
 

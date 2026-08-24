@@ -1,5 +1,4 @@
 use codemod_recipe_core::apply::file_change::{FileChange, IfExists, IfMissing};
-use codemod_recipe_core::apply::patch::apply_patches;
 use codemod_recipe_engine::engine::{EngineError, QueryContext};
 use codemod_recipe_engine::LanguageRegistry;
 use codemod_recipe_yaml::model::{
@@ -16,6 +15,10 @@ use crate::recipe::registry::{render_recipe_templates_with_root, RecipeRegistry}
 use crate::recipe::render_context::RecipeRenderContext;
 use crate::sandbox::path_sandbox::PathSandbox;
 use crate::template::{render_template_file, PathExistsFn};
+
+fn engine_error_to_string(error: EngineError) -> String {
+    error.to_string()
+}
 
 pub struct CollectedChanges {
     pub recipe: Recipe,
@@ -315,64 +318,6 @@ fn apply_create_to_tree(
     };
 
     tree.create(sandbox, &create.path, content, if_exists)
-}
-
-pub fn absolute_paths_for_changes(
-    registry: &RecipeRegistry,
-    changes: &[FileChange],
-) -> Result<Vec<PathBuf>, String> {
-    let sandbox = PathSandbox::new(registry.workspace_root.clone());
-    changes
-        .iter()
-        .map(|change| {
-            sandbox
-                .resolve_workspace_relative(change.path())
-                .map_err(|e| e.message)
-        })
-        .collect()
-}
-
-fn engine_error_to_string(error: EngineError) -> String {
-    error.to_string()
-}
-
-pub struct SingleFileRunResult {
-    pub file: String,
-    pub before: String,
-    pub modified: String,
-    pub patches: Vec<codemod_recipe_core::apply::patch::SourcePatch>,
-}
-
-pub fn run_recipe_on_file(
-    registry: &RecipeRegistry,
-    recipe_id: &str,
-    args: &BTreeMap<String, String>,
-) -> Result<SingleFileRunResult, String> {
-    let (recipe, recipe_path) = registry.load_recipe_ast(recipe_id)?;
-    let collected = collect_recipe_changes(registry, &recipe, Some(recipe_path.as_path()), args)?;
-    let file = args
-        .get("file")
-        .cloned()
-        .ok_or_else(|| "Missing required arg: file".to_string())?;
-    let change = collected
-        .changes
-        .iter()
-        .find(|c| c.path() == file)
-        .ok_or_else(|| format!("No changes for file: {file}"))?;
-    match change {
-        FileChange::Patch {
-            source, patches, ..
-        } => {
-            let modified = apply_patches(source, patches).map_err(|e| e.to_string())?;
-            Ok(SingleFileRunResult {
-                file,
-                before: source.clone(),
-                modified,
-                patches: patches.clone(),
-            })
-        }
-        _ => Err(format!("Expected patch change for file: {file}")),
-    }
 }
 
 pub fn planned_snapshot_paths(

@@ -109,10 +109,7 @@ mod tests {
     fn drops_file_when_include_is_false() {
         let patches = vec![SourcePatch::new(0, 1, "A")];
         let mut selection = BTreeMap::new();
-        selection.insert(
-            "a.dart".to_string(),
-            FileSelection { include: false },
-        );
+        selection.insert("a.dart".to_string(), FileSelection { include: false });
         let result = apply_selection("a.dart", "ab", &patches, &selection).unwrap();
         assert!(result.is_none());
     }

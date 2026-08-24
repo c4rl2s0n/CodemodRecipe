@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed } from 'vue';
 import type { FilePreview } from '../shared';
 import type { FileCardSelection } from '../lib/selection';
 import { buildSelection } from '../lib/selection';
@@ -28,21 +27,21 @@ function updateFileSelection(index: number, selection: FileCardSelection) {
 
 function selectFile(index: number) {
   emit('update:activeChangeIndex', index);
-  client.openDiff(props.files[index].path, -1);
+  client.openDiff(props.files[index].path);
 }
 
 function previousChange() {
   if (!props.files.length) return;
   const next = Math.max(0, props.activeChangeIndex - 1);
   emit('update:activeChangeIndex', next);
-  client.openDiff(props.files[next].path, -1);
+  client.openDiff(props.files[next].path);
 }
 
 function nextChange() {
   if (!props.files.length) return;
   const next = Math.min(props.files.length - 1, props.activeChangeIndex + 1);
   emit('update:activeChangeIndex', next);
-  client.openDiff(props.files[next].path, -1);
+  client.openDiff(props.files[next].path);
 }
 
 function applySelected() {

@@ -8,7 +8,6 @@ use std::collections::BTreeMap;
 use std::io::{self, BufRead, Write};
 
 #[derive(Debug, Deserialize)]
-#[allow(dead_code)]
 struct RpcRequest {
     jsonrpc: String,
     id: Option<serde_json::Value>,
@@ -54,6 +53,9 @@ fn main() -> anyhow::Result<()> {
         let Ok(request) = serde_json::from_str::<RpcRequest>(&line) else {
             continue;
         };
+        if request.jsonrpc != "2.0" {
+            continue;
+        }
         let Some(id) = request.id.clone() else {
             continue;
         };

@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { EXTENSION_TO_WEBVIEW, WEBVIEW_TO_EXTENSION } from '../../shared/messages';
+import { WEBVIEW_TO_EXTENSION } from '../../shared/messages';
 import { createExtensionClient } from './extensionClient';
 import type { ExtensionInbound } from './extensionInbound';
 

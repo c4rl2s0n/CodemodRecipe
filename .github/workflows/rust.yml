@@ -23,6 +23,10 @@ jobs:
       - name: Verify generated DSL artifacts are committed
         run: git diff --exit-code -- vscode_extension/schemas/generated-keyword-docs.json vscode_extension/schemas/generated-dsl-surface.json vscode_extension/schemas/recipe.schema.json vscode_extension/schemas/map.schema.json vscode_extension/schemas/variables.schema.json vscode_extension/syntaxes/codemod-recipe.tmLanguage.json docs/generated/dsl-vocabulary.md
 
+      - name: Check with warnings as errors
+        working-directory: rust
+        run: RUSTFLAGS="-D warnings" cargo check --tests
+
       - name: Run tests
         working-directory: rust
         run: cargo test --all
@@ -30,3 +34,11 @@ jobs:
       - name: Clippy
         working-directory: rust
         run: cargo clippy --all-targets -- -D warnings
+
+      - name: Check formatting
+        working-directory: rust
+        run: cargo fmt --check
+
+      - name: Check for unused dependencies
+        working-directory: rust
+        run: cargo install cargo-machete && cargo machete

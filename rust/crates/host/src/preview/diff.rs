@@ -153,13 +153,7 @@ mod tests {
     fn snippet_starts_at_first_diff() {
         let original = "line1\nline2\nline3\n";
         let modified = "line1\nCHANGED\nline3\n";
-        let preview = build_file_preview(
-            "a.dart".to_string(),
-            original,
-            modified,
-            false,
-            Some(2),
-        );
+        let preview = build_file_preview("a.dart".to_string(), original, modified, false, Some(2));
         assert_eq!(preview.snippet.as_deref(), Some("CHANGED\nline3"));
     }
 

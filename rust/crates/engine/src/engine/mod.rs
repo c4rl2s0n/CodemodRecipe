@@ -91,7 +91,6 @@ pub struct Engine {
 
 pub struct ApplyResult {
     pub modified: String,
-    pub patches: Vec<SourcePatch>,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -255,15 +254,7 @@ impl Engine {
             }
             current = self.apply_edit_ops_sequential(ctx, edit, &current)?;
         }
-        let patches = if current == source {
-            vec![]
-        } else {
-            vec![SourcePatch::new(0, source.len(), current.clone())]
-        };
-        Ok(ApplyResult {
-            modified: current,
-            patches,
-        })
+        Ok(ApplyResult { modified: current })
     }
 
     pub(crate) fn parse_tree(&mut self, source: &str) -> Result<Tree, EngineError> {

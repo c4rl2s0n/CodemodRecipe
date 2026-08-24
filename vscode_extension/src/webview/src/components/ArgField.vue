@@ -12,6 +12,10 @@ const props = defineProps<{
 
 const model = defineModel<string>({ required: true });
 
+const emit = defineEmits<{
+  'submit-preview': [];
+}>();
+
 const inputKind = computed(() => effectiveInputKind(props.arg));
 
 const listId = computed(() => `options-${props.arg.name}`);
@@ -43,7 +47,7 @@ async function pickPath() {
       :id="'arg-' + arg.name"
       v-model="isChecked"
       type="checkbox"
-      @keydown.enter.prevent="$emit('submit-preview')"
+      @keydown.enter.prevent="emit('submit-preview')"
     />
   </div>
   <div v-else class="row">
@@ -60,7 +64,7 @@ async function pickPath() {
           ? 'Choose one of the suggested values'
           : undefined
       "
-      @keydown.enter.prevent="$emit('submit-preview')"
+      @keydown.enter.prevent="emit('submit-preview')"
     />
     <button
       v-if="inputKind === ARG_INPUT_KIND.file || inputKind === ARG_INPUT_KIND.directory"

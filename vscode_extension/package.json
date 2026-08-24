@@ -331,19 +331,31 @@
           "default": {},
           "additionalProperties": {
             "oneOf": [
-              { "type": "string" },
+              {
+                "type": "string"
+              },
               {
                 "type": "object",
-                "required": ["recipeId"],
+                "required": [
+                  "recipeId"
+                ],
                 "properties": {
-                  "recipeId": { "type": "string" },
+                  "recipeId": {
+                    "type": "string"
+                  },
                   "mode": {
                     "type": "string",
-                    "enum": ["auto", "run", "open"]
+                    "enum": [
+                      "auto",
+                      "run",
+                      "open"
+                    ]
                   },
                   "args": {
                     "type": "object",
-                    "additionalProperties": { "type": "string" }
+                    "additionalProperties": {
+                      "type": "string"
+                    }
                   }
                 }
               }
@@ -358,7 +370,11 @@
         },
         "codemodRecipe.queryTools.astDisplayMode": {
           "type": "string",
-          "enum": ["kind", "content", "kindPreview"],
+          "enum": [
+            "kind",
+            "content",
+            "kindPreview"
+          ],
           "default": "kindPreview",
           "enumDescriptions": [
             "Show node kind and line range",
@@ -376,6 +392,7 @@
     "watch": "tsc -watch -p ./",
     "watch:webview": "vite build --config src/webview/vite.config.ts --watch",
     "test:webview": "vitest run --config src/webview/vitest.config.ts",
+    "typecheck:webview": "vue-tsc --noEmit -p src/webview/tsconfig.json",
     "vscode:prepublish": "npm run compile"
   },
   "devDependencies": {
@@ -385,6 +402,7 @@
     "typescript": "^5.4.0",
     "vite": "^5.4.14",
     "vitest": "^2.1.8",
-    "vue": "^3.5.13"
+    "vue": "^3.5.13",
+    "vue-tsc": "^2.2.8"
   }
 }
