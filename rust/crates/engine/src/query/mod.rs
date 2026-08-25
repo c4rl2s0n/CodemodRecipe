@@ -1,5 +1,7 @@
 pub mod query_chain;
 
+pub use query_chain::{lowest_common_ancestor, match_root_node, node_contains};
+
 use std::path::Path;
 
 use crate::engine::EngineError;

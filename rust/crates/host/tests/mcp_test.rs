@@ -1,17 +1,10 @@
 use std::io::{BufRead, BufReader, Write};
 use std::process::{Command, Stdio};
-use std::sync::atomic::{AtomicUsize, Ordering};
 
-static WORKSPACE_COUNTER: AtomicUsize = AtomicUsize::new(0);
+mod common;
 
-fn repo_root() -> std::path::PathBuf {
-    std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..")
-}
-
-fn temp_workspace(name: &str) -> std::path::PathBuf {
-    let n = WORKSPACE_COUNTER.fetch_add(1, Ordering::SeqCst);
-    std::env::temp_dir().join(format!("{name}_{}_{n}", std::process::id()))
-}
+use common::{repo_root, temp_workspace};
+use codemod_recipe_host::protocol::keys as protocol_keys;
 
 fn setup_workspace() -> std::path::PathBuf {
     let workspace = temp_workspace("mcp");
@@ -157,7 +150,7 @@ fn stdio_subprocess_lists_recipes_and_previews() {
     let preview_text = preview["result"]["content"][0]["text"].as_str().unwrap();
     let preview_json: serde_json::Value = serde_json::from_str(preview_text).unwrap();
     assert_eq!(preview_json["ok"], true, "preview failed: {}", preview_text);
-    assert!(!preview_json["files"].as_array().unwrap().is_empty());
+    assert!(!preview_json[protocol_keys::FILES].as_array().unwrap().is_empty());
     let token = preview_json["previewToken"]
         .as_str()
         .expect("preview should return previewToken");

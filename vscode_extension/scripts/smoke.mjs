@@ -9,19 +9,10 @@
 import { spawn } from 'child_process';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
-
-const RESULT_BEGIN = '__CODEMOD_RESULT_BEGIN__';
-const RESULT_END = '__CODEMOD_RESULT_END__';
+import { extractResult } from '../../scripts/hostResult.mjs';
 
 const scriptDir = path.dirname(fileURLToPath(import.meta.url));
 const repoRoot = path.resolve(scriptDir, '../..');
-
-function extractResult(output) {
-  const begin = output.indexOf(RESULT_BEGIN);
-  const end = output.indexOf(RESULT_END);
-  if (begin === -1 || end === -1 || end < begin) return undefined;
-  return output.slice(begin + RESULT_BEGIN.length, end).trim();
-}
 
 function send(workspaceRoot, codemodRoot, command) {
   const manifestPath = path.join(repoRoot, 'rust', 'Cargo.toml');

@@ -92,19 +92,4 @@ export class RecipeRepository {
     this.languageIds = result.languageIds ?? [];
     this.describeCache.clear();
   }
-
-  private clearCatalog(): void {
-    this.recipes = [];
-    this.diagnostics = [];
-    this.mapIds = [];
-    this.varIds = [];
-    this.languageIds = [];
-    this.describeCache.clear();
-  }
-
-  /** Explicit wipe (e.g. tests); normal host errors keep last-good data. */
-  resetForTests(): void {
-    this.clearCatalog();
-    this.lastError = undefined;
-  }
 }

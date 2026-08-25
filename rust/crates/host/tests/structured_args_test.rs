@@ -1,6 +1,7 @@
 //! JSON list/object recipe args round-trip through preview.
 
 use codemod_recipe_host::protocol::dispatch;
+use codemod_recipe_host::protocol::keys as protocol_keys;
 use codemod_recipe_host::protocol::HostCommand;
 use codemod_recipe_host::recipe::registry::RecipeRegistry;
 use std::collections::BTreeMap;
@@ -71,7 +72,7 @@ return {
         },
     );
     assert_eq!(response["ok"], true, "{}", response["error"]);
-    let modified = response["files"][0]["modified"].as_str().unwrap();
+    let modified = response[protocol_keys::FILES][0]["modified"].as_str().unwrap();
     assert!(modified.contains("int count"));
     assert!(modified.contains("String label"));
 }

@@ -11,6 +11,7 @@ pub const OK: &str = "ok";
 pub const ERROR: &str = "error";
 pub const FILES: &str = "files";
 pub const FILE: &str = "file";
+pub const INCLUDE: &str = "include";
 
 pub const INLINE_RECIPE_ID: &str = "inline";
 pub const UNKNOWN_RECIPE_ID: &str = "unknown";

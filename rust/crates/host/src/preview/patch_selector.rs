@@ -1,3 +1,4 @@
+use crate::protocol::keys as protocol_keys;
 use codemod_recipe_core::apply::atomic_apply::FileOperation;
 use codemod_recipe_core::apply::file_change::FileChange;
 use codemod_recipe_core::apply::patch::{apply_patches, PatchError, SourcePatch};
@@ -11,12 +12,12 @@ pub struct FileSelection {
 
 pub fn parse_selection(value: &serde_json::Value) -> BTreeMap<String, FileSelection> {
     let mut result = BTreeMap::new();
-    let Some(files) = value.get("files").and_then(|v| v.as_object()) else {
+    let Some(files) = value.get(protocol_keys::FILES).and_then(|v| v.as_object()) else {
         return result;
     };
     for (path, entry) in files {
         let include = entry
-            .get("include")
+            .get(protocol_keys::INCLUDE)
             .and_then(|v| v.as_bool())
             .unwrap_or(true);
         result.insert(path.clone(), FileSelection { include });

@@ -6,8 +6,6 @@ use std::collections::BTreeMap;
 
 #[derive(Debug, Deserialize)]
 #[serde(tag = "command")]
-// Some variants and fields are accepted for protocol compatibility but are not yet used by v1.
-#[allow(dead_code)]
 pub enum HostCommand {
     #[serde(rename = "list")]
     List,

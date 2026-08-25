@@ -5,6 +5,7 @@ edition = "2021"
 description = "Tree-sitter AST dump, query debug, and starter-query generation (no recipe coupling)"
 
 [dependencies]
+codemod_recipe_engine = { path = "../engine", default-features = false }
 serde = { version = "1", features = ["derive"] }
 thiserror = "2"
 tree-sitter = "0.26"

@@ -1,14 +1,12 @@
 //! Query chain + query library resolution.
 
+mod common;
+
 use codemod_recipe_host::engine::runner::{collect_recipe_changes, parse_inline_recipe};
 use codemod_recipe_host::lua_runtime::RunKind;
 use codemod_recipe_host::recipe::registry::RecipeRegistry;
+use common::repo_root;
 use std::collections::BTreeMap;
-use std::path::PathBuf;
-
-fn repo_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..")
-}
 
 #[test]
 fn chained_query_inserts_into_method_body() {

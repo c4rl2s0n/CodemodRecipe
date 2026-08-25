@@ -1,6 +1,7 @@
 //! Sequential staging: create→edit, edit→edit, skip+edit, conflicts.
 
 use codemod_recipe_host::protocol::dispatch;
+use codemod_recipe_host::protocol::keys as protocol_keys;
 use codemod_recipe_host::protocol::HostCommand;
 use codemod_recipe_host::recipe::registry::RecipeRegistry;
 use std::collections::BTreeMap;
@@ -61,7 +62,7 @@ return {
 
     let response = preview_inline(&mut registry, inline, BTreeMap::new());
     assert_eq!(response["ok"], true, "{}", response["error"]);
-    let files = response["files"].as_array().unwrap();
+    let files = response[protocol_keys::FILES].as_array().unwrap();
     assert_eq!(files.len(), 1);
     assert_eq!(files[0]["kind"], "create");
     assert_eq!(files[0]["path"], "lib/barrel.dart");
@@ -101,7 +102,7 @@ return {
 
     let response = preview_inline(&mut registry, inline, BTreeMap::new());
     assert_eq!(response["ok"], true, "{}", response["error"]);
-    let files = response["files"].as_array().unwrap();
+    let files = response[protocol_keys::FILES].as_array().unwrap();
     assert_eq!(files.len(), 1);
     assert_eq!(files[0]["kind"], "create");
     assert_eq!(files[0]["path"], "lib/barrel.dart");
@@ -142,7 +143,7 @@ return {
 
     let response = preview_inline(&mut registry, inline, BTreeMap::new());
     assert_eq!(response["ok"], true, "{}", response["error"]);
-    let files = response["files"].as_array().unwrap();
+    let files = response[protocol_keys::FILES].as_array().unwrap();
     assert_eq!(files.len(), 1);
     assert_eq!(files[0]["kind"], "edit");
     assert_eq!(files[0]["path"], "lib/barrel.dart");
@@ -186,7 +187,7 @@ return {
 
     let response = preview_inline(&mut registry, inline.clone(), BTreeMap::new());
     assert_eq!(response["ok"], true, "{}", response["error"]);
-    let files = response["files"].as_array().unwrap();
+    let files = response[protocol_keys::FILES].as_array().unwrap();
     assert_eq!(files.len(), 1);
     assert_eq!(files[0]["kind"], "edit");
 
@@ -308,7 +309,7 @@ return {
 
     let response = preview_inline(&mut registry, inline, BTreeMap::new());
     assert_eq!(response["ok"], true, "{}", response["error"]);
-    let files = response["files"].as_array().unwrap();
+    let files = response[protocol_keys::FILES].as_array().unwrap();
     assert_eq!(files.len(), 2);
     let kinds: Vec<_> = files.iter().map(|f| f["kind"].as_str().unwrap()).collect();
     assert!(kinds.contains(&"create"));

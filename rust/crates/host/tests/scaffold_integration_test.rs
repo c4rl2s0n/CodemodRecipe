@@ -1,36 +1,14 @@
 //! End-to-end scaffold: compose, create (templateFile), multi-file edit, maps, delete.
 
+mod common;
+
 use codemod_recipe_host::protocol::dispatch;
+use codemod_recipe_host::protocol::keys as protocol_keys;
 use codemod_recipe_host::protocol::HostCommand;
 use codemod_recipe_host::recipe::registry::RecipeRegistry;
+use common::{copy_dir_all, repo_root, temp_workspace};
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
-
-static WORKSPACE_COUNTER: AtomicUsize = AtomicUsize::new(0);
-
-fn repo_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..")
-}
-
-fn temp_workspace(name: &str) -> PathBuf {
-    let n = WORKSPACE_COUNTER.fetch_add(1, Ordering::SeqCst);
-    std::env::temp_dir().join(format!("{name}_{}_{n}", std::process::id()))
-}
-
-fn copy_dir_all(src: &Path, dst: &Path) {
-    std::fs::create_dir_all(dst).unwrap();
-    for entry in std::fs::read_dir(src).unwrap() {
-        let entry = entry.unwrap();
-        let file_type = entry.file_type().unwrap();
-        let target = dst.join(entry.file_name());
-        if file_type.is_dir() {
-            copy_dir_all(&entry.path(), &target);
-        } else {
-            std::fs::copy(entry.path(), &target).unwrap();
-        }
-    }
-}
+use std::path::PathBuf;
 
 fn setup_scaffold_workspace(name: &str) -> PathBuf {
     let workspace = temp_workspace(name);
@@ -108,7 +86,7 @@ fn scaffold_project_preview_covers_create_edit_and_delete() {
     );
     assert_eq!(response["ok"], true, "{}", response["error"]);
 
-    let files = response["files"].as_array().unwrap();
+    let files = response[protocol_keys::FILES].as_array().unwrap();
     assert_eq!(files.len(), 4, "expected create + 2 edits + delete");
 
     let kinds: Vec<_> = files.iter().map(|f| f["kind"].as_str().unwrap()).collect();
@@ -249,7 +227,7 @@ return {
         },
     );
     assert_eq!(preview["ok"], true, "{}", preview["error"]);
-    let files = preview["files"].as_array().unwrap();
+    let files = preview[protocol_keys::FILES].as_array().unwrap();
     assert!(
         files.is_empty(),
         "skipped delete should not appear in preview"
@@ -290,11 +268,18 @@ fn scaffold_project_apply_with_patch_selection() {
     assert_eq!(preview["ok"], true, "{}", preview["error"]);
 
     // Apply everything except the app.dart edit.
-    let selection = serde_json::json!({
-        "files": {
-            "lib/app.dart": { "include": false }
-        }
-    });
+    let selection = {
+        let mut files = serde_json::Map::new();
+        let mut app = serde_json::Map::new();
+        app.insert(
+            protocol_keys::INCLUDE.to_string(),
+            serde_json::Value::Bool(false),
+        );
+        files.insert("lib/app.dart".to_string(), serde_json::Value::Object(app));
+        let mut root = serde_json::Map::new();
+        root.insert(protocol_keys::FILES.to_string(), serde_json::Value::Object(files));
+        serde_json::Value::Object(root)
+    };
 
     let apply = dispatch::handle_command(
         &mut registry,

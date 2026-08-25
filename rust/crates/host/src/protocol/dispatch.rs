@@ -100,9 +100,11 @@ pub fn handle_command(registry: &mut RecipeRegistry, cmd: HostCommand) -> serde_
                 recipe: None,
             }),
         },
-        HostCommand::GenerateAstPath { .. } => to_value(AstPathResult {
+        HostCommand::GenerateAstPath { path, offset } => to_value(AstPathResult {
             ok: false,
-            error: Some("generateAstPath is not supported by the Rust host (v1)".to_string()),
+            error: Some(format!(
+                "generateAstPath is not supported by the Rust host (v1) (path={path}, offset={offset})"
+            )),
         }),
         HostCommand::Bootstrap {
             force,

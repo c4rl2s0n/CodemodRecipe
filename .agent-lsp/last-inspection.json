@@ -1,0 +1,139 @@
+{
+  "target": "/home/ikusa/workspace/Android/codemod_recipe",
+  "timestamp": "2026-08-25T08:48:46Z",
+  "files_analyzed": 154,
+  "tools": {
+    "codebase_memory": {
+      "project": "home-ikusa-workspace-Android-codemod_recipe",
+      "nodes": 4551,
+      "edges": 16016,
+      "note": "Index is partially stale (references removed yaml crate paths and pre-reorg registry.rs paths). Prefer LSP + grep for confirmation."
+    },
+    "agent_lsp": {
+      "rust": "rust-analyzer 1.96.0 (warm-up: RecipeRegistry.reload → 48 refs)",
+      "typescript": "typescript-language-server (warm-up: invokeRecipe → 8 refs)"
+    },
+    "compiler": {
+      "clippy": "pass (cargo clippy --all-targets -- -D warnings, exit 0)",
+      "tsc": "pass (npx tsc -p ./ --noEmit, exit 0)"
+    }
+  },
+  "findings": [
+    {
+      "severity": "warning",
+      "confidence": "verified",
+      "check": "dead_symbol",
+      "file": "rust/crates/host/src/protocol/keys.rs",
+      "line": 12,
+      "finding": "protocol_keys::FILES and protocol_keys::FILE have 0 LSP references; callers use string literal \"files\" (e.g. patch_selector.rs:14) or serde field names instead",
+      "fix": "Either wire parse_selection / JSON builders to protocol_keys::FILES/FILE, or remove the unused constants",
+      "blast_radius": 0
+    },
+    {
+      "severity": "warning",
+      "confidence": "verified",
+      "check": "dead_symbol",
+      "file": "vscode_extension/src/webview/src/lib/selection.ts",
+      "line": 25,
+      "finding": "exported allFileRows has 0 LSP references and is unused by selection.test.ts (which only tests defaultFileSelections/buildSelection)",
+      "fix": "Remove allFileRows (lines 25-29) or add a test/caller if it was intended for ReviewPanel",
+      "blast_radius": 0
+    },
+    {
+      "severity": "warning",
+      "confidence": "verified",
+      "check": "dead_symbol",
+      "file": "vscode_extension/src/extension/language/dslSurface.ts",
+      "line": 45,
+      "finding": "exported resetDslSurfaceCache has 0 LSP references; comment says test helper but no test imports it",
+      "fix": "Use in dslSurface tests after cache mutations, or remove the export",
+      "blast_radius": 0
+    },
+    {
+      "severity": "warning",
+      "confidence": "verified",
+      "check": "redundancy",
+      "file": "rust/crates/engine/src/query/query_chain.rs",
+      "line": 5,
+      "finding": "node_contains + lowest_common_ancestor duplicated nearly verbatim in query_tools/src/debug/match_debug.rs (lca/node_contains). SIMILAR_TO jaccard=1.0",
+      "fix": "Extract shared tree_sitter node helpers into engine (or a small shared module) and call from query_tools",
+      "blast_radius": 2
+    },
+    {
+      "severity": "warning",
+      "confidence": "verified",
+      "check": "redundancy",
+      "file": "rust/crates/host/tests/jinja_examples_test.rs",
+      "line": 21,
+      "finding": "copy_dir_all (and nearly identical repo_root/temp_workspace/WORKSPACE_COUNTER preamble) duplicated in scaffold_integration_test.rs",
+      "fix": "Extract shared test helpers into host/tests/common.rs or a test util module",
+      "blast_radius": 0
+    },
+    {
+      "severity": "warning",
+      "confidence": "verified",
+      "check": "redundancy",
+      "file": "scripts/scaffold_integration.mjs",
+      "line": 83,
+      "finding": "extractResult (RESULT_BEGIN/END marker parsing) duplicated in vscode_extension/scripts/smoke.mjs",
+      "fix": "Share a tiny scripts/hostResult.mjs helper, or document intentional independence if smoke must stay standalone",
+      "blast_radius": 0
+    },
+    {
+      "severity": "info",
+      "confidence": "suspected",
+      "check": "silent_failure",
+      "file": "vscode_extension/src/extension/recipes/recipeRepository.ts",
+      "line": 60,
+      "finding": "describeCached swallows describe errors with empty catch and falls back to findById without recording lastError",
+      "fix": "Optionally set lastError or log at debug level so describe failures are visible during diagnosis",
+      "blast_radius": 3
+    },
+    {
+      "severity": "info",
+      "confidence": "verified",
+      "check": "dead_symbol",
+      "file": "rust/crates/host/src/protocol/mod.rs",
+      "line": 10,
+      "finding": "HostCommand has intentional #[allow(dead_code)] for protocol-compat variants/fields not yet used by v1",
+      "fix": "Keep; revisit when unused protocol variants are removed or implemented",
+      "blast_radius": 0
+    },
+    {
+      "severity": "info",
+      "confidence": "advisory",
+      "check": "coverage_gap",
+      "file": "rust/crates/host/src/lua_runtime.rs",
+      "line": 1,
+      "finding": "Large hotspot modules: lua_runtime.rs (~751 LOC), hostBridge.ts (~566), dispatch.rs (~524). High fan-in (RecipeRegistry.new=96, reload=61, collect=55)",
+      "fix": "No defect; consider splitting only if further growth hurts reviewability",
+      "blast_radius": 55
+    },
+    {
+      "severity": "info",
+      "confidence": "advisory",
+      "check": "doc_drift",
+      "file": "codebase-memory index",
+      "line": 0,
+      "finding": "Graph still indexes removed yaml crate paths (rust/crates/yaml/...) and pre-split files (registry.rs, protocol.rs as single modules). False dead-code candidates from graph alone are common",
+      "fix": "Re-run index_repository(mode=moderate) before relying on CBM dead-code queries",
+      "blast_radius": 0
+    }
+  ],
+  "summary": {
+    "errors": 0,
+    "warnings": 6,
+    "info": 4,
+    "clippy_clean": true,
+    "tsc_clean": true
+  },
+  "exclusions": [
+    "vscode_extension/media/",
+    "export/",
+    "test/fixtures/",
+    ".agents/",
+    ".cursor/skills/",
+    ".vibe/",
+    "docs/"
+  ]
+}

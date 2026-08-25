@@ -1,20 +1,12 @@
+mod common;
+
 use codemod_recipe_host::protocol::dispatch;
+use codemod_recipe_host::protocol::keys as protocol_keys;
 use codemod_recipe_host::protocol::HostCommand;
 use codemod_recipe_host::recipe::registry::RecipeRegistry;
+use common::{repo_root, temp_workspace};
 use std::collections::BTreeMap;
 use std::path::PathBuf;
-use std::sync::atomic::{AtomicUsize, Ordering};
-
-static WORKSPACE_COUNTER: AtomicUsize = AtomicUsize::new(0);
-
-fn repo_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..")
-}
-
-fn temp_workspace(name: &str) -> PathBuf {
-    let n = WORKSPACE_COUNTER.fetch_add(1, Ordering::SeqCst);
-    std::env::temp_dir().join(format!("{name}_{}_{n}", std::process::id()))
-}
 
 fn setup_workspace_with_insert_recipe(name: &str) -> PathBuf {
     let workspace = temp_workspace(name);
@@ -106,7 +98,7 @@ fn preview_returns_preview_token_and_modified_content() {
     assert!(response["previewToken"]
         .as_str()
         .is_some_and(|t| !t.is_empty()));
-    let files = response["files"].as_array().unwrap();
+    let files = response[protocol_keys::FILES].as_array().unwrap();
     assert_eq!(files.len(), 1);
     assert!(files[0]["original"].as_str().is_some());
     assert!(files[0]["modified"].as_str().is_some());
@@ -348,7 +340,7 @@ fn remove_is_idempotent_on_second_preview() {
         },
     );
     assert_eq!(second["ok"], true);
-    let files = second["files"].as_array().unwrap();
+    let files = second[protocol_keys::FILES].as_array().unwrap();
     assert!(files.is_empty());
 
     let _ = std::fs::remove_dir_all(workspace);
@@ -503,7 +495,7 @@ fn preview_includes_original_and_modified() {
         },
     );
     assert_eq!(response["ok"], true);
-    let files = response["files"].as_array().unwrap();
+    let files = response[protocol_keys::FILES].as_array().unwrap();
     assert!(!files.is_empty());
     assert!(files[0]["original"].as_str().is_some());
     assert!(files[0]["modified"].as_str().is_some());
@@ -543,8 +535,8 @@ fn diff_returns_full_file_data() {
         },
     );
     assert_eq!(response["ok"], true);
-    assert!(response["file"]["original"].as_str().is_some());
-    assert!(response["file"]["modified"].as_str().is_some());
+    assert!(response[protocol_keys::FILE]["original"].as_str().is_some());
+    assert!(response[protocol_keys::FILE]["modified"].as_str().is_some());
 
     let _ = std::fs::remove_dir_all(workspace);
 }
@@ -580,7 +572,7 @@ fn preview_add_log_line_with_class_and_method_args() {
         },
     );
     assert_eq!(response["ok"], true, "{}", response["error"]);
-    let files = response["files"].as_array().unwrap();
+    let files = response[protocol_keys::FILES].as_array().unwrap();
     assert_eq!(files.len(), 1);
     assert!(files[0]["snippet"].as_str().unwrap_or("").contains("print"));
 }
@@ -619,7 +611,7 @@ fn preview_create_file_step() {
         },
     );
     assert_eq!(response["ok"], true, "{}", response["error"]);
-    let files = response["files"].as_array().unwrap();
+    let files = response[protocol_keys::FILES].as_array().unwrap();
     assert_eq!(files.len(), 1);
     assert_eq!(files[0]["kind"], "create");
     assert!(files[0]["isNew"].as_bool().unwrap());
@@ -679,7 +671,7 @@ fn preview_delete_file_step() {
         },
     );
     assert_eq!(preview["ok"], true, "{}", preview["error"]);
-    assert_eq!(preview["files"][0]["kind"], "delete");
+    assert_eq!(preview[protocol_keys::FILES][0]["kind"], "delete");
 
     let token = preview["previewToken"].as_str().unwrap();
     let apply = dispatch::handle_command(

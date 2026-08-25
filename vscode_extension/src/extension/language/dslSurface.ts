@@ -41,11 +41,6 @@ export function loadDslSurface(extensionUri: vscode.Uri): DslSurface {
   return cached;
 }
 
-/** Test helper / reset after codegen in tests. */
-export function resetDslSurfaceCache(): void {
-  cached = undefined;
-}
-
 export function resolveContainerId(
   surface: DslSurface,
   parentWire: string | undefined,

@@ -149,7 +149,7 @@ pub fn debug_query(
                 qend,
             ));
         }
-        let root_node = lowest_common_ancestor(&nodes_for_root).unwrap_or(tree.root_node());
+        let root_node = common_ancestor_of(&nodes_for_root).unwrap_or(tree.root_node());
         matches_out.push(DebugMatch {
             root: node_to_span(source, root_node, opts.max_text_len),
             captures,
@@ -252,46 +252,11 @@ fn truncate(s: &str, max: usize) -> String {
     }
 }
 
-fn node_contains(ancestor: tree_sitter::Node<'_>, descendant: tree_sitter::Node<'_>) -> bool {
-    if ancestor.id() == descendant.id() {
-        return true;
-    }
-    ancestor.start_byte() <= descendant.start_byte() && ancestor.end_byte() >= descendant.end_byte()
-}
-
-fn lowest_common_ancestor<'a>(nodes: &[tree_sitter::Node<'a>]) -> Option<tree_sitter::Node<'a>> {
+fn common_ancestor_of<'a>(nodes: &[tree_sitter::Node<'a>]) -> Option<tree_sitter::Node<'a>> {
     let mut iter = nodes.iter().copied();
     let mut root = iter.next()?;
     for node in iter {
-        root = lca(root, node)?;
+        root = codemod_recipe_engine::query::lowest_common_ancestor(root, node)?;
     }
     Some(root)
-}
-
-fn lca<'a>(
-    mut left: tree_sitter::Node<'a>,
-    mut right: tree_sitter::Node<'a>,
-) -> Option<tree_sitter::Node<'a>> {
-    if node_contains(left, right) {
-        return Some(left);
-    }
-    if node_contains(right, left) {
-        return Some(right);
-    }
-    while left.parent().is_some() || right.parent().is_some() {
-        if left.start_byte() > right.start_byte() {
-            left = left.parent()?;
-        } else if right.start_byte() > left.start_byte() {
-            right = right.parent()?;
-        } else {
-            let lp = left.parent()?;
-            let rp = right.parent()?;
-            if lp.id() == rp.id() {
-                return Some(lp);
-            }
-            left = lp;
-            right = rp;
-        }
-    }
-    None
 }

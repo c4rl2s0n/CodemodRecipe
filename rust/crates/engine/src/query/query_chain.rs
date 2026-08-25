@@ -2,7 +2,7 @@
 
 use tree_sitter::{Node, QueryMatch};
 
-fn node_contains(ancestor: Node<'_>, descendant: Node<'_>) -> bool {
+pub fn node_contains(ancestor: Node<'_>, descendant: Node<'_>) -> bool {
     if ancestor.id() == descendant.id() {
         return true;
     }
@@ -20,7 +20,7 @@ pub fn match_root_node<'a, 'b: 'a>(m: &'a QueryMatch<'b, 'a>) -> Option<Node<'a>
     Some(root)
 }
 
-fn lowest_common_ancestor<'a>(mut left: Node<'a>, mut right: Node<'a>) -> Option<Node<'a>> {
+pub fn lowest_common_ancestor<'a>(mut left: Node<'a>, mut right: Node<'a>) -> Option<Node<'a>> {
     if node_contains(left, right) {
         return Some(left);
     }

@@ -21,9 +21,3 @@ export function buildSelection(
   }
   return selection;
 }
-
-export function allFileRows(
-  fileSelections: FileCardSelection[]
-): { path: string }[] {
-  return fileSelections.map((f) => ({ path: f.path }));
-}

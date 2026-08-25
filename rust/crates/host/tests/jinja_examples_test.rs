@@ -1,36 +1,14 @@
 //! Jinja2 / MiniJinja showcase fixtures — casing, maps, conditionals, defaultsTo, inheritance.
 
+mod common;
+
 use codemod_recipe_host::protocol::dispatch;
+use codemod_recipe_host::protocol::keys as protocol_keys;
 use codemod_recipe_host::protocol::HostCommand;
 use codemod_recipe_host::recipe::registry::RecipeRegistry;
+use common::{copy_dir_all, repo_root, temp_workspace};
 use std::collections::BTreeMap;
-use std::path::{Path, PathBuf};
-use std::sync::atomic::{AtomicUsize, Ordering};
-
-static WORKSPACE_COUNTER: AtomicUsize = AtomicUsize::new(0);
-
-fn repo_root() -> PathBuf {
-    PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../..")
-}
-
-fn temp_workspace(name: &str) -> PathBuf {
-    let n = WORKSPACE_COUNTER.fetch_add(1, Ordering::SeqCst);
-    std::env::temp_dir().join(format!("{name}_{}_{n}", std::process::id()))
-}
-
-fn copy_dir_all(src: &Path, dst: &Path) {
-    std::fs::create_dir_all(dst).unwrap();
-    for entry in std::fs::read_dir(src).unwrap() {
-        let entry = entry.unwrap();
-        let file_type = entry.file_type().unwrap();
-        let target = dst.join(entry.file_name());
-        if file_type.is_dir() {
-            copy_dir_all(&entry.path(), &target);
-        } else {
-            std::fs::copy(entry.path(), &target).unwrap();
-        }
-    }
-}
+use std::path::PathBuf;
 
 fn setup_jinja_workspace(name: &str) -> PathBuf {
     let workspace = temp_workspace(name);
@@ -57,7 +35,7 @@ fn preview_recipe(
 }
 
 fn file_content(response: &serde_json::Value, path: &str) -> String {
-    let file = response["files"]
+    let file = response[protocol_keys::FILES]
         .as_array()
         .unwrap()
         .iter()
@@ -320,7 +298,7 @@ fn step_if_orchestrator_gates_child_and_file_exists() {
 
     let without_extra = preview_recipe(&mut registry, "jinja.step_if.orchestrator", args.clone());
     assert_eq!(without_extra["ok"], true, "{}", without_extra["error"]);
-    let files = without_extra["files"].as_array().unwrap();
+    let files = without_extra[protocol_keys::FILES].as_array().unwrap();
     let paths: Vec<&str> = files.iter().filter_map(|f| f["path"].as_str()).collect();
     assert!(paths.contains(&"lib/generated/counter_base.dart"));
     assert!(!paths.iter().any(|p| p.contains("extra")));

@@ -171,6 +171,7 @@ dependencies = [
 name = "codemod_recipe_query_tools"
 version = "0.1.0"
 dependencies = [
+ "codemod_recipe_engine",
  "pretty_assertions",
  "serde",
  "thiserror 2.0.18",
