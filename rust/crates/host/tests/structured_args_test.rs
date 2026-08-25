@@ -72,7 +72,9 @@ return {
         },
     );
     assert_eq!(response["ok"], true, "{}", response["error"]);
-    let modified = response[protocol_keys::FILES][0]["modified"].as_str().unwrap();
+    let modified = response[protocol_keys::FILES][0]["modified"]
+        .as_str()
+        .unwrap();
     assert!(modified.contains("int count"));
     assert!(modified.contains("String label"));
 }

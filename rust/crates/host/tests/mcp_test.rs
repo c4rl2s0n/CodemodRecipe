@@ -3,8 +3,8 @@ use std::process::{Command, Stdio};
 
 mod common;
 
-use common::{repo_root, temp_workspace};
 use codemod_recipe_host::protocol::keys as protocol_keys;
+use common::{repo_root, temp_workspace};
 
 fn setup_workspace() -> std::path::PathBuf {
     let workspace = temp_workspace("mcp");
@@ -150,7 +150,10 @@ fn stdio_subprocess_lists_recipes_and_previews() {
     let preview_text = preview["result"]["content"][0]["text"].as_str().unwrap();
     let preview_json: serde_json::Value = serde_json::from_str(preview_text).unwrap();
     assert_eq!(preview_json["ok"], true, "preview failed: {}", preview_text);
-    assert!(!preview_json[protocol_keys::FILES].as_array().unwrap().is_empty());
+    assert!(!preview_json[protocol_keys::FILES]
+        .as_array()
+        .unwrap()
+        .is_empty());
     let token = preview_json["previewToken"]
         .as_str()
         .expect("preview should return previewToken");

@@ -277,7 +277,10 @@ fn scaffold_project_apply_with_patch_selection() {
         );
         files.insert("lib/app.dart".to_string(), serde_json::Value::Object(app));
         let mut root = serde_json::Map::new();
-        root.insert(protocol_keys::FILES.to_string(), serde_json::Value::Object(files));
+        root.insert(
+            protocol_keys::FILES.to_string(),
+            serde_json::Value::Object(files),
+        );
         serde_json::Value::Object(root)
     };
 
