@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   collectCaptureNameCompletions,
   extractCaptureNamesFromQuerySource,
-  findSiblingQueryField,
+  findSiblingQueryAssign,
   isLikelyQueryLibraryOrChain,
   isLikelyScmPath,
   resolveSiblingQuery,
@@ -46,42 +46,41 @@ describe('isLikelyScmPath / library', () => {
   });
 });
 
-describe('sibling query resolution', () => {
+describe('sibling query resolution (Luau)', () => {
   const insertLines = [
-    'steps:',
-    '  - edit:',
-    '      path: "{{file}}"',
-    '      ops:',
-    '        - insert:',
-    '            query: |',
-    '              (block) @body',
-    '              (identifier) @name',
-    '            capture: ',
-    '            anchor: end',
-    '            text: "x"',
+    '		c:insert({',
+    '			path = c.args.file,',
+    '			query = [[',
+    '(block) @body',
+    '(identifier) @name',
+    ']],',
+    '			capture = "',
+    '			anchor = "end",',
+    '			text = "x",',
+    '		})',
   ];
 
   it('finds query above capture', () => {
-    const field = findSiblingQueryField(doc(insertLines), 8);
-    expect(field?.rest.trim()).toBe('|');
-    expect(field?.line).toBe(5);
+    const field = findSiblingQueryAssign(doc(insertLines), 6);
+    expect(field?.rest.trim().startsWith('[[')).toBe(true);
+    expect(field?.line).toBe(2);
   });
 
-  it('resolves block scalar captures', () => {
-    const names = collectCaptureNameCompletions(doc(insertLines), 8, '');
+  it('resolves long-string captures', () => {
+    const names = collectCaptureNameCompletions(doc(insertLines), 6, '');
     expect(names).toEqual(['body', 'name']);
   });
 
   it('filters by typed prefix', () => {
-    const names = collectCaptureNameCompletions(doc(insertLines), 8, 'b');
+    const names = collectCaptureNameCompletions(doc(insertLines), 6, 'b');
     expect(names).toEqual(['body']);
   });
 
   it('resolves same-line inline query', () => {
     const lines = [
-      '        - replace:',
-      '            query: "(declaration) @member"',
-      '            capture: mem',
+      '		c:replace({',
+      '			query = "(declaration) @member",',
+      '			capture = "mem',
     ];
     expect(collectCaptureNameCompletions(doc(lines), 2, 'mem')).toEqual([
       'member',
@@ -90,9 +89,9 @@ describe('sibling query resolution', () => {
 
   it('returns scmPath for .scm sibling', () => {
     const lines = [
-      '        - remove:',
-      '            query: queries/foo.scm',
-      '            capture: ',
+      '		c:remove({',
+      '			query = "queries/foo.scm",',
+      '			capture = "',
     ];
     expect(resolveSiblingQuery(doc(lines), 2)).toEqual({
       kind: 'scmPath',
@@ -102,10 +101,10 @@ describe('sibling query resolution', () => {
 
   it('reads .scm via callback', () => {
     const lines = [
-      '        - insert:',
-      '            query: body.scm',
-      '            capture: ',
-      '            anchor: end',
+      '		c:insert({',
+      '			query = "body.scm",',
+      '			capture = "',
+      '			anchor = "end",',
     ];
     const names = collectCaptureNameCompletions(
       doc(lines),
@@ -116,13 +115,26 @@ describe('sibling query resolution', () => {
     expect(names).toEqual(['body']);
   });
 
-  it('skips query-library refs', () => {
+  it('resolves query id via callback', () => {
     const lines = [
-      '        - insert:',
-      '            query: dart.bodies.method',
-      '            capture: ',
+      '		c:insert({',
+      '			query = "dart_queries.method_body",',
+      '			capture = "',
     ];
-    expect(resolveSiblingQuery(doc(lines), 2)).toEqual({ kind: 'unsupported' });
-    expect(collectCaptureNameCompletions(doc(lines), 2, '')).toEqual([]);
+    expect(resolveSiblingQuery(doc(lines), 2)).toEqual({
+      kind: 'queryId',
+      id: 'dart_queries.method_body',
+    });
+    const names = collectCaptureNameCompletions(
+      doc(lines),
+      2,
+      '',
+      undefined,
+      (id) =>
+        id === 'dart_queries.method_body'
+          ? '(function_body (block) @body)'
+          : undefined
+    );
+    expect(names).toEqual(['body']);
   });
 });

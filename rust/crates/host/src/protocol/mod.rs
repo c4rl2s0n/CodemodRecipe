@@ -127,6 +127,14 @@ pub enum HostCommand {
     },
     #[serde(rename = "resolveStaticPath")]
     ResolveStaticPath { template: String },
+    /// Resolve `@capture` names from an inline query or registered query id.
+    #[serde(rename = "queryCaptures")]
+    QueryCaptures {
+        #[serde(default)]
+        query: Option<String>,
+        #[serde(default, rename = "queryId")]
+        query_id: Option<String>,
+    },
 }
 
 fn default_true() -> bool {
@@ -173,7 +181,7 @@ pub struct RecipeSchema {
     pub id: String,
     pub name: String,
     pub description: String,
-    /// Workspace-relative path to the recipe YAML file.
+    /// Workspace-relative path to the recipe Luau module.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub source_file: Option<String>,
     pub args: Vec<RecipeArg>,
@@ -256,6 +264,16 @@ pub struct DiagnosticSource {
 }
 
 #[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct QueryCapturesResponse {
+    pub ok: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub captures: Option<Vec<String>>,
+}
+
+#[derive(Debug, Serialize, Clone)]
 pub struct RecipeCatalogResponse {
     pub ok: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -276,6 +294,10 @@ pub struct RecipeCatalogResponse {
     pub types: Option<Vec<TypeSchema>>,
     #[serde(skip_serializing_if = "Option::is_none", rename = "languageIds")]
     pub language_ids: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "queryIds")]
+    pub query_ids: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub queries: Option<BTreeMap<String, String>>,
 }
 
 #[derive(Debug, Serialize, Clone)]

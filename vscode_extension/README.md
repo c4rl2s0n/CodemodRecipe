@@ -107,11 +107,15 @@ Default chords: `Ctrl+Shift+I` then `1` (run/auto), `Ctrl+Shift+T` then `1` (ope
 
 ### Editor navigation (Recipe Language Toolkit)
 
-Under `codemodRecipe.codemodRoot` (default `.codemod/**`) Luau recipe files:
+Under `codemodRecipe.codemodRoot` (default `.codemod`) Luau/Lua recipe files get:
 
-- **Completions** for recipe ids, `language` values, and arg names from the host catalog
-- **Go to Definition** on `c:run("recipe.id")` targets when statically known
+- **Completions** for `c:` methods, edit-spec keys, recipe ids (`id =` / `c:run`), map/var/query ids, `language`, captures, `c.args.*`, and nested `c:run` args
+- **Go to Definition** on `c:run("recipe.id")`
+- **Hover** on host methods and recipe refs
+- **CodeLens** on top-level `id = "..."` (runner / keybinding / slot)
 - **Diagnostics** from the Rust host validate of **saved** recipe files
+
+Install **[Luau Language Server](https://marketplace.visualstudio.com/items?itemName=JohnnyMorganz.luau-lsp)** for richer IntelliSense on `c`. Scaffold / bootstrap writes `.codemod/stubs/codemod-context.d.luau` and recommends the extension.
 
 Recipe authoring reference: [docs/writing-recipes.md](../docs/writing-recipes.md) and skill `codemod-luau-recipes`.
 

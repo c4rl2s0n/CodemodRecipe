@@ -3,23 +3,15 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import type { ExtensionConfig } from '../../config/extensionConfig';
 import type { RecipeRepository } from '../../recipes/recipeRepository';
-import { loadKeywordDocs, lookupKeywordHover } from '../keywordDocs';
-import {
-  matchRecipeReference,
-  matchTemplateFile,
-} from '../recipeHelpers';
+import { resolveHoverContent } from '../navigationLogic';
+import { matchIdReference, matchTemplatePath } from '../luauContext';
 
 export class RecipeHoverProvider implements vscode.HoverProvider {
-  private readonly keywordDocs;
-
   constructor(
-    extensionUri: vscode.Uri,
     private readonly repository: RecipeRepository,
     private readonly config: ExtensionConfig,
     private readonly isUnderCodemod: (uri: vscode.Uri) => boolean
-  ) {
-    this.keywordDocs = loadKeywordDocs(extensionUri);
-  }
+  ) {}
 
   async provideHover(
     document: vscode.TextDocument,
@@ -29,41 +21,44 @@ export class RecipeHoverProvider implements vscode.HoverProvider {
       return;
     }
     const line = document.lineAt(position.line).text;
-
-    const keywordDesc = lookupKeywordHover(
-      this.keywordDocs,
-      line,
-      position.character
+    const wordRange = document.getWordRangeAtPosition(
+      position,
+      /[A-Za-z_]\w*/
     );
-    if (keywordDesc) {
-      return new vscode.Hover(new vscode.MarkdownString(keywordDesc));
-    }
+    const word = wordRange ? document.getText(wordRange) : undefined;
 
-    const recipeRef = matchRecipeReference(line, position.character);
-    if (recipeRef) {
-      const described =
-        (await this.repository.describeCached(recipeRef)) ??
-        this.repository.findById(recipeRef);
-      if (!described) {
-        return;
+    const recipeRef = matchIdReference(line, position.character);
+    const describedRecipe =
+      recipeRef && (recipeRef.kind === 'run' || recipeRef.kind === 'id')
+        ? await this.repository.describeCached(recipeRef.id)
+        : undefined;
+
+    const content = resolveHoverContent(
+      line,
+      position.character,
+      word,
+      (id) => {
+        if (describedRecipe?.id === id) {
+          return describedRecipe;
+        }
+        return this.repository.findById(id);
+      },
+      (id) => this.repository.getQuerySource(id)
+    );
+
+    if (content?.kind === 'markdown') {
+      return new vscode.Hover(new vscode.MarkdownString(content.text));
+    }
+    if (content?.kind === 'code') {
+      const md = new vscode.MarkdownString();
+      if (content.preface) {
+        md.appendMarkdown(content.preface);
       }
-      const args =
-        described.args.length === 0
-          ? '_No args_'
-          : described.args
-              .map((arg) => {
-                const req = arg.required ? ' (required)' : '';
-                return `- \`${arg.name}\`${req}${arg.help ? `: ${arg.help}` : ''}`;
-              })
-              .join('\n');
-      return new vscode.Hover(
-        new vscode.MarkdownString(
-          `**${described.name}** (\`${described.id}\`)\n\n${described.description}\n\n**Args**\n${args}`
-        )
-      );
+      md.appendCodeblock(content.text, content.language);
+      return new vscode.Hover(md);
     }
 
-    const templateFile = matchTemplateFile(line, position.character);
+    const templateFile = matchTemplatePath(line, position.character);
     if (templateFile) {
       const abs = path.join(
         this.config.workspaceRoot,
@@ -71,8 +66,8 @@ export class RecipeHoverProvider implements vscode.HoverProvider {
         templateFile
       );
       try {
-        const content = fs.readFileSync(abs, 'utf8');
-        const preview = content.split(/\r?\n/).slice(0, 20).join('\n');
+        const fileContent = fs.readFileSync(abs, 'utf8');
+        const preview = fileContent.split(/\r?\n/).slice(0, 20).join('\n');
         const md = new vscode.MarkdownString();
         md.appendCodeblock(preview, 'plaintext');
         return new vscode.Hover(md);

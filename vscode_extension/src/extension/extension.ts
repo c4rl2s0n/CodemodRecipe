@@ -6,6 +6,7 @@ import { ExtensionConfig } from './config/extensionConfig';
 import { DiffContentProvider } from './diff/diffContentProvider';
 import { HostBridge } from './host/hostBridge';
 import { RecipeDiagnostics } from './language/diagnostics';
+import { registerRecipeLanguageSupport, type LanguageSession } from './language/session';
 import { resolveEditorContext } from './recipes/recipeContext';
 import { matchRecipesToEditorContext } from './recipes/recipeContextMatch';
 import {
@@ -43,6 +44,24 @@ export function activate(context: vscode.ExtensionContext): void {
   runner.setRecipeRepository(repository);
   const queryTools = new QueryToolsController(bridge, config);
   queryTools.register(context);
+
+  let languageSession: LanguageSession | undefined;
+  const recreateLanguageSession = (): void => {
+    languageSession?.dispose();
+    languageSession = registerRecipeLanguageSupport(
+      context,
+      repository,
+      bridge,
+      config
+    );
+  };
+  recreateLanguageSession();
+  context.subscriptions.push({
+    dispose: () => {
+      languageSession?.dispose();
+      languageSession = undefined;
+    },
+  });
 
   let recipeReloadTimer: NodeJS.Timeout | undefined;
   let recipeReloadGeneration = 0;
@@ -263,6 +282,7 @@ export function activate(context: vscode.ExtensionContext): void {
         event.affectsConfiguration('codemodRecipe.workspaceRoot')
       ) {
         bridge.dispose();
+        recreateLanguageSession();
         void bootstrap(true);
       }
     }),

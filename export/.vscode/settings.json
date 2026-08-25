@@ -1,0 +1,6 @@
+{
+  "luau-lsp.types.definitionFiles": [
+    ".codemod/stubs/codemod-context.d.luau"
+  ],
+  "luau-lsp.sourcemap.enabled": false
+}

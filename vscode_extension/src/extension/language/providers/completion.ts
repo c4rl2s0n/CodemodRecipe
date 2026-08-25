@@ -3,24 +3,59 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import type { HostBridge } from '../../host/hostBridge';
 import type { RecipeRepository } from '../../recipes/recipeRepository';
-import { collectRecipeIdCompletions, recipeIdCompletionContext } from '../../../shared';
-import { collectCaptureNameCompletions } from '../captureCompletions';
-import type { DslSurface } from '../dslSurface';
-import { remainingChildKeys, resolveContainerId } from '../dslSurface';
-import { resolveYamlContext, lineSourceFromDocument } from '../yamlContext';
+import type { RecipeSchema } from '../../../shared';
 import {
-  collectSetWithKeys,
-  findNearbyRecipeStepId,
-  inWithBlock,
-  isUnderRecipeMapping,
-  parseArgNames,
-} from '../recipeHelpers';
+  collectCompletionSuggestions,
+  type CompletionKind,
+  type CompletionSuggestion,
+} from '../completionLogic';
+import { hostMethodByName } from '../hostApiSurface';
+import { findNearbyRunRecipeId, inRunArgsTable } from '../luauContext';
+
+const KIND_MAP: Record<CompletionKind, vscode.CompletionItemKind> = {
+  method: vscode.CompletionItemKind.Method,
+  field: vscode.CompletionItemKind.Field,
+  property: vscode.CompletionItemKind.Property,
+  module: vscode.CompletionItemKind.Module,
+  reference: vscode.CompletionItemKind.Reference,
+  value: vscode.CompletionItemKind.Value,
+  enumMember: vscode.CompletionItemKind.EnumMember,
+  variable: vscode.CompletionItemKind.Variable,
+  enum: vscode.CompletionItemKind.Enum,
+};
+
+function toVscodeItem(
+  suggestion: CompletionSuggestion,
+  line: number
+): vscode.CompletionItem {
+  const item = new vscode.CompletionItem(
+    suggestion.label,
+    KIND_MAP[suggestion.kind]
+  );
+  if (suggestion.detail !== undefined) {
+    item.detail = suggestion.detail;
+  }
+  if (suggestion.insertText !== undefined) {
+    item.insertText = suggestion.insertText;
+  }
+  if (suggestion.sortText !== undefined) {
+    item.sortText = suggestion.sortText;
+  }
+  if (suggestion.range) {
+    item.range = new vscode.Range(
+      line,
+      suggestion.range.start,
+      line,
+      suggestion.range.end
+    );
+  }
+  return item;
+}
 
 export class RecipeCompletionProvider implements vscode.CompletionItemProvider {
   constructor(
     private readonly repository: RecipeRepository,
     private readonly bridge: HostBridge,
-    private readonly surface: DslSurface,
     private readonly isUnderCodemod: (uri: vscode.Uri) => boolean
   ) {}
 
@@ -34,84 +69,57 @@ export class RecipeCompletionProvider implements vscode.CompletionItemProvider {
 
     const line = document.lineAt(position.line).text;
     const before = line.slice(0, position.character);
-    const text = document.getText();
-    const ctx = resolveYamlContext(
-      lineSourceFromDocument(document),
-      position.line,
-      position.character
-    );
+    const docDir = path.dirname(document.uri.fsPath);
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
+    const workspaceRoot = workspaceFolder?.uri.fsPath;
 
-    if (/var\.\w*$/.test(before)) {
-      return this.repository.getVarIds().map((id) => {
-        const item = new vscode.CompletionItem(id, vscode.CompletionItemKind.Variable);
-        item.insertText = id;
-        return item;
-      });
-    }
-
-    if (/map\.\w*$/.test(before)) {
-      return this.repository.getMapIds().map((id) => {
-        const item = new vscode.CompletionItem(id, vscode.CompletionItemKind.Enum);
-        item.insertText = id;
-        return item;
-      });
-    }
-
-    if (/\{\{\s*[\w.]*$/.test(before)) {
-      const args = parseArgNames(text);
-      const items: vscode.CompletionItem[] = args.map((name) => {
-        const item = new vscode.CompletionItem(name, vscode.CompletionItemKind.Field);
-        item.detail = 'recipe arg';
-        return item;
-      });
-      for (const id of this.repository.getVarIds()) {
-        const item = new vscode.CompletionItem(
-          `var.${id}`,
-          vscode.CompletionItemKind.Variable
+    const describeCache = new Map<string, RecipeSchema | undefined>();
+    if (inRunArgsTable(document, position.line, position.character)) {
+      const childId = findNearbyRunRecipeId(document, position.line);
+      if (childId) {
+        try {
+          await this.bridge.ensureHost();
+        } catch {
+          // ignore
+        }
+        describeCache.set(
+          childId,
+          await this.repository.describeCached(childId)
         );
-        item.insertText = `var.${id}`;
-        items.push(item);
       }
-      for (const id of this.repository.getMapIds()) {
-        const item = new vscode.CompletionItem(
-          `map.${id}`,
-          vscode.CompletionItemKind.Enum
-        );
-        item.insertText = `map.${id}|`;
-        item.detail = 'map filter (append key)';
-        items.push(item);
-      }
-      return items;
     }
 
-    if (
-      /^\s*language:\s*[\w-]*$/i.test(before.trimEnd()) ||
-      /language:\s*[\w-]*$/i.test(before)
-    ) {
-      return this.repository.getLanguageIds().map((id) => {
-        return new vscode.CompletionItem(id, vscode.CompletionItemKind.Value);
-      });
-    }
-
-    // `capture:` → @names from sibling `query` (inline or .scm).
-    const captureMatch = before.match(/^\s*capture:\s*['"]?([\w]*)$/);
-    if (captureMatch) {
-      const typed = captureMatch[1] ?? '';
-      const lineSource = lineSourceFromDocument(document);
-      const docDir = path.dirname(document.uri.fsPath);
-      const workspaceFolder = vscode.workspace.getWorkspaceFolder(document.uri);
-      const workspaceRoot = workspaceFolder?.uri.fsPath;
-      const names = collectCaptureNameCompletions(
-        lineSource,
-        position.line,
-        typed,
-        (rel) => {
+    const suggestions = collectCompletionSuggestions({
+      line,
+      before,
+      lineNumber: position.line,
+      character: position.character,
+      document,
+      catalog: {
+        recipeIds: this.repository.getRecipes().map((r) => r.id),
+        mapIds: this.repository.getMapIds(),
+        varIds: this.repository.getVarIds(),
+        queryIds: this.repository.getQueryIds(),
+        languageIds: this.repository.getLanguageIds(),
+        typeIds: this.repository.getTypeIds(),
+        types: this.repository.getTypes(),
+        getQuerySource: (id) => this.repository.getQuerySource(id),
+        describeRecipe: (id) =>
+          describeCache.get(id) ?? this.repository.findById(id),
+        readScmFile: (rel) => {
           const candidates = [
             path.isAbsolute(rel) ? rel : path.join(docDir, rel),
             workspaceRoot ? path.join(workspaceRoot, rel) : undefined,
-            workspaceRoot ? path.join(workspaceRoot, '.codemod', rel) : undefined,
             workspaceRoot
-              ? path.join(workspaceRoot, '.codemod', 'queries', path.basename(rel))
+              ? path.join(workspaceRoot, '.codemod', rel)
+              : undefined,
+            workspaceRoot
+              ? path.join(
+                  workspaceRoot,
+                  '.codemod',
+                  'queries',
+                  path.basename(rel)
+                )
               : undefined,
           ].filter((p): p is string => Boolean(p));
           for (const candidate of candidates) {
@@ -124,162 +132,14 @@ export class RecipeCompletionProvider implements vscode.CompletionItemProvider {
             }
           }
           return undefined;
-        }
-      );
-      if (names.length > 0) {
-        return names.map((name) => {
-          const item = new vscode.CompletionItem(
-            name,
-            vscode.CompletionItemKind.Field
-          );
-          item.detail = 'query capture';
-          item.sortText = `0_${name}`;
-          return item;
-        });
-      }
-    }
+        },
+      },
+    });
 
-    if (ctx.positionKind === 'key') {
-      const containerId = resolveContainerId(
-        this.surface,
-        ctx.parentWire,
-        ctx.path
-      );
-      if (containerId) {
-        const container = this.surface.containers[containerId];
-        if (!container?.mapValue) {
-          const keys = remainingChildKeys(
-            this.surface,
-            containerId,
-            ctx.siblingKeys
-          );
-          if (keys.length > 0) {
-            const typed = before.trim();
-            return keys
-              .filter((k) => !typed || k.startsWith(typed))
-              .map((key) => {
-                const item = new vscode.CompletionItem(
-                  key,
-                  vscode.CompletionItemKind.Property
-                );
-                item.insertText = `${key}: `;
-                item.sortText = `0_${key}`;
-                item.detail = `codemod (${containerId})`;
-                return item;
-              });
-          }
-        }
-      }
+    if (!suggestions) {
+      return undefined;
     }
-
-    const recipeIdPrefix = recipeIdCompletionContext(before);
-    if (
-      recipeIdPrefix &&
-      (/(?:^|\s)recipe:\s*['"]?[\w./-]*$/.test(before) ||
-        /^\s*id:\s*['"]?[\w./-]*$/.test(before) ||
-        isUnderRecipeMapping(document, position.line))
-    ) {
-      const segmentStart =
-        recipeIdPrefix.start + recipeIdPrefix.typed.lastIndexOf('.') + 1;
-      const range = new vscode.Range(
-        position.line,
-        segmentStart,
-        position.line,
-        position.character
-      );
-      return collectRecipeIdCompletions(
-        this.repository.getRecipes().map((recipe) => recipe.id),
-        recipeIdPrefix.typed
-      ).map((completion) => {
-        const item = new vscode.CompletionItem(
-          completion.label,
-          completion.hasChildren
-            ? vscode.CompletionItemKind.Module
-            : vscode.CompletionItemKind.Reference
-        );
-        item.insertText = completion.insertText;
-        item.range = range;
-        item.detail = completion.hasChildren
-          ? `Recipe group: ${completion.fullPath}`
-          : `Recipe id: ${completion.fullPath}`;
-        item.sortText = `1_${completion.label}`;
-        return item;
-      });
-    }
-
-    const enumField = before.match(/^\s*([A-Za-z_][\w]*)\s*:\s*['"]?([\w]*)$/);
-    if (enumField && ctx.positionKind === 'value') {
-      const field = enumField[1];
-      for (const [enumId, values] of Object.entries(this.surface.enums)) {
-        if (
-          field === enumId ||
-          (field === 'anchor' && enumId === 'anchor') ||
-          (field === 'ifExists' && enumId === 'ifExists') ||
-          (field === 'ifMissing' && enumId === 'ifMissing') ||
-          (field === 'inputKind' && enumId === 'inputKind') ||
-          (field === 'extract' && enumId === 'extract') ||
-          (field === 'onNoMatch' && enumId === 'onNoMatch') ||
-          (field === 'onManyMatches' && enumId === 'onManyMatches') ||
-          (field === 'kind' && enumId === 'explorerMenuKind')
-        ) {
-          const typed = enumField[2] ?? '';
-          return values
-            .filter((v) => v.startsWith(typed))
-            .map((v) => {
-              const item = new vscode.CompletionItem(
-                v,
-                vscode.CompletionItemKind.EnumMember
-              );
-              item.sortText = `0_${v}`;
-              return item;
-            });
-        }
-      }
-    }
-
-    const childRecipeId = findNearbyRecipeStepId(document, position.line);
-    if (
-      childRecipeId &&
-      (inWithBlock(document, position.line) ||
-        (ctx.parentWire === 'with' && ctx.positionKind === 'key'))
-    ) {
-      try {
-        await this.bridge.ensureHost();
-      } catch {
-        // ignore
-      }
-      const described = await this.repository.describeCached(childRecipeId);
-      if (described) {
-        const alreadySet = collectSetWithKeys(document, position.line);
-        const remaining = described.args
-          .filter((arg) => !alreadySet.has(arg.name))
-          .sort((a, b) => {
-            if (a.required !== b.required) {
-              return a.required ? -1 : 1;
-            }
-            return a.name.localeCompare(b.name);
-          });
-        return remaining.map((arg) => {
-          const item = new vscode.CompletionItem(
-            arg.name,
-            vscode.CompletionItemKind.Property
-          );
-          const parts: string[] = [];
-          if (arg.required) {
-            parts.push('required');
-          }
-          if (arg.help) {
-            parts.push(arg.help);
-          }
-          item.detail = parts.length ? parts.join(' — ') : undefined;
-          item.insertText = `${arg.name}: `;
-          item.sortText = `${arg.required ? '0' : '1'}_${arg.name}`;
-          return item;
-        });
-      }
-    }
-
-    return undefined;
+    return suggestions.map((s) => toVscodeItem(s, position.line));
   }
 }
 
@@ -292,3 +152,5 @@ export function resolveWorkspacePath(
   }
   return path.join(workspaceRoot, relativeOrAbs);
 }
+
+export { hostMethodByName };

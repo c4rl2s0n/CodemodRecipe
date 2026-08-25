@@ -47,6 +47,108 @@ fn list_returns_registered_recipes() {
 }
 
 #[test]
+fn list_includes_query_ids_when_query_libs_present() {
+    let workspace = temp_workspace("list_query_ids");
+    let queries_dir = workspace.join(".codemod/queries");
+    std::fs::create_dir_all(&queries_dir).unwrap();
+    std::fs::write(
+        queries_dir.join("demo.luau"),
+        r#"return {
+  id = "demo_queries",
+  queries = {
+    body = [[(block) @body]],
+  },
+}
+"#,
+    )
+    .unwrap();
+
+    let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+    registry.reload();
+    let response = dispatch::handle_command(&mut registry, HostCommand::List);
+    assert_eq!(response["ok"], true);
+    let ids = response["queryIds"].as_array().expect("queryIds");
+    assert!(
+        ids.iter().any(|v| v.as_str() == Some("demo_queries.body")),
+        "expected demo_queries.body in {ids:?}"
+    );
+    assert!(response["queries"]["demo_queries.body"]
+        .as_str()
+        .unwrap()
+        .contains("@body"));
+
+    let _ = std::fs::remove_dir_all(workspace);
+}
+
+#[test]
+fn query_captures_from_inline_query() {
+    let workspace = temp_workspace("query_captures_inline");
+    let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+    registry.reload();
+
+    let response = dispatch::handle_command(
+        &mut registry,
+        HostCommand::QueryCaptures {
+            query: Some("(class_definition name: (identifier) @className) @cls".into()),
+            query_id: None,
+        },
+    );
+    assert_eq!(response["ok"], true);
+    let captures = response["captures"].as_array().unwrap();
+    let names: Vec<&str> = captures.iter().filter_map(|v| v.as_str()).collect();
+    assert_eq!(names, vec!["className", "cls"]);
+
+    let _ = std::fs::remove_dir_all(workspace);
+}
+
+#[test]
+fn query_captures_from_registered_query_id() {
+    let workspace = temp_workspace("query_captures_id");
+    let queries_dir = workspace.join(".codemod/queries");
+    std::fs::create_dir_all(&queries_dir).unwrap();
+    std::fs::write(
+        queries_dir.join("demo.luau"),
+        r#"return {
+  id = "demo_queries",
+  queries = {
+    method = [[
+(function_body (block) @body)
+(identifier) @name
+]],
+  },
+}
+"#,
+    )
+    .unwrap();
+
+    let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+    registry.reload();
+
+    let response = dispatch::handle_command(
+        &mut registry,
+        HostCommand::QueryCaptures {
+            query: None,
+            query_id: Some("demo_queries.method".into()),
+        },
+    );
+    assert_eq!(response["ok"], true);
+    let captures = response["captures"].as_array().unwrap();
+    let names: Vec<&str> = captures.iter().filter_map(|v| v.as_str()).collect();
+    assert_eq!(names, vec!["body", "name"]);
+
+    let missing = dispatch::handle_command(
+        &mut registry,
+        HostCommand::QueryCaptures {
+            query: None,
+            query_id: Some("nope.missing".into()),
+        },
+    );
+    assert_eq!(missing["ok"], false);
+
+    let _ = std::fs::remove_dir_all(workspace);
+}
+
+#[test]
 fn describe_returns_recipe_schema() {
     let workspace = setup_workspace_with_insert_recipe("describe");
     let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));

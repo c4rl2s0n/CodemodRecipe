@@ -1,10 +1,7 @@
 /**
- * Recipe YAML language support — see {@link LanguageSession}.
- * @deprecated Import from `./session` for new code.
+ * Recipe Luau language support — see {@link LanguageSession}.
  */
 export {
   LanguageSession,
   registerRecipeLanguageSupport,
 } from './session';
-
-export { collectSetWithKeys } from './recipeHelpers';

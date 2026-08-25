@@ -80,11 +80,12 @@ There is no ESLint in this repo; rely on `tsc`, Vitest, and pattern conformity.
 
 ### Language toolkit
 
-Structural completions come from `schemas/generated-dsl-surface.json` via
-`dslSurface.ts` / `yamlContext.ts`. Recipe ids, languages, and `with:` args come
-from the host catalog at runtime.
+Structural completions come from `language/hostApiSurface.ts` (Luau host API).
+Brace-aware `c:method({…})` context lives in `luauContext.ts`. Recipe ids,
+languages, maps/vars/queries, and `c:run` args come from the host catalog at
+runtime (`RecipeRepository`).
 
-Do **not** hardcode DSL container children in TypeScript completion tables.
+Do **not** revive YAML DSL surface / `yamlContext` — recipes are Luau-only.
 
 ### Protocol sync
 
@@ -103,13 +104,13 @@ Rebuild webview via `vscode_extension/build.sh` or Vite — never patch
 
 - [ ] Module/function has one clear responsibility
 - [ ] No god files mixing I/O + parsing + policy without seams
-- [ ] Dependencies point toward stable owners (`dsl::`, `resource_path`, `yamlContext`)
+- [ ] Dependencies point toward stable owners (`resource_path`, `luauContext`, host catalog)
 - [ ] New types live in the owning crate, not duplicated across boundaries
 
 ### DRY / KISS
 
-- [ ] Magic strings for DSL/protocol go through existing constant modules
-- [ ] No copy-pasted path or YAML-indent helpers
+- [ ] Magic strings for protocol go through existing constant modules
+- [ ] No copy-pasted path helpers
 - [ ] No speculative generics/traits “for later”
 - [ ] Names match neighboring code in the same crate/folder
 

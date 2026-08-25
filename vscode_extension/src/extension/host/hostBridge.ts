@@ -23,6 +23,7 @@ import {
   DebugQueryResponse,
   GenerateQueryResponse,
   ResolveStaticPathResponse,
+  QueryCapturesResponse,
   parseHostResponse,
 } from './hostProtocol';
 import type { ArgValues, RecipeSchema, SelectionPayload, BootstrapResponse, DeriveArgsRequest, DeriveArgsResponse, FilterExplorerRecipesResponse } from '../../shared';
@@ -291,6 +292,17 @@ export class HostBridge {
     });
   }
 
+  queryCaptures(opts: {
+    query?: string;
+    queryId?: string;
+  }): Promise<QueryCapturesResponse> {
+    return this.send<QueryCapturesResponse>({
+      command: 'queryCaptures',
+      query: opts.query,
+      queryId: opts.queryId,
+    });
+  }
+
   dispose(): void {
     this.stopPersistentHost();
   }
@@ -308,6 +320,10 @@ export class HostBridge {
       mapIds: response.mapIds ?? [],
       varIds: response.varIds ?? [],
       languageIds: response.languageIds ?? [],
+      typeIds: response.typeIds ?? [],
+      types: response.types ?? [],
+      queryIds: response.queryIds ?? [],
+      queries: response.queries ?? {},
     };
   }
 

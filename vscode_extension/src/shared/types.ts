@@ -68,7 +68,7 @@ export interface RecipeSchema {
   id: string;
   name: string;
   description: string;
-  /** Workspace-relative path to the recipe YAML file. */
+  /** Workspace-relative path to the recipe Luau module. */
   sourceFile?: string | null;
   args: RecipeArg[];
   /** Explorer QuickPick opt-in entries (`kind` + optional path `if`). */
@@ -130,13 +130,17 @@ export interface RecipeCatalogResponse {
   error?: string;
   recipes?: RecipeSchema[];
   diagnostics?: RecipeDiagnostic[];
-  /** Number of YAML maps loaded from `.codemod/maps/`. */
+  /** Number of maps loaded from `.codemod/maps/`. */
   mapsLoaded?: number;
   mapIds?: string[];
   varIds?: string[];
   typeIds?: string[];
   types?: TypeSchema[];
   languageIds?: string[];
+  /** Registered query ids (`libName.queryName`). */
+  queryIds?: string[];
+  /** Registered query id → source string. */
+  queries?: Record<string, string>;
 }
 
 export interface BootstrapResponse {
@@ -267,7 +271,18 @@ export type HostCommand =
   | {
       command: 'resolveStaticPath';
       template: string;
+    }
+  | {
+      command: 'queryCaptures';
+      query?: string;
+      queryId?: string;
     };
+
+export interface QueryCapturesResponse {
+  ok: boolean;
+  error?: string;
+  captures?: string[];
+}
 
 export interface AstNodeDto {
   kind: string;

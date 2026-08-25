@@ -22,11 +22,17 @@ Use this skill when you need to:
   - `activate(...)`: config, `HostBridge`, `RecipeRepository`, `LanguageSession`, diagnostics, watcher, commands
   - Recreates `LanguageSession` when `codemodRoot` / `workspaceRoot` change
 
-### Recipe language support
-- Luau recipe files under `.codemod/recipes/` — diagnostics from host validate
-- `providers/` — completion from host catalog where applicable
+### Recipe language support (Luau)
 
-Recipe ids / languages / args come from the host catalog at runtime.
+- Selectors: `.codemod/**/*.{luau,lua}` only (no YAML)
+- `language/session.ts` — registers completion / hover / definition / CodeLens
+- `language/luauContext.ts` — brace-aware `c:method({…})` context
+- `language/hostApiSurface.ts` — static host API keys/docs
+- `language/providers/` — catalog-backed completions (`RecipeRepository`)
+- Host catalog also returns `queryIds` / `queries` / `types` for capture + type completion
+- Stubs: `vscode_extension/stubs/codemod-context.d.luau` (synced via `scripts/sync-luau-stubs.sh`)
+
+Recipe ids / languages / maps / vars / query ids / args come from the host catalog at runtime.
 
 ### Persistent Rust host bridge + protocol framing
 - `vscode_extension/src/extension/host/hostBridge.ts`

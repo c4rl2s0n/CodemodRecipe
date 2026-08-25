@@ -14,18 +14,31 @@ function splitRecipeId(id: string): string[] {
   return id.split('.').filter(Boolean);
 }
 
+/**
+ * Detect partial recipe / asset id after Luau `id =`, `c:run(`, `c:map(`,
+ * `c:var(`, or `c:queryLib(`.
+ */
 export function recipeIdCompletionContext(
   before: string
 ): RecipeIdCompletionContext | undefined {
-  const match =
-    /(?:^|\s)recipe:\s*['"]?([\w./-]*)$/.exec(before) ??
-    /^\s*id:\s*['"]?([\w./-]*)$/.exec(before);
-  if (!match || match.index === undefined) {
-    return undefined;
+  const idChars = String.raw`[\w./-]`;
+  const patterns = [
+    new RegExp(String.raw`\bc:run\s*\(\s*['"](${idChars}*)$`),
+    new RegExp(String.raw`\bc:map\s*\(\s*['"](${idChars}*)$`),
+    new RegExp(String.raw`\bc:var\s*\(\s*['"](${idChars}*)$`),
+    new RegExp(String.raw`\bc:queryLib\s*\(\s*['"](${idChars}*)$`),
+    new RegExp(String.raw`(?:^|[\s,{])id\s*=\s*['"](${idChars}*)$`),
+  ];
+  for (const re of patterns) {
+    const match = re.exec(before);
+    if (!match || match.index === undefined) {
+      continue;
+    }
+    const typed = match[1] ?? '';
+    const start = match.index + match[0].length - typed.length;
+    return { typed, start };
   }
-  const typed = match[1] ?? '';
-  const start = match.index + match[0].lastIndexOf(typed);
-  return { typed, start };
+  return undefined;
 }
 
 export function collectRecipeIdCompletions(

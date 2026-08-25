@@ -4,18 +4,19 @@ import { COMMANDS } from '../constants';
 import type { ExtensionConfig } from '../config/extensionConfig';
 import type { HostBridge } from '../host/hostBridge';
 import type { RecipeRepository } from '../recipes/recipeRepository';
-import { loadDslSurface } from './dslSurface';
 import { RecipeCodeLensProvider } from './providers/codelens';
 import { RecipeCompletionProvider } from './providers/completion';
 import { RecipeDefinitionProvider } from './providers/definition';
 import { RecipeHoverProvider } from './providers/hover';
 
-function yamlSelectorForCodemodRoot(codemodRoot: string): vscode.DocumentSelector {
+function luauSelectorForCodemodRoot(codemodRoot: string): vscode.DocumentSelector {
   const normalized = codemodRoot.replace(/\\/g, '/').replace(/^\/+|\/+$/g, '');
-  const pattern = `**/${normalized}/**/*.{yaml,yml}`;
+  const pattern = `**/${normalized}/**/*.{luau,lua}`;
   return [
-    { language: 'yaml', pattern },
-    { language: 'yaml', scheme: 'file', pattern: `**/${normalized}/**` },
+    { language: 'luau', pattern },
+    { language: 'lua', pattern },
+    // Fallback when language id is unset / plaintext
+    { pattern, scheme: 'file' },
   ];
 }
 
@@ -90,7 +91,7 @@ export class LanguageSession implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
 
   constructor(
-    private readonly context: vscode.ExtensionContext,
+    context: vscode.ExtensionContext,
     private readonly repository: RecipeRepository,
     private readonly bridge: HostBridge,
     private readonly config: ExtensionConfig
@@ -108,8 +109,7 @@ export class LanguageSession implements vscode.Disposable {
   };
 
   private registerProviders(): void {
-    const selector = yamlSelectorForCodemodRoot(this.config.codemodRoot);
-    const surface = loadDslSurface(this.context.extensionUri);
+    const selector = luauSelectorForCodemodRoot(this.config.codemodRoot);
 
     this.disposables.push(
       vscode.languages.registerDefinitionProvider(
@@ -125,19 +125,19 @@ export class LanguageSession implements vscode.Disposable {
         new RecipeCompletionProvider(
           this.repository,
           this.bridge,
-          surface,
           this.isUnderCodemod
         ),
         ':',
         ' ',
         '.',
         '{',
-        '"'
+        '"',
+        "'",
+        '='
       ),
       vscode.languages.registerHoverProvider(
         selector,
         new RecipeHoverProvider(
-          this.context.extensionUri,
           this.repository,
           this.config,
           this.isUnderCodemod

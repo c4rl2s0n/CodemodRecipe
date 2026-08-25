@@ -1,5 +1,5 @@
 import { HostBridge } from '../host/hostBridge';
-import type { RecipeDiagnostic, RecipeSchema } from '../../shared';
+import type { RecipeDiagnostic, RecipeSchema, TypeSchema } from '../../shared';
 
 export type RecipeLoadResult = {
   recipes: RecipeSchema[];
@@ -7,6 +7,11 @@ export type RecipeLoadResult = {
   mapIds?: string[];
   varIds?: string[];
   languageIds?: string[];
+  typeIds?: string[];
+  types?: TypeSchema[];
+  queryIds?: string[];
+  /** Registered query id → source string. */
+  queries?: Record<string, string>;
 };
 
 export class RecipeRepository {
@@ -15,6 +20,10 @@ export class RecipeRepository {
   private mapIds: string[] = [];
   private varIds: string[] = [];
   private languageIds: string[] = [];
+  private typeIds: string[] = [];
+  private types: TypeSchema[] = [];
+  private queryIds: string[] = [];
+  private queries: Record<string, string> = {};
   private describeCache = new Map<string, RecipeSchema>();
   private lastError: string | undefined;
 
@@ -38,6 +47,26 @@ export class RecipeRepository {
 
   getLanguageIds(): readonly string[] {
     return this.languageIds;
+  }
+
+  getTypeIds(): readonly string[] {
+    return this.typeIds;
+  }
+
+  getTypes(): readonly TypeSchema[] {
+    return this.types;
+  }
+
+  getQueryIds(): readonly string[] {
+    return this.queryIds;
+  }
+
+  getQuerySource(id: string): string | undefined {
+    return this.queries[id];
+  }
+
+  findType(id: string): TypeSchema | undefined {
+    return this.types.find((t) => t.id === id);
   }
 
   getLastError(): string | undefined {
@@ -90,6 +119,10 @@ export class RecipeRepository {
     this.mapIds = result.mapIds ?? [];
     this.varIds = result.varIds ?? [];
     this.languageIds = result.languageIds ?? [];
+    this.typeIds = result.typeIds ?? [];
+    this.types = result.types ?? [];
+    this.queryIds = result.queryIds ?? [];
+    this.queries = result.queries ?? {};
     this.describeCache.clear();
   }
 }

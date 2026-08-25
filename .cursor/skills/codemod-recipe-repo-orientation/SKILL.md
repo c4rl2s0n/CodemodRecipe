@@ -45,13 +45,13 @@ Use this skill when you are:
 
 ## “Where should I change X?” cheatsheet
 
-- **Recipe YAML parsing / validation**: `rust/crates/yaml/src/model.rs`, `validate.rs`
+- **Luau recipe loading / validation**: `rust/crates/lua/src/load.rs`, `model.rs`
 - **Query ops (insert/replace/remove)**: `rust/crates/engine/`
-- **Registry, templates, maps**: `rust/crates/host/src/registry.rs`, `template.rs`, `map_registry.rs`
-- **Host protocol** (list/describe/preview/diff/apply):
-  - Rust: `rust/crates/host/src/dispatch.rs`, `protocol.rs`
+- **Registry, templates, maps**: `rust/crates/host/src/recipe/registry.rs`, `lua_runtime.rs`
+- **Host protocol** (list/describe/preview/diff/apply/queryCaptures):
+  - Rust: `rust/crates/host/src/protocol/dispatch.rs`, `mod.rs`
   - TS: `vscode_extension/src/extension/host/hostProtocol.ts`
-- **Recipe JSON schema for extension**: `vscode_extension/schemas/recipe.schema.json`
+- **Luau editor IntelliSense**: `vscode_extension/src/extension/language/`
 - **Webview ↔ extension messages**: `vscode_extension/src/shared/messages.ts`
 - **Preview/apply UI**: `vscode_extension/src/webview/src/views/RunnerView.vue`, `composables/useRunnerController.ts`
 

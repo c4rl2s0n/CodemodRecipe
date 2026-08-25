@@ -18,7 +18,6 @@
   ],
   "main": "./dist/extension.js",
   "contributes": {
-    "grammars": [],
     "viewsContainers": {
       "activitybar": [
         {
@@ -175,7 +174,6 @@
         "title": "Codemod Recipe: Query AST Display Mode…"
       }
     ],
-    "jsonValidation": [],
     "keybindings": [
       {
         "command": "codemodRecipe.runFromCursorContext",

@@ -20,6 +20,9 @@ pubspec.lock
 .idea/
 *.iml
 .vscode/
+# Bootstrap ships luau-lsp recommendations under export/.vscode/
+!export/.vscode/
+!export/.vscode/**
 *.swp
 *.swo
 *~

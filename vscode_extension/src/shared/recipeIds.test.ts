@@ -7,15 +7,34 @@ import {
 const recipeIds = ['foo.bar.baz', 'foo.bab.bak', 'zap'];
 
 describe('recipeIdCompletionContext', () => {
-  it('extracts the partially typed id and its start offset', () => {
-    expect(recipeIdCompletionContext('  recipe: foo.ba')).toEqual({
+  it('extracts partial id after Luau id =', () => {
+    expect(recipeIdCompletionContext('  id = "foo.ba')).toEqual({
       typed: 'foo.ba',
-      start: 10,
+      start: 8,
     });
-    expect(recipeIdCompletionContext('id: foo.ba')).toEqual({
+  });
+
+  it('extracts partial id after c:run(', () => {
+    expect(recipeIdCompletionContext('c:run("foo.ba')).toEqual({
       typed: 'foo.ba',
-      start: 4,
+      start: 7,
     });
+  });
+
+  it('extracts after c:map(', () => {
+    expect(recipeIdCompletionContext('local m = c:map("col')).toEqual({
+      typed: 'col',
+      start: 17,
+    });
+  });
+
+  it('extracts after c:var and c:queryLib', () => {
+    expect(recipeIdCompletionContext('c:var("d')?.typed).toBe('d');
+    expect(recipeIdCompletionContext('c:queryLib("dart_')?.typed).toBe('dart_');
+  });
+
+  it('returns undefined outside id contexts', () => {
+    expect(recipeIdCompletionContext('local x = "foo')).toBeUndefined();
   });
 });
 
