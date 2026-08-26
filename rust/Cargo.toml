@@ -3,13 +3,16 @@ resolver = "2"
 members = [
   "crates/core",
   "crates/lua",
+  "crates/lua_macros",
   "crates/engine",
   "crates/query_tools",
   "crates/host",
 ]
 
 [workspace.lints.rust]
-unsafe_code = "forbid"
+# `deny` (not `forbid`) so that the host API registry can `#[allow(unsafe_code)]`
+# on `linkme` distributed-slice entries, which rely on `#[link_section]`.
+unsafe_code = "deny"
 
 [workspace.lints.clippy]
 all = { level = "warn", priority = -1 }

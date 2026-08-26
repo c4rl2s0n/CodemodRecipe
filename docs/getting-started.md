@@ -107,7 +107,9 @@ Details and settings: [vscode_extension/README.md](../vscode_extension/README.md
 completes `c:` methods, spec keys, recipe/map/var/query ids, languages, and
 captures; CodeLens on `id = "…"`; go-to-definition on `c:run("…")`. Install
 **Luau Language Server** (`JohnnyMorganz.luau-lsp`) and use the scaffolded
-`.codemod/stubs/codemod-context.d.luau` for typed `CodemodContext` on `apply(c)`.
+`.codemod/stubs/codemod-context.d.luau` (generated from annotated Rust handler
+functions in `rust/crates/host/src/host_api/handlers.rs` via
+`scripts/generate-host-api-surface.sh`) for typed `CodemodContext` on `apply(c)`.
 
 **Review panel:** after preview, inspect **Files** (diffs) and **Transcript**
 (every `c:` call, including postExec entries skipped on preview). When apply may

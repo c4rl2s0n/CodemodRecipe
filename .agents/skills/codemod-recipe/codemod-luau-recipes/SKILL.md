@@ -74,7 +74,7 @@ Set `language = "dart"` (etc.) on edit ops when the path is ambiguous.
 1. **Read and follow** [reference.md](reference.md) for the full host API, asset modules, and examples.
 2. Call `validate_recipes` after editing recipe Luau.
 3. Path resolution: update `rust/crates/core/src/resource_path.rs` — do not add ad hoc joins in host/engine.
-4. Recipe loading/validation: `rust/crates/lua/src/load.rs` and `rust/crates/host/src/lua_runtime.rs`.
+4. Recipe loading/validation: `rust/crates/lua/src/load.rs`; host API handlers/source of truth: `rust/crates/host/src/host_api/handlers.rs`; runtime binding: `rust/crates/host/src/host_api/registry.rs` + `lua_runtime.rs`.
 
 ## Related skills
 

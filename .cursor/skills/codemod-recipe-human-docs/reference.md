@@ -53,5 +53,5 @@ points there.
 ## Edit rules
 
 1. **Thin narrative, deep links** — Prefer one short Luau example + a link to topic docs.
-2. **No invented API** — Copy shapes from tests, `lua_runtime.rs`, or shipped `.luau` recipes.
+2. **No invented API** — Copy shapes from tests, `rust/crates/host/src/host_api/handlers.rs`, or shipped `.luau` recipes.
 3. **Rename / remove** — Update Getting Started and the docs index in the **same** change.

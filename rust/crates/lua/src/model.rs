@@ -1,11 +1,12 @@
 use std::collections::BTreeMap;
 use std::path::PathBuf;
 
+use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 use crate::input_kind::InputKind;
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, JsonSchema)]
 pub struct Recipe {
     pub id: String,
     pub name: Option<String>,
@@ -16,18 +17,20 @@ pub struct Recipe {
     pub queries: BTreeMap<String, String>,
     pub post_execution: Vec<String>,
     pub explorer_menu: Vec<ExplorerMenuEntry>,
+    #[schemars(skip)]
     pub source: String,
+    #[schemars(skip)]
     pub path: Option<PathBuf>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, JsonSchema)]
 pub struct TypeDef {
     pub id: String,
     pub description: Option<String>,
     pub fields: Vec<Arg>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, JsonSchema)]
 pub struct Arg {
     pub name: String,
     pub required: bool,
@@ -41,13 +44,13 @@ pub struct Arg {
     pub from: Option<ArgFrom>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, JsonSchema)]
 pub enum ArgFrom {
     Builtin(String),
     Spec(ArgFromSpec),
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Default)]
+#[derive(Debug, Clone, PartialEq, Eq, Default, JsonSchema)]
 pub struct ArgFromSpec {
     pub template: Option<String>,
     pub query: Option<String>,
@@ -60,7 +63,7 @@ pub struct ArgFromSpec {
     pub join: Option<String>,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, JsonSchema)]
 pub enum ExplorerMenuKind {
     File,
     Folder,
@@ -83,34 +86,34 @@ impl ExplorerMenuKind {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, JsonSchema)]
 pub struct ExplorerMenuEntry {
     pub kind: ExplorerMenuKind,
     pub if_expr: Option<String>,
     pub args: BTreeMap<String, String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, JsonSchema)]
 pub struct MapAsset {
     pub id: String,
     pub description: Option<String>,
     pub map: BTreeMap<String, String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, JsonSchema)]
 pub struct VariablesAsset {
     pub id: String,
     pub description: Option<String>,
     pub values: BTreeMap<String, String>,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, JsonSchema)]
 pub struct QueryLibAsset {
     pub id: String,
     pub queries: BTreeMap<String, String>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct TranscriptEvent {
     pub kind: String,

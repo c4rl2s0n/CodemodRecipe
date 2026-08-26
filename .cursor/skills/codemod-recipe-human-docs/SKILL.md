@@ -18,7 +18,7 @@ Use this skill when you are:
 
 If the change alters something Getting Started teaches, **update the guide in the same change**. If you add a new topic page humans should find from the map, also update `docs/README.md`.
 
-Topic depth still belongs in existing `docs/*.md` and agent skills — Getting Started stays a **thin narrative with deep links**. Authoring depth lives in `docs/writing-recipes.md`. Do not invent new API; copy from tests, `lua_runtime.rs`, or shipped `.luau` recipes.
+Topic depth still belongs in existing `docs/*.md` and agent skills — Getting Started stays a **thin narrative with deep links**. Authoring depth lives in `docs/writing-recipes.md`. Do not invent new API; copy from tests, `rust/crates/host/src/host_api/handlers.rs`, or shipped `.luau` recipes.
 
 ## Where to look
 

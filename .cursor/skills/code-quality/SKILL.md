@@ -72,7 +72,7 @@ edit sites.
 Verify:
 
 - Crate boundaries (`core` / `lua` / `engine` / `host`) — see reference table
-- Luau recipe loading in `rust/crates/lua/` and host API in `lua_runtime.rs`
+- Luau recipe loading in `rust/crates/lua/`, host API specs in `rust/crates/lua/src/host_api/specs.rs`, and handlers/source of truth in `rust/crates/host/src/host_api/handlers.rs`
 - Paths via `codemod_recipe_core::resource_path`, not ad-hoc `join` / `..` checks
 - Extension: host catalog for recipe ids / args; no YAML schema codegen
 - Do not hand-edit `vscode_extension/media/*`

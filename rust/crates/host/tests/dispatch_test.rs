@@ -922,7 +922,9 @@ fn content_classification_recognizes_query_lib_in_types_directory() {
     let response = dispatch::handle_command(&mut registry, HostCommand::List);
     assert_eq!(response["ok"], true);
     let query_ids = response["queryIds"].as_array().unwrap();
-    assert!(query_ids.iter().any(|id| id.as_str() == Some("my_queries.body")));
+    assert!(query_ids
+        .iter()
+        .any(|id| id.as_str() == Some("my_queries.body")));
 
     let _ = std::fs::remove_dir_all(workspace);
 }
@@ -976,11 +978,7 @@ fn content_classification_skips_d_luau_in_stubs_directory() {
     let workspace = temp_workspace("cc_d_luau_in_stubs");
     let stubs_dir = workspace.join(".codemod/stubs");
     std::fs::create_dir_all(&stubs_dir).unwrap();
-    std::fs::write(
-        stubs_dir.join("codemod-context.d.luau"),
-        "return {}",
-    )
-    .unwrap();
+    std::fs::write(stubs_dir.join("codemod-context.d.luau"), "return {}").unwrap();
     std::fs::write(
         stubs_dir.join("actual_recipe.luau"),
         r#"return { id = "actual_recipe", apply = function(c) end }"#,
@@ -992,8 +990,13 @@ fn content_classification_skips_d_luau_in_stubs_directory() {
 
     let response = dispatch::handle_command(&mut registry, HostCommand::List);
     assert_eq!(response["ok"], true);
-    let diagnostics = response["diagnostics"].as_array().map(|a| a.as_slice()).unwrap_or(&[]);
-    assert!(!diagnostics.iter().any(|d| d["file"] == ".codemod/stubs/codemod-context.d.luau"));
+    let diagnostics = response["diagnostics"]
+        .as_array()
+        .map(|a| a.as_slice())
+        .unwrap_or(&[]);
+    assert!(!diagnostics
+        .iter()
+        .any(|d| d["file"] == ".codemod/stubs/codemod-context.d.luau"));
     let recipes = response["recipes"].as_array().unwrap();
     assert_eq!(recipes.len(), 1);
     assert_eq!(recipes[0]["id"], "actual_recipe");
@@ -1006,11 +1009,7 @@ fn content_classification_skips_d_luau_in_types_directory() {
     let workspace = temp_workspace("cc_d_luau_in_types");
     let types_dir = workspace.join(".codemod/types");
     std::fs::create_dir_all(&types_dir).unwrap();
-    std::fs::write(
-        types_dir.join("codemod-context.d.luau"),
-        "return {}",
-    )
-    .unwrap();
+    std::fs::write(types_dir.join("codemod-context.d.luau"), "return {}").unwrap();
     std::fs::write(
         types_dir.join("actual_type.luau"),
         r#"return { id = "ActualType", fields = { { name = "x" } } }"#,
@@ -1022,8 +1021,13 @@ fn content_classification_skips_d_luau_in_types_directory() {
 
     let response = dispatch::handle_command(&mut registry, HostCommand::List);
     assert_eq!(response["ok"], true);
-    let diagnostics = response["diagnostics"].as_array().map(|a| a.as_slice()).unwrap_or(&[]);
-    assert!(!diagnostics.iter().any(|d| d["file"] == ".codemod/types/codemod-context.d.luau"));
+    let diagnostics = response["diagnostics"]
+        .as_array()
+        .map(|a| a.as_slice())
+        .unwrap_or(&[]);
+    assert!(!diagnostics
+        .iter()
+        .any(|d| d["file"] == ".codemod/types/codemod-context.d.luau"));
     let type_ids = response["typeIds"].as_array().unwrap();
     assert!(type_ids.iter().any(|id| id.as_str() == Some("ActualType")));
 
@@ -1035,11 +1039,7 @@ fn content_classification_skips_d_lua_files() {
     let workspace = temp_workspace("cc_d_lua_files");
     let codemod_dir = workspace.join(".codemod");
     std::fs::create_dir_all(&codemod_dir).unwrap();
-    std::fs::write(
-        codemod_dir.join("stubs.d.lua"),
-        "return {}",
-    )
-    .unwrap();
+    std::fs::write(codemod_dir.join("stubs.d.lua"), "return {}").unwrap();
     std::fs::write(
         codemod_dir.join("actual_recipe.luau"),
         r#"return { id = "actual_recipe", apply = function(c) end }"#,
@@ -1051,8 +1051,13 @@ fn content_classification_skips_d_lua_files() {
 
     let response = dispatch::handle_command(&mut registry, HostCommand::List);
     assert_eq!(response["ok"], true);
-    let diagnostics = response["diagnostics"].as_array().map(|a| a.as_slice()).unwrap_or(&[]);
-    assert!(!diagnostics.iter().any(|d| d["file"] == ".codemod/stubs.d.lua"));
+    let diagnostics = response["diagnostics"]
+        .as_array()
+        .map(|a| a.as_slice())
+        .unwrap_or(&[]);
+    assert!(!diagnostics
+        .iter()
+        .any(|d| d["file"] == ".codemod/stubs.d.lua"));
     let recipes = response["recipes"].as_array().unwrap();
     assert_eq!(recipes.len(), 1);
     assert_eq!(recipes[0]["id"], "actual_recipe");

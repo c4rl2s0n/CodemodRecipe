@@ -24,6 +24,13 @@ jobs:
         working-directory: rust
         run: cargo test --all
 
+      - name: Check generated host API surface is up-to-date
+        working-directory: rust
+        run: |
+          export CARGO_TARGET_DIR="$PWD/target"
+          cargo run -p codemod_recipe_host --bin generate_host_api_surface
+          git diff --exit-code -- ../vscode_extension/stubs/codemod-context.d.luau ../vscode_extension/src/extension/language/hostApiSurface.ts
+
       - name: Clippy
         working-directory: rust
         run: cargo clippy --all-targets -- -D warnings

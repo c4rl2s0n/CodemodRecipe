@@ -1,3 +1,4 @@
+use schemars::JsonSchema;
 use serde_json::json;
 
 pub const BUILTIN_TEXT: &str = "text";
@@ -19,7 +20,7 @@ const RESERVED: &[&str] = &[
     "enum",
 ];
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, JsonSchema)]
 pub enum InputKind {
     Text,
     Bool,

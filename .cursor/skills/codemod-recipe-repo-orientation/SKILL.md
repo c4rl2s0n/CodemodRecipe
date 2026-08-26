@@ -47,7 +47,7 @@ Use this skill when you are:
 
 - **Luau recipe loading / validation**: `rust/crates/lua/src/load.rs`, `model.rs`
 - **Query ops (insert/replace/remove)**: `rust/crates/engine/`
-- **Registry, templates, maps**: `rust/crates/host/src/recipe/registry.rs`, `lua_runtime.rs`
+- **Registry, templates, maps**: `rust/crates/host/src/recipe/registry.rs`, `rust/crates/host/src/host_api/`
 - **Host protocol** (list/describe/preview/diff/apply/queryCaptures):
   - Rust: `rust/crates/host/src/protocol/dispatch.rs`, `mod.rs`
   - TS: `vscode_extension/src/extension/host/hostProtocol.ts`

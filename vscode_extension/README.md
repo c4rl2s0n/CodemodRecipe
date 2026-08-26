@@ -117,7 +117,7 @@ Under `codemodRecipe.codemodRoot` (default `.codemod`) Luau/Lua recipe files get
 - **CodeLens** on top-level `id = "..."` (runner / keybinding / slot)
 - **Diagnostics** from the Rust host validate of **saved** recipe files
 
-Install **[Luau Language Server](https://marketplace.visualstudio.com/items?itemName=JohnnyMorganz.luau-lsp)** for richer IntelliSense on `c`. Scaffold / bootstrap writes `.codemod/stubs/codemod-context.d.luau` and recommends the extension.
+Install **[Luau Language Server](https://marketplace.visualstudio.com/items?itemName=JohnnyMorganz.luau-lsp)** for richer IntelliSense on `c`. Scaffold / bootstrap writes `.codemod/stubs/codemod-context.d.luau` (generated from annotated Rust handler functions in `rust/crates/host/src/host_api/handlers.rs` via `scripts/generate-host-api-surface.sh`) and recommends the extension.
 
 Recipe authoring reference: [docs/writing-recipes.md](../docs/writing-recipes.md) and skill `codemod-luau-recipes`.
 

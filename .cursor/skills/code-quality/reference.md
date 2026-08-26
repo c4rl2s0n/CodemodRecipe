@@ -80,10 +80,13 @@ There is no ESLint in this repo; rely on `tsc`, Vitest, and pattern conformity.
 
 ### Language toolkit
 
-Structural completions come from `language/hostApiSurface.ts` (Luau host API).
-Brace-aware `c:method({…})` context lives in `luauContext.ts`. Recipe ids,
-languages, maps/vars/queries, and `c:run` args come from the host catalog at
-runtime (`RecipeRepository`).
+Structural completions come from `language/hostApiSurface.ts`, which is generated
+from annotated Rust handler functions in `rust/crates/host/src/host_api/handlers.rs`
+via `scripts/generate-host-api-surface.sh`. The spec structs and macros live in
+`rust/crates/lua/src/host_api/specs.rs` and `rust/crates/lua_macros/`. Brace-aware
+`c:method({…})` context lives in `luauContext.ts`. Recipe ids, languages,
+maps/vars/queries, and `c:run` args come from the host catalog at runtime
+(`RecipeRepository`).
 
 Do **not** revive YAML DSL surface / `yamlContext` — recipes are Luau-only.
 

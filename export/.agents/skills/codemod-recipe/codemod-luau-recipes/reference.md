@@ -5,7 +5,7 @@ They `return` a table; **`apply = function(c)`** is the only mutation entrypoint
 registry uses it to identify a recipe. The `.codemod/recipes/` directory is a convention, not a
 requirement.
 
-Rust implementation: `rust/crates/lua/src/load.rs` (parse/validate), `rust/crates/host/src/lua_runtime.rs` (host API).
+Rust implementation: `rust/crates/lua/src/load.rs` (parse/validate), `rust/crates/host/src/host_api/handlers.rs` (host API source of truth), `rust/crates/host/src/host_api/registry.rs` + `lua_runtime.rs` (runtime binding).
 
 ## Module return table
 
@@ -235,5 +235,6 @@ Use Luau `if` / `for` inside `apply`. MiniJinja is only for `c:applyTemplate` an
 When changing recipe loading or host API:
 
 - `rust/crates/lua/src/load.rs` — parse recipe/map/variable/query-lib tables
-- `rust/crates/host/src/lua_runtime.rs` — `c:` method implementations
+- `rust/crates/host/src/host_api/handlers.rs` — `c:` method implementations (source of truth)
+- `rust/crates/host/src/host_api/registry.rs` + `lua_runtime.rs` — runtime binding
 - `rust/crates/host/src/protocol_keys.rs` — transport keys (`inlineRecipe`, `previewToken`, …)

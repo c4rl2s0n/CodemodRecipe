@@ -9,7 +9,7 @@ host protocol.
 | Component | Location | Role |
 |-----------|----------|------|
 | Luau loader + model | `rust/crates/lua/` | Parse/validate recipe modules, maps, variables, query libs |
-| Luau runtime | `rust/crates/host/src/lua_runtime.rs` | Sandboxed `apply(c)` execution, host API |
+| Luau runtime | `rust/crates/host/src/host_api/handlers.rs` + `registry.rs` + `lua_runtime.rs` | Sandboxed `apply(c)` execution, host API (source of truth in handlers) |
 | Tree-sitter engine | `rust/crates/engine/` | Query evaluation, insert/replace/remove |
 | Core types | `rust/crates/core/` | Patches, file changes, atomic apply, path resolution |
 | Host + MCP | `rust/crates/host/` | Registry, preview/apply/diff, bootstrap, `codemod_mcp` |
@@ -85,6 +85,6 @@ preview skipped postExec, apply may diverge — surfaced as `applyMayDiverge`.
 
 ## Recipe runtime
 
-Recipes are sandboxed Luau modules (`rust/crates/lua`, `rust/crates/host/src/lua_runtime.rs`).
+Recipes are sandboxed Luau modules (`rust/crates/lua`, `rust/crates/host/src/host_api/`).
 Mutations happen only in `apply(c)`. MiniJinja is used via `c:applyTemplate` /
 `c:renderFileTemplate`. Host API detail: skill `codemod-luau-recipes`.

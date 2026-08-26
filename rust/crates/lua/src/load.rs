@@ -107,7 +107,11 @@ pub fn classify_table(table: &Table) -> Result<AssetKind, LoadError> {
             )));
         }
     }
-    if table.get::<Option<Table>>("map").map_err(|e| LoadError::Message(e.to_string()))?.is_some() {
+    if table
+        .get::<Option<Table>>("map")
+        .map_err(|e| LoadError::Message(e.to_string()))?
+        .is_some()
+    {
         return Ok(AssetKind::Map);
     }
     if table

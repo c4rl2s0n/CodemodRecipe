@@ -27,10 +27,10 @@ Use this skill when you need to:
 - Selectors: `.codemod/**/*.{luau,lua}` only (no YAML)
 - `language/session.ts` — registers completion / hover / definition / CodeLens
 - `language/luauContext.ts` — brace-aware `c:method({…})` context
-- `language/hostApiSurface.ts` — static host API keys/docs
+- `language/hostApiSurface.ts` — generated static host API keys/docs (regenerate via `scripts/generate-host-api-surface.sh`)
 - `language/providers/` — catalog-backed completions (`RecipeRepository`)
 - Host catalog also returns `queryIds` / `queries` / `types` for capture + type completion
-- Stubs: `vscode_extension/stubs/codemod-context.d.luau` (synced via `scripts/sync-luau-stubs.sh`)
+- Stubs: `vscode_extension/stubs/codemod-context.d.luau` (generated via `scripts/generate-host-api-surface.sh`)
 
 Recipe ids / languages / maps / vars / query ids / args come from the host catalog at runtime.
 
@@ -49,5 +49,5 @@ Recipe ids / languages / maps / vars / query ids / args come from the host catal
 
 ## Recipe runtime (maintainers)
 
-Luau recipe loading: `rust/crates/lua/src/load.rs`. Host API: `rust/crates/host/src/lua_runtime.rs`.
+Luau recipe loading: `rust/crates/lua/src/load.rs`. Host API spec structs: `rust/crates/lua/src/host_api/specs.rs`; macro definitions: `rust/crates/lua_macros/`; handlers/source of truth: `rust/crates/host/src/host_api/handlers.rs`; runtime binding: `rust/crates/host/src/host_api/registry.rs` + `lua_runtime.rs`.
 Human/agent docs: skill `codemod-luau-recipes`.
