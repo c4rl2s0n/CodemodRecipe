@@ -27,10 +27,10 @@ Use this skill when you need to:
 - Selectors: `.codemod/**/*.{luau,lua}` only (no YAML)
 - `language/session.ts` — registers completion / hover / definition / CodeLens
 - `language/luauContext.ts` — brace-aware `c:method({…})` context
-- `language/hostApiSurface.ts` — generated static host API keys/docs (regenerate via `scripts/generate-host-api-surface.sh`)
+- `language/hostApiSurface.ts` — generated static host API keys/docs (regenerate via `scripts/generate-host-api-surface.sh` or full `./build.sh`)
 - `language/providers/` — catalog-backed completions (`RecipeRepository`)
 - Host catalog also returns `queryIds` / `queries` / `types` for capture + type completion
-- Stubs: `vscode_extension/stubs/codemod-context.d.luau` (generated via `scripts/generate-host-api-surface.sh`)
+- Stubs: `vscode_extension/stubs/codemod-context.d.luau` (generated via `scripts/generate-host-api-surface.sh` or full `./build.sh`)
 
 Recipe ids / languages / maps / vars / query ids / args come from the host catalog at runtime.
 

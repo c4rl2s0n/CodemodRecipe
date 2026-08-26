@@ -76,8 +76,10 @@ See skill `codemod-luau-recipes` and `docs/writing-recipes.md`.
 
 ## Extension
 
-The extension bundles `codemod_host` from `vscode_extension/build.sh`. Message types are
-shared in `vscode_extension/src/shared/messages.ts`; the host protocol is implemented in
+The extension bundles `codemod_host` built by the repo-root `./build.sh` (which
+also regenerates the host API surface and calls `vscode_extension/build.sh` to
+package the VSIX). Message types are shared in
+`vscode_extension/src/shared/messages.ts`; the host protocol is implemented in
 `rust/crates/host/src/protocol/dispatch.rs`.
 
 The review panel exposes **Files** (diffs) and **Transcript** (host call log). When

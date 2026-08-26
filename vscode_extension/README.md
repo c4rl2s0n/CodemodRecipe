@@ -28,7 +28,7 @@ flowchart LR
 ```
 
 **Default:** bundled `codemod_host` from `vscode_extension/bin/` (built via
-`build.sh` from `rust/`). **Dev fallback:** `cargo run -p codemod_recipe_host
+repo-root `./build.sh`). **Dev fallback:** `cargo run -p codemod_recipe_host
 --bin codemod_host` when no binary is present.
 
 ## Setup
@@ -45,8 +45,9 @@ flowchart LR
    `.codemod/`. The subdirectories `.codemod/maps/`, `.codemod/variables/`, `.codemod/queries/`,
    and `.codemod/types/` are conventions; the registry identifies each asset by its returned
    table shape (`map`, `values`, `queries`, or `fields`). Add templates under `.codemod/templates/`.
-4. Build and install the extension from `vscode_extension/` (`./build.sh`, or
-   `npm run compile` then package/install the VSIX).
+4. Full product build from the repo root (`./build.sh`), or package only with
+   `vscode_extension/build.sh` when `bin/codemod_host` is already present
+   (`npm run compile` then package/install the VSIX for local iteration).
 5. Open your project in VS Code and configure settings if needed:
 
 ```jsonc
@@ -172,7 +173,8 @@ npm run compile          # build Vue webview + type-check extension to dist/
 npm run watch            # rebuild extension host on change
 npm run watch:webview    # rebuild webview UI (media/recipeView.js) on change
 npm run test:webview     # unit tests for webview arg/selection helpers
-./build.sh               # release Rust host + package VSIX
+../build.sh              # full product: surface gen + host + VSIX
+./build.sh               # package VSIX only (requires bin/codemod_host)
 ```
 
 The sidebar UI lives in [`src/webview/`](src/webview/) (Vue 3 + Vite) and compiles

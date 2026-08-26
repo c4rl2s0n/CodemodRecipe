@@ -11,7 +11,7 @@ disable-model-invocation: true
 Use this skill before concluding work if you:
 - changed the JSON-over-stdio protocol / message contract
 - changed recipe schema serialization or arg input metadata
-- changed `model.rs` / Luau load surface / host API (`rust/crates/lua/src/host_api/specs.rs`, `rust/crates/host/src/host_api/handlers.rs`, `rust/crates/lua_macros/`) — regenerate `hostApiSurface.ts` + `codemod-context.d.luau` with `scripts/generate-host-api-surface.sh`
+- changed `model.rs` / Luau load surface / host API (`rust/crates/lua/src/host_api/specs.rs`, `rust/crates/host/src/host_api/handlers.rs`, `rust/crates/lua_macros/`) — regenerate `hostApiSurface.ts` + `codemod-context.d.luau` with `scripts/generate-host-api-surface.sh` (or full product `./build.sh`)
 - changed the VS Code language toolkit (`vscode_extension/src/extension/language/`)
 - changed preview/diff/apply selection semantics
 - changed UI behavior that affects how agents should implement future Vue changes

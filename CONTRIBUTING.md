@@ -33,10 +33,10 @@ Extension webview unit tests:
 cd vscode_extension/src/webview && npm ci && npm test
 ```
 
-Host protocol smoke (from repo root, after building `codemod_host`):
+Host protocol smoke (from repo root, after `./build.sh`):
 
 ```bash
-cd vscode_extension && ./build.sh
+./build.sh
 node vscode_extension/scripts/smoke.mjs
 ```
 

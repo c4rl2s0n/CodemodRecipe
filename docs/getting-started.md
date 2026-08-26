@@ -96,7 +96,9 @@ resolve recipe-local first, then under `.codemod/`.
 
 ### VS Code extension
 
-1. From this repo: `cd vscode_extension && ./build.sh` (bundles `codemod_host`).
+1. From this repo: `./build.sh` (regenerates host API stubs, release-builds
+   `codemod_host`, packages the VSIX). For stub-only refresh after host API
+   edits: `scripts/generate-host-api-surface.sh`.
 2. Install the VSIX and open a workspace that has (or will have) `.codemod/`.
 3. Use **Codemod Recipe: Scaffold Project** if `.codemod` is missing.
 4. Open the **Codemod Recipe** activity bar: Recipes + Recipe Runner.

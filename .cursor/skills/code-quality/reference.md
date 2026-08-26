@@ -98,8 +98,9 @@ Changing host JSON shapes requires coordinated updates:
 - TS: `vscode_extension/src/shared/messages.ts`, host protocol helpers
 - Webview handlers that consume those messages
 
-Rebuild webview via `vscode_extension/build.sh` or Vite — never patch
-`media/recipeView.*` directly.
+Rebuild via repo-root `./build.sh` (full product) or Vite for webview-only —
+never patch `media/recipeView.*` directly. Extension packaging alone is
+`vscode_extension/build.sh` when `bin/codemod_host` already exists.
 
 ## Practices checklist
 

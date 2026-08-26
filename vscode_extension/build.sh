@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
+# Package the VS Code / Codium extension (npm + vsce).
+# Expects a prebuilt host binary at bin/codemod_host — use the repo-root ./build.sh
+# for the full product build (surface gen + Rust release + this script).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$ROOT"
 
-REPO_ROOT="$(cd "$ROOT/.." && pwd)"
-
-echo "Building Rust codemod_host..."
-mkdir -p "$ROOT/bin"
-cargo build --quiet --manifest-path "$REPO_ROOT/rust/Cargo.toml" -p codemod_recipe_host --bin codemod_host --release
-cp "$REPO_ROOT/rust/target/release/codemod_host" "$ROOT/bin/codemod_host"
-chmod +x "$ROOT/bin/codemod_host"
-
-# Note: For cross-platform builds, run this on each platform or use a build farm.
+HOST_BIN="$ROOT/bin/codemod_host"
+if [[ ! -x "$HOST_BIN" ]]; then
+  echo "error: missing executable $HOST_BIN" >&2
+  echo "Run ./build.sh from the repository root to build codemod_host and package the extension." >&2
+  exit 1
+fi
 
 echo "Installing npm dependencies..."
 npm install

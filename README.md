@@ -8,10 +8,10 @@ preview/apply with selective patches.
 
 ### VS Code (recommended)
 
-1. Build the extension (bundles the Rust `codemod_host` binary):
+1. Full product build (host API surface + Rust `codemod_host` + VSIX):
 
    ```bash
-   cd vscode_extension && ./build.sh
+   ./build.sh
    ```
 
 2. Open a workspace with a `.codemod/` directory and install the VSIX.
@@ -39,9 +39,10 @@ See [docs/codemod-mcp.md](docs/codemod-mcp.md) for Cursor MCP setup.
 
 | Path | Purpose |
 |------|---------|
+| `build.sh` | Full product build: host API surface + release `codemod_host` + VSIX |
 | `rust/` | Rust workspace: tree-sitter engine, Luau runtime, stdio host, MCP |
 | `.codemod/*.luau` / `.codemod/*.lua` | Luau modules under `.codemod/` identified by their returned table shape (see below) |
-| `vscode_extension/` | VS Code / Codium extension |
+| `vscode_extension/` | VS Code / Codium extension (`build.sh` packages VSIX; needs prebuilt `bin/codemod_host`) |
 | `test/fixtures/` | Integration and golden fixtures for the Rust engine |
 
 Conventional `.codemod/` subdirectories (the registry classifies assets by content, not by location):

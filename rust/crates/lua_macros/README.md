@@ -50,14 +50,15 @@ VS Code editor surface in sync from a single source of truth:
    For methods that take a string id, use `string_id` instead of `spec`. For the
    assertion helper, use `assert`. For `run`, use `run` with `recursive = true`.
 
-3. **Regenerate the editor artifacts**:
+3. **Regenerate the editor artifacts** (or run the full product build):
 
    ```bash
-   ./scripts/generate-host-api-surface.sh
+   ./scripts/generate-host-api-surface.sh   # stubs + hostApiSurface.ts only
+   ./build.sh                              # surface + release host + VSIX
    ```
 
-   This updates both `vscode_extension/stubs/codemod-context.d.luau` and
-   `vscode_extension/src/extension/language/hostApiSurface.ts` from the same
+   The generate script updates both `vscode_extension/stubs/codemod-context.d.luau`
+   and `vscode_extension/src/extension/language/hostApiSurface.ts` from the same
    Rust definitions.
 
 ## How it works
