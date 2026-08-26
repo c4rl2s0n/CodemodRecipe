@@ -25,7 +25,7 @@ see [language-support.md](language-support.md).
 
 ## Recipe shape
 
-Recipes live at `.codemod/recipes/*.luau` (also `.lua`). They **return a table**:
+Recipes are Luau modules (`.luau` or `.lua`) under `.codemod/` that **return a table** with `id` and `apply = function(c)`. The `.codemod/recipes/` directory is a convention, not a requirement — the registry identifies a recipe by the `apply` function in its returned table.
 
 ```lua
 return {
@@ -57,12 +57,12 @@ args = {
 ```
 
 Builtin `inputKind` values: `text`, `bool`, `choice`, `file`, `directory`.
-A registered type id (from `.codemod/types/*.luau` or `*.lua`) is one object; `{ "TypeId" }` is a
+A registered type id (from a Luau module under `.codemod/` that returns `{ id, fields = { ... } }`) is one object; `{ "TypeId" }` is a
 list of that type. `choice` needs `options` or `optionsFromMap`. `text` with options
 is a combobox (suggestions plus free typing). `symbol` still loads as `text`.
 
 ```lua
--- .codemod/types/class_property.luau
+-- .codemod/types/class_property.luau (conventional location)
 return {
   id = "ClassProperty",
   fields = {
@@ -227,7 +227,7 @@ c:insert({ ... })
 
 ## Maps, variables, query libraries
 
-Shared Luau modules under `.codemod/maps/`, `.codemod/variables/`, `.codemod/queries/`:
+Shared Luau modules for maps, variables, and query libraries. They can live anywhere under `.codemod/` and are identified by their returned table shape (`map`, `values`, or `queries`). The `.codemod/maps/`, `.codemod/variables/`, and `.codemod/queries/` directories are conventions, not requirements:
 
 ```lua
 local types = c:map("column_type")

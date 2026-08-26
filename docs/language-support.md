@@ -2,7 +2,7 @@
 
 codemod-recipe applies tree-sitter queries per **edit op** (`c:insert`, `c:replace`, `c:remove`) using a lazy-loaded grammar registry. Dart remains the primary workflow, but Rust, Java, Kotlin, SQL/SQLite, and 300+ other languages are available via [tree-sitter-language-pack](https://docs.tree-sitter-language-pack.xberg.io/).
 
-**Agent skill:** `.agents/skills/codemod-languages/` (installed by `bootstrap_project` from `export/.agents/skills/codemod-languages/`).
+**Agent skill:** `.agents/skills/codemod-recipe/codemod-languages/` (installed by `bootstrap_project` from `export/.agents/skills/codemod-recipe/codemod-languages/`).
 
 ## Quick start
 
@@ -70,6 +70,6 @@ Environment: `CODEMOD_SQL_DEFAULT=sql`
 
 ## Further reading
 
-- [export/.agents/skills/codemod-languages/reference.md](../export/.agents/skills/codemod-languages/reference.md) — full agent reference
+- [export/.agents/skills/codemod-recipe/codemod-languages/reference.md](../export/.agents/skills/codemod-recipe/codemod-languages/reference.md) — full agent reference
 - [docs/codemod-mcp.md](codemod-mcp.md) — MCP setup and workflow
 - [tree-sitter-language-pack languages](https://docs.tree-sitter-language-pack.xberg.io/languages/)

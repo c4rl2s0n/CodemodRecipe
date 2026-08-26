@@ -37,12 +37,14 @@ flowchart LR
 
 1. Create a `.codemod/` directory in your workspace root — or run
    **Codemod Recipe: Scaffold Project** (also offered when `.codemod` is missing).
-2. Add Luau recipe modules (`.luau` or `.lua`) under `.codemod/recipes/`.
-   Each recipe must `return { id, apply = function(c) ... end }`.
+2. Add Luau recipe modules (`.luau` or `.lua`) anywhere under `.codemod/`.
+   Each recipe must `return { id, apply = function(c) ... end }`. The `.codemod/recipes/`
+   directory is a convention; the registry identifies recipes by the `apply` function.
    Use dotted ids like `rust.data.add_log_line` to organize the Recipes tab tree.
-3. Optionally add maps, variables, query libraries (Luau modules under
-   `.codemod/maps/`, `.codemod/variables/`, `.codemod/queries/`) and templates
-   (e.g. under `.codemod/templates/`).
+3. Optionally add maps, variables, query libraries, and types as Luau modules anywhere under
+   `.codemod/`. The subdirectories `.codemod/maps/`, `.codemod/variables/`, `.codemod/queries/`,
+   and `.codemod/types/` are conventions; the registry identifies each asset by its returned
+   table shape (`map`, `values`, `queries`, or `fields`). Add templates under `.codemod/templates/`.
 4. Build and install the extension from `vscode_extension/` (`./build.sh`, or
    `npm run compile` then package/install the VSIX).
 5. Open your project in VS Code and configure settings if needed:

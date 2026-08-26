@@ -203,7 +203,7 @@ c:insert({
 
 **Templates** (`c:renderFileTemplate` / `c:applyTemplate`) hold greenfield skeletons.
 Use Jinja2 syntax (MiniJinja): `{{ arg }}`, filters like `{{ feature | pascal_case }}`,
-and `{% if %}`. See skill `codemod-luau-recipes` and [`docs/recipe-templates.md`](../../../docs/recipe-templates.md).
+and `{% if %}`. See skill `codemod-luau-recipes` and [`docs/recipe-templates.md`](../../../../docs/recipe-templates.md).
 
 **Maps** resolve symbolic names to types or snippets:
 

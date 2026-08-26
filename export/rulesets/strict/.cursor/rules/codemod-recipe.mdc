@@ -19,4 +19,4 @@ Layout: `.codemod/recipes/`, `.codemod/maps/`, `.codemod/types/`, `.codemod/temp
 
 ## Skills
 
-Read under `.agents/skills/` as needed: `codemod-overview`, `codemod-luau-recipes` (`reference.md` for host API), `codemod-recipe-design-patterns`, `codemod-mcp-playbook`, `codemod-languages`, `codemod-tree-sitter-queries`, `codemod-recipe-authoring`, `recipe-generation`.
+Read under `.agents/skills/codemod-recipe/` as needed: `codemod-recipe` (top-level router), `codemod-recipe/codemod-overview`, `codemod-recipe/codemod-luau-recipes` (`reference.md` for host API), `codemod-recipe/codemod-recipe-design-patterns`, `codemod-recipe/codemod-mcp-playbook`, `codemod-recipe/codemod-languages`, `codemod-recipe/codemod-tree-sitter-queries`, `codemod-recipe/codemod-recipe-authoring`, `codemod-recipe/recipe-generation`.

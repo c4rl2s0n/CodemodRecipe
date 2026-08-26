@@ -218,12 +218,12 @@ mod tests {
         );
         assert_eq!(
             resolve_dest_path(
-                ".agents/skills/codemod-overview/SKILL.md",
+                ".agents/skills/codemod-recipe/codemod-overview/SKILL.md",
                 EditPolicy::Strict,
                 &[]
             )
             .as_deref(),
-            Some(".agents/skills/codemod-overview/SKILL.md")
+            Some(".agents/skills/codemod-recipe/codemod-overview/SKILL.md")
         );
     }
 
@@ -278,7 +278,7 @@ mod tests {
         let written = first["written"].as_array().expect("written array");
         assert!(!written.is_empty());
         assert!(ws
-            .join(".agents/skills/codemod-overview/SKILL.md")
+            .join(".agents/skills/codemod-recipe/codemod-overview/SKILL.md")
             .is_file());
         assert!(ws.join(".cursor/rules/codemod-recipe.mdc").is_file());
 
@@ -287,7 +287,7 @@ mod tests {
         let skipped = second["skipped"].as_array().expect("skipped array");
         assert_eq!(skipped.len(), written.len());
 
-        let overview = ws.join(".agents/skills/codemod-overview/SKILL.md");
+        let overview = ws.join(".agents/skills/codemod-recipe/codemod-overview/SKILL.md");
         let original = fs::read_to_string(&overview).expect("read overview");
         fs::write(&overview, "mutated").expect("mutate");
 

@@ -25,8 +25,9 @@ Prefer idempotent brownfield recipes: a second apply should produce no patches
 
 ## Layout tips
 
-- Group recipes by feature under `.codemod/recipes/*.luau` (directory names are
-  convention; discovery scans Luau modules).
+- Group recipes by feature, conventionally under `.codemod/recipes/*.luau`. The registry
+  scans `.luau` and `.lua` modules under `.codemod/` and identifies each by its returned table
+  shape, so directories are conventions, not requirements.
 - Use dotted `id`s (`feature.area.recipe_name`) so the VS Code Recipes tab nests
   them.
 - Keep AST edits small; put multi-file workflows in a `scaffold_*` that
@@ -46,7 +47,7 @@ Prefer idempotent brownfield recipes: a second apply should produce no patches
 After `bootstrap_project`, the full playbook also lives at:
 
 ```text
-.agents/skills/codemod-recipe-design-patterns/
+.agents/skills/codemod-recipe/codemod-recipe-design-patterns/
   SKILL.md       # router — load by default
   reference.md   # full playbook — read when designing recipes
 ```

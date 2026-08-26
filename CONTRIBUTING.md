@@ -53,7 +53,7 @@ Scaffold integration (optional):
 
 ## Pull requests
 
-1. Keep changes focused; update README, skills under `export/.agents/skills/`, and
+1. Keep changes focused; update README, skills under `export/.agents/skills/codemod-recipe/`, and
    `.cursor/rules/` when behavior or agent workflows change.
 2. Add or extend Rust tests for engine/host behavior.
 3. Ensure `cargo test --all` passes.
@@ -61,8 +61,8 @@ Scaffold integration (optional):
 ## Agent skills and bootstrap
 
 Bootstrap copies files from `export/` into consumer projects. When editing skills or
-rules, update both `.agents/skills/` (workspace copy) and `export/.agents/skills/`
-(source of truth for bootstrap).
+rules, update both `.agents/skills/codemod-recipe/` (workspace copy) and
+`export/.agents/skills/codemod-recipe/` (source of truth for bootstrap).
 
 Human product docs (`docs/getting-started.md`, `docs/writing-recipes.md`,
 `docs/README.md`) are **in-repo only** and are not copied by bootstrap. Keep them

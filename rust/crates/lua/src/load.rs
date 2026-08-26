@@ -41,6 +41,25 @@ impl From<mlua::Error> for LoadError {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AssetKind {
+    Recipe,
+    Map,
+    Variables,
+    QueryLib,
+    Type,
+    Unknown,
+}
+
+#[derive(Debug)]
+pub enum Asset {
+    Recipe(Recipe),
+    Map(MapAsset),
+    Variables(VariablesAsset),
+    QueryLib(QueryLibAsset),
+    Type(TypeDef),
+}
+
 const MAX_INTERRUPTS: u64 = 50_000_000;
 
 pub fn new_sandbox() -> Result<Lua, LoadError> {
@@ -77,10 +96,67 @@ pub fn eval_return_table(lua: &Lua, source: &str, chunk_name: &str) -> Result<Ta
     }
 }
 
+pub fn classify_table(table: &Table) -> Result<AssetKind, LoadError> {
+    match table.get::<Value>("apply") {
+        Ok(Value::Function(_)) => return Ok(AssetKind::Recipe),
+        Ok(Value::Nil) | Err(_) => {}
+        Ok(other) => {
+            return Err(LoadError::Message(format!(
+                "apply must be a function, got {}",
+                other.type_name()
+            )));
+        }
+    }
+    if table.get::<Option<Table>>("map").map_err(|e| LoadError::Message(e.to_string()))?.is_some() {
+        return Ok(AssetKind::Map);
+    }
+    if table
+        .get::<Option<Table>>("values")
+        .map_err(|e| LoadError::Message(e.to_string()))?
+        .is_some()
+    {
+        return Ok(AssetKind::Variables);
+    }
+    if table
+        .get::<Option<Table>>("queries")
+        .map_err(|e| LoadError::Message(e.to_string()))?
+        .is_some()
+    {
+        return Ok(AssetKind::QueryLib);
+    }
+    if table
+        .get::<Option<Table>>("fields")
+        .map_err(|e| LoadError::Message(e.to_string()))?
+        .is_some()
+    {
+        return Ok(AssetKind::Type);
+    }
+    Ok(AssetKind::Unknown)
+}
+
+pub fn load_asset(source: &str, chunk_name: &str) -> Result<Asset, LoadError> {
+    let lua = new_sandbox()?;
+    let table = eval_return_table(&lua, source, chunk_name)?;
+    match classify_table(&table)? {
+        AssetKind::Recipe => Ok(Asset::Recipe(load_recipe_from_table(&table, source)?)),
+        AssetKind::Map => Ok(Asset::Map(load_map_from_table(&table)?)),
+        AssetKind::Variables => Ok(Asset::Variables(load_variables_from_table(&table)?)),
+        AssetKind::QueryLib => Ok(Asset::QueryLib(load_query_lib_from_table(&table)?)),
+        AssetKind::Type => Ok(Asset::Type(load_type_from_table(&table)?)),
+        AssetKind::Unknown => Err(LoadError::Message(
+            "unknown asset shape: expected apply, map, values, queries, or fields".to_string(),
+        )),
+    }
+}
+
 pub fn load_recipe(source: &str, chunk_name: &str) -> Result<Recipe, LoadError> {
     let lua = new_sandbox()?;
     let table = eval_return_table(&lua, source, chunk_name)?;
-    let mut recipe = recipe_from_table(&table)?;
+    load_recipe_from_table(&table, source)
+}
+
+pub fn load_recipe_from_table(table: &Table, source: &str) -> Result<Recipe, LoadError> {
+    let mut recipe = recipe_from_table(table)?;
     recipe.source = source.to_string();
     if recipe.id.trim().is_empty() {
         return Err(LoadError::Message("recipe id is required".to_string()));
@@ -95,8 +171,12 @@ pub fn load_recipe(source: &str, chunk_name: &str) -> Result<Recipe, LoadError> 
 pub fn load_map(source: &str, chunk_name: &str) -> Result<MapAsset, LoadError> {
     let lua = new_sandbox()?;
     let table = eval_return_table(&lua, source, chunk_name)?;
-    let id: String = required_string(&table, "id")?;
-    let description: Option<String> = optional_string(&table, "description")?;
+    load_map_from_table(&table)
+}
+
+pub fn load_map_from_table(table: &Table) -> Result<MapAsset, LoadError> {
+    let id: String = required_string(table, "id")?;
+    let description: Option<String> = optional_string(table, "description")?;
     let map_tbl: Table = table
         .get("map")
         .map_err(|_| LoadError::Message("map asset requires map = { ... }".to_string()))?;
@@ -110,8 +190,12 @@ pub fn load_map(source: &str, chunk_name: &str) -> Result<MapAsset, LoadError> {
 pub fn load_variables(source: &str, chunk_name: &str) -> Result<VariablesAsset, LoadError> {
     let lua = new_sandbox()?;
     let table = eval_return_table(&lua, source, chunk_name)?;
-    let id: String = required_string(&table, "id")?;
-    let description: Option<String> = optional_string(&table, "description")?;
+    load_variables_from_table(&table)
+}
+
+pub fn load_variables_from_table(table: &Table) -> Result<VariablesAsset, LoadError> {
+    let id: String = required_string(table, "id")?;
+    let description: Option<String> = optional_string(table, "description")?;
     let values_tbl: Table = table
         .get("values")
         .map_err(|_| LoadError::Message("variables asset requires values = { ... }".to_string()))?;
@@ -125,7 +209,11 @@ pub fn load_variables(source: &str, chunk_name: &str) -> Result<VariablesAsset, 
 pub fn load_query_lib(source: &str, chunk_name: &str) -> Result<QueryLibAsset, LoadError> {
     let lua = new_sandbox()?;
     let table = eval_return_table(&lua, source, chunk_name)?;
-    let id: String = required_string(&table, "id")?;
+    load_query_lib_from_table(&table)
+}
+
+pub fn load_query_lib_from_table(table: &Table) -> Result<QueryLibAsset, LoadError> {
+    let id: String = required_string(table, "id")?;
     let queries_tbl: Table = table
         .get("queries")
         .map_err(|_| LoadError::Message("query lib requires queries = { ... }".to_string()))?;
@@ -138,7 +226,11 @@ pub fn load_query_lib(source: &str, chunk_name: &str) -> Result<QueryLibAsset, L
 pub fn load_type(source: &str, chunk_name: &str) -> Result<TypeDef, LoadError> {
     let lua = new_sandbox()?;
     let table = eval_return_table(&lua, source, chunk_name)?;
-    type_from_table(&table, None)
+    load_type_from_table(&table)
+}
+
+pub fn load_type_from_table(table: &Table) -> Result<TypeDef, LoadError> {
+    type_from_table(table, None)
 }
 
 fn recipe_from_table(table: &Table) -> Result<Recipe, LoadError> {
@@ -596,5 +688,87 @@ return {
 "#;
         let recipe = load_recipe(src, "demo.luau").unwrap();
         assert_eq!(recipe.args[0].input_kind, InputKind::Text);
+    }
+
+    #[test]
+    fn classify_table_recipe() {
+        let src = r#"return { id = "x", apply = function(c) end }"#;
+        let lua = new_sandbox().unwrap();
+        let table = eval_return_table(&lua, src, "x.luau").unwrap();
+        assert_eq!(classify_table(&table).unwrap(), AssetKind::Recipe);
+    }
+
+    #[test]
+    fn classify_table_map() {
+        let src = r#"return { id = "m", map = { a = "b" } }"#;
+        let lua = new_sandbox().unwrap();
+        let table = eval_return_table(&lua, src, "m.luau").unwrap();
+        assert_eq!(classify_table(&table).unwrap(), AssetKind::Map);
+    }
+
+    #[test]
+    fn classify_table_variables() {
+        let src = r#"return { id = "v", values = { a = "b" } }"#;
+        let lua = new_sandbox().unwrap();
+        let table = eval_return_table(&lua, src, "v.luau").unwrap();
+        assert_eq!(classify_table(&table).unwrap(), AssetKind::Variables);
+    }
+
+    #[test]
+    fn classify_table_query_lib() {
+        let src = r#"return { id = "q", queries = { body = "(_) @x" } }"#;
+        let lua = new_sandbox().unwrap();
+        let table = eval_return_table(&lua, src, "q.luau").unwrap();
+        assert_eq!(classify_table(&table).unwrap(), AssetKind::QueryLib);
+    }
+
+    #[test]
+    fn classify_table_type() {
+        let src = r#"return { id = "T", fields = { { name = "x" } } }"#;
+        let lua = new_sandbox().unwrap();
+        let table = eval_return_table(&lua, src, "t.luau").unwrap();
+        assert_eq!(classify_table(&table).unwrap(), AssetKind::Type);
+    }
+
+    #[test]
+    fn classify_table_unknown() {
+        let src = r#"return { id = "x" }"#;
+        let lua = new_sandbox().unwrap();
+        let table = eval_return_table(&lua, src, "x.luau").unwrap();
+        assert_eq!(classify_table(&table).unwrap(), AssetKind::Unknown);
+    }
+
+    #[test]
+    fn classify_table_apply_not_function_is_error() {
+        let src = r#"return { id = "x", apply = "not a function" }"#;
+        let lua = new_sandbox().unwrap();
+        let table = eval_return_table(&lua, src, "x.luau").unwrap();
+        assert!(classify_table(&table).is_err());
+    }
+
+    #[test]
+    fn load_asset_recipe() {
+        let src = r#"
+return {
+  id = "demo.insert",
+  apply = function(c) end,
+}
+"#;
+        let asset = load_asset(src, "demo.luau").unwrap();
+        assert!(matches!(asset, Asset::Recipe(r) if r.id == "demo.insert"));
+    }
+
+    #[test]
+    fn load_asset_map() {
+        let src = r#"return { id = "m", map = { a = "b" } }"#;
+        let asset = load_asset(src, "m.luau").unwrap();
+        assert!(matches!(asset, Asset::Map(m) if m.id == "m" && m.map["a"] == "b"));
+    }
+
+    #[test]
+    fn load_asset_unknown() {
+        let src = r#"return { id = "x" }"#;
+        let err = load_asset(src, "x.luau").unwrap_err().to_string();
+        assert!(err.contains("unknown asset shape"));
     }
 }

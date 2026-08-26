@@ -16,7 +16,7 @@ For recipe organization, see skill `codemod-recipe-design-patterns`.
 For host API and module shape, see skill `codemod-luau-recipes`.
 For query syntax, see skill `codemod-tree-sitter-queries`.
 
-Human guide: [docs/writing-recipes.md](../../../docs/writing-recipes.md).
+Human guide: [docs/writing-recipes.md](../../../../docs/writing-recipes.md).
 
 ## Crafting tree-sitter queries (Dart — language-pack grammar)
 

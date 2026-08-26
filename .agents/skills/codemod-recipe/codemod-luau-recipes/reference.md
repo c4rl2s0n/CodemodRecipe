@@ -1,7 +1,9 @@
 # Luau Recipe Reference
 
-Recipes are **sandboxed Luau** modules under `.codemod/recipes/*.luau` (also `.lua`).
-They `return` a table; **`apply = function(c)`** is the only mutation entrypoint.
+Recipes are **sandboxed Luau** modules (`.luau` or `.lua`) anywhere under `.codemod/`.
+They `return` a table; **`apply = function(c)`** is the only mutation entrypoint and the
+registry uses it to identify a recipe. The `.codemod/recipes/` directory is a convention, not a
+requirement.
 
 Rust implementation: `rust/crates/lua/src/load.rs` (parse/validate), `rust/crates/host/src/lua_runtime.rs` (host API).
 
@@ -39,8 +41,9 @@ args = {
 ```
 
 `inputKind` is the type. `{ "ClassProperty" }` means a list. Named types live in
-`.codemod/types/*.luau` or `*.lua` (`return { id, fields }`) or recipe-local `types`. Nested
-lists belong on a type field, not as `{{ "text" }}`.
+Luau modules anywhere under `.codemod/` that return `{ id, fields }`, or as recipe-local `types`.
+The `.codemod/types/` directory is a convention, not a requirement. Nested lists belong on a
+type field, not as `{{ "text" }}`.
 
 Arg defaults use `defaultsTo`. Unknown keys on an arg entry fail validation.
 
@@ -139,17 +142,20 @@ local fileBody = c:renderFileTemplate({
 ```
 
 MiniJinja has access to recipe args plus registered maps/variables (`c:map`, `c:var`).
-See [docs/recipe-templates.md](../../../docs/recipe-templates.md).
+See [docs/recipe-templates.md](../../../../docs/recipe-templates.md).
 
 ### Asset lookups
 
 Shared assets are Luau modules:
 
-| Location | Return shape |
-|----------|--------------|
-| `.codemod/maps/*.luau` | `{ id = "...", map = { key = "value" } }` |
-| `.codemod/variables/*.luau` | `{ id = "...", values = { key = "value" } }` |
-| `.codemod/queries/*.luau` | `{ id = "...", queries = { name = "(...) @x" } }` |
+| Conventional location | Identified by | Return shape |
+|-----------------------|-------------|--------------|
+| `.codemod/maps/*.luau` | `map` table | `{ id = "...", map = { key = "value" } }` |
+| `.codemod/variables/*.luau` | `values` table | `{ id = "...", values = { key = "value" } }` |
+| `.codemod/queries/*.luau` | `queries` table | `{ id = "...", queries = { name = "(...) @x" } }` |
+
+These files can live anywhere under `.codemod/`; the registry classifies them by their returned
+table shape, not by directory.
 
 ```lua
 local m = c:map("column_type")
@@ -192,7 +198,8 @@ review panel surfaces **Files** and **Transcript** views and an `applyMayDiverge
 ## Tree-sitter queries
 
 Queries stay as **inline strings** or **`.scm` files** (path resolved recipe-local, then `.codemod/`).
-Query libraries are Luau modules under `.codemod/queries/*.luau`.
+Query libraries are Luau modules (conventionally under `.codemod/queries/`) that return
+`{ id = "...", queries = { ... } }`.
 
 See skill `codemod-tree-sitter-queries`.
 

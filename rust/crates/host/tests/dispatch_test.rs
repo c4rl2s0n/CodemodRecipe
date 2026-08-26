@@ -860,3 +860,202 @@ return {
 
     let _ = std::fs::remove_dir_all(workspace);
 }
+
+#[test]
+fn content_classification_recognizes_map_in_recipes_directory() {
+    let workspace = temp_workspace("cc_map_in_recipes");
+    let recipes_dir = workspace.join(".codemod/recipes");
+    std::fs::create_dir_all(&recipes_dir).unwrap();
+    std::fs::write(
+        recipes_dir.join("my_map.luau"),
+        r#"return { id = "my_map", map = { a = "b" } }"#,
+    )
+    .unwrap();
+
+    let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+    registry.reload();
+
+    let response = dispatch::handle_command(&mut registry, HostCommand::List);
+    assert_eq!(response["ok"], true);
+    let map_ids = response["mapIds"].as_array().unwrap();
+    assert!(map_ids.iter().any(|id| id.as_str() == Some("my_map")));
+
+    let _ = std::fs::remove_dir_all(workspace);
+}
+
+#[test]
+fn content_classification_recognizes_recipe_in_maps_directory() {
+    let workspace = temp_workspace("cc_recipe_in_maps");
+    let maps_dir = workspace.join(".codemod/maps");
+    std::fs::create_dir_all(&maps_dir).unwrap();
+    std::fs::write(
+        maps_dir.join("my_recipe.luau"),
+        r#"return { id = "my_recipe", apply = function(c) end }"#,
+    )
+    .unwrap();
+
+    let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+    registry.reload();
+
+    let response = dispatch::handle_command(&mut registry, HostCommand::List);
+    assert_eq!(response["ok"], true);
+    let recipes = response["recipes"].as_array().unwrap();
+    assert!(recipes.iter().any(|r| r["id"] == "my_recipe"));
+
+    let _ = std::fs::remove_dir_all(workspace);
+}
+
+#[test]
+fn content_classification_recognizes_query_lib_in_types_directory() {
+    let workspace = temp_workspace("cc_query_lib_in_types");
+    let types_dir = workspace.join(".codemod/types");
+    std::fs::create_dir_all(&types_dir).unwrap();
+    std::fs::write(
+        types_dir.join("my_queries.luau"),
+        r#"return { id = "my_queries", queries = { body = "(_) @x" } }"#,
+    )
+    .unwrap();
+
+    let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+    registry.reload();
+
+    let response = dispatch::handle_command(&mut registry, HostCommand::List);
+    assert_eq!(response["ok"], true);
+    let query_ids = response["queryIds"].as_array().unwrap();
+    assert!(query_ids.iter().any(|id| id.as_str() == Some("my_queries.body")));
+
+    let _ = std::fs::remove_dir_all(workspace);
+}
+
+#[test]
+fn content_classification_recognizes_type_in_recipes_directory() {
+    let workspace = temp_workspace("cc_type_in_recipes");
+    let recipes_dir = workspace.join(".codemod/recipes");
+    std::fs::create_dir_all(&recipes_dir).unwrap();
+    std::fs::write(
+        recipes_dir.join("my_type.luau"),
+        r#"return { id = "MyType", fields = { { name = "x" } } }"#,
+    )
+    .unwrap();
+
+    let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+    registry.reload();
+
+    let response = dispatch::handle_command(&mut registry, HostCommand::List);
+    assert_eq!(response["ok"], true);
+    let type_ids = response["typeIds"].as_array().unwrap();
+    assert!(type_ids.iter().any(|id| id.as_str() == Some("MyType")));
+
+    let _ = std::fs::remove_dir_all(workspace);
+}
+
+#[test]
+fn content_classification_recognizes_variables_in_recipes_directory() {
+    let workspace = temp_workspace("cc_variables_in_recipes");
+    let recipes_dir = workspace.join(".codemod/recipes");
+    std::fs::create_dir_all(&recipes_dir).unwrap();
+    std::fs::write(
+        recipes_dir.join("my_vars.luau"),
+        r#"return { id = "my_vars", values = { a = "b" } }"#,
+    )
+    .unwrap();
+
+    let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+    registry.reload();
+
+    let response = dispatch::handle_command(&mut registry, HostCommand::List);
+    assert_eq!(response["ok"], true);
+    let var_ids = response["varIds"].as_array().unwrap();
+    assert!(var_ids.iter().any(|id| id.as_str() == Some("my_vars")));
+
+    let _ = std::fs::remove_dir_all(workspace);
+}
+
+#[test]
+fn content_classification_skips_d_luau_in_stubs_directory() {
+    let workspace = temp_workspace("cc_d_luau_in_stubs");
+    let stubs_dir = workspace.join(".codemod/stubs");
+    std::fs::create_dir_all(&stubs_dir).unwrap();
+    std::fs::write(
+        stubs_dir.join("codemod-context.d.luau"),
+        "return {}",
+    )
+    .unwrap();
+    std::fs::write(
+        stubs_dir.join("actual_recipe.luau"),
+        r#"return { id = "actual_recipe", apply = function(c) end }"#,
+    )
+    .unwrap();
+
+    let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+    registry.reload();
+
+    let response = dispatch::handle_command(&mut registry, HostCommand::List);
+    assert_eq!(response["ok"], true);
+    let diagnostics = response["diagnostics"].as_array().map(|a| a.as_slice()).unwrap_or(&[]);
+    assert!(!diagnostics.iter().any(|d| d["file"] == ".codemod/stubs/codemod-context.d.luau"));
+    let recipes = response["recipes"].as_array().unwrap();
+    assert_eq!(recipes.len(), 1);
+    assert_eq!(recipes[0]["id"], "actual_recipe");
+
+    let _ = std::fs::remove_dir_all(workspace);
+}
+
+#[test]
+fn content_classification_skips_d_luau_in_types_directory() {
+    let workspace = temp_workspace("cc_d_luau_in_types");
+    let types_dir = workspace.join(".codemod/types");
+    std::fs::create_dir_all(&types_dir).unwrap();
+    std::fs::write(
+        types_dir.join("codemod-context.d.luau"),
+        "return {}",
+    )
+    .unwrap();
+    std::fs::write(
+        types_dir.join("actual_type.luau"),
+        r#"return { id = "ActualType", fields = { { name = "x" } } }"#,
+    )
+    .unwrap();
+
+    let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+    registry.reload();
+
+    let response = dispatch::handle_command(&mut registry, HostCommand::List);
+    assert_eq!(response["ok"], true);
+    let diagnostics = response["diagnostics"].as_array().map(|a| a.as_slice()).unwrap_or(&[]);
+    assert!(!diagnostics.iter().any(|d| d["file"] == ".codemod/types/codemod-context.d.luau"));
+    let type_ids = response["typeIds"].as_array().unwrap();
+    assert!(type_ids.iter().any(|id| id.as_str() == Some("ActualType")));
+
+    let _ = std::fs::remove_dir_all(workspace);
+}
+
+#[test]
+fn content_classification_skips_d_lua_files() {
+    let workspace = temp_workspace("cc_d_lua_files");
+    let codemod_dir = workspace.join(".codemod");
+    std::fs::create_dir_all(&codemod_dir).unwrap();
+    std::fs::write(
+        codemod_dir.join("stubs.d.lua"),
+        "return {}",
+    )
+    .unwrap();
+    std::fs::write(
+        codemod_dir.join("actual_recipe.luau"),
+        r#"return { id = "actual_recipe", apply = function(c) end }"#,
+    )
+    .unwrap();
+
+    let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+    registry.reload();
+
+    let response = dispatch::handle_command(&mut registry, HostCommand::List);
+    assert_eq!(response["ok"], true);
+    let diagnostics = response["diagnostics"].as_array().map(|a| a.as_slice()).unwrap_or(&[]);
+    assert!(!diagnostics.iter().any(|d| d["file"] == ".codemod/stubs.d.lua"));
+    let recipes = response["recipes"].as_array().unwrap();
+    assert_eq!(recipes.len(), 1);
+    assert_eq!(recipes[0]["id"], "actual_recipe");
+
+    let _ = std::fs::remove_dir_all(workspace);
+}

@@ -241,10 +241,10 @@ Full guide: [recipe-templates.md](recipe-templates.md).
 
 ### Maps, variables, types, and query libraries
 
-Shared assets are Luau modules (`*.luau` or `*.lua`):
+Shared assets are Luau modules (`*.luau` or `*.lua`) anywhere under `.codemod/`. The registry identifies each asset by its returned table shape, so the directories below are conventions, not requirements:
 
-| Kind | Path | Return shape |
-|------|------|--------------|
+| Kind | Conventional path | Return shape |
+|------|-------------------|--------------|
 | Maps | `.codemod/maps/` | `{ id, map = { ... } }` |
 | Types | `.codemod/types/` | `{ id, fields = { ... } }` |
 | Variables | `.codemod/variables/` | `{ id, values = { ... } }` |

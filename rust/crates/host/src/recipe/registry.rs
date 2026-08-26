@@ -1,9 +1,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use codemod_recipe_lua::load::{
-    load_map, load_query_lib, load_recipe, load_type, load_variables, LoadError,
-};
+use codemod_recipe_lua::load::{load_asset, Asset, LoadError};
 use codemod_recipe_lua::model::{Arg, ArgFrom, ExplorerMenuEntry, Recipe, TypeDef};
 use codemod_recipe_lua::InputKind;
 
@@ -112,67 +110,56 @@ impl RecipeRegistry {
             };
             let relative = relative_path(&self.workspace_root, &path);
             let name = path.to_string_lossy();
-            if path_is_under(&path, &self.codemod_root.join("maps")) {
-                match load_map(&text, &name) {
-                    Ok(asset) => {
-                        self.maps_by_id.insert(asset.id, asset.map);
-                    }
-                    Err(err) => self.push_load_error(&relative, err),
+            match load_asset(&text, &name) {
+                Ok(asset) => self.register_asset(asset, &path, &relative),
+                Err(err) => self.push_load_error(&relative, err),
+            }
+        }
+    }
+
+    fn register_asset(&mut self, asset: Asset, path: &Path, relative: &str) {
+        match asset {
+            Asset::Recipe(mut recipe) => {
+                recipe.path = Some(path.to_path_buf());
+                for (k, v) in recipe.maps.clone() {
+                    self.maps_by_id.entry(k).or_insert(v);
                 }
-            } else if path_is_under(&path, &self.codemod_root.join("variables")) {
-                match load_variables(&text, &name) {
-                    Ok(asset) => {
-                        self.vars_by_id.insert(asset.id, asset.values);
-                    }
-                    Err(err) => self.push_load_error(&relative, err),
+                for (k, v) in recipe.types.clone() {
+                    self.types_by_id.entry(k).or_insert(v);
                 }
-            } else if path_is_under(&path, &self.codemod_root.join("types")) {
-                match load_type(&text, &name) {
-                    Ok(asset) => {
-                        if self.types_by_id.contains_key(&asset.id) {
-                            self.diagnostics.push(RecipeDiagnostic::simple(
-                                "error",
-                                "E_DUP_ID",
-                                format!("Duplicate type id {}", asset.id),
-                                vec![source_file_only(&relative)],
-                            ));
-                        } else {
-                            self.types_by_id.insert(asset.id.clone(), asset);
-                        }
-                    }
-                    Err(err) => self.push_load_error(&relative, err),
+                if self.recipes.contains_key(&recipe.id) {
+                    self.diagnostics.push(RecipeDiagnostic::simple(
+                        "error",
+                        "E_DUP_ID",
+                        format!("Duplicate recipe id {}", recipe.id),
+                        vec![source_file_only(relative)],
+                    ));
+                } else {
+                    self.recipes.insert(recipe.id.clone(), recipe);
                 }
-            } else if path_is_under(&path, &self.codemod_root.join("queries")) {
-                match load_query_lib(&text, &name) {
-                    Ok(asset) => {
-                        for (k, v) in asset.queries {
-                            self.queries_by_id.insert(format!("{}.{}", asset.id, k), v);
-                        }
-                    }
-                    Err(err) => self.push_load_error(&relative, err),
+            }
+            Asset::Map(asset) => {
+                self.maps_by_id.insert(asset.id, asset.map);
+            }
+            Asset::Variables(asset) => {
+                self.vars_by_id.insert(asset.id, asset.values);
+            }
+            Asset::QueryLib(asset) => {
+                for (k, v) in asset.queries {
+                    self.queries_by_id.insert(format!("{}.{}", asset.id, k), v);
                 }
-            } else {
-                match load_recipe(&text, &name) {
-                    Ok(mut recipe) => {
-                        recipe.path = Some(path.clone());
-                        for (k, v) in recipe.maps.clone() {
-                            self.maps_by_id.entry(k).or_insert(v);
-                        }
-                        for (k, v) in recipe.types.clone() {
-                            self.types_by_id.entry(k).or_insert(v);
-                        }
-                        if self.recipes.contains_key(&recipe.id) {
-                            self.diagnostics.push(RecipeDiagnostic::simple(
-                                "error",
-                                "E_DUP_ID",
-                                format!("Duplicate recipe id {}", recipe.id),
-                                vec![source_file_only(&relative)],
-                            ));
-                        } else {
-                            self.recipes.insert(recipe.id.clone(), recipe);
-                        }
-                    }
-                    Err(err) => self.push_load_error(&relative, err),
+            }
+            Asset::Type(asset) => {
+                if self.types_by_id.contains_key(&asset.id) {
+                    self.diagnostics.push(RecipeDiagnostic::simple(
+                        "error",
+                        "E_DUP_ID",
+                        format!("Duplicate type id {}", asset.id),
+                        vec![source_file_only(relative)],
+                    ));
+                } else {
+                    let id = asset.id.clone();
+                    self.types_by_id.insert(id, asset);
                 }
             }
         }
@@ -328,14 +315,18 @@ fn visit(dir: &Path, out: &mut Vec<PathBuf>) {
         } else if matches!(
             path.extension().and_then(|s| s.to_str()),
             Some("luau") | Some("lua")
-        ) {
+        ) && !is_declaration_file(&path)
+        {
             out.push(path);
         }
     }
 }
 
-fn path_is_under(path: &Path, dir: &Path) -> bool {
-    path.starts_with(dir)
+fn is_declaration_file(path: &Path) -> bool {
+    let Some(name) = path.file_name().and_then(|s| s.to_str()) else {
+        return false;
+    };
+    name.ends_with(".d.luau") || name.ends_with(".d.lua")
 }
 
 fn relative_path(root: &Path, path: &Path) -> String {

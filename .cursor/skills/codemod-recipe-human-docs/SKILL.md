@@ -27,7 +27,7 @@ Topic depth still belongs in existing `docs/*.md` and agent skills — Getting S
 | `docs/getting-started.md` | Canonical human onboarding walkthrough |
 | `docs/writing-recipes.md` | Human Luau recipe authoring guide |
 | `docs/README.md` | Documentation map / index |
-| `.agents/skills/codemod-luau-recipes/reference.md` | Host API reference for agents |
+| `.agents/skills/codemod-recipe/codemod-luau-recipes/reference.md` | Host API reference for agents |
 | `.cursor/skills/codemod-recipe-human-docs/reference.md` | Section map + edit playbook |
 
 ## Instructions

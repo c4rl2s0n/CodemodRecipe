@@ -7,7 +7,7 @@ description: Luau recipe authoring for codemod-recipe — recipe module shape, h
 
 ## When to use
 
-- Writing or reviewing `.codemod/recipes/*.luau` (or `.lua`)
+- Writing or reviewing Luau recipe modules anywhere under `.codemod/` (`.codemod/recipes/` is a convention)
 - Crafting `inlineRecipe` Luau source strings for MCP preview/apply
 - Understanding the host context API (`c:insert`, `c:run`, `c:applyTemplate`, …)
 
@@ -88,5 +88,5 @@ Set `language = "dart"` (etc.) on edit ops when the path is ambiguous.
 
 ## Human docs
 
-- [docs/writing-recipes.md](../../../docs/writing-recipes.md) — authoring workflow
-- [docs/getting-started.md](../../../docs/getting-started.md) — day-1 overview
+- [docs/writing-recipes.md](../../../../docs/writing-recipes.md) — authoring workflow
+- [docs/getting-started.md](../../../../docs/getting-started.md) — day-1 overview

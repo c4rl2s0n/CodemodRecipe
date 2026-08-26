@@ -13,15 +13,16 @@ This guide shows how to use `codemod_recipe` in a brand-new project with the Rus
 
 After connecting the MCP server, call **`bootstrap_project`** once. It installs:
 
-- `.agents/skills/` — modular skills:
-  - `codemod-overview` — orientation and layout
-  - `codemod-luau-recipes` — recipe module shape and host API (`reference.md`)
-  - `codemod-recipe-design-patterns` — create vs modify taxonomy
-  - `codemod-mcp-playbook` — MCP tool reference
-  - `codemod-languages` — multi-language support
-  - `codemod-tree-sitter-queries` — query language
-  - `codemod-recipe-authoring` — tree-sitter query patterns
-  - `recipe-generation` — generate Luau recipes from `@` code refs
+- `.agents/skills/codemod-recipe/` — one parent skill with nested sub-skills:
+  - `codemod-recipe` — top-level router (start here)
+  - `codemod-recipe/codemod-overview` — orientation and layout
+  - `codemod-recipe/codemod-luau-recipes` — recipe module shape and host API (`reference.md`)
+  - `codemod-recipe/codemod-recipe-design-patterns` — create vs modify taxonomy
+  - `codemod-recipe/codemod-mcp-playbook` — MCP tool reference
+  - `codemod-recipe/codemod-languages` — multi-language support
+  - `codemod-recipe/codemod-tree-sitter-queries` — query language
+  - `codemod-recipe/codemod-recipe-authoring` — tree-sitter query patterns
+  - `codemod-recipe/recipe-generation` — generate Luau recipes from `@` code refs
 - `.cursor/rules/codemod-recipe.mdc` — always-on orientation
 - `.codemod/recipes/`, `.codemod/maps/`, `.codemod/types/`, `.codemod/variables/` scaffolding
 
@@ -33,14 +34,16 @@ After connecting the MCP server, call **`bootstrap_project`** once. It installs:
 
 ```text
 .codemod/
-  recipes/     # Luau recipe modules (*.luau or *.lua)
-  maps/        # Luau map modules
-  types/       # Named arg types
-  variables/   # Luau variable modules
-  queries/     # Luau query libraries
+  recipes/     # Luau recipe modules (*.luau or *.lua) — convention
+  maps/        # Luau map modules — convention
+  types/       # Named arg types — convention
+  variables/   # Luau variable modules — convention
+  queries/     # Luau query libraries — convention
   templates/   # optional (renderFileTemplate)
 ```
 
+The registry identifies every `.luau` and `.lua` module under `.codemod/` by its returned table
+shape (`apply`, `map`, `fields`, `values`, `queries`). Directories are conventions, not requirements.
 File-backed resources resolve recipe-local first, then `.codemod/`
 (`rust/crates/core/src/resource_path.rs`).
 

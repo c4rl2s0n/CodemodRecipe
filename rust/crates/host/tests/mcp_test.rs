@@ -233,7 +233,7 @@ fn stdio_subprocess_bootstraps_project() {
     assert_eq!(bootstrap_json["edit_policy"], "recommend");
     assert_eq!(bootstrap_json["companions"], serde_json::json!([]));
     assert!(workspace
-        .join(".agents/skills/codemod-overview/SKILL.md")
+        .join(".agents/skills/codemod-recipe/codemod-overview/SKILL.md")
         .is_file());
     assert!(workspace.join(".cursor/rules/codemod-recipe.mdc").is_file());
     assert!(!workspace.join(".cursor/rules/codebase-memory.mdc").exists());

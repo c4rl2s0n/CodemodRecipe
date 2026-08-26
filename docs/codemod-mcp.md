@@ -2,12 +2,13 @@
 
 MCP server that exposes the Rust `CodemodHost` protocol as tools for AI agents.
 Use it to preview and apply deterministic AST edits from registered **Luau
-recipes** (`.codemod/recipes/*.luau`) or `inlineRecipe` Luau source strings.
+recipes** (`.luau` or `.lua` modules anywhere under `.codemod/` that return `{ id, apply = function(c) ... }`)
+or `inlineRecipe` Luau source strings. The `.codemod/recipes/` directory is a convention.
 Supports Dart, Rust, Java, Kotlin, SQL/SQLite, and 300+ languages via lazy-loaded
 tree-sitter grammars.
 
-**Agent playbook:** `.agents/skills/codemod-mcp-playbook/`  
-**Recipe API:** `.agents/skills/codemod-luau-recipes/`  
+**Agent playbook:** `.agents/skills/codemod-recipe/codemod-mcp-playbook/`  
+**Recipe API:** `.agents/skills/codemod-recipe/codemod-luau-recipes/`  
 **Templates:** [recipe-templates.md](recipe-templates.md)  
 **Multi-language:** [language-support.md](language-support.md)
 

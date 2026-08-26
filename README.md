@@ -40,12 +40,19 @@ See [docs/codemod-mcp.md](docs/codemod-mcp.md) for Cursor MCP setup.
 | Path | Purpose |
 |------|---------|
 | `rust/` | Rust workspace: tree-sitter engine, Luau runtime, stdio host, MCP |
-| `.codemod/recipes/` | Luau recipe modules (`return { id, apply, ... }`) |
-| `.codemod/maps/` | Luau map modules (`id` + `map` table) |
-| `.codemod/variables/` | Luau variable modules (`id` + `values` table) |
-| `.codemod/queries/` | Luau query libraries (`id` + `queries` table) |
+| `.codemod/*.luau` / `.codemod/*.lua` | Luau modules under `.codemod/` identified by their returned table shape (see below) |
 | `vscode_extension/` | VS Code / Codium extension |
 | `test/fixtures/` | Integration and golden fixtures for the Rust engine |
+
+Conventional `.codemod/` subdirectories (the registry classifies assets by content, not by location):
+
+| Location | Identified by | Return shape |
+|----------|---------------|--------------|
+| `.codemod/recipes/` | `apply` function | `{ id, apply = function(c) ... }` |
+| `.codemod/maps/` | `map` table | `{ id, map = { ... } }` |
+| `.codemod/variables/` | `values` table | `{ id, values = { ... } }` |
+| `.codemod/queries/` | `queries` table | `{ id, queries = { ... } }` |
+| `.codemod/types/` | `fields` table | `{ id, fields = { ... } }` |
 
 ## Luau recipe format
 
@@ -131,7 +138,7 @@ File-backed resources use `rust/crates/core/src/resource_path.rs`:
 
 - Workspace targets resolve under the workspace root.
 - Recipe resources (`.scm`, templates, postExecution scripts) resolve recipe-local first, then `.codemod/`.
-- Query libraries are Luau modules under `.codemod/queries/*.luau`.
+- Query libraries are Luau modules (conventionally under `.codemod/queries/`) that return `{ id, queries = { ... } }`.
 
 ## Rust engine status
 

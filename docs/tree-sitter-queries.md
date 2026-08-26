@@ -4,7 +4,7 @@ codemod-recipe uses [tree-sitter](https://tree-sitter.github.io/) queries to mat
 
 **How this fits recipe authoring:** [writing-recipes.md](writing-recipes.md) (workflow, `capture` / `anchor` mental model).
 
-**Agent skill:** `.agents/skills/codemod-tree-sitter-queries/` (installed by `bootstrap_project` from `export/.agents/skills/codemod-tree-sitter-queries/`).
+**Agent skill:** `.agents/skills/codemod-recipe/codemod-tree-sitter-queries/` (installed by `bootstrap_project` from `export/.agents/skills/codemod-recipe/codemod-tree-sitter-queries/`).
 
 ## Quick start
 
@@ -110,14 +110,14 @@ External `.scm` files use the shared resolver in
 - Exact path lookup: referencing recipe directory first, `.codemod/` fallback.
 - Bare file names also try `queries/` under each root as a query-specific
   convention.
-- Query libraries are Luau modules under `.codemod/queries/*.luau`
-  (`c:queryLib("id")` or query id strings resolved via the registry).
+- Query libraries are Luau modules (conventionally under `.codemod/queries/`) that return
+  `{ id, queries = { ... } }` (`c:queryLib("id")` or query id strings resolved via the registry).
 
 ## Further reading
 
 - [writing-recipes.md](writing-recipes.md) — end-to-end recipe authoring
 - skill `codemod-luau-recipes` — host API reference
-- [export/.agents/skills/codemod-tree-sitter-queries/reference.md](../export/.agents/skills/codemod-tree-sitter-queries/reference.md) — full agent reference
+- [export/.agents/skills/codemod-recipe/codemod-tree-sitter-queries/reference.md](../export/.agents/skills/codemod-recipe/codemod-tree-sitter-queries/reference.md) — full agent reference
 - [tree-sitter query syntax](https://tree-sitter.github.io/tree-sitter/using-parsers/queries/1-syntax.html) — official documentation
 - [docs/codemod-mcp.md](codemod-mcp.md) — MCP preview/apply workflow
 - [docs/language-support.md](language-support.md) — multi-language grammars
