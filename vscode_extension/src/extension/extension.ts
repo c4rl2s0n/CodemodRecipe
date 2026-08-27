@@ -42,6 +42,10 @@ export function activate(context: vscode.ExtensionContext): void {
     context.extensionUri
   );
   runner.setRecipeRepository(repository);
+  runner.setRuntimeDiagnosticsPublisher((runtimeDiags) => {
+    const discovery = repository.getDiagnostics();
+    diagnostics.publish([...discovery, ...runtimeDiags], config.workspaceRoot);
+  });
   const queryTools = new QueryToolsController(bridge, config);
   queryTools.register(context);
 
@@ -169,7 +173,9 @@ export function activate(context: vscode.ExtensionContext): void {
       const written = result.written?.length ?? 0;
       const skipped = result.skipped?.length ?? 0;
       vscode.window.showInformationMessage(
-        `Codemod Recipe: scaffolded project (${written} written, ${skipped} skipped).`
+        force
+          ? `Codemod Recipe: updated project scaffold (${written} written, ${skipped} skipped).`
+          : `Codemod Recipe: scaffolded project (${written} written, ${skipped} skipped).`
       );
       // Scaffold may have created the codemod root; recreate the watcher so
       // subsequent create/change events are observed.
@@ -181,6 +187,18 @@ export function activate(context: vscode.ExtensionContext): void {
         formatHostError(`Scaffold failed: ${message}`)
       );
     }
+  };
+
+  const updateProjectScaffold = async (): Promise<void> => {
+    const choice = await vscode.window.showWarningMessage(
+      'Update Project Scaffold will overwrite existing Codemod scaffold files (skills, rules, stubs including codemod-context.d.luau, and recommended .vscode settings). Continue?',
+      { modal: true },
+      'Update'
+    );
+    if (choice !== 'Update') {
+      return;
+    }
+    await scaffoldProject(true);
   };
 
   const scheduleRecipeReload = (): void => {
@@ -330,6 +348,10 @@ export function activate(context: vscode.ExtensionContext): void {
     vscode.commands.registerCommand(COMMANDS.bootstrap, () => bootstrap(true)),
     vscode.commands.registerCommand(COMMANDS.scaffoldProject, () =>
       scaffoldProject(false)
+    ),
+    vscode.commands.registerCommand(
+      COMMANDS.updateProjectScaffold,
+      () => updateProjectScaffold()
     ),
     vscode.commands.registerCommand(
       COMMANDS.runRecipe,

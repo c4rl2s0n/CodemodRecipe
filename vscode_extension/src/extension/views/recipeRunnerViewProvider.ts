@@ -5,6 +5,7 @@ import { ExtensionConfig } from '../config/extensionConfig';
 import { HostBridge } from '../host/hostBridge';
 import {
   EXTENSION_TO_WEBVIEW,
+  argsKey as fingerprintArgs,
   isWebviewToExtensionMessage,
   type ArgValues,
   type RecipeDiagnostic,
@@ -26,9 +27,13 @@ export class RecipeRunnerViewProvider
   private webviewHtmlLoaded = false;
   private messageSub: vscode.Disposable | undefined;
   private _previewInFlight = false;
+  private _previewGeneration = 0;
+  /** Serialize webview messages so preview/pick cannot overlap silently. */
+  private messageChain: Promise<void> = Promise.resolve();
   readonly state = new RecipeRunnerState();
   private _scaffoldHandler: (() => Promise<void>) | undefined;
   private _recipeRepository: RecipeRepository | undefined;
+  private _runtimeDiagnostics: ((diagnostics: readonly RecipeDiagnostic[]) => void) | undefined;
 
   constructor(
     readonly bridge: HostBridge,
@@ -45,6 +50,16 @@ export class RecipeRunnerViewProvider
     this._recipeRepository = repository;
   }
 
+  setRuntimeDiagnosticsPublisher(
+    publish: (diagnostics: readonly RecipeDiagnostic[]) => void
+  ): void {
+    this._runtimeDiagnostics = publish;
+  }
+
+  publishRuntimeDiagnostics(diagnostics: readonly RecipeDiagnostic[]): void {
+    this._runtimeDiagnostics?.(diagnostics);
+  }
+
   get workspaceRoot(): string {
     return this.config.workspaceRoot;
   }
@@ -57,6 +72,15 @@ export class RecipeRunnerViewProvider
     this._previewInFlight = value;
   }
 
+  get previewGeneration(): number {
+    return this._previewGeneration;
+  }
+
+  beginPreviewGeneration(): number {
+    this._previewGeneration += 1;
+    return this._previewGeneration;
+  }
+
   get scaffoldHandler(): (() => Promise<void>) | undefined {
     return this._scaffoldHandler;
   }
@@ -65,12 +89,20 @@ export class RecipeRunnerViewProvider
     this._scaffoldHandler = handler;
   }
 
+  resetSession(): void {
+    this._previewInFlight = false;
+    this._previewGeneration += 1;
+    this.bridge.cancelInFlight('Session reset');
+    this.state.beginSession();
+  }
+
   resolveWebviewView(webviewView: vscode.WebviewView): void {
     this.messageSub?.dispose();
     this.view = webviewView;
     // Moving between side bars (or reactivation) recreates the WebviewView;
-    // always re-inject HTML for the new host.
+    // always re-inject HTML for the new host and clear stale in-flight flags.
     this.webviewHtmlLoaded = false;
+    this.resetSession();
     webviewView.webview.options = {
       enableScripts: true,
       localResourceRoots: [vscode.Uri.joinPath(this.extensionUri, 'media')],
@@ -83,7 +115,7 @@ export class RecipeRunnerViewProvider
     }
     this.messageSub = webviewView.webview.onDidReceiveMessage(
       (message: unknown) => {
-        void this.handleMessage(message);
+        this.enqueueMessage(message);
       }
     );
     webviewView.onDidDispose(() => {
@@ -92,6 +124,7 @@ export class RecipeRunnerViewProvider
       }
       this.view = undefined;
       this.webviewHtmlLoaded = false;
+      this._previewInFlight = false;
       this.messageSub?.dispose();
       this.messageSub = undefined;
     });
@@ -176,7 +209,15 @@ export class RecipeRunnerViewProvider
   }
 
   argsKey(args: ArgValues): string {
-    return JSON.stringify(args);
+    return fingerprintArgs(args);
+  }
+
+  private enqueueMessage(message: unknown): void {
+    this.messageChain = this.messageChain
+      .then(() => this.handleMessage(message))
+      .catch(() => {
+        // Keep the chain alive after handler failures.
+      });
   }
 
   private async handleMessage(message: unknown): Promise<void> {

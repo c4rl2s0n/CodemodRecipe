@@ -21,6 +21,8 @@ pub enum HostMethodSignature {
     Assert,
     /// Takes `(id: string, args?: { [string]: any })`.
     Run,
+    /// Takes variadic values (e.g. `log(...)`).
+    Variadic,
 }
 
 /// Declared return type for a host method.
@@ -108,8 +110,8 @@ mod tests {
             "expectMatch",
             "expectNoMatch",
             "postExec",
-            "applyTemplate",
-            "renderFileTemplate",
+            "template",
+            "log",
             "run",
             "map",
             "var",
@@ -130,12 +132,20 @@ mod tests {
             "run must be present in the surface metadata"
         );
         assert!(
+            surface_names.contains("log"),
+            "log must be present in the surface metadata"
+        );
+        assert!(
             !method_names.contains("run"),
             "run must be registered manually, not via HOST_METHODS"
         );
+        assert!(
+            !method_names.contains("log"),
+            "log must be registered manually, not via HOST_METHODS"
+        );
 
         for name in surface_names.iter() {
-            if *name == "run" {
+            if *name == "run" || *name == "log" {
                 continue;
             }
             assert!(

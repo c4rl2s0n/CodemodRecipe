@@ -74,6 +74,24 @@ describe('collectArgs', () => {
       collectArgs(sampleRecipe, { file: 'a.dart', optional: '' })
     ).toEqual({ file: 'a.dart' });
   });
+
+  it('sanitizes blank list rows and omits empty lists', () => {
+    const listRecipe: RecipeSchema = {
+      ...sampleRecipe,
+      args: [
+        {
+          ...sampleRecipe.args[0],
+          name: 'exports',
+          required: false,
+          inputKind: ['text'],
+        },
+      ],
+    };
+    expect(
+      collectArgs(listRecipe, { exports: ['foo.dart', '', '  ', 'bar.dart'] })
+    ).toEqual({ exports: ['foo.dart', 'bar.dart'] });
+    expect(collectArgs(listRecipe, { exports: ['', '  '] })).toEqual({});
+  });
 });
 
 describe('mergeArgValuesOnRefresh', () => {

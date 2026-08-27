@@ -223,7 +223,7 @@ The Rust engine uses standard `tree_sitter::Query` — predicates supported by t
 (#eq? @a @b)
 ```
 
-Build the predicate literal with Luau (`.. c.args.className`) or MiniJinja (`c:applyTemplate`) so the query parser sees a concrete string.
+Build the predicate literal with Luau (`.. c.args.className`) or MiniJinja (`c:template`) so the query parser sees a concrete string.
 
 ### Regular expressions
 
@@ -284,12 +284,12 @@ up with `c:queryLib(id)` or by registered query id.
 
 ### Arg substitution
 
-Interpolate into `query` / `text` with Luau or `c:applyTemplate` **before** the
+Interpolate into `query` / `text` with Luau or `c:template` **before** the
 query is parsed. Use predicates with concrete literals:
 
 ```lua
-local query = c:applyTemplate({
-  template = [[
+local query = c:template({
+  inline = [[
 (class_definition
   name: (identifier) @className
   (#eq? @className "{{className}}"))
@@ -345,8 +345,8 @@ Use node names from the grammar for `language` on the op (pack Dart uses `class_
 ```lua
 c:insert({
   path = c.args.file,
-  query = c:applyTemplate({
-    template = [[
+  query = c:template({
+    inline = [[
 (class_definition
   name: (identifier) @className
   body: (class_body

@@ -2,14 +2,14 @@ use codemod_recipe_core::apply::atomic_apply::apply_operations_atomically;
 use std::collections::BTreeMap;
 
 use crate::engine::runner::{collect_recipe_changes, planned_snapshot_paths, resolve_recipe};
-use crate::lua_runtime::RunKind;
+use crate::lua_runtime::{RecipeApplyError, RunKind};
 use crate::preview::diff::build_file_preview_from_change;
 use crate::preview::patch_selector::{apply_changes_with_selection, parse_selection};
 use crate::preview::preview_token::{compute_preview_token, validate_preview_token};
 use crate::protocol::keys as protocol_keys;
 use crate::protocol::{
-    ApplyResponse, AstPathResult, DescribeResponse, DiffResponse, HostCommand, PreviewResponse,
-    QueryCapturesResponse, RecipeCatalogResponse,
+    ApplyResponse, AstPathResult, DescribeResponse, DiagnosticSource, DiffResponse, HostCommand,
+    PreviewResponse, QueryCapturesResponse, RecipeCatalogResponse, RecipeDiagnostic,
 };
 use crate::recipe::registry::RecipeRegistry;
 use crate::recipe::validate::{validate_recipe, validate_workspace};
@@ -320,8 +320,14 @@ fn collect(
     registry: &RecipeRegistry,
     request: RecipeRequest<'_>,
     kind: RunKind,
-) -> Result<crate::engine::runner::CollectedChanges, String> {
-    let (recipe, recipe_path) = resolve_recipe(registry, request.recipe_id, request.inline_recipe)?;
+) -> Result<crate::engine::runner::CollectedChanges, RecipeApplyError> {
+    let (recipe, recipe_path) =
+        resolve_recipe(registry, request.recipe_id, request.inline_recipe).map_err(|message| {
+            RecipeApplyError {
+                message,
+                transcript: Vec::new(),
+            }
+        })?;
     collect_recipe_changes(
         registry,
         &recipe,
@@ -331,15 +337,34 @@ fn collect(
     )
 }
 
-fn preview_fail(recipe_key: String, error: String) -> serde_json::Value {
+fn preview_fail(
+    recipe_key: String,
+    error: String,
+    source_file: Option<&str>,
+    transcript: Option<Vec<codemod_recipe_lua::TranscriptEvent>>,
+) -> serde_json::Value {
+    let sources = match source_file {
+        Some(file) if !file.is_empty() => vec![DiagnosticSource {
+            file: file.to_string(),
+            line: None,
+            column: None,
+        }],
+        _ => vec![],
+    };
     to_value(PreviewResponse {
         ok: false,
-        error: Some(error),
-        recipe: Some(recipe_key),
+        error: Some(error.clone()),
+        recipe: Some(recipe_key.clone()),
         preview_token: None,
         files: None,
-        transcript: None,
+        transcript,
         apply_may_diverge: None,
+        diagnostics: Some(vec![RecipeDiagnostic::simple(
+            "error",
+            "E_RECIPE_RUNTIME",
+            error,
+            sources,
+        )]),
     })
 }
 
@@ -353,6 +378,10 @@ fn preview(
     let recipe_id = request.recipe_id;
     let inline_recipe: Option<&serde_json::Value> = request.inline_recipe;
     let args = request.args.clone();
+    let source_file = request
+        .recipe_id
+        .and_then(|id| registry.get(id))
+        .and_then(|r| r.source_file.clone());
     match collect(registry, request, RunKind::Preview) {
         Ok(collected) => {
             let snapshot_paths =
@@ -368,7 +397,12 @@ fn preview(
                 match build_file_preview_from_change(change, include_contents, snippet_lines) {
                     Ok(file) => files.push(file),
                     Err(error) => {
-                        return preview_fail(recipe_key, error.to_string());
+                        return preview_fail(
+                            recipe_key,
+                            error.to_string(),
+                            source_file.as_deref(),
+                            Some(collected.transcript.clone()),
+                        );
                     }
                 }
             }
@@ -381,9 +415,15 @@ fn preview(
                 files: Some(files),
                 transcript: Some(collected.transcript),
                 apply_may_diverge: Some(collected.saw_post_exec),
+                diagnostics: None,
             })
         }
-        Err(error) => preview_fail(recipe_key, error),
+        Err(error) => preview_fail(
+            recipe_key,
+            error.message,
+            source_file.as_deref(),
+            Some(error.transcript),
+        ),
     }
 }
 
@@ -416,11 +456,40 @@ fn diff(registry: &RecipeRegistry, request: RecipeRequest<'_>, path: &str) -> se
         }
         Err(error) => to_value(DiffResponse {
             ok: false,
-            error: Some(error),
+            error: Some(error.message),
             recipe: Some(recipe_key),
             file: None,
         }),
     }
+}
+
+fn apply_fail(
+    recipe_key: String,
+    error: String,
+    source_file: Option<&str>,
+    transcript: Option<Vec<codemod_recipe_lua::TranscriptEvent>>,
+) -> serde_json::Value {
+    let sources = match source_file {
+        Some(file) if !file.is_empty() => vec![DiagnosticSource {
+            file: file.to_string(),
+            line: None,
+            column: None,
+        }],
+        _ => vec![],
+    };
+    to_value(ApplyResponse {
+        ok: false,
+        error: Some(error.clone()),
+        recipe: Some(recipe_key),
+        applied: None,
+        transcript,
+        diagnostics: Some(vec![RecipeDiagnostic::simple(
+            "error",
+            "E_RECIPE_RUNTIME",
+            error,
+            sources,
+        )]),
+    })
 }
 
 fn apply(
@@ -433,6 +502,9 @@ fn apply(
     let recipe_id = request.recipe_id;
     let inline_recipe = request.inline_recipe;
     let args = request.args.clone();
+    let source_file = recipe_id
+        .and_then(|id| registry.get(id))
+        .and_then(|r| r.source_file.clone());
 
     let preview_collected = match collect(
         registry,
@@ -445,12 +517,12 @@ fn apply(
     ) {
         Ok(c) => c,
         Err(error) => {
-            return to_value(ApplyResponse {
-                ok: false,
-                error: Some(error),
-                recipe: Some(recipe_key),
-                applied: None,
-            });
+            return apply_fail(
+                recipe_key,
+                error.message,
+                source_file.as_deref(),
+                Some(error.transcript),
+            );
         }
     };
     let snapshot_paths =
@@ -459,12 +531,7 @@ fn apply(
     if let Err(error) =
         validate_preview_token(recipe_id, inline_recipe, &args, preview_token, &path_refs)
     {
-        return to_value(ApplyResponse {
-            ok: false,
-            error: Some(error),
-            recipe: Some(recipe_key),
-            applied: None,
-        });
+        return apply_fail(recipe_key, error, source_file.as_deref(), None);
     }
 
     let collected = match collect(
@@ -478,12 +545,12 @@ fn apply(
     ) {
         Ok(c) => c,
         Err(error) => {
-            return to_value(ApplyResponse {
-                ok: false,
-                error: Some(error),
-                recipe: Some(recipe_key),
-                applied: None,
-            });
+            return apply_fail(
+                recipe_key,
+                error.message,
+                source_file.as_deref(),
+                Some(error.transcript),
+            );
         }
     };
 
@@ -499,6 +566,8 @@ fn apply(
             error: None,
             recipe: Some(recipe_key),
             applied: Some(applied_paths),
+            transcript: Some(collected.transcript),
+            diagnostics: None,
         });
     }
 
@@ -519,12 +588,12 @@ fn apply(
     ) {
         Ok(changes) => changes,
         Err(error) => {
-            return to_value(ApplyResponse {
-                ok: false,
-                error: Some(error),
-                recipe: Some(recipe_key),
-                applied: None,
-            });
+            return apply_fail(
+                recipe_key,
+                error,
+                source_file.as_deref(),
+                Some(collected.transcript),
+            );
         }
     };
 
@@ -534,6 +603,8 @@ fn apply(
             error: None,
             recipe: Some(recipe_key),
             applied: Some(vec![]),
+            transcript: Some(collected.transcript),
+            diagnostics: None,
         });
     }
 
@@ -542,12 +613,12 @@ fn apply(
         .map(|change| change.operation.clone())
         .collect();
     if let Err(error) = apply_operations_atomically(&ops) {
-        return to_value(ApplyResponse {
-            ok: false,
-            error: Some(error),
-            recipe: Some(recipe_key),
-            applied: None,
-        });
+        return apply_fail(
+            recipe_key,
+            error,
+            source_file.as_deref(),
+            Some(collected.transcript),
+        );
     }
 
     let applied_paths: Vec<String> = applied_changes
@@ -560,6 +631,8 @@ fn apply(
         error: None,
         recipe: Some(recipe_key),
         applied: Some(applied_paths),
+        transcript: Some(collected.transcript),
+        diagnostics: None,
     })
 }
 

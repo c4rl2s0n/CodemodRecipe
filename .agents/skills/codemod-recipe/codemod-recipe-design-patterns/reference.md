@@ -49,14 +49,14 @@ Convey recipe kind through the `id` prefix and `description` — there is no sep
 
 Generate new source when nothing exists yet.
 
-- Use `c:create` with `content` from `c:applyTemplate` or `c:renderFileTemplate`.
+- Use `c:create` with `content` from `c:template`.
 - Default `ifExists = "fail"` prevents accidental overwrites.
 - Args drive paths and class names (`feature`, `className`).
 
 ```lua
 c:create({
   path = "lib/counter/counter_repository.dart",
-  content = c:renderFileTemplate({ path = "templates/counter_repository.dart.template" }),
+  content = c:template({ path = "templates/counter_repository.dart.template" }),
   ifExists = "fail",
 })
 ```
@@ -201,7 +201,7 @@ c:insert({
 
 ## Maps and templates
 
-**Templates** (`c:renderFileTemplate` / `c:applyTemplate`) hold greenfield skeletons.
+**Templates** (`c:template`) hold greenfield skeletons.
 Use Jinja2 syntax (MiniJinja): `{{ arg }}`, filters like `{{ feature | pascal_case }}`,
 and `{% if %}`. See skill `codemod-luau-recipes` and [`docs/recipe-templates.md`](../../../../docs/recipe-templates.md).
 
@@ -219,8 +219,8 @@ return {
 ```
 
 ```lua
-local text = c:applyTemplate({
-  template = "  final {{ fieldName | map('dart_types') }} {{ fieldName | camel_case }};\n\n",
+local text = c:template({
+  inline = "  final {{ fieldName | map('dart_types') }} {{ fieldName | camel_case }};\n\n",
 })
 ```
 
@@ -234,14 +234,14 @@ Use a consistent vocabulary across related recipes:
 | Arg | `inputKind` | Used by |
 |-----|-------------|---------|
 | `file` | `file` | Generic edit recipes |
-| `feature` | `text` | Scaffold orchestrators (drives paths via `c:applyTemplate`) |
+| `feature` | `text` | Scaffold orchestrators (drives paths via `c:template`) |
 | `className` | `text` | Class-targeted edits |
 | `fieldName` / `eventName` | `text` | Domain names; type resolved via map |
 | `fieldType` | optional or map-backed | When not inferable from map |
 
 **Path convention:** pick one style per project and stick to it.
 
-- Scaffolds derive paths from args: `c:applyTemplate({ template = "lib/features/{{ feature | snake_case }}/{{ feature | snake_case }}_state.dart" })`
+- Scaffolds derive paths from args: `c:template({ inline = "lib/features/{{ feature | snake_case }}/{{ feature | snake_case }}_state.dart" })`
 - Modify recipes take explicit `file`, or use the same path template as scaffolds
 
 ## Example: Flutter Bloc feature
@@ -287,11 +287,11 @@ return {
     dart_types = { email = "String", count = "int" },
   },
   apply = function(c)
-    local path = c:applyTemplate({
-      template = "lib/features/{{ feature | snake_case }}/{{ feature | snake_case }}_state.dart",
+    local path = c:template({
+      inline = "lib/features/{{ feature | snake_case }}/{{ feature | snake_case }}_state.dart",
     })
-    local query = c:applyTemplate({
-      template = [[
+    local query = c:template({
+      inline = [[
 (class_definition
   name: (identifier) @className
   body: (class_body) @body
@@ -303,8 +303,8 @@ return {
       query = query,
       capture = "body",
       anchor = "start",
-      text = c:applyTemplate({
-        template = "  final {{ fieldName | map('dart_types') }} {{ fieldName | camel_case }};\n\n",
+      text = c:template({
+        inline = "  final {{ fieldName | map('dart_types') }} {{ fieldName | camel_case }};\n\n",
       }),
     })
   end,

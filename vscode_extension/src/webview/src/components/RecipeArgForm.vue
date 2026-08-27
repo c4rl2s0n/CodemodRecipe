@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { watch } from 'vue';
-import { formatInputKind } from '../lib/args';
+import { argsKey, formatInputKind } from '../lib/args';
 import type { ArgValues, RecipeArg, RecipeSchema } from '../shared';
 import ArgField from './ArgField.vue';
 
@@ -17,9 +17,16 @@ const emit = defineEmits<{
   'submit-preview': [];
 }>();
 
+let lastEmittedKey = argsKey(argValues.value);
+
 watch(
   argValues,
-  () => {
+  (next) => {
+    const key = argsKey(next);
+    if (key === lastEmittedKey) {
+      return;
+    }
+    lastEmittedKey = key;
     emit('args-changed');
   },
   { deep: true }

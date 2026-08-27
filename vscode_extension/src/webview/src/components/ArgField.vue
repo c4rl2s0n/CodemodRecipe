@@ -111,6 +111,9 @@ function toggleRow(index: number) {
 async function pickPath() {
   const directory = inputKind.value === ARG_INPUT_KIND.directory;
   const value = await client.pickPath(props.arg.name, directory);
+  if (value === undefined) {
+    return;
+  }
   model.value = value;
 }
 </script>

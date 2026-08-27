@@ -9,16 +9,25 @@ use codemod_recipe_lua::model::{Recipe, TranscriptEvent};
 use codemod_recipe_lua::{eval_return_table, new_sandbox};
 use codemod_recipe_lua_macros::host_method;
 use mlua::{Lua, Table, Value};
+use serde_json::json;
 
 use crate::engine::working_tree::WorkingTree;
 use crate::host_api::context::{HostInner, SharedHost};
-pub use crate::host_api::context::{RecipeRunRequest, RecipeRunResult, RunKind};
-use crate::host_api::handlers::post_exec_cmd;
+pub use crate::host_api::context::{
+    RecipeApplyError, RecipeRunRequest, RecipeRunResult, RunKind,
+};
+use crate::host_api::handlers::{do_log, post_exec_cmd};
 use crate::host_api::registry::{rt, set_fn, HOST_METHODS};
 use crate::sandbox::path_sandbox::PathSandbox;
 
-pub fn run_recipe(recipe: &Recipe, request: RecipeRunRequest) -> Result<RecipeRunResult, String> {
-    let lua = new_sandbox().map_err(|e| e.to_string())?;
+pub fn run_recipe(
+    recipe: &Recipe,
+    request: RecipeRunRequest,
+) -> Result<RecipeRunResult, RecipeApplyError> {
+    let lua = new_sandbox().map_err(|e| RecipeApplyError {
+        message: e.to_string(),
+        transcript: Vec::new(),
+    })?;
     let kind = request.kind;
     let inner = Rc::new(Mutex::new(HostInner {
         kind,
@@ -36,16 +45,31 @@ pub fn run_recipe(recipe: &Recipe, request: RecipeRunRequest) -> Result<RecipeRu
         saw_post_exec: false,
         op_count: 0,
     }));
-    let ctx = build_ctx(&lua, Rc::clone(&inner))?;
-    invoke_apply(&lua, recipe, ctx)?;
+    let ctx = build_ctx(&lua, Rc::clone(&inner)).map_err(|message| {
+        take_apply_error(&inner, message)
+    })?;
+    if let Err(message) = invoke_apply(&lua, recipe, ctx) {
+        return Err(take_apply_error(&inner, message));
+    }
     if !recipe.post_execution.is_empty() {
         for cmd in &recipe.post_execution {
-            post_exec_cmd(&inner, cmd)?;
+            if let Err(message) = post_exec_cmd(&inner, cmd) {
+                return Err(take_apply_error(&inner, message));
+            }
         }
     }
-    let mut host = inner.lock().map_err(|e| e.to_string())?;
+    let mut host = inner.lock().map_err(|e| RecipeApplyError {
+        message: e.to_string(),
+        transcript: Vec::new(),
+    })?;
     if kind == RunKind::Apply && host.saw_post_exec {
-        host.flush_to_disk()?;
+        if let Err(message) = host.flush_to_disk() {
+            let transcript = std::mem::take(&mut host.transcript);
+            return Err(RecipeApplyError {
+                message,
+                transcript,
+            });
+        }
     }
     let transcript = std::mem::take(&mut host.transcript);
     let saw_post_exec = host.saw_post_exec;
@@ -55,6 +79,17 @@ pub fn run_recipe(recipe: &Recipe, request: RecipeRunRequest) -> Result<RecipeRu
         transcript,
         saw_post_exec,
     })
+}
+
+fn take_apply_error(host: &SharedHost, message: String) -> RecipeApplyError {
+    let transcript = host
+        .lock()
+        .map(|mut inner| std::mem::take(&mut inner.transcript))
+        .unwrap_or_default();
+    RecipeApplyError {
+        message,
+        transcript,
+    }
 }
 
 pub(crate) fn invoke_apply(lua: &Lua, recipe: &Recipe, ctx: Table) -> Result<(), String> {
@@ -100,6 +135,17 @@ pub(crate) fn build_ctx(lua: &Lua, host: SharedHost) -> Result<Table, String> {
         },
     )?;
 
+    // `log` is registered manually for Variadic args.
+    let log_host = Rc::clone(&host);
+    set_fn(
+        lua,
+        &ctx,
+        "log",
+        move |lua, (_this, args): (Value, mlua::Variadic<Value>)| {
+            do_log(&log_host, lua, args).map_err(rt)
+        },
+    )?;
+
     Ok(ctx)
 }
 
@@ -126,20 +172,25 @@ fn do_run(host: &SharedHost, lua: &Lua, id: String, args: Option<Table>) -> Resu
         parent_args = inner.args.clone();
         child_args = inner.args.clone();
     }
+    let mut override_keys = Vec::new();
     if let Some(tbl) = args {
         for pair in tbl.pairs::<String, Value>() {
             let (k, v) = pair.map_err(|e| e.to_string())?;
+            override_keys.push(k.clone());
             child_args.insert(k, lua_to_json(&v)?);
         }
     }
     {
         let mut inner = host.lock().map_err(|e| e.to_string())?;
         inner.args.clone_from(&child_args);
-        inner.transcript.push(TranscriptEvent {
-            kind: "run".to_string(),
-            detail: id.to_string(),
-            included_in_preview: true,
-        });
+        inner.transcript.push(TranscriptEvent::with_payload(
+            "run",
+            id.to_string(),
+            json!({
+                "recipeId": id,
+                "overrideArgKeys": override_keys,
+            }),
+        ));
     }
     invoke_apply(lua, &child, build_ctx(lua, Rc::clone(host))?)?;
     if !child.post_execution.is_empty() {

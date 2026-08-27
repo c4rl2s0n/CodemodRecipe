@@ -14,8 +14,8 @@ return {
 	},
 	apply = function(c)
 		c:create({
-			path = c:applyTemplate({ template = "lib/generated/{{ name | snake_case }}_casing.dart" }),
-			content = c:applyTemplate({ template = [[
+			path = c:template({ inline = "lib/generated/{{ name | snake_case }}_casing.dart" }),
+			content = c:template({ inline = [[
 // snake={{ name | snake_case }}
 // camel={{ name | camel_case }}
 // pascal={{ name | pascal_case }}

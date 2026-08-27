@@ -1,4 +1,9 @@
-import type { BootstrapPhase, RunnerTab, FilePreviewKind } from './constants';
+import type {
+  BootstrapPhase,
+  RunnerSessionPhase,
+  RunnerTab,
+  FilePreviewKind,
+} from './constants';
 
 /** JSON-native recipe argument value. */
 export type ArgValue =
@@ -73,6 +78,8 @@ export interface RecipeSchema {
   args: RecipeArg[];
   /** Explorer QuickPick opt-in entries (`kind` + optional path `if`). */
   explorerMenu?: ExplorerMenuEntry[] | null;
+  /** Shell commands after successful apply (Jinja-rendered). */
+  postExecution?: string[] | null;
   templatesLoaded?: boolean;
   previewTemplates?: { label: string; path: string; content?: string }[];
 }
@@ -158,10 +165,18 @@ export type ListResponse = RecipeCatalogResponse;
 /** @deprecated Use {@link RecipeCatalogResponse} */
 export type ReloadResponse = RecipeCatalogResponse;
 
+export interface TranscriptStats {
+  addedLines?: number;
+  removedLines?: number;
+}
+
 export interface TranscriptEvent {
   kind: string;
   detail: string;
   includedInPreview?: boolean;
+  stats?: TranscriptStats;
+  payload?: Record<string, unknown>;
+  expandable?: boolean;
 }
 
 export interface PreviewResponse {
@@ -172,6 +187,7 @@ export interface PreviewResponse {
   files?: FilePreview[];
   transcript?: TranscriptEvent[];
   applyMayDiverge?: boolean;
+  diagnostics?: RecipeDiagnostic[];
 }
 
 export interface DescribeResponse {
@@ -185,6 +201,8 @@ export interface ApplyResponse {
   error?: string;
   recipe?: string;
   applied?: string[];
+  transcript?: TranscriptEvent[];
+  diagnostics?: RecipeDiagnostic[];
 }
 
 export interface DiffResponse {
@@ -378,6 +396,15 @@ export interface ContextRecipeMatch {
   complete: boolean;
 }
 
+/** Host-owned session snapshot pushed with every `state` message. */
+export interface RunnerSessionSnapshot {
+  id: number;
+  phase: RunnerSessionPhase;
+  activeRequestId?: number;
+  previewStatus?: string;
+  lastPreviewArgsKey?: string;
+}
+
 export interface RecipeViewState {
   recipes: readonly RecipeSchema[];
   discoveryError?: string;
@@ -394,6 +421,8 @@ export interface RecipeViewState {
   contextMatches?: readonly ContextRecipeMatch[];
   /** recipeId → slot ids assigned in settings. */
   slotsByRecipe?: Record<string, string[]>;
+  /** Host session machine; authoritative for preview/apply/pick in-flight. */
+  session: RunnerSessionSnapshot;
 }
 
 export interface PersistedWebviewState {
@@ -405,5 +434,12 @@ export interface PersistedWebviewState {
   applyMayDiverge?: boolean;
   activeChangeIndex: number;
   lastPreviewArgsKey: string;
+  /** @deprecated Never restore as true across host restarts; kept for migration. */
   lastPreviewSuccess: boolean;
 }
+
+/** Discriminated result for ACK-required webview ↔ host RPCs. */
+export type RpcResult<T = void> =
+  | { status: 'ok'; value: T }
+  | { status: 'error'; message: string }
+  | { status: 'cancelled' };

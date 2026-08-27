@@ -15,5 +15,5 @@ pub use load::{
 };
 pub use model::{
     Arg, ArgFrom, ArgFromSpec, ExplorerMenuEntry, ExplorerMenuKind, MapAsset, QueryLibAsset,
-    Recipe, TranscriptEvent, TypeDef, VariablesAsset,
+    Recipe, TranscriptEvent, TranscriptStats, TypeDef, VariablesAsset,
 };

@@ -5,7 +5,7 @@ return {
 	},
 	apply = function(c)
 		c:delete({
-			path = c:applyTemplate({ template = "{{legacyPath}}" }),
+			path = c:template({ inline = "{{legacyPath}}" }),
 			ifMissing = "fail",
 		})
 	end,

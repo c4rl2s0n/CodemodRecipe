@@ -230,6 +230,11 @@ impl RecipeRegistry {
             } else {
                 Some(recipe.explorer_menu.iter().map(explorer_schema).collect())
             },
+            post_execution: if recipe.post_execution.is_empty() {
+                None
+            } else {
+                Some(recipe.post_execution.clone())
+            },
         }
     }
 }

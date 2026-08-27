@@ -541,6 +541,25 @@ code,
   margin-top: 12px;
 }
 
+.runtime-diagnostics {
+  margin: 8px 0 0;
+  padding-left: 1.2em;
+}
+
+.runtime-diagnostics .diag-hint {
+  opacity: 0.85;
+}
+
+.linkish {
+  background: none;
+  border: none;
+  color: var(--vscode-textLink-foreground);
+  cursor: pointer;
+  margin-left: 8px;
+  padding: 0;
+  text-decoration: underline;
+}
+
 .preview-status {
   color: var(--vscode-descriptionForeground);
   margin-top: 8px;

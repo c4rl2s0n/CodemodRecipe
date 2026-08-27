@@ -3,6 +3,11 @@ import { ref } from 'vue';
 import type { FilePreview, TranscriptEvent } from '../shared';
 import type { FileCardSelection } from '../lib/selection';
 import { buildSelection } from '../lib/selection';
+import {
+  eventIsExpandable,
+  formatExpandedDetail,
+  formatStatsBadges,
+} from '../lib/transcript';
 import FileCard from './FileCard.vue';
 import { useExtensionClient } from '../composables/useExtensionClient';
 
@@ -23,6 +28,7 @@ const emit = defineEmits<{
 }>();
 
 const view = ref<'files' | 'transcript'>('files');
+const expanded = ref<Record<number, boolean>>({});
 
 function updateFileSelection(index: number, selection: FileCardSelection) {
   const next = [...props.fileSelections];
@@ -51,6 +57,16 @@ function nextChange() {
 
 function applySelected() {
   client.apply(buildSelection(props.fileSelections));
+}
+
+function toggleExpand(index: number, event: TranscriptEvent) {
+  if (!eventIsExpandable(event)) {
+    return;
+  }
+  expanded.value = {
+    ...expanded.value,
+    [index]: !expanded.value[index],
+  };
 }
 </script>
 
@@ -100,12 +116,38 @@ function applySelected() {
       />
     </template>
     <ul v-else class="transcript">
-      <li v-for="(event, index) in transcript" :key="index">
-        <code>{{ event.kind }}</code>
-        {{ event.detail }}
-        <span v-if="event.includedInPreview === false" class="skipped">
-          (not in preview)
-        </span>
+      <li
+        v-for="(event, index) in transcript"
+        :key="index"
+        class="transcript-row"
+        :class="{
+          'transcript-log': event.kind === 'log',
+          expandable: eventIsExpandable(event),
+          expanded: expanded[index],
+        }"
+        @click="toggleExpand(index, event)"
+      >
+        <div class="transcript-summary">
+          <span v-if="eventIsExpandable(event)" class="chevron">{{
+            expanded[index] ? '▾' : '▸'
+          }}</span>
+          <code>{{ event.kind }}</code>
+          <span
+            v-for="badge in formatStatsBadges(event)"
+            :key="badge"
+            class="stat-badge"
+            :class="{ add: badge.startsWith('+'), remove: badge.startsWith('-') }"
+          >
+            {{ badge }}
+          </span>
+          <span class="detail">{{ event.detail }}</span>
+          <span v-if="event.includedInPreview === false" class="skipped">
+            (not in preview)
+          </span>
+        </div>
+        <pre v-if="expanded[index]" class="transcript-payload">{{
+          formatExpandedDetail(event)
+        }}</pre>
       </li>
       <li v-if="!transcript.length">No host API calls recorded.</li>
     </ul>
@@ -132,6 +174,62 @@ function applySelected() {
 .empty,
 .transcript {
   font-size: 12px;
+}
+.transcript {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+.transcript-row {
+  padding: 4px 0;
+  border-bottom: 1px solid var(--vscode-widget-border, transparent);
+}
+.transcript-row.expandable {
+  cursor: pointer;
+}
+.transcript-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 6px;
+}
+.chevron {
+  opacity: 0.7;
+  width: 0.8em;
+}
+.stat-badge {
+  font-family: var(--vscode-editor-font-family, monospace);
+  font-size: 11px;
+  padding: 0 4px;
+  border-radius: 3px;
+  background: var(--vscode-badge-background);
+  color: var(--vscode-badge-foreground);
+}
+.stat-badge.add {
+  color: var(--vscode-gitDecoration-addedResourceForeground, inherit);
+}
+.stat-badge.remove {
+  color: var(--vscode-gitDecoration-deletedResourceForeground, inherit);
+}
+.detail {
+  word-break: break-word;
+}
+.transcript-payload {
+  margin: 6px 0 0;
+  padding: 8px;
+  max-height: 240px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+  font-size: 11px;
+  background: var(--vscode-textCodeBlock-background, rgba(127, 127, 127, 0.12));
+  border-radius: 4px;
+}
+.transcript-log {
+  color: var(--vscode-descriptionForeground);
+}
+.transcript-log code {
+  color: var(--vscode-textLink-foreground);
 }
 .secondary.active {
   font-weight: 600;

@@ -66,7 +66,7 @@ After apply, re-run `preview_recipe` — expect `files: []` for idempotent recip
 
 ## Args
 
-Declare dynamics in `args`; reference as `c.args.name` or via `c:applyTemplate`.
+Declare dynamics in `args`; reference as `c.args.name` or via `c:template`.
 
 ## Multi-file recipes
 

@@ -16,7 +16,7 @@ Full host API: skill `codemod-luau-recipes` → `reference.md`.
    `@` in the spec: `@body` → `capture = "body"`).
 4. **For `c:insert` only** — set `anchor = "start"` or `"end"`.
 5. **Use `c.args`** — declare dynamics as recipe args; build query/text strings in Luau
-   or render with `c:applyTemplate`.
+   or render with `c:template`.
 6. **Validate → preview → apply** — then re-preview; an idempotent recipe
    returns no patches.
 
@@ -110,7 +110,7 @@ c:remove({ path = c.args.file, query = "...", capture = "member", includeLeading
 ```lua
 c:create({
   path = "lib/new_file.dart",
-  content = c:renderFileTemplate({ path = "templates/widget.dart.template" }),
+  content = c:template({ path = "templates/widget.dart.template" }),
   ifExists = "fail",   -- or "skip"
 })
 
@@ -135,13 +135,21 @@ c:run("dart.logging.add_log_line", { file = c.args.file, className = c.args.clas
 ### Templates
 
 ```lua
-local rendered = c:applyTemplate({
-  template = "class {{ name | pascal_case }} {}\n",
+local rendered = c:template({
+  inline = "class {{ name | pascal_case }} {}\n",
   env = { name = c.args.className },
 })
 ```
 
 See [recipe-templates.md](recipe-templates.md).
+
+### Logging
+
+```lua
+c:log("args", c.args)
+```
+
+Log lines appear in the Runner transcript. On preview/apply failure, the partial transcript (including logs) is still returned.
 
 ### Post-execution
 

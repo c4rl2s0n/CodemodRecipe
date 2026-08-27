@@ -8,8 +8,8 @@ return {
 	},
 	apply = function(c)
 		c:create({
-			path = c:applyTemplate({ template = "lib/generated/{{ featureDir | basename }}_path.dart" }),
-			content = c:applyTemplate({ template = [[
+			path = c:template({ inline = "lib/generated/{{ featureDir | basename }}_path.dart" }),
+			content = c:template({ inline = [[
 // parent={{ featureDir | parent }}
 // basename={{ featureDir | basename }}
 // parentBasename={{ featureDir | parent | basename }}

@@ -8,8 +8,8 @@ return {
 	},
 	apply = function(c)
 		c:create({
-			path = c:applyTemplate({ template = "lib/generated/{{ className | snake_case }}_widget.dart" }),
-			content = c:renderFileTemplate({ path = "templates/conditional_widget.dart.template" }),
+			path = c:template({ inline = "lib/generated/{{ className | snake_case }}_widget.dart" }),
+			content = c:template({ path = "templates/conditional_widget.dart.template" }),
 			ifExists = "fail",
 		})
 	end,

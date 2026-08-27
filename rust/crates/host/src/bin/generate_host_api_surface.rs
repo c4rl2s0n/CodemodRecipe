@@ -335,6 +335,9 @@ fn method_signature_luau(method: &HostMethodSurface) -> String {
         HostMethodSignature::Run => {
             "(self: CodemodContext, id: string, args: { [string]: any }?) -> ()".to_string()
         }
+        HostMethodSignature::Variadic => {
+            "(self: CodemodContext, ...any) -> ()".to_string()
+        }
     }
 }
 
@@ -499,9 +502,10 @@ fn method_keys_and_enums(
             }
             (keys, if enums.is_empty() { None } else { Some(enums) })
         }
-        HostMethodSignature::StringId | HostMethodSignature::Assert | HostMethodSignature::Run => {
-            (Vec::new(), None)
-        }
+        HostMethodSignature::StringId
+        | HostMethodSignature::Assert
+        | HostMethodSignature::Run
+        | HostMethodSignature::Variadic => (Vec::new(), None),
     }
 }
 

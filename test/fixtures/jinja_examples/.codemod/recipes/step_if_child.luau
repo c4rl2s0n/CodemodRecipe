@@ -7,8 +7,8 @@ return {
 	},
 	apply = function(c)
 		c:create({
-			path = c:applyTemplate({ template = "lib/generated/{{ className | snake_case }}_extra.dart" }),
-			content = c:applyTemplate({ template = "class {{ className | pascal_case }}Extra {}\n" }),
+			path = c:template({ inline = "lib/generated/{{ className | snake_case }}_extra.dart" }),
+			content = c:template({ inline = "class {{ className | pascal_case }}Extra {}\n" }),
 		})
 	end,
 }

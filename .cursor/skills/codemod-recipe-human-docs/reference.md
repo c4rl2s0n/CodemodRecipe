@@ -33,7 +33,7 @@ Update when you change something a new user would learn there, for example:
 
 - Setup steps for extension or MCP
 - Luau recipe module shape or host API surface
-- Template / MiniJinja usage via `c:applyTemplate`
+- Template / MiniJinja usage via `c:template`
 - Maps / variables / query lib discovery
 - Language defaults or how `language` on ops is introduced
 - Extension day-1 UX (Recipes / Runner / Files + Transcript / applyMayDiverge)

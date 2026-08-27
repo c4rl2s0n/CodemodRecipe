@@ -54,7 +54,7 @@ return {
 - **Preview** runs `apply()` against a WorkingTree; postExec is transcript-only.
 - **Apply** re-runs `apply()`, flushes to disk, then runs postExec / postExecution.
 - **Transcript** records every host call for review/debug.
-- **MiniJinja** remains for `c:applyTemplate` / `c:renderFileTemplate`.
+- **MiniJinja** remains for `c:template`.
 
 See skill `codemod-luau-recipes` and `docs/writing-recipes.md`.
 
@@ -88,5 +88,5 @@ preview skipped postExec, apply may diverge — surfaced as `applyMayDiverge`.
 ## Recipe runtime
 
 Recipes are sandboxed Luau modules (`rust/crates/lua`, `rust/crates/host/src/host_api/`).
-Mutations happen only in `apply(c)`. MiniJinja is used via `c:applyTemplate` /
-`c:renderFileTemplate`. Host API detail: skill `codemod-luau-recipes`.
+Mutations happen only in `apply(c)`. MiniJinja is used via `c:template` /
+`c:template`. Host API detail: skill `codemod-luau-recipes`.

@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Codemod Recipe
 
-This workspace uses **codemod-recipe** for deterministic AST edits via sandboxed Luau recipes (`.codemod/recipes/*.luau`) and the Rust MCP server (`codemod-mcp`). Supports Dart, Rust, Java, Kotlin, SQL/SQLite, and 300+ languages via lazy-loaded tree-sitter grammars. MiniJinja remains for `applyTemplate` / file templates only.
+This workspace uses **codemod-recipe** for deterministic AST edits via sandboxed Luau recipes (`.codemod/recipes/*.luau`) and the Rust MCP server (`codemod-mcp`). Supports Dart, Rust, Java, Kotlin, SQL/SQLite, and 300+ languages via lazy-loaded tree-sitter grammars. MiniJinja remains for `template` / file templates only.
 
 ## MCP tools
 
@@ -39,9 +39,9 @@ When you change product concepts that guide teaches (setup, Luau recipe surface,
 ## Recipe runtime
 
 - Recipes are Luau modules that `return { id, args, apply, ... }`. Mutations happen only in `apply(c)`.
-- Host API: `c:insert` / `c:replace` / `c:remove` / `c:query` / `c:read` / `c:create` / `c:delete` / `c:run` / `c:postExec` / `c:applyTemplate` / `c:map` / `c:var`.
+- Host API: `c:insert` / `c:replace` / `c:remove` / `c:query` / `c:read` / `c:create` / `c:delete` / `c:run` / `c:postExec` / `c:template` / `c:log` / `c:map` / `c:var`.
 - Preview and apply both execute `apply()`. Preview keeps file ops in a WorkingTree and skips postExec (listed in the transcript). Apply re-runs Lua and flushes before each postExec.
-- Tree-sitter queries stay `.scm` or inline strings.
+- Tree-sitter queries stay `.scm` or inline strings. Interactive DAP debugging of recipes is out of scope; use `c:log` and the failure transcript.
 
 ## Centralized path/resource resolution
 

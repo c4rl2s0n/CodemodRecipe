@@ -39,7 +39,7 @@ c:insert({
 | Filter | `#eq?`, `#match?`, `#any-of?` | Predicates inside the pattern |
 | Insert position | `anchor = "start"\|"end"` | Byte offset in capture span |
 | External query | `query = "path/to/file.scm"` | Recipe-local first, `.codemod/` fallback |
-| Args in queries | string concat or `c:applyTemplate` | Build query text in Luau |
+| Args in queries | string concat or `c:template` | Build query text in Luau |
 | Idempotency guards | `c:queryExists`, `c:queryCount` | Luau control flow before mutating |
 
 ## Insert `anchor` (codemod)

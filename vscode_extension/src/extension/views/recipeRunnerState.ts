@@ -1,4 +1,5 @@
 import {
+  RUNNER_SESSION_PHASE,
   RUNNER_TABS,
   type ArgValues,
   type ContextRecipeMatch,
@@ -6,6 +7,7 @@ import {
   type RecipeDiagnostic,
   type RecipeSchema,
   type RecipeViewState,
+  type RunnerSessionSnapshot,
   type RunnerTab,
 } from '../../shared';
 
@@ -22,9 +24,13 @@ export class RecipeRunnerState {
   lastArgs: ArgValues = {};
   lastPreviewToken: string | undefined;
   lastFiles: FilePreview[] = [];
+  lastPreviewArgsKey: string | undefined;
   activeTab: RunnerTab = RUNNER_TABS.recipes;
   contextMatches: readonly ContextRecipeMatch[] = [];
   slotsByRecipe: Record<string, string[]> = {};
+  sessionId = 1;
+  sessionPhase: RunnerSessionSnapshot['phase'] = RUNNER_SESSION_PHASE.idle;
+  activeRequestId: number | undefined;
 
   setRecipesRefreshing(inFlight: boolean): void {
     this.recipesRefreshing = inFlight;
@@ -56,6 +62,12 @@ export class RecipeRunnerState {
     this.recipes = recipes;
     this.discoveryError = discoveryError;
     this.diagnostics = diagnostics;
+    this.lastFiles = [];
+    this.lastPreviewToken = undefined;
+    this.lastPreviewArgsKey = undefined;
+    if (this.sessionPhase === RUNNER_SESSION_PHASE.reviewing) {
+      this.sessionPhase = RUNNER_SESSION_PHASE.idle;
+    }
     if (!this.currentRecipe) {
       return;
     }
@@ -63,7 +75,6 @@ export class RecipeRunnerState {
     if (fresh) {
       this.currentRecipe = fresh;
     }
-    this.lastFiles = [];
   }
 
   setBootstrap(state: {
@@ -82,7 +93,44 @@ export class RecipeRunnerState {
     this.lastArgs = {};
     this.lastPreviewToken = undefined;
     this.lastFiles = [];
+    this.lastPreviewArgsKey = undefined;
     this.activeTab = RUNNER_TABS.runner;
+    this.sessionPhase = RUNNER_SESSION_PHASE.idle;
+    this.activeRequestId = undefined;
+  }
+
+  /** Bump session generation (webview ready / recreate). Clears in-flight ops. */
+  beginSession(): number {
+    this.sessionId += 1;
+    this.sessionPhase = RUNNER_SESSION_PHASE.idle;
+    this.activeRequestId = undefined;
+    return this.sessionId;
+  }
+
+  setSessionPhase(
+    phase: RunnerSessionSnapshot['phase'],
+    requestId?: number
+  ): void {
+    this.sessionPhase = phase;
+    this.activeRequestId = requestId;
+  }
+
+  sessionSnapshot(): RunnerSessionSnapshot {
+    const previewStatus =
+      this.sessionPhase === RUNNER_SESSION_PHASE.previewing
+        ? 'Previewing…'
+        : this.sessionPhase === RUNNER_SESSION_PHASE.pickingPath
+          ? 'Selecting path…'
+          : this.sessionPhase === RUNNER_SESSION_PHASE.applying
+            ? 'Applying…'
+            : undefined;
+    return {
+      id: this.sessionId,
+      phase: this.sessionPhase,
+      activeRequestId: this.activeRequestId,
+      previewStatus,
+      lastPreviewArgsKey: this.lastPreviewArgsKey,
+    };
   }
 
   toWebviewState(): RecipeViewState {
@@ -99,6 +147,7 @@ export class RecipeRunnerState {
       activeTab: this.activeTab,
       contextMatches: this.contextMatches,
       slotsByRecipe: this.slotsByRecipe,
+      session: this.sessionSnapshot(),
     };
   }
 }

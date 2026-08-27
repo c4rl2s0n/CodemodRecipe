@@ -40,7 +40,7 @@ The server speaks MCP over stdio. It appears idle when healthy.
   maps/       # Luau map modules (id + map table)
   variables/  # Luau variable modules (id + values table)
   queries/    # Luau query libraries (id + queries table)
-  templates/  # optional (renderFileTemplate)
+  templates/  # optional (c:template path)
 ```
 
 Discovery scans `.codemod/` for Luau modules with the expected return shapes.

@@ -131,15 +131,23 @@ Child recipe `postExecution` runs inline; parent args are restored afterward.
 ### Templates (MiniJinja)
 
 ```lua
-local text = c:applyTemplate({
-  template = "class {{ className | pascal_case }} {}\n",
+local text = c:template({
+  inline = "class {{ className | pascal_case }} {}\n",
   env = { className = c.args.className },  -- optional extra vars
 })
 
-local fileBody = c:renderFileTemplate({
+local fileBody = c:template({
   path = "templates/widget.dart.template",
 })
 ```
+
+### Logging
+
+```lua
+c:log("exports", c.args.exports)
+```
+
+Appends a `log` event to the recipe transcript (visible in preview even when later ops fail).
 
 MiniJinja has access to recipe args plus registered maps/variables (`c:map`, `c:var`).
 See [docs/recipe-templates.md](../../../../docs/recipe-templates.md).
@@ -228,7 +236,7 @@ checks required fields, and verifies `apply` is present.
 
 ## Control flow
 
-Use Luau `if` / `for` inside `apply`. MiniJinja is only for `c:applyTemplate` and `c:renderFileTemplate`.
+Use Luau `if` / `for` inside `apply`. MiniJinja is only for `c:template`.
 
 ## Maintainer notes
 

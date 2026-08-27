@@ -9,7 +9,7 @@ description: Luau recipe authoring for codemod-recipe — recipe module shape, h
 
 - Writing or reviewing Luau recipe modules anywhere under `.codemod/` (`.codemod/recipes/` is a convention)
 - Crafting `inlineRecipe` Luau source strings for MCP preview/apply
-- Understanding the host context API (`c:insert`, `c:run`, `c:applyTemplate`, …)
+- Understanding the host context API (`c:insert`, `c:run`, `c:template`, …)
 
 ## When not to use
 
@@ -58,7 +58,7 @@ return {
 | `c:create` / `c:delete` | File create/delete |
 | `c:run(id, args?)` | Invoke another registered recipe |
 | `c:postExec({ command = "..." })` | Shell command (skipped on preview) |
-| `c:applyTemplate` / `c:renderFileTemplate` | MiniJinja rendering |
+| `c:template` | MiniJinja rendering |
 | `c:map(id)` / `c:var(id)` / `c:queryLib(id)` | Lookup registered assets |
 
 Set `language = "dart"` (etc.) on edit ops when the path is ambiguous.

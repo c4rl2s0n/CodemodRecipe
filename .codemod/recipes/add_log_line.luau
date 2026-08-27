@@ -9,7 +9,7 @@ return {
 	},
 	postExecution = {},
 	apply = function(c)
-		local query = c:applyTemplate({ template = [[
+		local query = c:template({ inline = [[
 (class_definition
   name: (identifier) @className
   body: (class_body

@@ -6,17 +6,51 @@ use codemod_recipe_engine::ops::{
     EditOp, InsertAnchor, InsertOp, QuerySpec as EngineQuerySpec, RemoveOp, ReplaceOp,
 };
 use codemod_recipe_lua::host_api::specs::{
-    Anchor, ApplyTemplateSpec, CreateSpec, DeleteSpec, IfExists as LuaIfExists,
-    IfMissing as LuaIfMissing, InsertSpec, PostExecSpec, QuerySpec as RawQuerySpec, QueryTableSpec,
-    ReadSpec, RemoveSpec, RenderFileTemplateSpec, ReplaceSpec,
+    Anchor, CreateSpec, DeleteSpec, IfExists as LuaIfExists, IfMissing as LuaIfMissing, InsertSpec,
+    PostExecSpec, QuerySpec as RawQuerySpec, QueryTableSpec, ReadSpec, RemoveSpec, ReplaceSpec,
+    TemplateSpec,
 };
-use codemod_recipe_lua::model::TranscriptEvent;
+use codemod_recipe_lua::model::{TranscriptEvent, TranscriptStats};
 use codemod_recipe_lua_macros::host_method;
 use mlua::{Lua, Value};
+use serde_json::json;
 
 use crate::engine::post_execution::run_post_execution_command;
 use crate::host_api::context::{bump_ops, SharedHost};
 use crate::template::{render_template, render_template_file};
+
+const TRANSCRIPT_TEXT_LIMIT: usize = 4096;
+
+fn count_lines(s: &str) -> i64 {
+    if s.is_empty() {
+        0
+    } else {
+        s.lines().count() as i64
+    }
+}
+
+fn trunc_text(s: &str) -> String {
+    if s.len() <= TRANSCRIPT_TEXT_LIMIT {
+        s.to_string()
+    } else {
+        let mut end = TRANSCRIPT_TEXT_LIMIT;
+        while end > 0 && !s.is_char_boundary(end) {
+            end -= 1;
+        }
+        format!("{}…", &s[..end])
+    }
+}
+
+fn query_label(query: &RawQuerySpec) -> Option<String> {
+    let steps: Vec<&str> = query.iter().collect();
+    if steps.is_empty() {
+        None
+    } else if steps.len() == 1 {
+        Some(trunc_text(steps[0]))
+    } else {
+        Some(format!("{} steps", steps.len()))
+    }
+}
 
 #[host_method(
     name = "insert",
@@ -28,10 +62,17 @@ pub(crate) fn do_insert(host: &SharedHost, _lua: &Lua, spec: InsertSpec) -> Resu
     let mut inner = host.lock().map_err(|e| e.to_string())?;
     bump_ops(&mut inner)?;
     let query = query_spec_to_engine(&spec.query, &inner.queries)?;
+    let query_detail = query_label(&spec.query);
     let anchor = match spec.anchor.unwrap_or_default() {
         Anchor::Start => InsertAnchor::Start,
         Anchor::End => InsertAnchor::End,
     };
+    let anchor_label = match anchor {
+        InsertAnchor::Start => "start",
+        InsertAnchor::End => "end",
+    };
+    let capture = spec.capture.clone();
+    let text = spec.text.clone();
     let op = EditOp::Insert(InsertOp {
         query,
         capture: spec.capture,
@@ -41,11 +82,23 @@ pub(crate) fn do_insert(host: &SharedHost, _lua: &Lua, spec: InsertSpec) -> Resu
     let path = spec.path;
     let next = apply_source_op(&mut inner, &path, spec.language.as_deref(), &op)?;
     inner.apply_edit(&path, |_| Ok(next))?;
-    inner.transcript.push(TranscriptEvent {
-        kind: "insert".to_string(),
-        detail: path,
-        included_in_preview: true,
+    let mut payload = json!({
+        "capture": capture,
+        "anchor": anchor_label,
+        "text": trunc_text(&text),
     });
+    if let Some(q) = query_detail {
+        payload["query"] = json!(q);
+    }
+    inner.transcript.push(TranscriptEvent::edit(
+        "insert",
+        path,
+        TranscriptStats {
+            added_lines: Some(count_lines(&text)),
+            removed_lines: None,
+        },
+        payload,
+    ));
     Ok(Value::Nil)
 }
 
@@ -63,6 +116,18 @@ pub(crate) fn do_replace(
     let mut inner = host.lock().map_err(|e| e.to_string())?;
     bump_ops(&mut inner)?;
     let query = query_spec_to_engine(&spec.query, &inner.queries)?;
+    let query_detail = query_label(&spec.query);
+    let capture = spec.capture.clone();
+    let text = spec.text.clone();
+    let removed = capture_texts(
+        &mut inner,
+        &spec.path,
+        spec.language.as_deref(),
+        &query,
+        &capture,
+    )?;
+    let removed_joined = removed.join("\n---\n");
+    let match_count = removed.len() as i64;
     let op = EditOp::Replace(ReplaceOp {
         query,
         capture: spec.capture,
@@ -72,11 +137,23 @@ pub(crate) fn do_replace(
     let path = spec.path;
     let next = apply_source_op(&mut inner, &path, spec.language.as_deref(), &op)?;
     inner.apply_edit(&path, |_| Ok(next))?;
-    inner.transcript.push(TranscriptEvent {
-        kind: "replace".to_string(),
-        detail: path,
-        included_in_preview: true,
+    let mut payload = json!({
+        "capture": capture,
+        "text": trunc_text(&text),
+        "removedText": trunc_text(&removed_joined),
     });
+    if let Some(q) = query_detail {
+        payload["query"] = json!(q);
+    }
+    inner.transcript.push(TranscriptEvent::edit(
+        "replace",
+        path,
+        TranscriptStats {
+            added_lines: Some(count_lines(&text) * match_count),
+            removed_lines: Some(removed.iter().map(|s| count_lines(s)).sum()),
+        },
+        payload,
+    ));
     Ok(Value::Nil)
 }
 
@@ -90,6 +167,16 @@ pub(crate) fn do_remove(host: &SharedHost, _lua: &Lua, spec: RemoveSpec) -> Resu
     let mut inner = host.lock().map_err(|e| e.to_string())?;
     bump_ops(&mut inner)?;
     let query = query_spec_to_engine(&spec.query, &inner.queries)?;
+    let query_detail = query_label(&spec.query);
+    let capture = spec.capture.clone();
+    let removed = capture_texts(
+        &mut inner,
+        &spec.path,
+        spec.language.as_deref(),
+        &query,
+        &capture,
+    )?;
+    let removed_joined = removed.join("\n---\n");
     let op = EditOp::Remove(RemoveOp {
         query,
         capture: spec.capture,
@@ -98,11 +185,22 @@ pub(crate) fn do_remove(host: &SharedHost, _lua: &Lua, spec: RemoveSpec) -> Resu
     let path = spec.path;
     let next = apply_source_op(&mut inner, &path, spec.language.as_deref(), &op)?;
     inner.apply_edit(&path, |_| Ok(next))?;
-    inner.transcript.push(TranscriptEvent {
-        kind: "remove".to_string(),
-        detail: path,
-        included_in_preview: true,
+    let mut payload = json!({
+        "capture": capture,
+        "removedText": trunc_text(&removed_joined),
     });
+    if let Some(q) = query_detail {
+        payload["query"] = json!(q);
+    }
+    inner.transcript.push(TranscriptEvent::edit(
+        "remove",
+        path,
+        TranscriptStats {
+            added_lines: None,
+            removed_lines: Some(removed.iter().map(|s| count_lines(s)).sum()),
+        },
+        payload,
+    ));
     Ok(Value::Nil)
 }
 
@@ -121,12 +219,17 @@ pub(crate) fn do_create(host: &SharedHost, _lua: &Lua, spec: CreateSpec) -> Resu
         LuaIfExists::Skip => IfExists::Skip,
     };
     let path = spec.path;
-    inner.create(&path, content, if_exists)?;
-    inner.transcript.push(TranscriptEvent {
-        kind: "create".to_string(),
-        detail: path,
-        included_in_preview: true,
+    let payload = json!({
+        "content": trunc_text(&content),
     });
+    let stats = TranscriptStats {
+        added_lines: Some(count_lines(&content)),
+        removed_lines: None,
+    };
+    inner.create(&path, content, if_exists)?;
+    inner
+        .transcript
+        .push(TranscriptEvent::edit("create", path, stats, payload));
     Ok(Value::Nil)
 }
 
@@ -145,11 +248,7 @@ pub(crate) fn do_delete(host: &SharedHost, _lua: &Lua, spec: DeleteSpec) -> Resu
     };
     let path = spec.path;
     inner.delete(&path, if_missing)?;
-    inner.transcript.push(TranscriptEvent {
-        kind: "delete".to_string(),
-        detail: path,
-        included_in_preview: true,
-    });
+    inner.transcript.push(TranscriptEvent::simple("delete", path));
     Ok(Value::Nil)
 }
 
@@ -163,11 +262,16 @@ pub(crate) fn do_delete(host: &SharedHost, _lua: &Lua, spec: DeleteSpec) -> Resu
 pub(crate) fn do_read(host: &SharedHost, lua: &Lua, spec: ReadSpec) -> Result<Value, String> {
     let mut inner = host.lock().map_err(|e| e.to_string())?;
     let text = inner.current_content(&spec.path)?;
-    inner.transcript.push(TranscriptEvent {
-        kind: "read".to_string(),
-        detail: spec.path,
-        included_in_preview: true,
-    });
+    let chars = text.chars().count();
+    let bytes = text.len();
+    inner.transcript.push(TranscriptEvent::with_payload(
+        "read",
+        spec.path.clone(),
+        json!({
+            "chars": chars,
+            "bytes": bytes,
+        }),
+    ));
     lua.create_string(&text)
         .map(Value::String)
         .map_err(|e| e.to_string())
@@ -218,11 +322,17 @@ pub(crate) fn do_query(
             .map_err(|e| e.to_string())?;
         out.set(i + 1, row).map_err(|e| e.to_string())?;
     }
-    inner.transcript.push(TranscriptEvent {
-        kind: "query".to_string(),
-        detail: format!("{}#{} n={}", spec.path, capture, spans.len()),
-        included_in_preview: true,
-    });
+    let first_snippet = spans.first().map(|span| trunc_text(&source[span.start..span.end]));
+    inner.transcript.push(TranscriptEvent::with_payload(
+        "query",
+        format!("{}#{} n={}", spec.path, capture, spans.len()),
+        json!({
+            "path": spec.path,
+            "capture": capture,
+            "matchCount": spans.len(),
+            "firstMatch": first_snippet,
+        }),
+    ));
     Ok(Value::Table(out))
 }
 
@@ -313,50 +423,141 @@ pub(crate) fn do_post_exec(
 }
 
 #[host_method(
-    name = "applyTemplate",
-    description = "Render a MiniJinja string template.",
-    spec = ApplyTemplateSpec,
+    name = "template",
+    description = "Render MiniJinja from `inline` or file `path` (exactly one required).",
+    spec = TemplateSpec,
     return_type = String,
 )]
-pub(crate) fn do_apply_template(
-    host: &SharedHost,
-    lua: &Lua,
-    spec: ApplyTemplateSpec,
-) -> Result<Value, String> {
-    let inner = host.lock().map_err(|e| e.to_string())?;
+pub(crate) fn do_template(host: &SharedHost, lua: &Lua, spec: TemplateSpec) -> Result<Value, String> {
+    let has_path = spec.path.as_ref().is_some_and(|p| !p.is_empty());
+    let has_inline = spec.inline.as_ref().is_some_and(|s| !s.is_empty());
+    match (has_path, has_inline) {
+        (true, false) => {}
+        (false, true) => {}
+        (true, true) => {
+            return Err("template requires exactly one of path or inline".to_string());
+        }
+        (false, false) => {
+            return Err("template requires path or inline".to_string());
+        }
+    }
+
+    let mut inner = host.lock().map_err(|e| e.to_string())?;
     let mut args = inner.args.clone();
     args.extend(spec.env.map(|e| e.into_inner()).unwrap_or_default());
-    let rendered = render_template(&spec.template, &args, &inner.maps, &inner.vars)?;
+    let path_label = spec.path.clone();
+    let rendered = if has_path {
+        render_template_file(
+            spec.path.as_deref().unwrap(),
+            &args,
+            &inner.maps,
+            &inner.vars,
+            &inner.codemod_root,
+            inner.recipe_path.as_deref(),
+        )?
+    } else {
+        render_template(
+            spec.inline.as_deref().unwrap(),
+            &args,
+            &inner.maps,
+            &inner.vars,
+        )?
+    };
+    let detail = if has_path {
+        format!("path={}", path_label.as_deref().unwrap_or(""))
+    } else {
+        "inline".to_string()
+    };
+    inner.transcript.push(TranscriptEvent::with_payload(
+        "template",
+        detail,
+        json!({
+            "source": if has_path { "path" } else { "inline" },
+            "path": path_label,
+            "rendered": trunc_text(&rendered),
+        }),
+    ));
     lua.create_string(&rendered)
         .map(Value::String)
         .map_err(|e| e.to_string())
 }
 
 #[host_method(
-    name = "renderFileTemplate",
-    description = "Render a MiniJinja template file.",
-    spec = RenderFileTemplateSpec,
-    return_type = String,
+    name = "log",
+    description = "Append values to the recipe transcript (strings, tables, numbers).",
+    variadic,
+    recursive = true,
+    return_type = Nil,
 )]
-pub(crate) fn do_render_file(
+pub(crate) fn do_log(
     host: &SharedHost,
-    lua: &Lua,
-    spec: RenderFileTemplateSpec,
+    _lua: &Lua,
+    args: mlua::Variadic<Value>,
 ) -> Result<Value, String> {
-    let inner = host.lock().map_err(|e| e.to_string())?;
-    let mut args = inner.args.clone();
-    args.extend(spec.env.map(|e| e.into_inner()).unwrap_or_default());
-    let rendered = render_template_file(
-        &spec.path,
-        &args,
-        &inner.maps,
-        &inner.vars,
-        &inner.codemod_root,
-        inner.recipe_path.as_deref(),
-    )?;
-    lua.create_string(&rendered)
-        .map(Value::String)
-        .map_err(|e| e.to_string())
+    let (detail, json_parts) = format_log_args_rich(&args)?;
+    let mut inner = host.lock().map_err(|e| e.to_string())?;
+    bump_ops(&mut inner)?;
+    let expandable = !json_parts.is_empty() || detail.len() > 120;
+    let payload = if json_parts.len() == 1 {
+        Some(json!({ "json": json_parts[0] }))
+    } else if json_parts.len() > 1 {
+        Some(json!({ "json": json_parts }))
+    } else if expandable {
+        Some(json!({ "text": trunc_text(&detail) }))
+    } else {
+        None
+    };
+    inner.transcript.push(TranscriptEvent {
+        kind: "log".to_string(),
+        detail,
+        included_in_preview: true,
+        stats: None,
+        payload,
+        expandable,
+    });
+    Ok(Value::Nil)
+}
+
+fn format_log_args_rich(
+    args: &mlua::Variadic<Value>,
+) -> Result<(String, Vec<serde_json::Value>), String> {
+    if args.is_empty() {
+        return Ok((String::new(), Vec::new()));
+    }
+    let mut parts = Vec::with_capacity(args.len());
+    let mut json_parts = Vec::new();
+    for value in args.iter() {
+        parts.push(format_log_value(value)?);
+        if matches!(value, Value::Table(_)) {
+            if let Ok(json) = codemod_recipe_lua::json_lua::lua_to_json(value) {
+                json_parts.push(json);
+            }
+        }
+    }
+    Ok((parts.join(" "), json_parts))
+}
+
+fn format_log_value(value: &Value) -> Result<String, String> {
+    use codemod_recipe_lua::json_lua::lua_to_json;
+
+    match value {
+        Value::String(s) => Ok(s.to_str().map_err(|e| e.to_string())?.to_string()),
+        Value::Nil => Ok("null".to_string()),
+        Value::Boolean(b) => Ok(b.to_string()),
+        Value::Integer(i) => Ok(i.to_string()),
+        Value::Number(n) => Ok(n.to_string()),
+        Value::Table(_) => match lua_to_json(value) {
+            Ok(json) => Ok(json.to_string()),
+            Err(_) => Ok("<table>".to_string()),
+        },
+        Value::Function(_) => Ok("<function>".to_string()),
+        Value::Thread(_) => Ok("<thread>".to_string()),
+        Value::UserData(_) | Value::LightUserData(_) => Ok("<userdata>".to_string()),
+        other => match lua_to_json(other) {
+            Ok(json) => Ok(json.to_string()),
+            Err(_) => Ok(format!("<{}>", other.type_name())),
+        },
+    }
 }
 
 #[host_method(
@@ -437,6 +638,9 @@ pub(crate) fn post_exec_cmd(host: &SharedHost, cmd: &str) -> Result<(), String> 
                 kind: "postExec".to_string(),
                 detail: cmd.to_string(),
                 included_in_preview: false,
+                stats: None,
+                payload: Some(json!({ "executed": false })),
+                expandable: true,
             });
             Ok(())
         }
@@ -465,6 +669,9 @@ pub(crate) fn post_exec_cmd(host: &SharedHost, cmd: &str) -> Result<(), String> 
                 kind: "postExec".to_string(),
                 detail: cmd.to_string(),
                 included_in_preview: false,
+                stats: None,
+                payload: Some(json!({ "executed": true })),
+                expandable: true,
             });
             Ok(())
         }
@@ -510,6 +717,37 @@ fn apply_source_op(
     engine
         .apply_edit_ops_sequential(&qctx, std::slice::from_ref(op), &source)
         .map_err(|e| e.to_string())
+}
+
+fn capture_texts(
+    inner: &mut crate::host_api::context::HostInner,
+    path: &str,
+    language: Option<&str>,
+    query: &EngineQuerySpec,
+    capture: &str,
+) -> Result<Vec<String>, String> {
+    let lang_id = inner
+        .language_registry
+        .resolve_language_id(language, path)
+        .map_err(|e| e.to_string())?;
+    let recipe_path = inner.recipe_path.clone();
+    let codemod = inner.codemod_root.clone();
+    let source = inner.current_content(path)?;
+    let qctx = QueryContext {
+        recipe_file: recipe_path.as_deref(),
+        codemod_root: &codemod,
+    };
+    let engine = inner
+        .language_registry
+        .get(&lang_id)
+        .map_err(|e| e.to_string())?;
+    let spans = engine
+        .query_capture_spans(&qctx, &source, query, capture)
+        .map_err(|e| e.to_string())?;
+    Ok(spans
+        .into_iter()
+        .map(|span| source[span.start..span.end].to_string())
+        .collect())
 }
 
 fn query_count(host: &SharedHost, spec: &QueryTableSpec) -> Result<usize, String> {

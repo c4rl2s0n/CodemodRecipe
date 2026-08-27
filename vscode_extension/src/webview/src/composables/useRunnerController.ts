@@ -9,6 +9,7 @@ import {
 import { defaultFileSelections, type FileCardSelection } from '../lib/selection';
 import {
   EXTENSION_TO_WEBVIEW,
+  RUNNER_SESSION_PHASE,
   type ArgValues,
   type ExtensionToWebviewMessage,
   type FilePreview,
@@ -37,16 +38,20 @@ export function useRunnerController(params: {
   const activeChangeIndex = ref(0);
   const showReview = ref(false);
   const errorMessage = ref('');
+  const runtimeDiagnostics = ref<import('../shared').RecipeDiagnostic[]>([]);
   const previewStatus = ref('');
   const previewStatusKind = ref<'warn' | 'ok' | ''>('');
+  /** Local debounce/queue only — host session.phase is authoritative for ops. */
   const previewInFlight = ref(false);
   const lastPreviewSuccess = ref(false);
   const lastPreviewArgsKey = ref('');
   const latestRequestId = ref(0);
+  const inFlightRequestId = ref<number | undefined>(undefined);
   const latestHandledRequestId = ref(0);
-  const pendingAutoPreview = ref(false);
   const wasRecipesRefreshing = ref(false);
   const lastSyncedRecipeId = ref<string | undefined>(undefined);
+  const lastHostSessionId = ref<number | undefined>(undefined);
+  const tabOwnedLocally = ref(false);
   let previewDebounce: ReturnType<typeof setTimeout> | undefined;
 
   const canApply = computed(() => {
@@ -72,7 +77,8 @@ export function useRunnerController(params: {
       applyMayDiverge: applyMayDiverge.value,
       activeChangeIndex: activeChangeIndex.value,
       lastPreviewArgsKey: lastPreviewArgsKey.value,
-      lastPreviewSuccess: lastPreviewSuccess.value,
+      // Never persist Apply-ready across host restarts (token lives on host only).
+      lastPreviewSuccess: false,
     };
     setPersistedState(persisted);
   }
@@ -83,6 +89,7 @@ export function useRunnerController(params: {
       return;
     }
     params.setActiveTab(persisted.activeTab);
+    tabOwnedLocally.value = true;
     argValues.value = { ...persisted.argValues };
     files.value = persisted.files;
     transcript.value = persisted.transcript ?? [];
@@ -90,10 +97,10 @@ export function useRunnerController(params: {
     fileSelections.value = defaultFileSelections(persisted.files);
     activeChangeIndex.value = persisted.activeChangeIndex;
     lastPreviewArgsKey.value = persisted.lastPreviewArgsKey;
-    lastPreviewSuccess.value = persisted.lastPreviewSuccess;
+    // Host token is gone after reload — require a fresh preview before Apply.
+    lastPreviewSuccess.value = false;
     showReview.value =
-      persisted.lastPreviewSuccess &&
-      (persisted.files.length > 0 || (persisted.transcript ?? []).length > 0);
+      persisted.files.length > 0 || (persisted.transcript ?? []).length > 0;
   }
 
   function setPreviewStatus(text: string, kind: 'warn' | 'ok' | '' = '') {
@@ -114,9 +121,11 @@ export function useRunnerController(params: {
     const missing = collectMissingRequiredArgs(params.recipe.value, argValues.value);
     if (missing.length > 0) {
       setPreviewStatus('Missing required: ' + missing.join(', '), 'warn');
-    } else {
-      setPreviewStatus('Preview out of date');
+      persistUiState();
+      // Do not hit the host until required args are filled.
+      return;
     }
+    setPreviewStatus('Preview out of date');
     persistUiState();
     triggerPreview(immediate);
   }
@@ -124,13 +133,15 @@ export function useRunnerController(params: {
   function triggerPreview(immediate: boolean) {
     if (!params.recipe.value) return;
     clearTimeout(previewDebounce);
-    if (previewInFlight.value) {
-      pendingAutoPreview.value = true;
-      return;
-    }
+    // Always send after debounce; host supersedes any in-flight preview (kill+rerun).
     const run = () => {
-      const requestId = ++latestRequestId.value;
+      const requestId = params.client.nextRequestId
+        ? params.client.nextRequestId()
+        : ++latestRequestId.value;
+      latestRequestId.value = requestId;
+      inFlightRequestId.value = requestId;
       clearError();
+      runtimeDiagnostics.value = [];
       previewInFlight.value = true;
       setPreviewStatus('Previewing…');
       params.client.requestPreview(
@@ -146,6 +157,10 @@ export function useRunnerController(params: {
   }
 
   function clearPreviewState(): void {
+    clearTimeout(previewDebounce);
+    previewDebounce = undefined;
+    previewInFlight.value = false;
+    inFlightRequestId.value = undefined;
     files.value = [];
     transcript.value = [];
     applyMayDiverge.value = false;
@@ -154,38 +169,114 @@ export function useRunnerController(params: {
     activeChangeIndex.value = 0;
     lastPreviewSuccess.value = false;
     lastPreviewArgsKey.value = '';
+    runtimeDiagnostics.value = [];
     clearError();
     setPreviewStatus('');
+  }
+
+  function isStaleRequest(requestId: number | undefined): boolean {
+    return (
+      typeof requestId === 'number' && requestId < latestHandledRequestId.value
+    );
+  }
+
+  function markHandled(requestId: number | undefined): void {
+    if (typeof requestId === 'number') {
+      latestHandledRequestId.value = Math.max(
+        latestHandledRequestId.value,
+        requestId
+      );
+    }
+  }
+
+  function clearInFlightIfCurrent(requestId: number | undefined): void {
+    if (
+      typeof requestId === 'number' &&
+      inFlightRequestId.value !== undefined &&
+      requestId !== inFlightRequestId.value &&
+      requestId < latestRequestId.value
+    ) {
+      // Completion for an older flight while a newer one is authoritative.
+      return;
+    }
+    if (
+      typeof requestId === 'number' &&
+      inFlightRequestId.value !== undefined &&
+      requestId === inFlightRequestId.value
+    ) {
+      previewInFlight.value = false;
+      inFlightRequestId.value = undefined;
+      return;
+    }
+    // previewState / error without matching id still clears local wait if we are waiting.
+    if (previewInFlight.value && typeof requestId === 'number') {
+      if (requestId === latestRequestId.value) {
+        previewInFlight.value = false;
+        inFlightRequestId.value = undefined;
+      }
+    }
   }
 
   function applyHostState(state: RecipeViewState): void {
     const recipeId = state.recipe?.id;
     const recipeChanged = recipeId !== lastSyncedRecipeId.value;
     const refreshCompleted = wasRecipesRefreshing.value && !state.recipesRefreshing;
-    params.setActiveTab(state.activeTab);
+    const sessionChanged =
+      lastHostSessionId.value !== undefined &&
+      state.session?.id !== lastHostSessionId.value;
+
+    // Only apply host tab on recipe select / first sync — user owns tab otherwise.
+    if (recipeChanged || !tabOwnedLocally.value) {
+      params.setActiveTab(state.activeTab);
+      tabOwnedLocally.value = true;
+    }
+
+    if (sessionChanged) {
+      clearPreviewState();
+    }
 
     if (recipeChanged) {
       argValues.value = initArgValues(state.recipe, state.initialArgs);
       clearPreviewState();
       restorePersistedForRecipe(state.recipe?.id);
-    } else if (state.recipe) {
-      argValues.value = initArgValues(state.recipe, {
-        ...argValues.value,
-        ...state.initialArgs,
-      });
     }
+    // Same recipe: do not rewrite argValues from initialArgs (context postState).
 
     if (refreshCompleted && state.recipe) {
       argValues.value = mergeArgValuesOnRefresh(state.recipe, argValues.value);
       clearPreviewState();
     }
 
+    if (state.session?.phase === RUNNER_SESSION_PHASE.previewing) {
+      previewInFlight.value = true;
+      if (state.session.previewStatus) {
+        setPreviewStatus(state.session.previewStatus);
+      }
+    } else if (
+      state.session?.phase === RUNNER_SESSION_PHASE.idle ||
+      state.session?.phase === RUNNER_SESSION_PHASE.reviewing
+    ) {
+      // Host not previewing — if we were waiting with no matching request, recover.
+      if (previewInFlight.value && inFlightRequestId.value === undefined) {
+        previewInFlight.value = false;
+      }
+    }
+
+    if (
+      state.session?.phase === RUNNER_SESSION_PHASE.reviewing &&
+      state.session.lastPreviewArgsKey &&
+      lastPreviewSuccess.value
+    ) {
+      lastPreviewArgsKey.value = state.session.lastPreviewArgsKey;
+    }
+
     persistUiState();
-    if (state.recipe && (recipeChanged || refreshCompleted)) {
+    if (state.recipe && (recipeChanged || refreshCompleted || sessionChanged)) {
       onArgsChanged(false);
     }
 
     lastSyncedRecipeId.value = recipeId;
+    lastHostSessionId.value = state.session?.id;
     wasRecipesRefreshing.value = state.recipesRefreshing;
   }
 
@@ -195,15 +286,13 @@ export function useRunnerController(params: {
       { type: typeof EXTENSION_TO_WEBVIEW.previewResult }
     >
   ) {
-    if (
-      typeof msg.requestId === 'number' &&
-      msg.requestId < latestHandledRequestId.value
-    ) {
+    if (isStaleRequest(msg.requestId)) {
       return;
     }
-    if (typeof msg.requestId === 'number') {
-      latestHandledRequestId.value = msg.requestId;
-    }
+    markHandled(msg.requestId);
+    clearInFlightIfCurrent(msg.requestId);
+    previewInFlight.value = false;
+    inFlightRequestId.value = undefined;
     files.value = msg.files;
     transcript.value = msg.transcript ?? [];
     applyMayDiverge.value = msg.applyMayDiverge ?? false;
@@ -214,7 +303,6 @@ export function useRunnerController(params: {
       typeof msg.argsKey === 'string'
         ? msg.argsKey
         : argsKey(collectArgs(params.recipe.value, argValues.value));
-    previewInFlight.value = false;
     if (!msg.files.length && !(msg.transcript ?? []).length) {
       setPreviewStatus('');
       showError('No changes produced by this recipe.');
@@ -222,6 +310,7 @@ export function useRunnerController(params: {
     } else {
       setPreviewStatus('');
       clearError();
+      runtimeDiagnostics.value = [];
       showReview.value = true;
     }
     persistUiState();
@@ -238,37 +327,67 @@ export function useRunnerController(params: {
       transcript.value = [];
       applyMayDiverge.value = false;
       fileSelections.value = [];
+      lastPreviewSuccess.value = false;
+      lastPreviewArgsKey.value = '';
+      runtimeDiagnostics.value = [];
       persistUiState();
     }),
     params.inbound.on(EXTENSION_TO_WEBVIEW.error, (msg) => {
-      if (
-        typeof msg.requestId === 'number' &&
-        msg.requestId < latestHandledRequestId.value
-      ) {
+      if (isStaleRequest(msg.requestId)) {
         return;
       }
+      markHandled(msg.requestId);
+      clearInFlightIfCurrent(msg.requestId);
       previewInFlight.value = false;
+      inFlightRequestId.value = undefined;
       lastPreviewSuccess.value = false;
       setPreviewStatus('Host error', 'warn');
       showError(msg.message);
+      runtimeDiagnostics.value = msg.diagnostics ?? [];
+      if (msg.transcript && msg.transcript.length > 0) {
+        transcript.value = msg.transcript;
+        showReview.value = true;
+      }
       persistUiState();
     }),
     params.inbound.on(EXTENSION_TO_WEBVIEW.previewState, (msg) => {
+      // Busy ACK (inFlight true) must NOT markHandled — that caused forever-Previewing.
+      if (msg.inFlight) {
+        if (
+          typeof msg.requestId === 'number' &&
+          msg.requestId === latestRequestId.value
+        ) {
+          previewInFlight.value = true;
+          inFlightRequestId.value = msg.requestId;
+        }
+        return;
+      }
+      // inFlight false — only clear if this is the current flight (or older completion).
       if (
         typeof msg.requestId === 'number' &&
-        msg.requestId < latestHandledRequestId.value
+        inFlightRequestId.value !== undefined &&
+        msg.requestId !== inFlightRequestId.value &&
+        msg.requestId < latestRequestId.value
       ) {
         return;
       }
-      previewInFlight.value = Boolean(msg.inFlight);
-      if (!msg.inFlight && pendingAutoPreview.value) {
-        pendingAutoPreview.value = false;
-        triggerPreview(false);
+      if (!isStaleRequest(msg.requestId)) {
+        markHandled(msg.requestId);
+      }
+      clearInFlightIfCurrent(msg.requestId);
+      if (
+        typeof msg.requestId !== 'number' ||
+        msg.requestId === latestRequestId.value ||
+        msg.requestId === inFlightRequestId.value
+      ) {
+        previewInFlight.value = false;
+        inFlightRequestId.value = undefined;
       }
     }),
   ];
 
   onUnmounted(() => {
+    clearTimeout(previewDebounce);
     for (const off of unsubscribers) {
       off();
     }
@@ -278,6 +397,7 @@ export function useRunnerController(params: {
     const persisted = getPersistedState();
     if (!persisted) return;
     params.setActiveTab(persisted.activeTab);
+    tabOwnedLocally.value = true;
     argValues.value = persisted.argValues;
     files.value = persisted.files;
     transcript.value = persisted.transcript ?? [];
@@ -285,10 +405,9 @@ export function useRunnerController(params: {
     fileSelections.value = defaultFileSelections(persisted.files);
     activeChangeIndex.value = persisted.activeChangeIndex;
     lastPreviewArgsKey.value = persisted.lastPreviewArgsKey;
-    lastPreviewSuccess.value = persisted.lastPreviewSuccess;
+    lastPreviewSuccess.value = false;
     showReview.value =
-      persisted.lastPreviewSuccess &&
-      (persisted.files.length > 0 || (persisted.transcript ?? []).length > 0);
+      persisted.files.length > 0 || (persisted.transcript ?? []).length > 0;
     lastSyncedRecipeId.value = persisted.recipeId;
   }
 
@@ -307,6 +426,7 @@ export function useRunnerController(params: {
     activeChangeIndex,
     showReview,
     errorMessage,
+    runtimeDiagnostics,
     previewStatus,
     previewStatusKind,
     previewInFlight,

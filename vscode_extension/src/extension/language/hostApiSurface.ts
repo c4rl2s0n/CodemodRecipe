@@ -17,11 +17,6 @@ export const HOST_CONTEXT_FIELD = 'args';
 
 export const HOST_METHODS: readonly HostMethodSpec[] = [
   {
-    name: 'applyTemplate',
-    description: 'Render a MiniJinja string template.',
-    keys: ['env', 'template'],
-  },
-  {
     name: 'assert',
     description: 'Runtime assertion (`cond`, optional message).',
     keys: [],
@@ -59,6 +54,11 @@ export const HOST_METHODS: readonly HostMethodSpec[] = [
     enums: {
       anchor: ['start', 'end'],
     },
+  },
+  {
+    name: 'log',
+    description: 'Append values to the recipe transcript (strings, tables, numbers).',
+    keys: [],
   },
   {
     name: 'map',
@@ -101,11 +101,6 @@ export const HOST_METHODS: readonly HostMethodSpec[] = [
     keys: ['capture', 'includeLeadingTrivia', 'language', 'path', 'query'],
   },
   {
-    name: 'renderFileTemplate',
-    description: 'Render a MiniJinja template file.',
-    keys: ['env', 'path'],
-  },
-  {
     name: 'replace',
     description: 'Replace a capture span with `text`.',
     keys: ['capture', 'includeLeadingTrivia', 'language', 'path', 'query', 'text'],
@@ -114,6 +109,11 @@ export const HOST_METHODS: readonly HostMethodSpec[] = [
     name: 'run',
     description: 'Run a nested recipe by id with optional arg overrides.',
     keys: [],
+  },
+  {
+    name: 'template',
+    description: 'Render MiniJinja from `inline` or file `path` (exactly one required).',
+    keys: ['env', 'inline', 'path'],
   },
   {
     name: 'var',

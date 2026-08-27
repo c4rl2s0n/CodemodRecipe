@@ -9,7 +9,7 @@ return {
 	},
 	postExecution = {},
 	apply = function(c)
-		local query = c:applyTemplate({ template = [[
+		local query = c:template({ inline = [[
 (class_definition
   name: (identifier) @className
   body: (class_body
@@ -25,7 +25,7 @@ return {
 			query = query,
 			capture = "member",
 			anchor = "start",
-			text = c:applyTemplate({ template = "  final int {{ field | camel_case }};\n\n" }),
+			text = c:template({ inline = "  final int {{ field | camel_case }};\n\n" }),
 		})
 	end,
 }

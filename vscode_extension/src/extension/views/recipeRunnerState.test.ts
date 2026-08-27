@@ -24,17 +24,28 @@ const recipeB: RecipeSchema = {
 };
 
 describe('RecipeRunnerState.syncRecipesAfterRefresh', () => {
-  it('replaces currentRecipe with the fresh list entry without clearing selection', () => {
+  it('clears preview token and files on refresh', () => {
     const state = new RecipeRunnerState();
     state.currentRecipe = recipeA;
     state.lastArgs = { file: 'lib/a.dart' };
-    state.lastFiles = [{ path: 'lib/a.dart', kind: 'patch', isNew: false, skipped: false }];
+    state.lastFiles = [{ path: 'lib/a.dart', kind: 'edit', isNew: false, skipped: false }];
+    state.lastPreviewToken = 'tok';
+    state.lastPreviewArgsKey = '{"file":"lib/a.dart"}';
 
     state.syncRecipesAfterRefresh([recipeAUpdated, recipeB]);
 
     expect(state.currentRecipe).toEqual(recipeAUpdated);
-    expect(state.lastArgs).toEqual({ file: 'lib/a.dart' });
     expect(state.lastFiles).toEqual([]);
+    expect(state.lastPreviewToken).toBeUndefined();
+    expect(state.lastPreviewArgsKey).toBeUndefined();
+  });
+
+  it('includes session snapshot in webview state', () => {
+    const state = new RecipeRunnerState();
+    state.beginSession();
+    const snap = state.toWebviewState().session;
+    expect(snap.id).toBeGreaterThan(1);
+    expect(snap.phase).toBe('idle');
   });
 
   it('keeps currentRecipe when id is missing from the refreshed list', () => {

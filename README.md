@@ -106,14 +106,15 @@ places an insert before or after that span. Full walkthrough:
 | `c:create` / `c:delete` | File create/delete |
 | `c:run(id, args?)` | Invoke another recipe |
 | `c:postExec` | Shell command (apply only) |
-| `c:applyTemplate` / `c:renderFileTemplate` | MiniJinja |
+| `c:template` | MiniJinja |
+| `c:log` | Transcript logging |
 | `c:map` / `c:var` / `c:queryLib` | Asset lookup |
 
 Set `language = "dart"` (etc.) on edit specs for non-Dart or ambiguous paths.
 
 ### Template syntax (MiniJinja)
 
-Templates are rendered via `c:applyTemplate` and `c:renderFileTemplate` — not YAML steps.
+Templates are rendered via `c:template({ inline = ... })` or `c:template({ path = ... })` — not YAML steps.
 See [docs/recipe-templates.md](docs/recipe-templates.md).
 
 ### Preview vs apply

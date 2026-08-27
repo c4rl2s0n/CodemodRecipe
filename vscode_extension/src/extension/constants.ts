@@ -6,6 +6,7 @@ export const COMMANDS = {
   refresh: 'codemodRecipe.refresh',
   bootstrap: 'codemodRecipe.bootstrap',
   scaffoldProject: 'codemodRecipe.scaffoldProject',
+  updateProjectScaffold: 'codemodRecipe.updateProjectScaffold',
   runRecipe: 'codemodRecipe.runRecipe',
   runFromCursorContext: 'codemodRecipe.runFromCursorContext',
   runFromExplorer: 'codemodRecipe.runFromExplorer',

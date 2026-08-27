@@ -44,6 +44,7 @@ const {
   activeChangeIndex,
   showReview,
   errorMessage,
+  runtimeDiagnostics,
   previewStatus,
   previewStatusKind,
   canApply,
@@ -140,6 +141,7 @@ onUnmounted(() => {
         :preview-status="previewStatus"
         :preview-status-kind="previewStatusKind"
         :error-message="errorMessage"
+        :runtime-diagnostics="runtimeDiagnostics"
         :show-review="showReview"
         :files="files"
         :transcript="transcript"
@@ -147,6 +149,7 @@ onUnmounted(() => {
         :file-selections="fileSelections"
         :active-change-index="activeChangeIndex"
         :can-apply="canApply"
+        :slots-by-recipe="slotsByRecipe"
         @update:arg-values="argValues = $event"
         @args-changed="onArgsChanged($event)"
         @update:file-selections="fileSelections = $event"

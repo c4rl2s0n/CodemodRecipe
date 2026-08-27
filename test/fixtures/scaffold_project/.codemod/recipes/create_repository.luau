@@ -8,7 +8,7 @@ return {
 	apply = function(c)
 		c:create({
 			path = "lib/counter/counter_repository.dart",
-			content = c:renderFileTemplate({ path = "templates/counter_repository.dart.template" }),
+			content = c:template({ path = "templates/counter_repository.dart.template" }),
 			ifExists = "fail",
 		})
 	end,

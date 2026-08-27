@@ -65,6 +65,11 @@
         "icon": "$(file-directory-create)"
       },
       {
+        "command": "codemodRecipe.updateProjectScaffold",
+        "title": "Codemod Recipe: Update Project Scaffold",
+        "icon": "$(sync)"
+      },
+      {
         "command": "codemodRecipe.runRecipe",
         "title": "Codemod Recipe: Run Recipe",
         "icon": "$(play)"

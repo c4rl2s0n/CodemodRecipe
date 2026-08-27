@@ -187,6 +187,8 @@ pub struct RecipeSchema {
     pub args: Vec<RecipeArg>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub explorer_menu: Option<Vec<ExplorerMenuEntrySchema>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub post_execution: Option<Vec<String>>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -340,6 +342,8 @@ pub struct PreviewResponse {
     pub transcript: Option<Vec<codemod_recipe_lua::TranscriptEvent>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub apply_may_diverge: Option<bool>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub diagnostics: Option<Vec<RecipeDiagnostic>>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -351,6 +355,10 @@ pub struct ApplyResponse {
     pub recipe: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub applied: Option<Vec<String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub transcript: Option<Vec<codemod_recipe_lua::TranscriptEvent>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub diagnostics: Option<Vec<RecipeDiagnostic>>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -457,6 +465,7 @@ mod tests {
             files: None,
             transcript: None,
             apply_may_diverge: None,
+            diagnostics: None,
         };
         let value = serde_json::to_value(&resp).unwrap();
         assert_eq!(value["previewToken"], "abc");

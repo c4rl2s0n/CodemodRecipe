@@ -50,7 +50,7 @@ c:insert({
 
 1. Node type names come from the **grammar** for `language` on the op — see `codemod-languages`.
 2. Each op edits **one** capture; tighten predicates until exactly one match.
-3. Interpolate args in the query string with Luau (`.. c.args.className`) or MiniJinja via `c:applyTemplate`.
+3. Interpolate args in the query string with Luau (`.. c.args.className`) or MiniJinja via `c:template`.
 4. `query` may be inline text or a path to a `.scm` file resolved by the shared safe resolver in `rust/crates/core/src/resource_path.rs`: recipe-local first, then `.codemod/`, with bare names also trying `queries/` under each root. Query libraries are Luau modules under `.codemod/queries/*.luau`.
 
 ## Instructions

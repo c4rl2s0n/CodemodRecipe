@@ -34,7 +34,7 @@ Host API detail for agents: skill `codemod-luau-recipes` → `reference.md`.
 | Doc | Contents |
 |-----|----------|
 | [writing-recipes.md](writing-recipes.md) | Authoring workflow, capture/anchor, host API |
-| [recipe-templates.md](recipe-templates.md) | MiniJinja via `c:applyTemplate` / file templates |
+| [recipe-templates.md](recipe-templates.md) | MiniJinja via `c:template` |
 | [tree-sitter-queries.md](tree-sitter-queries.md) | Query language; **Query Tools** (VS Code + MCP) |
 | [language-support.md](language-support.md) | `language` on ops, inference, SQL dialects |
 | [recipe-design-patterns.md](recipe-design-patterns.md) | create / add / scaffold / remove taxonomy |

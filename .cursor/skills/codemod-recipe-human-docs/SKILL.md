@@ -34,4 +34,4 @@ Topic depth still belongs in existing `docs/*.md` and agent skills — Getting S
 
 1. Read [reference.md](reference.md) in this directory.
 2. Apply the edit rules there (when to touch Getting Started vs topic docs only).
-3. Keep examples accurate (Luau recipes; MiniJinja via `c:applyTemplate`).
+3. Keep examples accurate (Luau recipes; MiniJinja via `c:template`).

@@ -1,4 +1,10 @@
-import type { ArgValues, FilePreview, SelectionPayload, RecipeViewState, TranscriptEvent } from './types';
+import type {
+  ArgValues,
+  FilePreview,
+  SelectionPayload,
+  RecipeViewState,
+  TranscriptEvent,
+} from './types';
 
 export const WEBVIEW_TO_EXTENSION = {
   ready: 'ready',
@@ -34,12 +40,20 @@ export type WebviewToExtensionMessage =
   | { type: typeof WEBVIEW_TO_EXTENSION.configureHost }
   | { type: typeof WEBVIEW_TO_EXTENSION.scaffoldProject }
   | { type: typeof WEBVIEW_TO_EXTENSION.openRecipeFile; id: string }
-  | { type: typeof WEBVIEW_TO_EXTENSION.pickFile; arg: string }
-  | { type: typeof WEBVIEW_TO_EXTENSION.pickDirectory; arg: string }
+  | {
+      type: typeof WEBVIEW_TO_EXTENSION.pickFile;
+      arg: string;
+      requestId: number;
+    }
+  | {
+      type: typeof WEBVIEW_TO_EXTENSION.pickDirectory;
+      arg: string;
+      requestId: number;
+    }
   | {
       type: typeof WEBVIEW_TO_EXTENSION.preview;
       args: ArgValues;
-      requestId?: number;
+      requestId: number;
     }
   | { type: typeof WEBVIEW_TO_EXTENSION.openDiff; path: string }
   | { type: typeof WEBVIEW_TO_EXTENSION.apply; selection: SelectionPayload }
@@ -57,13 +71,21 @@ export type WebviewToExtensionMessage =
 
 export type ExtensionToWebviewMessage =
   | { type: typeof EXTENSION_TO_WEBVIEW.state; state: RecipeViewState }
-  | { type: typeof EXTENSION_TO_WEBVIEW.filePicked; arg: string; value: string }
+  | {
+      type: typeof EXTENSION_TO_WEBVIEW.filePicked;
+      arg: string;
+      requestId: number;
+      /** Present when the user selected a path. */
+      value?: string;
+      /** True when the dialog was dismissed. */
+      cancelled?: boolean;
+    }
   | {
       type: typeof EXTENSION_TO_WEBVIEW.previewResult;
       files: FilePreview[];
       transcript?: TranscriptEvent[];
       applyMayDiverge?: boolean;
-      requestId?: number;
+      requestId: number;
       argsKey?: string;
     }
   | { type: typeof EXTENSION_TO_WEBVIEW.applyResult; applied: string[] }
@@ -71,6 +93,8 @@ export type ExtensionToWebviewMessage =
       type: typeof EXTENSION_TO_WEBVIEW.error;
       message: string;
       requestId?: number;
+      diagnostics?: import('./types').RecipeDiagnostic[];
+      transcript?: import('./types').TranscriptEvent[];
     }
   | {
       type: typeof EXTENSION_TO_WEBVIEW.previewState;
@@ -143,12 +167,9 @@ export function isWebviewToExtensionMessage(
       return typeof value.id === 'string';
     case WEBVIEW_TO_EXTENSION.pickFile:
     case WEBVIEW_TO_EXTENSION.pickDirectory:
-      return typeof value.arg === 'string';
+      return typeof value.arg === 'string' && typeof value.requestId === 'number';
     case WEBVIEW_TO_EXTENSION.preview:
-      return (
-        isArgRecord(value.args) &&
-        (value.requestId === undefined || typeof value.requestId === 'number')
-      );
+      return isArgRecord(value.args) && typeof value.requestId === 'number';
     case WEBVIEW_TO_EXTENSION.openDiff:
       return typeof value.path === 'string';
     case WEBVIEW_TO_EXTENSION.apply:
@@ -184,14 +205,20 @@ export function isExtensionToWebviewMessage(
     case EXTENSION_TO_WEBVIEW.state:
       return isRecord(value.state);
     case EXTENSION_TO_WEBVIEW.filePicked:
-      return typeof value.arg === 'string' && typeof value.value === 'string';
+      return (
+        typeof value.arg === 'string' &&
+        typeof value.requestId === 'number' &&
+        (value.value === undefined || typeof value.value === 'string') &&
+        (value.cancelled === undefined || typeof value.cancelled === 'boolean')
+      );
     case EXTENSION_TO_WEBVIEW.previewResult:
       return (
         Array.isArray(value.files) &&
-        (value.requestId === undefined || typeof value.requestId === 'number') &&
+        typeof value.requestId === 'number' &&
         (value.argsKey === undefined || typeof value.argsKey === 'string') &&
         (value.transcript === undefined || Array.isArray(value.transcript)) &&
-        (value.applyMayDiverge === undefined || typeof value.applyMayDiverge === 'boolean')
+        (value.applyMayDiverge === undefined ||
+          typeof value.applyMayDiverge === 'boolean')
       );
     case EXTENSION_TO_WEBVIEW.applyResult:
       return (
@@ -201,7 +228,9 @@ export function isExtensionToWebviewMessage(
     case EXTENSION_TO_WEBVIEW.error:
       return (
         typeof value.message === 'string' &&
-        (value.requestId === undefined || typeof value.requestId === 'number')
+        (value.requestId === undefined || typeof value.requestId === 'number') &&
+        (value.diagnostics === undefined || Array.isArray(value.diagnostics)) &&
+        (value.transcript === undefined || Array.isArray(value.transcript))
       );
     case EXTENSION_TO_WEBVIEW.previewState:
       return (
@@ -216,4 +245,3 @@ export function isExtensionToWebviewMessage(
 export function assertNever(value: never): never {
   throw new Error(`Unexpected value: ${String(value)}`);
 }
-

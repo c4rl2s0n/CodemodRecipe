@@ -21,6 +21,21 @@ pub struct RecipeRunResult {
     pub saw_post_exec: bool,
 }
 
+/// Failed `apply()` with any transcript events recorded before the error.
+#[derive(Debug, Clone)]
+pub struct RecipeApplyError {
+    pub message: String,
+    pub transcript: Vec<TranscriptEvent>,
+}
+
+impl std::fmt::Display for RecipeApplyError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.message)
+    }
+}
+
+impl std::error::Error for RecipeApplyError {}
+
 pub struct RecipeRunRequest {
     pub kind: RunKind,
     pub args: BTreeMap<String, serde_json::Value>,

@@ -5,7 +5,7 @@ use codemod_recipe_core::apply::file_change::FileChange;
 use codemod_recipe_lua::load::load_recipe;
 use codemod_recipe_lua::model::Recipe;
 
-use crate::lua_runtime::{run_recipe, RecipeRunRequest, RecipeRunResult, RunKind};
+use crate::lua_runtime::{run_recipe, RecipeApplyError, RecipeRunRequest, RecipeRunResult, RunKind};
 use crate::recipe::args;
 use crate::recipe::registry::RecipeRegistry;
 use crate::sandbox::path_sandbox::PathSandbox;
@@ -48,9 +48,13 @@ pub fn collect_recipe_changes(
     _recipe_path: Option<&Path>,
     args: &BTreeMap<String, serde_json::Value>,
     kind: RunKind,
-) -> Result<CollectedChanges, String> {
+) -> Result<CollectedChanges, RecipeApplyError> {
     let effective =
-        args::validate_typed_args(recipe, registry.types_by_id(), registry.maps_by_id(), args)?;
+        args::validate_typed_args(recipe, registry.types_by_id(), registry.maps_by_id(), args)
+            .map_err(|message| RecipeApplyError {
+                message,
+                transcript: Vec::new(),
+            })?;
     let mut maps = registry.maps_by_id().clone();
     for (k, v) in &recipe.maps {
         maps.entry(k.clone()).or_insert_with(|| v.clone());

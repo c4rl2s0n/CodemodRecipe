@@ -95,14 +95,14 @@ export function matchHostMethod(
   return undefined;
 }
 
-/** Template path under `path =` / `renderFileTemplate` / long-string template refs. */
+/** Template path under `path =` / `c:template({ path })` / long-string template refs. */
 export function matchTemplatePath(
   line: string,
   character: number
 ): string | undefined {
   const match =
     /(?:path|template)\s*=\s*['"]([^'"]+\.template)['"]/.exec(line) ??
-    /renderFileTemplate\s*\(\s*\{\s*path\s*=\s*['"]([^'"]+)['"]/.exec(line);
+    /template\s*\(\s*\{\s*path\s*=\s*['"]([^'"]+)['"]/.exec(line);
   if (!match || match.index === undefined) {
     return undefined;
   }

@@ -1,6 +1,8 @@
 import { ARG_INPUT_KIND } from '../shared';
 import type { ArgValue, ArgValues, RecipeArg, RecipeSchema } from '../shared';
 
+export { argsKey } from '../shared';
+
 const BUILTINS = new Set<string>(Object.values(ARG_INPUT_KIND));
 
 export function itemKind(kind: RecipeArg['inputKind'] | undefined): string {
@@ -79,27 +81,39 @@ export function collectArgs(
     if (value === undefined || value === '') {
       continue;
     }
+    if (isListKind(arg.inputKind) && Array.isArray(value)) {
+      const cleaned = sanitizeListItems(value);
+      if (cleaned.length === 0) {
+        continue;
+      }
+      args[arg.name] = cleaned;
+      continue;
+    }
     args[arg.name] = value;
   }
   return args;
 }
 
-export function argsKey(args: ArgValues): string {
-  return JSON.stringify(canonicalize(args));
+/** Drop blank strings and all-empty object rows from list args. */
+export function sanitizeListItems(items: ArgValue[]): ArgValue[] {
+  return items.filter((item) => !isBlankListItem(item));
 }
 
-function canonicalize(value: ArgValue): unknown {
+function isBlankListItem(value: ArgValue): boolean {
+  if (typeof value === 'string') {
+    return value.trim() === '';
+  }
+  if (typeof value === 'boolean') {
+    return false;
+  }
   if (Array.isArray(value)) {
-    return value.map(canonicalize);
+    return value.length === 0 || value.every(isBlankListItem);
   }
   if (value && typeof value === 'object') {
-    const out: Record<string, unknown> = {};
-    for (const key of Object.keys(value).sort()) {
-      out[key] = canonicalize(value[key]);
-    }
-    return out;
+    const values = Object.values(value);
+    return values.length === 0 || values.every(isBlankListItem);
   }
-  return value;
+  return true;
 }
 
 function isMissingValue(arg: RecipeArg, value: ArgValue | undefined): boolean {

@@ -27,8 +27,8 @@ return {
     { name = "methodName", required = true },
   },
   apply = function(c)
-    local classQuery = c:applyTemplate({ template = c:queryLib("dart_queries.class_named") })
-    local methodQuery = c:applyTemplate({ template = c:queryLib("dart_queries.method_body") })
+    local classQuery = c:template({ inline = c:queryLib("dart_queries.class_named") })
+    local methodQuery = c:template({ inline = c:queryLib("dart_queries.method_body") })
     c:insert({
       path = "lib/foo.dart",
       language = "dart",
@@ -79,7 +79,7 @@ return {
     { name = "methodName", required = true },
   },
   apply = function(c)
-    local classQuery = c:applyTemplate({ template = c:queryLib("dart_queries.class_named") })
+    local classQuery = c:template({ inline = c:queryLib("dart_queries.class_named") })
     c:insert({
       path = "lib/foo.dart",
       language = "dart",

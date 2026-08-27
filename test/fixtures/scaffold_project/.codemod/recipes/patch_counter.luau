@@ -13,7 +13,7 @@ return {
 		},
 	},
 	apply = function(c)
-		local query = c:applyTemplate({ template = [[
+		local query = c:template({ inline = [[
 (class_definition
   name: (identifier) @className
   body: (class_body
@@ -29,7 +29,7 @@ return {
 			query = query,
 			capture = "member",
 			anchor = "start",
-			text = c:applyTemplate({ template = "  final {{ fieldName | map('field_kind') }} {{ fieldName | camel_case }} = 0;\n\n" }),
+			text = c:template({ inline = "  final {{ fieldName | map('field_kind') }} {{ fieldName | camel_case }} = 0;\n\n" }),
 		})
 	end,
 }

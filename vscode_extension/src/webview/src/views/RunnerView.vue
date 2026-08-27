@@ -1,11 +1,18 @@
 <script setup lang="ts">
-import type { ArgValues, FilePreview, RecipeSchema, TranscriptEvent } from '../shared';
+import type {
+  ArgValues,
+  FilePreview,
+  RecipeDiagnostic,
+  RecipeSchema,
+  TranscriptEvent,
+} from '../shared';
 import type { FileCardSelection } from '../lib/selection';
 import RecipeArgForm from '../components/RecipeArgForm.vue';
+import RecipeInfo from '../components/RecipeInfo.vue';
 import ReviewPanel from '../components/ReviewPanel.vue';
 import { useExtensionClient } from '../composables/useExtensionClient';
 
-const props = defineProps<{
+defineProps<{
   recipe?: RecipeSchema;
   runnerTitle: string;
   runnerDescription: string;
@@ -13,6 +20,7 @@ const props = defineProps<{
   previewStatus: string;
   previewStatusKind: 'warn' | 'ok' | '';
   errorMessage: string;
+  runtimeDiagnostics: readonly RecipeDiagnostic[];
   showReview: boolean;
   files: FilePreview[];
   transcript: TranscriptEvent[];
@@ -20,6 +28,7 @@ const props = defineProps<{
   fileSelections: FileCardSelection[];
   activeChangeIndex: number;
   canApply: boolean;
+  slotsByRecipe: Record<string, string[]>;
 }>();
 
 const emit = defineEmits<{
@@ -31,9 +40,18 @@ const emit = defineEmits<{
 
 const client = useExtensionClient();
 
-function showRecipe() {
-  if (props.recipe?.sourceFile) {
-    client.openRecipeFile(props.recipe.id);
+function showRecipe(recipe: RecipeSchema | undefined) {
+  if (recipe?.sourceFile) {
+    client.openRecipeFile(recipe.id);
+  }
+}
+
+function openDiagnosticSource(
+  recipe: RecipeSchema | undefined,
+  diag: RecipeDiagnostic
+) {
+  if (recipe?.id && (diag.sources?.[0]?.file || recipe.sourceFile)) {
+    client.openRecipeFile(recipe.id);
   }
 }
 </script>
@@ -45,12 +63,18 @@ function showRecipe() {
       v-if="recipe?.sourceFile"
       type="button"
       class="secondary show-recipe-btn"
-      @click="showRecipe"
+      @click="showRecipe(recipe)"
     >
       Show recipe
     </button>
   </div>
   <div class="desc">{{ runnerDescription }}</div>
+
+  <RecipeInfo
+    v-if="recipe"
+    :recipe="recipe"
+    :slots-by-recipe="slotsByRecipe"
+  />
 
   <template v-if="recipe?.args?.length">
     <h3>Parameters</h3>
@@ -70,7 +94,24 @@ function showRecipe() {
     {{ previewStatus }}
   </div>
 
-  <div v-if="errorMessage" class="error">{{ errorMessage }}</div>
+  <div v-if="errorMessage" class="error">
+    <div>{{ errorMessage }}</div>
+    <ul v-if="runtimeDiagnostics.length" class="runtime-diagnostics">
+      <li v-for="(diag, index) in runtimeDiagnostics" :key="index">
+        <strong>{{ diag.code }}</strong>
+        {{ diag.message }}
+        <span v-if="diag.hint" class="diag-hint"> — {{ diag.hint }}</span>
+        <button
+          v-if="diag.sources?.[0]?.file || recipe?.sourceFile"
+          type="button"
+          class="linkish"
+          @click="openDiagnosticSource(recipe, diag)"
+        >
+          Open recipe
+        </button>
+      </li>
+    </ul>
+  </div>
 
   <ReviewPanel
     v-if="showReview && (files.length || transcript.length)"

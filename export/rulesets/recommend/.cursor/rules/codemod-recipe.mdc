@@ -7,7 +7,7 @@ alwaysApply: true
 
 # Codemod Recipe
 
-This workspace uses **codemod-recipe** for deterministic AST edits via **sandboxed Luau recipes** (`.codemod/recipes/*.luau`) and the Rust MCP server (`codemod-mcp`). Supports Dart, Rust, Java, Kotlin, SQL/SQLite, and 300+ languages via lazy-loaded tree-sitter grammars. MiniJinja remains for `c:applyTemplate` / file templates.
+This workspace uses **codemod-recipe** for deterministic AST edits via **sandboxed Luau recipes** (`.codemod/recipes/*.luau`) and the Rust MCP server (`codemod-mcp`). Supports Dart, Rust, Java, Kotlin, SQL/SQLite, and 300+ languages via lazy-loaded tree-sitter grammars. MiniJinja remains for `c:template`.
 
 Prefer recipes for structural, multi-file, and AST-boundary edits. Always `preview_recipe` before `apply_recipe` (pass `previewToken`). Dart is the default language; set `language` on edit ops for non-Dart files.
 
@@ -39,7 +39,7 @@ Skills use SKILL.md routers; read `reference.md` in a sub-skill directory when y
 ## Recipe runtime
 
 - Recipes are Luau modules that `return { id, args, apply, ... }`. Mutations happen only in `apply(c)`.
-- Host API: `c:insert` / `c:replace` / `c:remove` / `c:query` / `c:read` / `c:create` / `c:delete` / `c:run` / `c:postExec` / `c:applyTemplate` / `c:renderFileTemplate` / `c:map` / `c:var` / `c:queryLib`.
+- Host API: `c:insert` / `c:replace` / `c:remove` / `c:query` / `c:read` / `c:create` / `c:delete` / `c:run` / `c:postExec` / `c:template` / `c:map` / `c:var` / `c:queryLib`.
 - Preview and apply both execute `apply()`. Preview keeps file ops in a WorkingTree and skips postExec (transcript only). Apply re-runs Lua and flushes before postExec.
 - Tree-sitter queries stay `.scm` or inline strings. Query libraries are Luau under `.codemod/queries/`.
 

@@ -28,6 +28,9 @@ import {
 } from './hostProtocol';
 import type { ArgValues, RecipeSchema, SelectionPayload, BootstrapResponse, DeriveArgsRequest, DeriveArgsResponse, FilterExplorerRecipesResponse } from '../../shared';
 import type { RecipeLoadResult } from '../recipes/recipeRepository';
+import { shouldRetryOneShotAfterPersistentFailure } from './hostBridgeRetryPolicy';
+
+export { shouldRetryOneShotAfterPersistentFailure } from './hostBridgeRetryPolicy';
 
 type PendingRequest = {
   command: HostCommand['command'];
@@ -307,6 +310,16 @@ export class HostBridge {
     this.stopPersistentHost();
   }
 
+  /**
+   * Abort any in-flight persistent request by killing the host process.
+   * Does not fall through to one-shot retry. Next send() respawns a fresh host.
+   */
+  cancelInFlight(reason = 'Request cancelled'): void {
+    this.rejectPending(new Error(reason));
+    this.stopPersistentHost();
+    this.queue = Promise.resolve();
+  }
+
   private parseRecipeLoadResponse(
     response: RecipeCatalogResponse,
     command: 'list' | 'reload'
@@ -343,10 +356,14 @@ export class HostBridge {
     try {
       return await this.sendPersistent<T>(command);
     } catch (error) {
-      this.logPerfWarning(
-        `Persistent host failed for ${command.command}; retrying one-shot (${String(error)})`
-      );
+      const message = error instanceof Error ? error.message : String(error);
       this.stopPersistentHost();
+      if (!shouldRetryOneShotAfterPersistentFailure(command.command, message)) {
+        throw error instanceof Error ? error : new Error(message);
+      }
+      this.logPerfWarning(
+        `Persistent host failed for ${command.command}; retrying one-shot (${message})`
+      );
       return this.sendOneShot<T>(command);
     }
   }
@@ -550,11 +567,12 @@ export class HostBridge {
   }
 
   private rejectPending(error: Error): void {
-    for (const finalRequest of this.pending) {
+    const pending = this.pending;
+    this.pending = [];
+    for (const finalRequest of pending) {
       clearTimeout(finalRequest.timeout);
       finalRequest.reject(error);
     }
-    this.pending = [];
   }
 
   private logPerf(metrics: {

@@ -112,13 +112,13 @@ Default chords: `Ctrl+Shift+I` then `1` (run/auto), `Ctrl+Shift+T` then `1` (ope
 
 Under `codemodRecipe.codemodRoot` (default `.codemod`) Luau/Lua recipe files get:
 
-- **Completions** for `c:` methods, edit-spec keys, recipe ids (`id =` / `c:run`), map/var/query ids, `language`, captures, `c.args.*`, and nested `c:run` args
+- **Completions** for `c:` methods, edit-spec keys, recipe ids (`id =` / `c:run`), map/var/query ids (`c:map` / `c:var` / `c:queryLib`), `language`, captures, `c.args.*` (from the open recipe’s `args` table), and nested `c:run` args
 - **Go to Definition** on `c:run("recipe.id")`
 - **Hover** on host methods and recipe refs
 - **CodeLens** on top-level `id = "..."` (runner / keybinding / slot)
 - **Diagnostics** from the Rust host validate of **saved** recipe files
 
-Install **[Luau Language Server](https://marketplace.visualstudio.com/items?itemName=JohnnyMorganz.luau-lsp)** for richer IntelliSense on `c`. Scaffold / bootstrap writes `.codemod/stubs/codemod-context.d.luau` (generated from annotated Rust handler functions in `rust/crates/host/src/host_api/handlers.rs` via `scripts/generate-host-api-surface.sh`) and recommends the extension.
+Install **[Luau Language Server](https://marketplace.visualstudio.com/items?itemName=JohnnyMorganz.luau-lsp)** for typed `CodemodContext` via `.codemod/stubs/codemod-context.d.luau` (generated from annotated Rust handlers via `scripts/generate-host-api-surface.sh`, installed by Scaffold / bootstrap). The Codemod completion provider does **not** depend on that stub; luau-lsp does. Soft **Scaffold Project** skips existing files — use **Codemod Recipe: Update Project Scaffold** (confirm → bootstrap with `force: true`) after upgrading so the stub and other scaffold assets refresh. **Refresh Recipes** reloads the recipe catalog only.
 
 Recipe authoring reference: [docs/writing-recipes.md](../docs/writing-recipes.md) and skill `codemod-luau-recipes`.
 
@@ -127,7 +127,8 @@ macOS, `Ctrl+Alt+R` elsewhere). Context keys include `file`, `selection`, `word`
 `dartClass`, and generic `className`.
 
 **Codemod Recipe: Restart Host** restarts the Rust host process.
-**Codemod Recipe: Scaffold Project** writes skills/rules and `.codemod/` scaffolding.
+**Codemod Recipe: Scaffold Project** writes skills/rules and `.codemod/` scaffolding (skips existing).
+**Codemod Recipe: Update Project Scaffold** force-updates those files (including `codemod-context.d.luau`).
 
 ## Protocol reference
 

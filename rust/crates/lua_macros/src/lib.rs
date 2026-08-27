@@ -123,6 +123,9 @@ pub fn host_method(args: TokenStream, input: TokenStream) -> TokenStream {
         MethodKind::Run => quote! {
             crate::host_api::registry::HostMethodSignature::Run
         },
+        MethodKind::Variadic => quote! {
+            crate::host_api::registry::HostMethodSignature::Variadic
+        },
     };
 
     let surface_static = quote! {
@@ -184,6 +187,14 @@ pub fn host_method(args: TokenStream, input: TokenStream) -> TokenStream {
             return syn::Error::new_spanned(
                 &item_fn,
                 "run methods must use recursive = true; registration is handled manually in build_ctx",
+            )
+            .into_compile_error()
+            .into();
+        }
+        MethodKind::Variadic => {
+            return syn::Error::new_spanned(
+                &item_fn,
+                "variadic methods must use recursive = true; registration is handled manually in build_ctx",
             )
             .into_compile_error()
             .into();
@@ -304,6 +315,7 @@ enum MethodKind {
     StringId,
     Assert,
     Run,
+    Variadic,
 }
 
 impl Parse for HostMethodArgs {
@@ -315,6 +327,7 @@ impl Parse for HostMethodArgs {
         let mut string_id = false;
         let mut assert = false;
         let mut run = false;
+        let mut variadic = false;
         let mut recursive = false;
         let mut accept_string = false;
 
@@ -339,6 +352,8 @@ impl Parse for HostMethodArgs {
                 assert = true;
             } else if ident == "run" {
                 run = true;
+            } else if ident == "variadic" {
+                variadic = true;
             } else if ident == "recursive" {
                 input.parse::<Token![=]>()?;
                 recursive = parse_bool_lit(input)?;
@@ -358,35 +373,43 @@ impl Parse for HostMethodArgs {
         }
 
         let kind = if let Some(path) = spec {
-            if string_id || assert || run {
+            if string_id || assert || run || variadic {
                 return Err(syn::Error::new(
                     Span::call_site(),
-                    "spec is mutually exclusive with string_id, assert, and run",
+                    "spec is mutually exclusive with string_id, assert, run, and variadic",
                 ));
             }
             MethodKind::Spec(path)
         } else if string_id {
-            if assert || run {
+            if assert || run || variadic {
                 return Err(syn::Error::new(
                     Span::call_site(),
-                    "string_id is mutually exclusive with assert and run",
+                    "string_id is mutually exclusive with assert, run, and variadic",
                 ));
             }
             MethodKind::StringId
         } else if assert {
-            if run {
+            if run || variadic {
                 return Err(syn::Error::new(
                     Span::call_site(),
-                    "assert is mutually exclusive with run",
+                    "assert is mutually exclusive with run and variadic",
                 ));
             }
             MethodKind::Assert
         } else if run {
+            if variadic {
+                return Err(syn::Error::new(
+                    Span::call_site(),
+                    "run is mutually exclusive with variadic",
+                ));
+            }
             MethodKind::Run
+        } else if variadic {
+            MethodKind::Variadic
         } else {
             return Err(syn::Error::new(
                 Span::call_site(),
-                "host_method requires one of: spec, string_id, assert, run",
+                "host_method requires one of: spec, string_id, assert, run, variadic",
             ));
         };
 

@@ -325,19 +325,12 @@ pub struct PostExecSpec {
     pub path: Option<String>,
 }
 
-/// `c:applyTemplate(spec)` — render a MiniJinja string template.
+/// `c:template(spec)` — render MiniJinja from `inline` or file `path` (exactly one).
 #[derive(Debug, Clone, PartialEq, Eq, JsonSchema, LuaSpec)]
 #[serde(rename_all = "camelCase")]
-pub struct ApplyTemplateSpec {
-    pub template: String,
-    pub env: Option<Env>,
-}
-
-/// `c:renderFileTemplate(spec)` — render a MiniJinja template file.
-#[derive(Debug, Clone, PartialEq, Eq, JsonSchema, LuaSpec)]
-#[serde(rename_all = "camelCase")]
-pub struct RenderFileTemplateSpec {
-    pub path: String,
+pub struct TemplateSpec {
+    pub path: Option<String>,
+    pub inline: Option<String>,
     pub env: Option<Env>,
 }
 

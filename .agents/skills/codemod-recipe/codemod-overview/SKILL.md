@@ -34,7 +34,7 @@ Each recipe `return`s metadata plus `apply(c)`. The Rust MCP server exposes prev
   types/       # Named arg types (id + fields)
   variables/   # Luau variable modules (id + values table)
   queries/     # Luau query libraries (id + queries table)
-  templates/   # optional (renderFileTemplate)
+  templates/   # optional (c:template path)
 ```
 
 Asset discovery scans `.codemod/` for Luau modules with expected return shapes.

@@ -5,14 +5,13 @@ The Rust host renders recipe strings and file-backed templates with
 
 ## Where templates apply
 
-Templates are rendered via **`c:applyTemplate`** and **`c:renderFileTemplate`** inside
-Luau recipes (MiniJinja). Typical uses:
+Templates are rendered via **`c:template`** inside Luau recipes (MiniJinja). Typical uses:
 
 | Call | Role |
 |------|------|
-| `c:applyTemplate({ template = "..." })` | Inline Jinja over recipe args + maps/vars |
-| `c:renderFileTemplate({ path = "templates/x.template" })` | File-backed template (`extends` / `include`) |
-| `c:create({ content = c:applyTemplate(...) })` | New file body from template |
+| `c:template({ inline = "..." })` | Inline Jinja over recipe args + maps/vars |
+| `c:template({ path = "templates/x.template" })` | File-backed template (`extends` / `include`) |
+| `c:create({ content = c:template({ path = "..." }) })` | New file body from template |
 | `postExecution` / `c:postExec` | Jinja-rendered shell commands |
 
 Maps and variables registered under `.codemod/maps/` and `.codemod/variables/` (Luau modules)
@@ -100,7 +99,7 @@ import '{{ feature | snake_case }}_repository.dart';
 {% endif %}
 ```
 
-### File-backed templates (`c:renderFileTemplate`)
+### File-backed templates (`c:template`)
 
 File-backed templates use the shared resolver in
 `rust/crates/core/src/resource_path.rs`.
@@ -151,7 +150,7 @@ Call `validate_recipes` (MCP), `{ "command": "validate" }` (stdio host), or
 | Code | Severity | Meaning |
 |------|----------|---------|
 | `E_UNDECLARED_ARG` | error | Template references unknown variable |
-| `E_MISSING_TEMPLATE` | error | Template path not found (`c:renderFileTemplate`) |
+| `E_MISSING_TEMPLATE` | error | Template path not found (`c:template`) |
 | `E_TEMPLATE_SYNTAX` | error | MiniJinja parse error |
 | `E_COMPOSE_CYCLE` | error | Recipe reference cycle |
 | `W_MAP_ID_NOT_FOUND` | warning | Unknown map id in template |
@@ -165,8 +164,8 @@ Runnable recipes demonstrating each feature:
 
 | Recipe | Location | Demonstrates |
 |--------|----------|--------------|
-| `add_counter_field` | [`.codemod/recipes/add_counter_field.luau`](../.codemod/recipes/add_counter_field.luau) | `c:applyTemplate` + `{{ field \| camel_case }}` in insert text |
-| `conditional_create` | [`.codemod/recipes/conditional_create.luau`](../.codemod/recipes/conditional_create.luau) | `c:renderFileTemplate`, `{% if %}`, `defaultsTo` |
+| `add_counter_field` | [`.codemod/recipes/add_counter_field.luau`](../.codemod/recipes/add_counter_field.luau) | `c:template` + `{{ field \| camel_case }}` in insert text |
+| `conditional_create` | [`.codemod/recipes/conditional_create.luau`](../.codemod/recipes/conditional_create.luau) | `c:template`, `{% if %}`, `defaultsTo` |
 | `patch_counter` | [`test/fixtures/scaffold_project/.../patch_counter.luau`](../test/fixtures/scaffold_project/.codemod/recipes/patch_counter.luau) | `\| map('field_kind')` + `\| camel_case` |
 | `create_repository` | [`test/fixtures/scaffold_project/.../create_repository.luau`](../test/fixtures/scaffold_project/.codemod/recipes/create_repository.luau) | File template with casing filters |
 | `jinja.casing.showcase` | [`test/fixtures/jinja_examples/.../showcase_casing.luau`](../test/fixtures/jinja_examples/.codemod/recipes/showcase_casing.luau) | All casing filters + both map syntaxes |
@@ -190,8 +189,8 @@ args = {
 }
 apply = function(c)
   c:create({
-    path = c:applyTemplate({ template = "lib/{{ className | snake_case }}/{{ className | snake_case }}_widget.dart" }),
-    content = c:renderFileTemplate({ path = "templates/conditional_widget.dart.template" }),
+    path = c:template({ inline = "lib/{{ className | snake_case }}/{{ className | snake_case }}_widget.dart" }),
+    content = c:template({ path = "templates/conditional_widget.dart.template" }),
     ifExists = "fail",
   })
 end
@@ -222,8 +221,8 @@ end
 
 ```lua
 c:create({
-  path = c:applyTemplate({ template = "lib/generated/{{ className | snake_case }}_layout.dart" }),
-  content = c:renderFileTemplate({ path = "templates/layout_widget.dart.template" }),
+  path = c:template({ inline = "lib/generated/{{ className | snake_case }}_layout.dart" }),
+  content = c:template({ path = "templates/layout_widget.dart.template" }),
   ifExists = "fail",
 })
 ```

@@ -86,7 +86,7 @@ In the target project:
   types/       # Named arg types (id + fields)
   variables/   # Luau variable modules (id + values table)
   queries/     # Luau query libraries (id + queries table)
-  templates/   # optional (renderFileTemplate)
+  templates/   # optional (c:template path)
 ```
 
 Discovery scans `.codemod/` for Luau modules that `return` the expected table shapes.
@@ -101,22 +101,31 @@ resolve recipe-local first, then under `.codemod/`.
    edits: `scripts/generate-host-api-surface.sh`.
 2. Install the VSIX and open a workspace that has (or will have) `.codemod/`.
 3. Use **Codemod Recipe: Scaffold Project** if `.codemod` is missing.
+   After upgrading the extension, use **Codemod Recipe: Update Project
+   Scaffold** to refresh stubs and other scaffold files (overwrites).
 4. Open the **Codemod Recipe** activity bar: Recipes + Recipe Runner.
 
 Details and settings: [vscode_extension/README.md](../vscode_extension/README.md).
 
 **Recipe editor IntelliSense:** under `.codemod/**/*.luau` the extension
-completes `c:` methods, spec keys, recipe/map/var/query ids, languages, and
-captures; CodeLens on `id = "…"`; go-to-definition on `c:run("…")`. Install
-**Luau Language Server** (`JohnnyMorganz.luau-lsp`) and use the scaffolded
-`.codemod/stubs/codemod-context.d.luau` (generated from annotated Rust handler
-functions in `rust/crates/host/src/host_api/handlers.rs` via
-`scripts/generate-host-api-surface.sh`) for typed `CodemodContext` on `apply(c)`.
+completes `c:` methods, spec keys, recipe/map/var/query ids (`c:map` /
+`c:var` / `c:queryLib` / `c:run`), languages, captures, and `c.args.*` from
+the recipe source; CodeLens on `id = "…"`; go-to-definition on `c:run("…")`.
+Install **Luau Language Server** (`JohnnyMorganz.luau-lsp`) and point it at
+`.codemod/stubs/codemod-context.d.luau` (via scaffolded
+`luau-lsp.types.definitionFiles`) for typed `CodemodContext` on `apply(c)`.
+If that stub is stale after upgrading the extension/host API, run
+**Codemod Recipe: Update Project Scaffold** (or MCP `bootstrap_project` with
+`force`) — soft Scaffold skips existing files. **Refresh Recipes** only
+reloads the catalog; it does not rewrite stubs.
 
 **Review panel:** after preview, inspect **Files** (diffs) and **Transcript**
-(every `c:` call, including postExec entries skipped on preview). When apply may
-differ from preview because postExec was skipped, a small **applyMayDiverge**
-disclaimer appears.
+(every `c:` call, including postExec entries skipped on preview). Edit rows
+show `+N`/`-N` line badges when available; click a row to expand payloads or
+pretty-print JSON logs. When apply may differ from preview because postExec
+was skipped, a small **applyMayDiverge** disclaimer appears. The Runner also
+shows recipe metadata (`explorerMenu`, context args, `postExecution`, shortcut
+slots) when present.
 
 **Query Tools** (same Codemod activity bar: **Query AST** + **Query Tools**):
 
@@ -213,7 +222,8 @@ a successful apply. Preview records these in the transcript but does not run the
 | `c:create` / `c:delete` | File create/delete |
 | `c:run(id, args?)` | Call another recipe |
 | `c:postExec` | Shell command (apply only) |
-| `c:applyTemplate` / `c:renderFileTemplate` | MiniJinja |
+| `c:template` | MiniJinja (`inline` or `path`) |
+| `c:log` | Append to preview/apply transcript |
 | `c:map` / `c:var` / `c:queryLib` | Registered assets |
 
 Full API: [writing-recipes.md](writing-recipes.md) and skill `codemod-luau-recipes`.
@@ -234,11 +244,11 @@ Debug with **Query Tools** (VS Code) or MCP `dump_ast` / `debug_query` before
 
 ### Templates (MiniJinja)
 
-String templating uses [MiniJinja](https://docs.rs/minijinja/) via `c:applyTemplate`
-and `c:renderFileTemplate` only.
+String templating uses [MiniJinja](https://docs.rs/minijinja/) via `c:template`
+only (`inline` string or file `path`).
 
 ```lua
-local path = c:applyTemplate({ template = "lib/{{ feature | snake_case }}.dart" })
+local path = c:template({ inline = "lib/{{ feature | snake_case }}.dart" })
 ```
 
 Full guide: [recipe-templates.md](recipe-templates.md).

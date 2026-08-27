@@ -39,7 +39,7 @@ After connecting the MCP server, call **`bootstrap_project`** once. It installs:
   types/       # Named arg types — convention
   variables/   # Luau variable modules — convention
   queries/     # Luau query libraries — convention
-  templates/   # optional (renderFileTemplate)
+  templates/   # optional (c:template path)
 ```
 
 The registry identifies every `.luau` and `.lua` module under `.codemod/` by its returned table
@@ -92,7 +92,7 @@ return {
 
 ```lua
 -- create
-c:create({ path = "lib/new.dart", content = c:renderFileTemplate({ path = "templates/x.template" }) })
+c:create({ path = "lib/new.dart", content = c:template({ path = "templates/x.template" }) })
 
 -- delete
 c:delete({ path = c.args.legacyPath, ifMissing = "skip" })

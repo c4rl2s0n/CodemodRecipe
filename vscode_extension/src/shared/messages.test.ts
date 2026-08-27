@@ -26,6 +26,13 @@ describe('isWebviewToExtensionMessage', () => {
     ).toBe(true);
     expect(
       isWebviewToExtensionMessage({
+        type: WEBVIEW_TO_EXTENSION.pickFile,
+        arg: 'path',
+        requestId: 2,
+      })
+    ).toBe(true);
+    expect(
+      isWebviewToExtensionMessage({
         type: WEBVIEW_TO_EXTENSION.openDiff,
         path: 'lib/a.dart',
       })
@@ -46,7 +53,7 @@ describe('isWebviewToExtensionMessage', () => {
     ).toBe(true);
   });
 
-  it('rejects openDiff without path', () => {
+  it('rejects openDiff without path and preview without requestId', () => {
     expect(
       isWebviewToExtensionMessage({
         type: WEBVIEW_TO_EXTENSION.openDiff,
@@ -59,19 +66,34 @@ describe('isWebviewToExtensionMessage', () => {
     expect(
       isWebviewToExtensionMessage({
         type: WEBVIEW_TO_EXTENSION.preview,
-        args: { a: 1 },
+        args: { a: 'x' },
+      })
+    ).toBe(false);
+    expect(
+      isWebviewToExtensionMessage({
+        type: WEBVIEW_TO_EXTENSION.pickFile,
+        arg: 'path',
       })
     ).toBe(false);
   });
 });
 
 describe('isExtensionToWebviewMessage', () => {
-  it('accepts filePicked', () => {
+  it('accepts filePicked with value or cancelled', () => {
     expect(
       isExtensionToWebviewMessage({
         type: EXTENSION_TO_WEBVIEW.filePicked,
         arg: 'path',
+        requestId: 1,
         value: 'lib/x.dart',
+      })
+    ).toBe(true);
+    expect(
+      isExtensionToWebviewMessage({
+        type: EXTENSION_TO_WEBVIEW.filePicked,
+        arg: 'path',
+        requestId: 2,
+        cancelled: true,
       })
     ).toBe(true);
   });

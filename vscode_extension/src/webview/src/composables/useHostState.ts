@@ -2,6 +2,7 @@ import { computed, onUnmounted, ref } from 'vue';
 import {
   BOOTSTRAP_PHASES,
   EXTENSION_TO_WEBVIEW,
+  RUNNER_SESSION_PHASE,
   RUNNER_TABS,
   type RecipeViewState,
   type RunnerTab,
@@ -22,6 +23,10 @@ export function useHostState(inbound: ExtensionInbound) {
     bootstrapPhase: BOOTSTRAP_PHASES.startingHost,
     contextMatches: [],
     slotsByRecipe: {},
+    session: {
+      id: 0,
+      phase: RUNNER_SESSION_PHASE.idle,
+    },
   });
 
   const recipe = computed(() => hostState.value.recipe);

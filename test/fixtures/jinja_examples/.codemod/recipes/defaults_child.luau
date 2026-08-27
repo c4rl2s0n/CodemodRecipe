@@ -9,9 +9,9 @@ return {
 	apply = function(c)
 		local verbose = c.args.verbose or "false"
 		c:create({
-			path = c:applyTemplate({ template = "lib/generated/{{ label | snake_case }}_defaults.dart" }),
-			content = c:applyTemplate({
-				template = [[
+			path = c:template({ inline = "lib/generated/{{ label | snake_case }}_defaults.dart" }),
+			content = c:template({
+				inline = [[
 class {{ label | pascal_case }}Defaults {
   static const verbose = {{ verbose }};
 }

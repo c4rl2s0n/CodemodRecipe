@@ -333,7 +333,7 @@ return {
   apply = function(c)
     c:create({
       path = c.args.file,
-      content = c:applyTemplate({ template = "fn main(){println!(\"hi\");}\n" }),
+      content = c:template({ inline = "fn main(){println!(\"hi\");}\n" }),
     })
   end,
 }
