@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, ref } from 'vue';
+import { computed, nextTick, ref } from 'vue';
 import { ARG_INPUT_KIND, type ArgValue, type RecipeArg } from '../shared';
 import {
   asList,
@@ -11,6 +11,7 @@ import {
   itemKind,
   rowSummary,
 } from '../lib/args';
+import { focusFirstControl, onEnterFocusNext } from '../lib/focus';
 import { useExtensionClient } from '../composables/useExtensionClient';
 
 defineOptions({ name: 'ArgField' });
@@ -30,6 +31,8 @@ const emit = defineEmits<{
 }>();
 
 const expandedIndex = ref<number | null>(null);
+const listRoot = ref<HTMLElement | null>(null);
+const rowEls = ref<(HTMLElement | null)[]>([]);
 
 const inputKind = computed(() => effectiveInputKind(props.arg));
 const list = computed(() => isListKind(props.arg.inputKind));
@@ -88,10 +91,19 @@ function setListItem(index: number, value: ArgValue) {
   listModel.value = next;
 }
 
-function addRow() {
+function setRowEl(index: number, el: unknown) {
+  if (el instanceof HTMLElement || el === null) {
+    rowEls.value[index] = el;
+  }
+}
+
+async function addRow() {
   const next = [...listModel.value, emptyValue(itemArg.value)];
   listModel.value = next;
-  expandedIndex.value = next.length - 1;
+  const index = next.length - 1;
+  expandedIndex.value = index;
+  await nextTick();
+  focusFirstControl(rowEls.value[index] ?? listRoot.value);
 }
 
 function removeRow(index: number) {
@@ -106,6 +118,13 @@ function removeRow(index: number) {
 
 function toggleRow(index: number) {
   expandedIndex.value = expandedIndex.value === index ? null : index;
+}
+
+function handleEnter(event: KeyboardEvent) {
+  const form = (event.currentTarget as HTMLElement | null)?.closest(
+    '[data-recipe-form]'
+  );
+  onEnterFocusNext(event, form);
 }
 
 async function pickPath() {
@@ -126,56 +145,69 @@ async function pickPath() {
           {{ arg.name }}{{ arg.required ? ' *' : '' }}
           <span v-if="arg.help" class="help"> — {{ arg.help }}</span>
         </label>
-        <button type="button" class="icon-btn" @click="addRow">Add</button>
       </div>
-      <div
-        v-for="(row, index) in listModel"
-        :key="index"
-        class="list-row"
-      >
-        <template v-if="named">
-          <div class="row-toolbar">
+      <div ref="listRoot" class="list-body">
+        <div
+          v-for="(row, index) in listModel"
+          :key="index"
+          :ref="(el) => setRowEl(index, el)"
+          class="list-row"
+        >
+          <template v-if="named">
+            <div class="row-toolbar">
+              <button
+                type="button"
+                class="summary"
+                @click="toggleRow(index)"
+              >
+                {{ rowSummary(arg.fields, row) }}
+              </button>
+              <button
+                type="button"
+                class="icon-btn"
+                tabindex="-1"
+                @click="removeRow(index)"
+              >
+                Remove
+              </button>
+            </div>
+            <div v-if="expandedIndex === index" class="object-fields nested">
+              <ArgField
+                v-for="field in arg.fields ?? []"
+                :key="field.name"
+                :arg="field"
+                :model-value="asObject(row)[field.name] ?? emptyValue(field)"
+                nested
+                @update:model-value="
+                  setListItem(index, {
+                    ...asObject(row),
+                    [field.name]: $event,
+                  })
+                "
+                @submit-preview="emit('submit-preview')"
+              />
+            </div>
+          </template>
+          <div v-else class="row-toolbar">
+            <ArgField
+              :arg="itemArg"
+              hide-label
+              nested
+              :model-value="row"
+              @update:model-value="setListItem(index, $event)"
+              @submit-preview="emit('submit-preview')"
+            />
             <button
               type="button"
-              class="summary"
-              @click="toggleRow(index)"
+              class="icon-btn"
+              tabindex="-1"
+              @click="removeRow(index)"
             >
-              {{ rowSummary(arg.fields, row) }}
-            </button>
-            <button type="button" class="icon-btn" @click="removeRow(index)">
               Remove
             </button>
           </div>
-          <div v-if="expandedIndex === index" class="object-fields nested">
-            <ArgField
-              v-for="field in arg.fields ?? []"
-              :key="field.name"
-              :arg="field"
-              :model-value="asObject(row)[field.name] ?? emptyValue(field)"
-              nested
-              @update:model-value="
-                setListItem(index, {
-                  ...asObject(row),
-                  [field.name]: $event,
-                })
-              "
-              @submit-preview="emit('submit-preview')"
-            />
-          </div>
-        </template>
-        <div v-else class="row-toolbar">
-          <ArgField
-            :arg="itemArg"
-            hide-label
-            nested
-            :model-value="row"
-            @update:model-value="setListItem(index, $event)"
-            @submit-preview="emit('submit-preview')"
-          />
-          <button type="button" class="icon-btn" @click="removeRow(index)">
-            Remove
-          </button>
         </div>
+        <button type="button" class="add-btn" @click="addRow">Add</button>
       </div>
     </template>
 
@@ -210,14 +242,14 @@ async function pickPath() {
           :id="'arg-' + arg.name"
           v-model="isChecked"
           type="checkbox"
-          @keydown.enter.prevent="emit('submit-preview')"
+          @keydown="handleEnter"
         />
       </div>
       <div v-else-if="closedChoice" class="row">
         <select
           :id="'arg-' + arg.name"
           v-model="textModel"
-          @keydown.enter.prevent="emit('submit-preview')"
+          @keydown="handleEnter"
         >
           <option v-if="!arg.required" value=""></option>
           <option v-for="opt in arg.options" :key="opt" :value="opt">
@@ -234,7 +266,7 @@ async function pickPath() {
           v-model="textModel"
           type="text"
           :list="arg.options?.length ? listId : undefined"
-          @keydown.enter.prevent="emit('submit-preview')"
+          @keydown="handleEnter"
         />
         <button
           v-if="
@@ -275,8 +307,20 @@ async function pickPath() {
   margin-top: 12px;
 }
 
+.list-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
 .list-row {
-  margin-top: 8px;
+  margin-top: 0;
+}
+
+.add-btn {
+  align-self: flex-start;
+  margin-top: 4px;
+  padding: 4px 8px;
 }
 
 .summary {

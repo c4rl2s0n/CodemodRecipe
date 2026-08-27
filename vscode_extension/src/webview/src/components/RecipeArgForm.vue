@@ -59,12 +59,14 @@ function paramMeta(arg: RecipeArg): string {
     <p class="desc">Choose a recipe from the Recipes tab.</p>
   </div>
   <template v-else>
-    <ArgField
-      v-for="arg in recipe.args"
-      :key="arg.name"
-      v-model="argValues[arg.name]"
-      :arg="arg"
-      @submit-preview="emit('submit-preview')"
-    />
+    <div data-recipe-form class="recipe-form">
+      <ArgField
+        v-for="arg in recipe.args"
+        :key="arg.name"
+        v-model="argValues[arg.name]"
+        :arg="arg"
+        @submit-preview="emit('submit-preview')"
+      />
+    </div>
   </template>
 </template>

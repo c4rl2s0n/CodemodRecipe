@@ -43,7 +43,12 @@ function createHost(overrides: Partial<RecipeRunnerHandlerHost> = {}) {
       cancelInFlight: vi.fn(),
     } as unknown as RecipeRunnerHandlerHost['bridge'],
     config: { previewSnippetLines: 3 } as RecipeRunnerHandlerHost['config'],
-    diffProvider: { store: vi.fn(), clear: vi.fn() } as unknown as RecipeRunnerHandlerHost['diffProvider'],
+    diffProvider: {
+      store: vi.fn(),
+      clear: vi.fn(),
+      has: vi.fn(() => false),
+      keys: vi.fn(() => []),
+    } as unknown as RecipeRunnerHandlerHost['diffProvider'],
     get previewInFlight() {
       return previewInFlight;
     },

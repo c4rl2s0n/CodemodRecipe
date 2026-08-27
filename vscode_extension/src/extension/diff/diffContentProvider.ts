@@ -12,6 +12,14 @@ export class DiffContentProvider implements vscode.TextDocumentContentProvider {
     return this.contents.get(uri.path) ?? '';
   }
 
+  has(key: string): boolean {
+    return this.contents.has(key);
+  }
+
+  keys(): string[] {
+    return [...this.contents.keys()];
+  }
+
   store(key: string, content: string): vscode.Uri {
     this.contents.set(key, content);
     const uri = vscode.Uri.from({ scheme: DiffContentProvider.scheme, path: key });
@@ -22,4 +30,17 @@ export class DiffContentProvider implements vscode.TextDocumentContentProvider {
   clear(): void {
     this.contents.clear();
   }
+}
+
+/** Sanitize workspace path for codemod-diff URI keys (shared by open + refresh). */
+export function diffSafePath(filePath: string): string {
+  return filePath.replace(/[^a-zA-Z0-9]/g, '_');
+}
+
+export function diffOriginalKey(filePath: string): string {
+  return `${DIFF.originalPrefix}/${diffSafePath(filePath)}`;
+}
+
+export function diffModifiedKey(filePath: string): string {
+  return `${DIFF.modifiedPrefix}/${diffSafePath(filePath)}`;
 }

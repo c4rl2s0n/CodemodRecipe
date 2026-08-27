@@ -1,8 +1,13 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
-import { COMMANDS, DIFF } from '../constants';
+import { COMMANDS } from '../constants';
 import type { ExtensionConfig } from '../config/extensionConfig';
 import type { DiffContentProvider } from '../diff/diffContentProvider';
+import {
+  diffModifiedKey,
+  diffOriginalKey,
+  diffSafePath,
+} from '../diff/diffContentProvider';
 import type { HostBridge } from '../host/hostBridge';
 import {
   EXTENSION_TO_WEBVIEW,
@@ -322,6 +327,10 @@ async function handlePreview(
       argsKey,
     });
     host.postState();
+    await refreshOpenDiffContents(host);
+    if (!isCurrent()) {
+      return;
+    }
   } catch (err) {
     if (!isCurrent()) {
       return;
@@ -478,9 +487,8 @@ async function openNewFilePreview(
   host: RecipeRunnerHandlerHost,
   file: FilePreview
 ): Promise<void> {
-  const safe = file.path.replace(/[^a-zA-Z0-9]/g, '_');
   const contentUri = host.diffProvider.store(
-    `${DIFF.modifiedPrefix}/${safe}`,
+    diffModifiedKey(file.path),
     file.modified ?? ''
   );
   const doc = await vscode.workspace.openTextDocument(contentUri);
@@ -496,17 +504,16 @@ async function openDiff(
     return;
   }
 
-  const safe = file.path.replace(/[^a-zA-Z0-9]/g, '_');
   const originalText = file.original ?? '';
   const modifiedText = file.modified ?? '';
   const title = `${file.path} (proposed)`;
 
   const originalUri = host.diffProvider.store(
-    `${DIFF.originalPrefix}/${safe}`,
+    diffOriginalKey(file.path),
     originalText
   );
   const modifiedUri = host.diffProvider.store(
-    `${DIFF.modifiedPrefix}/${safe}`,
+    diffModifiedKey(file.path),
     modifiedText
   );
   await vscode.commands.executeCommand(
@@ -515,6 +522,46 @@ async function openDiff(
     modifiedUri,
     title
   );
+}
+
+/** Re-store content for diffs already opened so vscode.diff / preview docs live-update. */
+async function refreshOpenDiffContents(
+  host: RecipeRunnerHandlerHost
+): Promise<void> {
+  const presentSafe = new Set<string>();
+
+  for (const file of host.state.lastFiles) {
+    const originalKey = diffOriginalKey(file.path);
+    const modifiedKey = diffModifiedKey(file.path);
+    presentSafe.add(diffSafePath(file.path));
+
+    const opened =
+      host.diffProvider.has(originalKey) || host.diffProvider.has(modifiedKey);
+    if (!opened) {
+      continue;
+    }
+
+    const materialized = await ensureDiffMaterialized(host, file);
+    if (isNewFilePreview(materialized)) {
+      host.diffProvider.store(modifiedKey, materialized.modified ?? '');
+      if (host.diffProvider.has(originalKey)) {
+        host.diffProvider.store(originalKey, '');
+      }
+    } else {
+      host.diffProvider.store(originalKey, materialized.original ?? '');
+      host.diffProvider.store(modifiedKey, materialized.modified ?? '');
+    }
+  }
+
+  for (const key of host.diffProvider.keys()) {
+    const match = key.match(/^\/(?:original|modified)\/(.+)$/);
+    if (!match) {
+      continue;
+    }
+    if (!presentSafe.has(match[1])) {
+      host.diffProvider.store(key, '');
+    }
+  }
 }
 
 async function ensureDiffMaterialized(
