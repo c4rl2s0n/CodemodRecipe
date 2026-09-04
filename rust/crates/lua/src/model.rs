@@ -131,9 +131,11 @@ pub struct StackDef {
 pub struct ComponentDef {
     pub id: String,
     pub description: Option<String>,
-    pub operations: Vec<String>,
+    pub operations: Vec<OperationDef>,
     /// True when the module defines a top-level `scaffold` table with `apply`.
     pub has_scaffold: bool,
+    /// Args declared on `scaffold.args` (empty when no scaffold or no args table).
+    pub scaffold_args: Vec<Arg>,
     #[schemars(skip)]
     pub source: String,
     #[schemars(skip)]

@@ -140,7 +140,10 @@ pub fn match_placeholders(pattern: &str, text: &str) -> Option<BTreeMap<String, 
             ti = capture_end;
             pi = close + 1;
         } else {
-            let next = pattern[pi..].find('{').map(|i| pi + i).unwrap_or(pattern.len());
+            let next = pattern[pi..]
+                .find('{')
+                .map(|i| pi + i)
+                .unwrap_or(pattern.len());
             let lit = &pattern[pi..next];
             if !text[ti..].starts_with(lit) {
                 return None;

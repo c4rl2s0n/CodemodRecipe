@@ -2,6 +2,10 @@ import {
   RUNNER_SESSION_PHASE,
   RUNNER_TABS,
   type ArgValues,
+  type ComponentDetailSchema,
+  type ComponentFinding,
+  type ComponentInstance,
+  type ComponentSchema,
   type ContextRecipeMatch,
   type FilePreview,
   type RecipeDiagnostic,
@@ -9,6 +13,8 @@ import {
   type RecipeViewState,
   type RunnerSessionSnapshot,
   type RunnerTab,
+  type StackSchema,
+  type TranscriptEvent,
 } from '../../shared';
 
 export class RecipeRunnerState {
@@ -32,6 +38,20 @@ export class RecipeRunnerState {
   sessionPhase: RunnerSessionSnapshot['phase'] = RUNNER_SESSION_PHASE.idle;
   activeRequestId: number | undefined;
 
+  components: readonly ComponentSchema[] = [];
+  stack: StackSchema | undefined;
+  componentInstances: readonly ComponentInstance[] = [];
+  componentFindings: readonly ComponentFinding[] = [];
+  selectedComponentId: string | undefined;
+  selectedInstanceId: string | undefined;
+  componentDetail: ComponentDetailSchema | undefined;
+  componentAction: string | undefined;
+  componentArgs: ArgValues = {};
+  componentFiles: FilePreview[] = [];
+  componentTranscript: TranscriptEvent[] = [];
+  componentScanError: string | undefined;
+  componentOpError: string | undefined;
+
   setRecipesRefreshing(inFlight: boolean): void {
     this.recipesRefreshing = inFlight;
   }
@@ -44,6 +64,89 @@ export class RecipeRunnerState {
     this.recipes = recipes;
     this.discoveryError = discoveryError;
     this.diagnostics = diagnostics;
+  }
+
+  setComponentCatalog(
+    components: readonly ComponentSchema[],
+    stack?: StackSchema
+  ): void {
+    this.components = components;
+    this.stack = stack;
+  }
+
+  setComponentScan(
+    instances: readonly ComponentInstance[],
+    findings: readonly ComponentFinding[] = [],
+    error?: string
+  ): void {
+    this.componentInstances = instances;
+    this.componentFindings = findings;
+    this.componentScanError = error;
+    if (
+      this.selectedInstanceId &&
+      !instances.some((i) => i.id === this.selectedInstanceId)
+    ) {
+      this.selectedInstanceId = undefined;
+    }
+  }
+
+  selectComponent(componentId: string, detail?: ComponentDetailSchema): void {
+    this.selectedComponentId = componentId;
+    this.selectedInstanceId = undefined;
+    this.componentDetail = detail;
+    this.componentAction = detail?.hasScaffold
+      ? 'scaffold'
+      : detail?.operations[0]?.name;
+    this.componentArgs = {};
+    this.componentFiles = [];
+    this.componentTranscript = [];
+    this.componentOpError = undefined;
+    this.activeTab = RUNNER_TABS.components;
+  }
+
+  selectComponentInstance(instanceId: string): void {
+    this.selectedInstanceId = instanceId;
+    const instance = this.componentInstances.find((i) => i.id === instanceId);
+    if (instance && instance.componentId !== this.selectedComponentId) {
+      this.selectedComponentId = instance.componentId;
+    }
+    const ops = this.componentDetail?.operations ?? [];
+    if (ops.length > 0) {
+      this.componentAction = ops[0]!.name;
+    } else if (this.componentDetail?.hasScaffold) {
+      this.componentAction = 'scaffold';
+    } else {
+      this.componentAction = undefined;
+    }
+    this.componentArgs = {};
+    this.componentFiles = [];
+    this.componentTranscript = [];
+    this.componentOpError = undefined;
+    this.activeTab = RUNNER_TABS.components;
+  }
+
+  selectComponentAction(action: string): void {
+    this.componentAction = action;
+    this.componentArgs = {};
+    this.componentFiles = [];
+    this.componentTranscript = [];
+    this.componentOpError = undefined;
+  }
+
+  setComponentPreviewResult(
+    files: FilePreview[],
+    transcript: TranscriptEvent[] = [],
+    error?: string
+  ): void {
+    this.componentFiles = files;
+    this.componentTranscript = transcript;
+    this.componentOpError = error;
+  }
+
+  clearComponentPreview(): void {
+    this.componentFiles = [];
+    this.componentTranscript = [];
+    this.componentOpError = undefined;
   }
 
   setContextMatching(
@@ -119,11 +222,9 @@ export class RecipeRunnerState {
     const previewStatus =
       this.sessionPhase === RUNNER_SESSION_PHASE.previewing
         ? 'Previewing…'
-        : this.sessionPhase === RUNNER_SESSION_PHASE.pickingPath
-          ? 'Selecting path…'
-          : this.sessionPhase === RUNNER_SESSION_PHASE.applying
-            ? 'Applying…'
-            : undefined;
+        : this.sessionPhase === RUNNER_SESSION_PHASE.applying
+          ? 'Applying…'
+          : undefined;
     return {
       id: this.sessionId,
       phase: this.sessionPhase,
@@ -148,6 +249,19 @@ export class RecipeRunnerState {
       contextMatches: this.contextMatches,
       slotsByRecipe: this.slotsByRecipe,
       session: this.sessionSnapshot(),
+      components: this.components,
+      stack: this.stack,
+      componentInstances: this.componentInstances,
+      componentFindings: this.componentFindings,
+      selectedComponentId: this.selectedComponentId,
+      selectedInstanceId: this.selectedInstanceId,
+      componentDetail: this.componentDetail,
+      componentAction: this.componentAction,
+      componentArgs: this.componentArgs,
+      componentFiles: this.componentFiles,
+      componentTranscript: this.componentTranscript,
+      componentScanError: this.componentScanError,
+      componentOpError: this.componentOpError,
     };
   }
 }

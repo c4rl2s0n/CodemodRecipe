@@ -38,6 +38,9 @@ return {
 	end,
 	operations = {
 		addField = {
+			args = {
+				{ name = "name", required = true },
+			},
 			apply = function(c, args, target)
 				local fieldName = args.name
 				if not fieldName or fieldName == "" then

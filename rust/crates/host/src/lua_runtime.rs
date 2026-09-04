@@ -11,12 +11,10 @@ use codemod_recipe_lua_macros::host_method;
 use mlua::{Lua, Table, Value};
 use serde_json::json;
 
+use crate::component::delegate::register_component_delegate;
 use crate::engine::working_tree::WorkingTree;
 use crate::host_api::context::{HostInner, SharedHost};
-pub use crate::host_api::context::{
-    RecipeApplyError, RecipeRunRequest, RecipeRunResult, RunKind,
-};
-use crate::component::delegate::register_component_delegate;
+pub use crate::host_api::context::{RecipeApplyError, RecipeRunRequest, RecipeRunResult, RunKind};
 use crate::host_api::handlers::{do_log, do_resolve, post_exec_cmd};
 use crate::host_api::registry::{rt, set_fn, HOST_METHODS};
 use crate::sandbox::path_sandbox::PathSandbox;
@@ -48,12 +46,10 @@ pub fn run_recipe(
         saw_post_exec: false,
         op_count: 0,
     }));
-    let ctx = build_ctx(&lua, Rc::clone(&inner)).map_err(|message| {
-        take_apply_error(&inner, message)
-    })?;
-    let args_tbl = args_table_from_host(&lua, &inner).map_err(|message| {
-        take_apply_error(&inner, message)
-    })?;
+    let ctx =
+        build_ctx(&lua, Rc::clone(&inner)).map_err(|message| take_apply_error(&inner, message))?;
+    let args_tbl =
+        args_table_from_host(&lua, &inner).map_err(|message| take_apply_error(&inner, message))?;
     if let Err(message) = invoke_apply(&lua, recipe, ctx, args_tbl) {
         return Err(take_apply_error(&inner, message));
     }

@@ -334,9 +334,7 @@ fn method_signature_luau(method: &HostMethodSurface) -> String {
         HostMethodSignature::Run => {
             "(self: CodemodContext, id: string, args: { [string]: any }?) -> ()".to_string()
         }
-        HostMethodSignature::Variadic => {
-            "(self: CodemodContext, ...any) -> ()".to_string()
-        }
+        HostMethodSignature::Variadic => "(self: CodemodContext, ...any) -> ()".to_string(),
     }
 }
 
@@ -372,7 +370,9 @@ fn generate_ts() -> String {
     out.push_str("  enums?: Record<string, string[]>;\n");
     out.push_str("};\n\n");
 
-    out.push_str("/** Recipe apply args are the 2nd parameter: `apply(c, args)`. Not a field on `c`. */\n");
+    out.push_str(
+        "/** Recipe apply args are the 2nd parameter: `apply(c, args)`. Not a field on `c`. */\n",
+    );
     out.push_str("export const HOST_CONTEXT_FIELD: string | null = null;\n\n");
 
     let all_definitions = collect_definitions();
@@ -604,7 +604,7 @@ fn recipe_module_docs() -> Vec<(&'static str, &'static str)> {
             "args",
             "List of arg definition tables (`name`, `inputKind`, …).",
         ),
-            ("apply", "`function(c, args)` — only mutation entrypoint."),
+        ("apply", "`function(c, args)` — only mutation entrypoint."),
         (
             "maps",
             "Recipe-local maps `{ mapId = { key = \"value\" } }`.",
@@ -627,7 +627,10 @@ fn recipe_module_docs() -> Vec<(&'static str, &'static str)> {
 
 fn arg_definition_docs() -> Vec<(&'static str, &'static str)> {
     vec![
-        ("name", "Argument name (available as `args.<name>` in apply)."),
+        (
+            "name",
+            "Argument name (available as `args.<name>` in apply).",
+        ),
         ("required", "Whether the runner requires a value."),
         (
             "inputKind",

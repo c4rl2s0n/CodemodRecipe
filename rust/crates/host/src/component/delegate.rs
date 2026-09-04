@@ -7,7 +7,7 @@ use crate::host_api::context::SharedHost;
 use crate::host_api::registry::{rt, set_fn};
 use crate::lua_runtime::build_ctx;
 
-pub fn register_component_delegate(
+pub(crate) fn register_component_delegate(
     lua: &Lua,
     ctx: &Table,
     host: &SharedHost,
@@ -41,22 +41,39 @@ fn component_delegate(host: &SharedHost, lua: &Lua, id: String) -> Result<Value,
     let host_parse = Rc::clone(host);
     let component_parse = component.clone();
     let id_parse = id.clone();
-    set_fn(lua, &delegate, "parse", move |lua, (_this, locator): (Value, Value)| {
-        push_component(&host_parse, &id_parse).map_err(rt)?;
-        let result = call_child_hook(&host_parse, lua, &component_parse, "parse", Some(locator));
-        pop_stack(&host_parse, &id_parse);
-        result.map_err(rt)
-    })?;
+    set_fn(
+        lua,
+        &delegate,
+        "parse",
+        move |lua, (_this, locator): (Value, Value)| {
+            push_component(&host_parse, &id_parse).map_err(rt)?;
+            let result =
+                call_child_hook(&host_parse, lua, &component_parse, "parse", Some(locator));
+            pop_stack(&host_parse, &id_parse);
+            result.map_err(rt)
+        },
+    )?;
 
     let host_verify = Rc::clone(host);
     let component_verify = component.clone();
     let id_verify = id.clone();
-    set_fn(lua, &delegate, "verify", move |lua, (_this, instance): (Value, Value)| {
-        push_component(&host_verify, &id_verify).map_err(rt)?;
-        let result = call_child_hook(&host_verify, lua, &component_verify, "verify", Some(instance));
-        pop_stack(&host_verify, &id_verify);
-        result.map_err(rt)
-    })?;
+    set_fn(
+        lua,
+        &delegate,
+        "verify",
+        move |lua, (_this, instance): (Value, Value)| {
+            push_component(&host_verify, &id_verify).map_err(rt)?;
+            let result = call_child_hook(
+                &host_verify,
+                lua,
+                &component_verify,
+                "verify",
+                Some(instance),
+            );
+            pop_stack(&host_verify, &id_verify);
+            result.map_err(rt)
+        },
+    )?;
 
     let host_read = Rc::clone(host);
     let component_read = component.clone();
@@ -67,8 +84,13 @@ fn component_delegate(host: &SharedHost, lua: &Lua, id: String) -> Result<Value,
         "readSource",
         move |lua, (_this, locator): (Value, Value)| {
             push_component(&host_read, &id_read).map_err(rt)?;
-            let result =
-                call_child_hook(&host_read, lua, &component_read, "readSource", Some(locator));
+            let result = call_child_hook(
+                &host_read,
+                lua,
+                &component_read,
+                "readSource",
+                Some(locator),
+            );
             pop_stack(&host_read, &id_read);
             result.map_err(rt)
         },
@@ -108,9 +130,9 @@ fn call_child_hook(
         .and_then(|p| p.to_str())
         .unwrap_or(component.id.as_str());
     let module = eval_return_table(lua, &component.source, name).map_err(|e| e.to_string())?;
-    let func: Function = module.get(hook).map_err(|_| {
-        format!("component {} has no {hook} hook", component.id)
-    })?;
+    let func: Function = module
+        .get(hook)
+        .map_err(|_| format!("component {} has no {hook} hook", component.id))?;
     match arg {
         Some(value) => func
             .call::<Value>((ctx_table, value))

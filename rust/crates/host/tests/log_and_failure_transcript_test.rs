@@ -65,7 +65,10 @@ return {
         "detail={detail}"
     );
     assert_eq!(log["expandable"], true, "{log}");
-    assert!(log["payload"]["json"].is_object() || log["payload"].is_object(), "{log}");
+    assert!(
+        log["payload"]["json"].is_object() || log["payload"].is_object(),
+        "{log}"
+    );
 
     let _ = std::fs::remove_dir_all(workspace);
 }

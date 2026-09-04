@@ -7,7 +7,7 @@ use thiserror::Error;
 use crate::input_kind::InputKind;
 use crate::model::{
     Arg, ArgFrom, ArgFromSpec, ComponentDef, ExplorerMenuEntry, ExplorerMenuKind, MapAsset,
-    QueryLibAsset, Recipe, StackDef, TypeDef, VariablesAsset,
+    OperationDef, QueryLibAsset, Recipe, StackDef, TypeDef, VariablesAsset,
 };
 
 #[derive(Debug, Error)]
@@ -269,9 +269,9 @@ pub fn load_type_from_table(table: &Table) -> Result<TypeDef, LoadError> {
 pub fn load_stack_from_table(table: &Table, source: &str) -> Result<StackDef, LoadError> {
     let id = required_string(table, "id")?;
     let description = optional_string(table, "description")?;
-    let components_tbl: Table = table.get("components").map_err(|_| {
-        LoadError::Message("stack requires components = { ... }".to_string())
-    })?;
+    let components_tbl: Table = table
+        .get("components")
+        .map_err(|_| LoadError::Message("stack requires components = { ... }".to_string()))?;
     let components = string_array(&components_tbl)?;
     if components.is_empty() {
         return Err(LoadError::Message(
@@ -296,31 +296,38 @@ pub fn load_component_from_table(table: &Table, source: &str) -> Result<Componen
     require_function(table, "parse")?;
     require_function(table, "verify")?;
     let operations = parse_operations(table)?;
-    let has_scaffold = parse_scaffold(table)?;
+    let (has_scaffold, scaffold_args) = parse_scaffold(table)?;
     Ok(ComponentDef {
         id,
         description,
         operations,
         has_scaffold,
+        scaffold_args,
         source: source.to_string(),
         path: None,
     })
 }
 
-fn parse_scaffold(table: &Table) -> Result<bool, LoadError> {
+fn parse_scaffold(table: &Table) -> Result<(bool, Vec<Arg>), LoadError> {
     let Ok(scaffold): Result<Table, _> = table.get("scaffold") else {
-        return Ok(false);
+        return Ok((false, Vec::new()));
     };
     match scaffold.get::<Value>("apply") {
-        Ok(Value::Function(_)) => Ok(true),
-        Ok(other) => Err(LoadError::Message(format!(
-            "scaffold requires apply function, got {}",
-            other.type_name()
-        ))),
-        Err(e) => Err(LoadError::Message(format!(
-            "scaffold requires apply function: {e}"
-        ))),
+        Ok(Value::Function(_)) => {}
+        Ok(other) => {
+            return Err(LoadError::Message(format!(
+                "scaffold requires apply function, got {}",
+                other.type_name()
+            )));
+        }
+        Err(e) => {
+            return Err(LoadError::Message(format!(
+                "scaffold requires apply function: {e}"
+            )));
+        }
     }
+    let args = parse_args(&scaffold)?;
+    Ok((true, args))
 }
 
 fn require_function(table: &Table, key: &str) -> Result<(), LoadError> {
@@ -352,11 +359,11 @@ fn string_array(table: &Table) -> Result<Vec<String>, LoadError> {
     Ok(out)
 }
 
-fn parse_operations(table: &Table) -> Result<Vec<String>, LoadError> {
+fn parse_operations(table: &Table) -> Result<Vec<OperationDef>, LoadError> {
     let Ok(ops): Result<Table, _> = table.get("operations") else {
         return Ok(vec![]);
     };
-    let mut names = Vec::new();
+    let mut out = Vec::new();
     for pair in ops.pairs::<Value, Table>() {
         let (key, op_tbl) = pair.map_err(|e| LoadError::Message(e.to_string()))?;
         let name = match key {
@@ -382,10 +389,16 @@ fn parse_operations(table: &Table) -> Result<Vec<String>, LoadError> {
                 )));
             }
         }
-        names.push(name);
+        let description = optional_string(&op_tbl, "description")?;
+        let args = parse_args(&op_tbl)?;
+        out.push(OperationDef {
+            name,
+            description,
+            args,
+        });
     }
-    names.sort();
-    Ok(names)
+    out.sort_by(|a, b| a.name.cmp(&b.name));
+    Ok(out)
 }
 
 fn recipe_from_table(table: &Table) -> Result<Recipe, LoadError> {

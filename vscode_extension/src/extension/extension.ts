@@ -88,8 +88,17 @@ export function activate(context: vscode.ExtensionContext): void {
       repository.getLastError(),
       repository.getDiagnostics()
     );
+    runner.setComponentCatalog(
+      repository.getComponents(),
+      repository.getStack()
+    );
     diagnostics.publish(repository.getDiagnostics(), config.workspaceRoot);
     refreshContextMatches({ repository, config, runner });
+    if (repository.getComponents().length > 0 && repository.getStack()) {
+      await runner.scanComponents();
+    } else {
+      runner.clearComponentScan();
+    }
   };
 
   const maybeOfferScaffold = async (): Promise<void> => {
@@ -292,7 +301,21 @@ export function activate(context: vscode.ExtensionContext): void {
       }
       if (isUnderCodemodRoot(document.uri.fsPath)) {
         scheduleRecipeReload();
+        return;
       }
+      // Workspace source save → incremental component rescan (host cache).
+      const root = config.workspaceRoot;
+      if (!root || !document.uri.fsPath.startsWith(root)) {
+        return;
+      }
+      if (repository.getComponents().length === 0 || !repository.getStack()) {
+        return;
+      }
+      const relative = path.relative(root, document.uri.fsPath).replace(/\\/g, '/');
+      if (relative.startsWith('..') || path.isAbsolute(relative)) {
+        return;
+      }
+      void runner.incrementalComponentScan([relative]);
     }),
     vscode.workspace.onDidChangeConfiguration((event) => {
       if (

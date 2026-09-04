@@ -150,11 +150,7 @@ impl ComponentScanCache {
             if let Some(ids) = self.path_index.get(path) {
                 result.roots_to_reparse.extend(ids.iter().cloned());
             }
-            if let Some(entry) = self
-                .root_entries
-                .values()
-                .find(|e| e.root_path == *path)
-            {
+            if let Some(entry) = self.root_entries.values().find(|e| e.root_path == *path) {
                 result.roots_to_reparse.insert(entry.instance_id.clone());
             }
         }
@@ -172,17 +168,15 @@ impl ComponentScanCache {
         let removed_ids: BTreeSet<String> = removed_roots
             .iter()
             .filter_map(|root| {
-                self.root_entries.values().find(|e| {
-                    e.component_id == root.component_id && e.root_path == root.root_path
-                })
+                self.root_entries
+                    .values()
+                    .find(|e| e.component_id == root.component_id && e.root_path == root.root_path)
             })
             .map(|e| e.instance_id.clone())
             .collect();
 
-        let updated_ids: BTreeSet<String> = updated_instances
-            .iter()
-            .map(|i| i.id.clone())
-            .collect();
+        let updated_ids: BTreeSet<String> =
+            updated_instances.iter().map(|i| i.id.clone()).collect();
 
         self.instances
             .retain(|i| !removed_ids.contains(&i.id) && !updated_ids.contains(&i.id));
@@ -204,11 +198,7 @@ impl ComponentScanCache {
             if let Some(ids) = self.path_index.get(path) {
                 roots.extend(ids.iter().cloned());
             }
-            if let Some(entry) = self
-                .root_entries
-                .values()
-                .find(|e| e.root_path == *path)
-            {
+            if let Some(entry) = self.root_entries.values().find(|e| e.root_path == *path) {
                 roots.insert(entry.instance_id.clone());
             }
         }
@@ -295,10 +285,7 @@ fn fingerprint(workspace_root: &Path, relative_path: &str) -> Option<FileFingerp
     let path = workspace_root.join(relative_path);
     let meta = std::fs::metadata(&path).ok()?;
     let mtime = meta.modified().ok()?;
-    let mtime_secs = mtime
-        .duration_since(std::time::UNIX_EPOCH)
-        .ok()?
-        .as_secs();
+    let mtime_secs = mtime.duration_since(std::time::UNIX_EPOCH).ok()?.as_secs();
     Some(FileFingerprint {
         mtime_secs,
         size: meta.len(),
@@ -321,9 +308,6 @@ mod tests {
         index_node_paths(&node, "flutter.model/a", &mut index);
         assert!(index.contains_key("lib/models/a.dart"));
         assert!(index.contains_key("lib/stores/a_store.dart"));
-        assert_eq!(
-            index.get("lib/stores/a_store.dart").unwrap().len(),
-            1
-        );
+        assert_eq!(index.get("lib/stores/a_store.dart").unwrap().len(), 1);
     }
 }

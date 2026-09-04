@@ -16,6 +16,7 @@ import {
   assertNever,
   FILE_PREVIEW_KIND,
   type ArgValues,
+  type ComponentDetailSchema,
   type FilePreview,
   type SelectionPayload,
   type WebviewToExtensionMessage,
@@ -52,6 +53,7 @@ export interface RecipeRunnerHandlerHost {
   resetSession(): void;
   /** Publish runtime diagnostics (Problems panel). */
   publishRuntimeDiagnostics?(diagnostics: readonly import('../../shared').RecipeDiagnostic[]): void;
+  scanComponents?(): Promise<void>;
 }
 
 export async function handleWebviewMessage(
@@ -112,6 +114,27 @@ export async function handleWebviewMessage(
     case WEBVIEW_TO_EXTENSION.createShortcut:
       await handleCreateShortcut(host, message.recipeId, message.args);
       break;
+    case WEBVIEW_TO_EXTENSION.selectComponent:
+      await handleSelectComponent(host, message.componentId);
+      break;
+    case WEBVIEW_TO_EXTENSION.selectComponentInstance:
+      await handleSelectComponentInstance(host, message.instanceId);
+      break;
+    case WEBVIEW_TO_EXTENSION.selectComponentAction:
+      host.state.selectComponentAction(message.action);
+      host.postState();
+      break;
+    case WEBVIEW_TO_EXTENSION.componentScan:
+      if (host.scanComponents) {
+        await host.scanComponents();
+      }
+      break;
+    case WEBVIEW_TO_EXTENSION.componentPreview:
+      void handleComponentPreview(host, message.args, message.requestId, true);
+      break;
+    case WEBVIEW_TO_EXTENSION.componentApply:
+      await handleComponentPreview(host, message.args, message.requestId, false);
+      break;
     default:
       assertNever(message);
   }
@@ -169,6 +192,141 @@ async function handleSelectRecipe(
   const recipe = host.state.recipes.find((item) => item.id === recipeId);
   if (recipe) {
     host.run(recipe);
+  }
+}
+
+async function describeComponentOrError(
+  host: RecipeRunnerHandlerHost,
+  componentId: string
+): Promise<{ detail?: ComponentDetailSchema; error?: string }> {
+  const repository = host.recipeRepository;
+  if (!repository) {
+    return { error: 'Recipe repository is not available' };
+  }
+  try {
+    const detail = await repository.describeComponentCached(componentId);
+    if (!detail) {
+      return {
+        error: `Component "${componentId}" could not be described`,
+      };
+    }
+    return { detail };
+  } catch (err) {
+    return {
+      error: err instanceof Error ? err.message : String(err),
+    };
+  }
+}
+
+async function handleSelectComponent(
+  host: RecipeRunnerHandlerHost,
+  componentId: string
+): Promise<void> {
+  const { detail, error } = await describeComponentOrError(host, componentId);
+  host.state.selectComponent(componentId, detail);
+  if (error) {
+    host.state.componentOpError = error;
+  }
+  host.postState();
+}
+
+async function handleSelectComponentInstance(
+  host: RecipeRunnerHandlerHost,
+  instanceId: string
+): Promise<void> {
+  const instance = host.state.componentInstances.find((i) => i.id === instanceId);
+  if (!instance) {
+    return;
+  }
+  if (instance.componentId !== host.state.selectedComponentId) {
+    const { detail, error } = await describeComponentOrError(
+      host,
+      instance.componentId
+    );
+    host.state.selectComponent(instance.componentId, detail);
+    host.state.selectComponentInstance(instanceId);
+    if (error) {
+      host.state.componentOpError = error;
+    }
+  } else {
+    host.state.selectComponentInstance(instanceId);
+  }
+  host.postState();
+}
+
+async function handleComponentPreview(
+  host: RecipeRunnerHandlerHost,
+  args: ArgValues,
+  _requestId: number,
+  preview: boolean
+): Promise<void> {
+  const componentId = host.state.selectedComponentId;
+  const action = host.state.componentAction;
+  if (!componentId || !action) {
+    host.state.setComponentPreviewResult(
+      [],
+      [],
+      'Select a component action first'
+    );
+    host.postState();
+    return;
+  }
+  host.state.componentArgs = args;
+  try {
+    let response;
+    if (action === 'scaffold') {
+      response = await host.bridge.componentScaffold({
+        componentId,
+        args,
+        preview,
+      });
+    } else {
+      const instanceId = host.state.selectedInstanceId;
+      if (!instanceId) {
+        host.state.setComponentPreviewResult(
+          [],
+          [],
+          'Select an instance to run this operation'
+        );
+        host.postState();
+        return;
+      }
+      response = await host.bridge.componentInvokeOperation({
+        instanceId,
+        operation: action,
+        args,
+        preview,
+      });
+    }
+    if (!response.ok) {
+      host.state.setComponentPreviewResult(
+        [],
+        response.transcript ?? [],
+        response.error ?? 'Component operation failed'
+      );
+      host.postState();
+      return;
+    }
+    const files = response.files ?? [];
+    for (const file of files) {
+      const originalKey = diffOriginalKey(file.path);
+      const modifiedKey = diffModifiedKey(file.path);
+      host.diffProvider.store(originalKey, file.original ?? '');
+      host.diffProvider.store(modifiedKey, file.modified ?? '');
+    }
+    host.state.setComponentPreviewResult(files, response.transcript ?? []);
+    if (!preview && host.scanComponents) {
+      await host.scanComponents();
+    } else {
+      host.postState();
+    }
+  } catch (err) {
+    host.state.setComponentPreviewResult(
+      [],
+      [],
+      err instanceof Error ? err.message : String(err)
+    );
+    host.postState();
   }
 }
 
@@ -465,7 +623,9 @@ async function handleOpenDiffByPath(
   host: RecipeRunnerHandlerHost,
   filePath: string
 ): Promise<void> {
-  const file = host.state.lastFiles.find((item) => item.path === filePath);
+  const file =
+    host.state.lastFiles.find((item) => item.path === filePath) ??
+    host.state.componentFiles.find((item) => item.path === filePath);
   if (!file) {
     return;
   }

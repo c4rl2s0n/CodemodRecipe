@@ -1,19 +1,20 @@
 use codemod_recipe_core::apply::atomic_apply::apply_operations_atomically;
 use std::collections::BTreeMap;
 
-use crate::engine::runner::{collect_recipe_changes, planned_snapshot_paths, resolve_recipe};
 use crate::component::{
     component_incremental_scan, component_scan, invoke_operation, invoke_scaffold,
     ComponentIncrementalScanRequest, ComponentInvokeRequest, ComponentScaffoldRequest,
 };
+use crate::engine::runner::{collect_recipe_changes, planned_snapshot_paths, resolve_recipe};
 use crate::lua_runtime::{RecipeApplyError, RunKind};
 use crate::preview::diff::build_file_preview_from_change;
 use crate::preview::patch_selector::{apply_changes_with_selection, parse_selection};
 use crate::preview::preview_token::{compute_preview_token, validate_preview_token};
 use crate::protocol::keys as protocol_keys;
 use crate::protocol::{
-    ApplyResponse, AstPathResult, DescribeResponse, DiagnosticSource, DiffResponse, HostCommand,
-    PreviewResponse, QueryCapturesResponse, RecipeCatalogResponse, RecipeDiagnostic,
+    ApplyResponse, AstPathResult, DescribeComponentResponse, DescribeResponse, DiagnosticSource,
+    DiffResponse, HostCommand, PreviewResponse, QueryCapturesResponse, RecipeCatalogResponse,
+    RecipeDiagnostic,
 };
 use crate::recipe::registry::RecipeRegistry;
 use crate::recipe::validate::{validate_recipe, validate_workspace};
@@ -77,6 +78,8 @@ fn catalog_response(registry: &RecipeRegistry) -> serde_json::Value {
         ),
         query_ids: Some(registry.queries_by_id().keys().cloned().collect()),
         queries: Some(registry.queries_by_id().clone()),
+        components: Some(registry.component_schemas()),
+        stack: registry.stack_schema(),
     })
 }
 
@@ -374,6 +377,20 @@ pub fn handle_command(registry: &mut RecipeRegistry, cmd: HostCommand) -> serde_
                 },
             },
         )),
+        HostCommand::DescribeComponent { component_id } => {
+            match registry.describe_component(&component_id) {
+                Some(component) => to_value(DescribeComponentResponse {
+                    ok: true,
+                    error: None,
+                    component: Some(component),
+                }),
+                None => to_value(DescribeComponentResponse {
+                    ok: false,
+                    error: Some(format!("component not found: {component_id}")),
+                    component: None,
+                }),
+            }
+        }
     }
 }
 
@@ -382,12 +399,10 @@ fn collect(
     request: RecipeRequest<'_>,
     kind: RunKind,
 ) -> Result<crate::engine::runner::CollectedChanges, RecipeApplyError> {
-    let (recipe, recipe_path) =
-        resolve_recipe(registry, request.recipe_id, request.inline_recipe).map_err(|message| {
-            RecipeApplyError {
-                message,
-                transcript: Vec::new(),
-            }
+    let (recipe, recipe_path) = resolve_recipe(registry, request.recipe_id, request.inline_recipe)
+        .map_err(|message| RecipeApplyError {
+            message,
+            transcript: Vec::new(),
         })?;
     collect_recipe_changes(
         registry,

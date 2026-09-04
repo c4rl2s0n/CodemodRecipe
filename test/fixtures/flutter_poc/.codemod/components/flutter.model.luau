@@ -260,6 +260,9 @@ return {
 	},
 	operations = {
 		addStoreField = {
+			args = {
+				{ name = "fieldName", required = true },
+			},
 			apply = function(c, args, target)
 				local fieldName = args.fieldName or args.name
 				if not fieldName or fieldName == "" then

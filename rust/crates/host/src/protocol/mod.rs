@@ -167,6 +167,11 @@ pub enum HostCommand {
         #[serde(default)]
         preview: bool,
     },
+    #[serde(rename = "describeComponent")]
+    DescribeComponent {
+        #[serde(rename = "componentId")]
+        component_id: String,
+    },
 }
 
 fn default_true() -> bool {
@@ -308,6 +313,61 @@ pub struct QueryCapturesResponse {
 }
 
 #[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ComponentOperationSchema {
+    pub name: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    pub args: Vec<RecipeArg>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ComponentSchema {
+    pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    pub operations: Vec<String>,
+    pub has_scaffold: bool,
+    pub is_root: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_file: Option<String>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct StackSchema {
+    pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    pub components: Vec<String>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct DescribeComponentResponse {
+    pub ok: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub component: Option<ComponentDetailSchema>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ComponentDetailSchema {
+    pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    pub has_scaffold: bool,
+    pub is_root: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub source_file: Option<String>,
+    pub scaffold_args: Vec<RecipeArg>,
+    pub operations: Vec<ComponentOperationSchema>,
+}
+
+#[derive(Debug, Serialize, Clone)]
 pub struct RecipeCatalogResponse {
     pub ok: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -332,6 +392,10 @@ pub struct RecipeCatalogResponse {
     pub query_ids: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub queries: Option<BTreeMap<String, String>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub components: Option<Vec<ComponentSchema>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub stack: Option<StackSchema>,
 }
 
 #[derive(Debug, Serialize, Clone)]

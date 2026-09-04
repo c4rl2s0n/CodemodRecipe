@@ -138,8 +138,14 @@ fn scan_error(message: &str) -> ComponentScanResponse {
 
 fn run_full_scan(
     registry: &RecipeRegistry,
-) -> Result<(ComponentScanResponse, Vec<ComponentInstance>, Vec<ComponentFinding>), ComponentScanResponse>
-{
+) -> Result<
+    (
+        ComponentScanResponse,
+        Vec<ComponentInstance>,
+        Vec<ComponentFinding>,
+    ),
+    ComponentScanResponse,
+> {
     if registry.components().is_empty() {
         return Ok((
             ComponentScanResponse {
@@ -229,13 +235,7 @@ fn rescan_root_context(
 ) -> Result<(Vec<ComponentInstance>, Vec<ComponentFinding>), String> {
     let host = make_host(ctx, BTreeMap::new())?;
     let lua = codemod_recipe_lua::new_sandbox().map_err(|e| e.to_string())?;
-    scan_component_contexts(
-        &lua,
-        ctx,
-        component,
-        Rc::clone(&host),
-        vec![locator],
-    )
+    scan_component_contexts(&lua, ctx, component, Rc::clone(&host), vec![locator])
 }
 
 fn scan_component_contexts(
@@ -306,8 +306,8 @@ fn collect_identify_locators(
     component: &ComponentDef,
     host: SharedHost,
 ) -> Result<Vec<serde_json::Value>, String> {
-    let identify_raw = invoke_component_hook(lua, ctx, component, "identify", host, None)
-        .map_err(|e| {
+    let identify_raw =
+        invoke_component_hook(lua, ctx, component, "identify", host, None).map_err(|e| {
             if e.contains("missing required hook identify") {
                 format!(
                     "stack root component {} requires identify(c) returning a list of locators",
@@ -352,10 +352,7 @@ fn identify_diff(
             .values()
             .filter(|e| e.component_id == *component_id)
             .collect();
-        let known_keys: BTreeSet<String> = known
-            .iter()
-            .map(|e| locator_key(&e.locator))
-            .collect();
+        let known_keys: BTreeSet<String> = known.iter().map(|e| locator_key(&e.locator)).collect();
 
         for (key, locator) in &current {
             if !known_keys.contains(key) {
@@ -391,12 +388,12 @@ mod tests {
 
     #[test]
     fn expand_parse_results_skips_null_and_skip_flag() {
-        assert!(expand_parse_results(serde_json::Value::Null).unwrap().is_empty());
-        assert!(
-            expand_parse_results(serde_json::json!({ "skip": true }))
-                .unwrap()
-                .is_empty()
-        );
+        assert!(expand_parse_results(serde_json::Value::Null)
+            .unwrap()
+            .is_empty());
+        assert!(expand_parse_results(serde_json::json!({ "skip": true }))
+            .unwrap()
+            .is_empty());
     }
 
     #[test]

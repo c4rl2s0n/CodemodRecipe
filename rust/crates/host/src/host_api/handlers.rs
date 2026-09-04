@@ -248,7 +248,9 @@ pub(crate) fn do_delete(host: &SharedHost, _lua: &Lua, spec: DeleteSpec) -> Resu
     };
     let path = spec.path;
     inner.delete(&path, if_missing)?;
-    inner.transcript.push(TranscriptEvent::simple("delete", path));
+    inner
+        .transcript
+        .push(TranscriptEvent::simple("delete", path));
     Ok(Value::Nil)
 }
 
@@ -317,7 +319,9 @@ pub(crate) fn do_query(
         let row = hit_table(lua, &source, span)?;
         out.set(i + 1, row).map_err(|e| e.to_string())?;
     }
-    let first_snippet = spans.first().map(|span| trunc_text(&source[span.start..span.end]));
+    let first_snippet = spans
+        .first()
+        .map(|span| trunc_text(&source[span.start..span.end]));
     inner.transcript.push(TranscriptEvent::with_payload(
         "query",
         format!("{}#{} n={}", spec.path, capture, spans.len()),
@@ -485,7 +489,11 @@ pub(crate) fn do_post_exec(
     spec = TemplateSpec,
     return_type = String,
 )]
-pub(crate) fn do_template(host: &SharedHost, lua: &Lua, spec: TemplateSpec) -> Result<Value, String> {
+pub(crate) fn do_template(
+    host: &SharedHost,
+    lua: &Lua,
+    spec: TemplateSpec,
+) -> Result<Value, String> {
     let has_path = spec.path.as_ref().is_some_and(|p| !p.is_empty());
     let has_inline = spec.inline.as_ref().is_some_and(|s| !s.is_empty());
     match (has_path, has_inline) {
@@ -670,12 +678,14 @@ pub(crate) fn do_query_lib(host: &SharedHost, lua: &Lua, id: String) -> Result<V
     string_id,
     return_type = Table,
 )]
-pub(crate) fn do_list_files(host: &SharedHost, lua: &Lua, pattern: String) -> Result<Value, String> {
+pub(crate) fn do_list_files(
+    host: &SharedHost,
+    lua: &Lua,
+    pattern: String,
+) -> Result<Value, String> {
     let inner = host.lock().map_err(|e| e.to_string())?;
-    let paths = crate::sandbox::workspace_glob::glob_workspace(
-        inner.sandbox.workspace_root(),
-        &pattern,
-    )?;
+    let paths =
+        crate::sandbox::workspace_glob::glob_workspace(inner.sandbox.workspace_root(), &pattern)?;
     let tbl = lua.create_table().map_err(|e| e.to_string())?;
     for (i, path) in paths.iter().enumerate() {
         tbl.set(i + 1, path.as_str()).map_err(|e| e.to_string())?;
@@ -689,17 +699,21 @@ pub(crate) fn do_list_files(host: &SharedHost, lua: &Lua, pattern: String) -> Re
     string_id,
     return_type = Table,
 )]
-pub(crate) fn do_match_files(host: &SharedHost, lua: &Lua, pattern: String) -> Result<Value, String> {
+pub(crate) fn do_match_files(
+    host: &SharedHost,
+    lua: &Lua,
+    pattern: String,
+) -> Result<Value, String> {
     let inner = host.lock().map_err(|e| e.to_string())?;
-    let rows = crate::sandbox::workspace_glob::match_workspace(
-        inner.sandbox.workspace_root(),
-        &pattern,
-    )?;
+    let rows =
+        crate::sandbox::workspace_glob::match_workspace(inner.sandbox.workspace_root(), &pattern)?;
     let tbl = lua.create_table().map_err(|e| e.to_string())?;
     for (i, row) in rows.iter().enumerate() {
         let entry = lua.create_table().map_err(|e| e.to_string())?;
         for (k, v) in row {
-            entry.set(k.as_str(), v.as_str()).map_err(|e| e.to_string())?;
+            entry
+                .set(k.as_str(), v.as_str())
+                .map_err(|e| e.to_string())?;
         }
         tbl.set(i + 1, entry).map_err(|e| e.to_string())?;
     }
@@ -732,7 +746,12 @@ pub(crate) fn do_resolve(
             let (k, v) = pair.map_err(|e| e.to_string())?;
             let s = match v {
                 Value::String(s) => s.to_str().map_err(|e| e.to_string())?.to_string(),
-                other => return Err(format!("resolve vars must be strings, got {}", other.type_name())),
+                other => {
+                    return Err(format!(
+                        "resolve vars must be strings, got {}",
+                        other.type_name()
+                    ))
+                }
             };
             map.insert(k, s);
         }

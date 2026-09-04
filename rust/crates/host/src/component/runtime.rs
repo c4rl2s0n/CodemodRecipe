@@ -12,9 +12,7 @@ use mlua::{Function, Lua, Table, Value};
 use crate::component::scan::{
     component_incremental_scan, component_scan, scan_component, ComponentIncrementalScanRequest,
 };
-use crate::component::types::{
-    ComponentFinding, ComponentInstance, ComponentInvokeResponse,
-};
+use crate::component::types::{ComponentFinding, ComponentInstance, ComponentInvokeResponse};
 use crate::engine::working_tree::WorkingTree;
 use crate::host_api::context::{HostInner, RunKind, SharedHost};
 use crate::lua_runtime::{args_table_from_map, build_ctx};
@@ -63,7 +61,7 @@ pub struct ComponentScaffoldRequest {
     pub kind: RunKind,
 }
 
-pub fn invoke_component_hook(
+pub(crate) fn invoke_component_hook(
     lua: &Lua,
     _ctx: &ComponentRunContext,
     component: &ComponentDef,
@@ -114,7 +112,11 @@ pub(crate) fn try_invoke_component_hook(
         .and_then(|p| p.to_str())
         .unwrap_or(component.id.as_str());
     let module = eval_return_table(lua, &component.source, name).map_err(|e| e.to_string())?;
-    if module.get::<Option<Function>>(hook).map_err(|e| e.to_string())?.is_none() {
+    if module
+        .get::<Option<Function>>(hook)
+        .map_err(|e| e.to_string())?
+        .is_none()
+    {
         return Ok(None);
     }
     invoke_component_hook(lua, ctx, component, hook, host, arg).map(Some)
@@ -196,7 +198,11 @@ pub fn invoke_operation(
             applied: None,
         };
     };
-    if !component.operations.contains(&request.operation) {
+    if !component
+        .operations
+        .iter()
+        .any(|op| op.name == request.operation)
+    {
         return ComponentInvokeResponse {
             ok: false,
             error: Some(format!(
@@ -266,11 +272,7 @@ pub fn invoke_operation(
         )?;
         let args_tbl = args_table_from_map(&lua, &request.args)?;
         apply
-            .call::<()>((
-                ctx_table,
-                args_tbl,
-                instance_tbl,
-            ))
+            .call::<()>((ctx_table, args_tbl, instance_tbl))
             .map_err(|e| format!("operation apply failed: {e}"))?;
 
         let mut inner = host.lock().map_err(|e| e.to_string())?;
@@ -283,8 +285,7 @@ pub fn invoke_operation(
         let transcript = std::mem::take(&mut inner.transcript);
         drop(inner);
 
-        let rescanned =
-            component_scan_after_operation(registry, &target.id, &changes)?;
+        let rescanned = component_scan_after_operation(registry, &target.id, &changes)?;
         let files = if changes.is_empty() {
             None
         } else {

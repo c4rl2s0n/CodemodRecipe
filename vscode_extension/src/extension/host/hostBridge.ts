@@ -26,7 +26,19 @@ import {
   QueryCapturesResponse,
   parseHostResponse,
 } from './hostProtocol';
-import type { ArgValues, RecipeSchema, SelectionPayload, BootstrapResponse, DeriveArgsRequest, DeriveArgsResponse, FilterExplorerRecipesResponse } from '../../shared';
+import type {
+  ArgValues,
+  RecipeSchema,
+  SelectionPayload,
+  BootstrapResponse,
+  DeriveArgsRequest,
+  DeriveArgsResponse,
+  FilterExplorerRecipesResponse,
+  ComponentScanResponse,
+  ComponentInvokeResponse,
+  DescribeComponentResponse,
+  ComponentDetailSchema,
+} from '../../shared';
 import type { RecipeLoadResult } from '../recipes/recipeRepository';
 import { shouldRetryOneShotAfterPersistentFailure } from './hostBridgeRetryPolicy';
 
@@ -306,6 +318,62 @@ export class HostBridge {
     });
   }
 
+  async componentScan(): Promise<ComponentScanResponse> {
+    return this.send<ComponentScanResponse>({ command: 'componentScan' });
+  }
+
+  async componentIncrementalScan(opts: {
+    dirtyPaths?: string[];
+    detectChanges?: boolean;
+    force?: boolean;
+  } = {}): Promise<ComponentScanResponse> {
+    return this.send<ComponentScanResponse>({
+      command: 'componentIncrementalScan',
+      dirtyPaths: opts.dirtyPaths ?? [],
+      detectChanges: opts.detectChanges ?? false,
+      force: opts.force ?? false,
+    });
+  }
+
+  async describeComponent(componentId: string): Promise<ComponentDetailSchema> {
+    const response = await this.send<DescribeComponentResponse>({
+      command: 'describeComponent',
+      componentId,
+    });
+    if (!response.ok || !response.component) {
+      throw new Error(response.error ?? `Failed to describe component ${componentId}`);
+    }
+    return response.component;
+  }
+
+  async componentScaffold(opts: {
+    componentId: string;
+    args?: ArgValues;
+    preview?: boolean;
+  }): Promise<ComponentInvokeResponse> {
+    return this.send<ComponentInvokeResponse>({
+      command: 'componentScaffold',
+      componentId: opts.componentId,
+      args: opts.args ?? {},
+      preview: opts.preview ?? true,
+    });
+  }
+
+  async componentInvokeOperation(opts: {
+    instanceId: string;
+    operation: string;
+    args?: ArgValues;
+    preview?: boolean;
+  }): Promise<ComponentInvokeResponse> {
+    return this.send<ComponentInvokeResponse>({
+      command: 'componentInvokeOperation',
+      instanceId: opts.instanceId,
+      operation: opts.operation,
+      args: opts.args ?? {},
+      preview: opts.preview ?? true,
+    });
+  }
+
   dispose(): void {
     this.stopPersistentHost();
   }
@@ -337,6 +405,8 @@ export class HostBridge {
       types: response.types ?? [],
       queryIds: response.queryIds ?? [],
       queries: response.queries ?? {},
+      components: response.components ?? [],
+      stack: response.stack,
     };
   }
 

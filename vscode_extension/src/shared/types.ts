@@ -148,6 +148,69 @@ export interface RecipeCatalogResponse {
   queryIds?: string[];
   /** Registered query id → source string. */
   queries?: Record<string, string>;
+  components?: ComponentSchema[];
+  stack?: StackSchema;
+}
+
+export interface ComponentSchema {
+  id: string;
+  description?: string;
+  operations: string[];
+  hasScaffold: boolean;
+  isRoot: boolean;
+  sourceFile?: string;
+}
+
+export interface StackSchema {
+  id: string;
+  description?: string;
+  components: string[];
+}
+
+export interface ComponentOperationSchema {
+  name: string;
+  description?: string;
+  args: RecipeArg[];
+}
+
+export interface ComponentDetailSchema {
+  id: string;
+  description?: string;
+  hasScaffold: boolean;
+  isRoot: boolean;
+  sourceFile?: string;
+  scaffoldArgs: RecipeArg[];
+  operations: ComponentOperationSchema[];
+}
+
+export interface DescribeComponentResponse {
+  ok: boolean;
+  error?: string;
+  component?: ComponentDetailSchema;
+}
+
+export interface ComponentInstance {
+  id: string;
+  componentId: string;
+  locator: unknown;
+  node: unknown;
+  summary?: unknown;
+}
+
+export interface ComponentFinding {
+  severity: string;
+  code: string;
+  message: string;
+  instanceId?: string;
+  locator?: unknown;
+}
+
+export interface ComponentScanResponse {
+  ok: boolean;
+  error?: string;
+  instances?: ComponentInstance[];
+  findings?: ComponentFinding[];
+  diagnostics?: RecipeDiagnostic[];
 }
 
 export interface BootstrapResponse {
@@ -194,6 +257,16 @@ export interface DescribeResponse {
   ok: boolean;
   error?: string;
   recipe?: RecipeSchema;
+}
+
+export interface ComponentInvokeResponse {
+  ok: boolean;
+  error?: string;
+  instance?: ComponentInstance;
+  findings?: ComponentFinding[];
+  files?: FilePreview[];
+  transcript?: TranscriptEvent[];
+  applied?: string[];
 }
 
 export interface ApplyResponse {
@@ -294,6 +367,31 @@ export type HostCommand =
       command: 'queryCaptures';
       query?: string;
       queryId?: string;
+    }
+  | { command: 'componentScan' }
+  | {
+      command: 'componentIncrementalScan';
+      dirtyPaths?: string[];
+      detectChanges?: boolean;
+      force?: boolean;
+    }
+  | { command: 'componentListInstances' }
+  | {
+      command: 'componentInvokeOperation';
+      instanceId: string;
+      operation: string;
+      args?: ArgValues;
+      preview?: boolean;
+    }
+  | {
+      command: 'componentScaffold';
+      componentId: string;
+      args?: ArgValues;
+      preview?: boolean;
+    }
+  | {
+      command: 'describeComponent';
+      componentId: string;
     };
 
 export interface QueryCapturesResponse {
@@ -423,6 +521,20 @@ export interface RecipeViewState {
   slotsByRecipe?: Record<string, string[]>;
   /** Host session machine; authoritative for preview/apply/pick in-flight. */
   session: RunnerSessionSnapshot;
+  /** Component kinds from host catalog. */
+  components?: readonly ComponentSchema[];
+  stack?: StackSchema;
+  componentInstances?: readonly ComponentInstance[];
+  componentFindings?: readonly ComponentFinding[];
+  selectedComponentId?: string;
+  selectedInstanceId?: string;
+  componentDetail?: ComponentDetailSchema;
+  componentAction?: string;
+  componentArgs?: ArgValues;
+  componentFiles?: readonly FilePreview[];
+  componentTranscript?: readonly TranscriptEvent[];
+  componentScanError?: string;
+  componentOpError?: string;
 }
 
 export interface PersistedWebviewState {

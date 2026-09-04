@@ -162,6 +162,69 @@ export class RecipeRunnerViewProvider
     this.postState();
   }
 
+  setComponentCatalog(
+    components: readonly import('../../shared').ComponentSchema[],
+    stack?: import('../../shared').StackSchema
+  ): void {
+    this.state.setComponentCatalog(components, stack);
+    this.postState();
+  }
+
+  clearComponentScan(): void {
+    this.state.setComponentScan([], [], undefined);
+    this.postState();
+  }
+
+  async scanComponents(): Promise<void> {
+    try {
+      const response = await this.bridge.componentScan();
+      if (!response.ok) {
+        this.state.setComponentScan(
+          [],
+          [],
+          response.error ?? 'component scan failed'
+        );
+      } else {
+        this.state.setComponentScan(
+          response.instances ?? [],
+          response.findings ?? []
+        );
+      }
+    } catch (err) {
+      this.state.setComponentScan(
+        [],
+        [],
+        err instanceof Error ? err.message : String(err)
+      );
+    }
+    this.postState();
+  }
+
+  async incrementalComponentScan(dirtyPaths: string[]): Promise<void> {
+    try {
+      const response = await this.bridge.componentIncrementalScan({
+        dirtyPaths,
+        detectChanges: false,
+      });
+      if (!response.ok) {
+        this.state.setComponentScan(
+          this.state.componentInstances,
+          this.state.componentFindings,
+          response.error ?? 'incremental scan failed'
+        );
+      } else {
+        this.state.setComponentScan(
+          response.instances ?? [],
+          response.findings ?? []
+        );
+      }
+    } catch (err) {
+      this.state.componentScanError =
+        err instanceof Error ? err.message : String(err);
+    }
+    this.postState();
+  }
+
   setRecipesRefreshing(inFlight: boolean): void {
     this.state.setRecipesRefreshing(inFlight);
     this.postState();

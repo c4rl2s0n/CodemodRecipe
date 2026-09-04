@@ -5,7 +5,7 @@ use codemod_recipe_host::protocol::HostCommand;
 use codemod_recipe_host::recipe::registry::RecipeRegistry;
 use common::{copy_dir_all, repo_root, temp_workspace};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 fn setup_flutter_poc(name: &str) -> PathBuf {
     let workspace = temp_workspace(name);
@@ -15,8 +15,8 @@ fn setup_flutter_poc(name: &str) -> PathBuf {
     workspace
 }
 
-fn registry_for(workspace: &PathBuf) -> RecipeRegistry {
-    let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+fn registry_for(workspace: &Path) -> RecipeRegistry {
+    let mut registry = RecipeRegistry::new(workspace.to_path_buf(), workspace.join(".codemod"));
     registry.reload();
     registry
 }
@@ -63,11 +63,7 @@ fn incremental_dirty_paths_updates_store_drift() {
     );
     fs::write(&store_path, &patched).unwrap();
 
-    let updated = incremental(
-        &mut registry,
-        vec!["lib/stores/recipe_store.dart"],
-        false,
-    );
+    let updated = incremental(&mut registry, vec!["lib/stores/recipe_store.dart"], false);
     assert_eq!(updated["ok"], true, "incremental failed: {updated}");
     let codes: Vec<&str> = updated["findings"]
         .as_array()
@@ -76,7 +72,7 @@ fn incremental_dirty_paths_updates_store_drift() {
         .filter_map(|f| f["code"].as_str())
         .collect();
     assert!(
-        !codes.iter().any(|c| *c == "model.field_missing_in_store"),
+        !codes.contains(&"model.field_missing_in_store"),
         "expected subtitle drift cleared, got {codes:?}"
     );
 
@@ -121,7 +117,7 @@ fn incremental_detect_changes_after_store_edit() {
         .iter()
         .filter_map(|f| f["code"].as_str())
         .collect();
-    assert!(!codes.iter().any(|c| *c == "model.field_missing_in_store"));
+    assert!(!codes.contains(&"model.field_missing_in_store"));
 }
 
 #[test]
@@ -144,13 +140,11 @@ fn incremental_detect_changes_adds_new_model_file() {
     let updated = incremental(&mut registry, vec![], true);
     assert_eq!(updated["ok"], true, "detect new file failed: {updated}");
     assert_eq!(updated["instances"].as_array().unwrap().len(), 3);
-    assert!(
-        updated["instances"]
-            .as_array()
-            .unwrap()
-            .iter()
-            .any(|i| i["id"] == "flutter.model/order")
-    );
+    assert!(updated["instances"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|i| i["id"] == "flutter.model/order"));
 }
 
 #[test]
@@ -198,7 +192,7 @@ fn invoke_add_store_field_clears_drift_via_incremental_rescan() {
         })
         .unwrap_or_default();
     assert!(
-        !codes.iter().any(|c| *c == "model.field_missing_in_store"),
+        !codes.contains(&"model.field_missing_in_store"),
         "expected drift cleared after addStoreField, got {codes:?}"
     );
 

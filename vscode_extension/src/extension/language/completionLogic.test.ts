@@ -71,17 +71,17 @@ describe('collectCompletionSuggestions', () => {
       catalog,
     });
     expect(items?.map((i) => i.label)).toContain('insert');
-    // Full "args" field only when typed prefix matches "args"
-    const argsLine = ['		c:a'];
-    const argsItems = collectCompletionSuggestions({
-      line: argsLine[0],
-      before: argsLine[0],
+    // args is the apply() parameter, not a field on `c` (HOST_CONTEXT_FIELD is null).
+    const assertLine = ['		c:as'];
+    const assertItems = collectCompletionSuggestions({
+      line: assertLine[0],
+      before: assertLine[0],
       lineNumber: 0,
-      character: argsLine[0].length,
-      document: doc(argsLine),
+      character: assertLine[0].length,
+      document: doc(assertLine),
       catalog,
     });
-    expect(argsItems?.some((i) => i.label === 'args')).toBe(true);
+    expect(assertItems?.some((i) => i.label === 'assert')).toBe(true);
   });
 
   it('suggests hierarchical recipe ids for c:run', () => {

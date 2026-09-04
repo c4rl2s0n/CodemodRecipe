@@ -2,12 +2,15 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use codemod_recipe_lua::load::{load_asset, Asset, LoadError};
-use codemod_recipe_lua::model::{Arg, ArgFrom, ComponentDef, ExplorerMenuEntry, Recipe, StackDef, TypeDef};
+use codemod_recipe_lua::model::{
+    Arg, ArgFrom, ComponentDef, ExplorerMenuEntry, Recipe, StackDef, TypeDef,
+};
 use codemod_recipe_lua::InputKind;
 
 use crate::diagnostics::diag_source::source_file_only;
 use crate::protocol::{
-    ExplorerMenuEntrySchema, RecipeArg, RecipeDiagnostic, RecipeSchema, TypeSchema,
+    ComponentDetailSchema, ComponentOperationSchema, ComponentSchema, ExplorerMenuEntrySchema,
+    RecipeArg, RecipeDiagnostic, RecipeSchema, StackSchema, TypeSchema,
 };
 
 pub struct RecipeRegistry {
@@ -106,6 +109,36 @@ impl RecipeRegistry {
 
     pub fn get_component(&self, id: &str) -> Option<&ComponentDef> {
         self.components.get(id)
+    }
+
+    pub fn component_schemas(&self) -> Vec<ComponentSchema> {
+        let root_ids: std::collections::BTreeSet<&str> = self
+            .stack
+            .as_ref()
+            .map(|s| s.components.iter().map(String::as_str).collect())
+            .unwrap_or_default();
+        self.components
+            .values()
+            .map(|c| self.component_schema(c, root_ids.contains(c.id.as_str())))
+            .collect()
+    }
+
+    pub fn stack_schema(&self) -> Option<StackSchema> {
+        self.stack.as_ref().map(|s| StackSchema {
+            id: s.id.clone(),
+            description: s.description.clone(),
+            components: s.components.clone(),
+        })
+    }
+
+    pub fn describe_component(&self, id: &str) -> Option<ComponentDetailSchema> {
+        let c = self.components.get(id)?;
+        let is_root = self
+            .stack
+            .as_ref()
+            .map(|s| s.components.iter().any(|cid| cid == id))
+            .unwrap_or(false);
+        Some(self.component_detail(c, is_root))
     }
 
     pub fn workspace_root(&self) -> &Path {
@@ -330,6 +363,57 @@ impl RecipeRegistry {
             } else {
                 Some(recipe.post_execution.clone())
             },
+        }
+    }
+
+    fn component_schema(&self, component: &ComponentDef, is_root: bool) -> ComponentSchema {
+        let relative = component
+            .path
+            .as_ref()
+            .map(|p| relative_path(&self.workspace_root, p));
+        ComponentSchema {
+            id: component.id.clone(),
+            description: component.description.clone(),
+            operations: component
+                .operations
+                .iter()
+                .map(|o| o.name.clone())
+                .collect(),
+            has_scaffold: component.has_scaffold,
+            is_root,
+            source_file: relative,
+        }
+    }
+
+    fn component_detail(&self, component: &ComponentDef, is_root: bool) -> ComponentDetailSchema {
+        let relative = component
+            .path
+            .as_ref()
+            .map(|p| relative_path(&self.workspace_root, p));
+        ComponentDetailSchema {
+            id: component.id.clone(),
+            description: component.description.clone(),
+            has_scaffold: component.has_scaffold,
+            is_root,
+            source_file: relative,
+            scaffold_args: component
+                .scaffold_args
+                .iter()
+                .map(|a| arg_schema(a, &self.maps_by_id, &self.types_by_id))
+                .collect(),
+            operations: component
+                .operations
+                .iter()
+                .map(|op| ComponentOperationSchema {
+                    name: op.name.clone(),
+                    description: op.description.clone(),
+                    args: op
+                        .args
+                        .iter()
+                        .map(|a| arg_schema(a, &self.maps_by_id, &self.types_by_id))
+                        .collect(),
+                })
+                .collect(),
         }
     }
 }

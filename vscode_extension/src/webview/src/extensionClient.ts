@@ -35,6 +35,12 @@ export interface ExtensionClient {
     args?: ArgValues
   ): void;
   createShortcut(recipeId: string, args?: ArgValues): void;
+  selectComponent(componentId: string): void;
+  selectComponentInstance(instanceId: string): void;
+  selectComponentAction(action: string): void;
+  componentScan(): void;
+  componentPreview(args: ArgValues, requestId: number): void;
+  componentApply(args: ArgValues, requestId: number): void;
   /** Allocate a monotonic request id for fire-and-forget correlated ops (preview). */
   nextRequestId(): number;
 }
@@ -243,6 +249,24 @@ export function createExtensionClient(deps: ExtensionClientDeps): ExtensionClien
         recipeId,
         ...(args ? { args } : {}),
       });
+    },
+    selectComponent(componentId: string) {
+      post({ type: WEBVIEW_TO_EXTENSION.selectComponent, componentId });
+    },
+    selectComponentInstance(instanceId: string) {
+      post({ type: WEBVIEW_TO_EXTENSION.selectComponentInstance, instanceId });
+    },
+    selectComponentAction(action: string) {
+      post({ type: WEBVIEW_TO_EXTENSION.selectComponentAction, action });
+    },
+    componentScan() {
+      post({ type: WEBVIEW_TO_EXTENSION.componentScan });
+    },
+    componentPreview(args: ArgValues, requestId: number) {
+      post({ type: WEBVIEW_TO_EXTENSION.componentPreview, args, requestId });
+    },
+    componentApply(args: ArgValues, requestId: number) {
+      post({ type: WEBVIEW_TO_EXTENSION.componentApply, args, requestId });
     },
   };
 }

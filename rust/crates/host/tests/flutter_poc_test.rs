@@ -71,13 +71,10 @@ fn flutter_poc_verify_detects_store_drift() {
     assert_eq!(response["ok"], true);
 
     let findings = response["findings"].as_array().expect("findings");
-    let codes: Vec<&str> = findings
-        .iter()
-        .filter_map(|f| f["code"].as_str())
-        .collect();
+    let codes: Vec<&str> = findings.iter().filter_map(|f| f["code"].as_str()).collect();
 
     assert!(
-        codes.iter().any(|c| *c == "model.field_missing_in_store"),
+        codes.contains(&"model.field_missing_in_store"),
         "expected model field missing in store finding, got {codes:?} full={findings:?}"
     );
 

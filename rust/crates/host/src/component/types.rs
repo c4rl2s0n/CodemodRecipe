@@ -91,14 +91,8 @@ pub fn normalize_parse_context(locator: serde_json::Value) -> serde_json::Value 
         return locator;
     }
     if let Some(path) = locator.get("path").and_then(|v| v.as_str()) {
-        let mut obj = locator
-            .as_object()
-            .cloned()
-            .unwrap_or_default();
-        obj.insert(
-            "source".to_string(),
-            serde_json::json!({ "path": path }),
-        );
+        let mut obj = locator.as_object().cloned().unwrap_or_default();
+        obj.insert("source".to_string(), serde_json::json!({ "path": path }));
         return serde_json::Value::Object(obj);
     }
     locator
