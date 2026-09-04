@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 
 use codemod_recipe_core::apply::file_change::{IfExists, IfMissing};
-use codemod_recipe_engine::engine::{Engine, QueryContext};
+use codemod_recipe_engine::engine::{CaptureSpan, Engine, QueryContext};
 use codemod_recipe_engine::ops::{
     EditOp, InsertAnchor, InsertOp, QuerySpec as EngineQuerySpec, RemoveOp, ReplaceOp,
 };
@@ -279,7 +279,7 @@ pub(crate) fn do_read(host: &SharedHost, lua: &Lua, spec: ReadSpec) -> Result<Va
 
 #[host_method(
     name = "query",
-    description = "Run a tree-sitter query; returns `{ start, [\"end\"], text }` spans.",
+    description = "Run a tree-sitter query; returns hits `{ span = { from, to }, text, kind }`.",
     spec = QueryTableSpec,
     return_type = QuerySpans,
 )]
@@ -314,12 +314,7 @@ pub(crate) fn do_query(
         .map_err(|e| e.to_string())?;
     let out = lua.create_table().map_err(|e| e.to_string())?;
     for (i, span) in spans.iter().enumerate() {
-        let row = lua.create_table().map_err(|e| e.to_string())?;
-        row.set("start", span.start as i64)
-            .map_err(|e| e.to_string())?;
-        row.set("end", span.end as i64).map_err(|e| e.to_string())?;
-        row.set("text", &source[span.start..span.end])
-            .map_err(|e| e.to_string())?;
+        let row = hit_table(lua, &source, span)?;
         out.set(i + 1, row).map_err(|e| e.to_string())?;
     }
     let first_snippet = spans.first().map(|span| trunc_text(&source[span.start..span.end]));
@@ -331,6 +326,68 @@ pub(crate) fn do_query(
             "capture": capture,
             "matchCount": spans.len(),
             "firstMatch": first_snippet,
+        }),
+    ));
+    Ok(Value::Table(out))
+}
+
+#[host_method(
+    name = "queryMatches",
+    description = "Per-match rows keyed by @capture name; multi → array, single → hit.",
+    spec = QueryTableSpec,
+    return_type = Table,
+)]
+pub(crate) fn do_query_matches(
+    host: &SharedHost,
+    lua: &Lua,
+    spec: QueryTableSpec,
+) -> Result<Value, String> {
+    let mut inner = host.lock().map_err(|e| e.to_string())?;
+    let query = query_spec_to_engine(&spec.query, &inner.queries)?;
+    let lang_id = inner
+        .language_registry
+        .resolve_language_id(spec.language.as_deref(), &spec.path)
+        .map_err(|e| e.to_string())?;
+    let recipe_path = inner.recipe_path.clone();
+    let codemod = inner.codemod_root.clone();
+    let source = inner.current_content(&spec.path)?;
+    let qctx = QueryContext {
+        recipe_file: recipe_path.as_deref(),
+        codemod_root: &codemod,
+    };
+    let engine = inner
+        .language_registry
+        .get(&lang_id)
+        .map_err(|e| e.to_string())?;
+    let rows = engine
+        .query_match_captures(&qctx, &source, &query)
+        .map_err(|e| e.to_string())?;
+    let out = lua.create_table().map_err(|e| e.to_string())?;
+    for (i, row) in rows.iter().enumerate() {
+        let entry = lua.create_table().map_err(|e| e.to_string())?;
+        for (name, spans) in row {
+            let value = match spans.as_slice() {
+                [] => Value::Nil,
+                [one] => Value::Table(hit_table(lua, &source, one)?),
+                many => {
+                    let arr = lua.create_table().map_err(|e| e.to_string())?;
+                    for (j, span) in many.iter().enumerate() {
+                        arr.set(j + 1, hit_table(lua, &source, span)?)
+                            .map_err(|e| e.to_string())?;
+                    }
+                    Value::Table(arr)
+                }
+            };
+            entry.set(name.as_str(), value).map_err(|e| e.to_string())?;
+        }
+        out.set(i + 1, entry).map_err(|e| e.to_string())?;
+    }
+    inner.transcript.push(TranscriptEvent::with_payload(
+        "queryMatches",
+        format!("{} n={}", spec.path, rows.len()),
+        json!({
+            "path": spec.path,
+            "matchCount": rows.len(),
         }),
     ));
     Ok(Value::Table(out))
@@ -608,12 +665,12 @@ pub(crate) fn do_query_lib(host: &SharedHost, lua: &Lua, id: String) -> Result<V
 }
 
 #[host_method(
-    name = "glob",
-    description = "Workspace-relative glob (single `*` per segment).",
+    name = "listFiles",
+    description = "List workspace-relative paths matching a `*` glob (one `*` per segment).",
     string_id,
     return_type = Table,
 )]
-pub(crate) fn do_glob(host: &SharedHost, lua: &Lua, pattern: String) -> Result<Value, String> {
+pub(crate) fn do_list_files(host: &SharedHost, lua: &Lua, pattern: String) -> Result<Value, String> {
     let inner = host.lock().map_err(|e| e.to_string())?;
     let paths = crate::sandbox::workspace_glob::glob_workspace(
         inner.sandbox.workspace_root(),
@@ -627,14 +684,37 @@ pub(crate) fn do_glob(host: &SharedHost, lua: &Lua, pattern: String) -> Result<V
 }
 
 #[host_method(
-    name = "stem",
-    description = "File stem (basename without extension) from a workspace-relative path.",
+    name = "matchFiles",
+    description = "Match `{placeholder}` path patterns; returns rows with `path` + captures.",
+    string_id,
+    return_type = Table,
+)]
+pub(crate) fn do_match_files(host: &SharedHost, lua: &Lua, pattern: String) -> Result<Value, String> {
+    let inner = host.lock().map_err(|e| e.to_string())?;
+    let rows = crate::sandbox::workspace_glob::match_workspace(
+        inner.sandbox.workspace_root(),
+        &pattern,
+    )?;
+    let tbl = lua.create_table().map_err(|e| e.to_string())?;
+    for (i, row) in rows.iter().enumerate() {
+        let entry = lua.create_table().map_err(|e| e.to_string())?;
+        for (k, v) in row {
+            entry.set(k.as_str(), v.as_str()).map_err(|e| e.to_string())?;
+        }
+        tbl.set(i + 1, entry).map_err(|e| e.to_string())?;
+    }
+    Ok(Value::Table(tbl))
+}
+
+#[host_method(
+    name = "filename",
+    description = "Basename without extension from a workspace-relative path.",
     string_id,
     return_type = String,
 )]
-pub(crate) fn do_stem(_host: &SharedHost, lua: &Lua, path: String) -> Result<Value, String> {
+pub(crate) fn do_filename(_host: &SharedHost, lua: &Lua, path: String) -> Result<Value, String> {
     let stem = crate::sandbox::path_template::stem_from_path(&path)
-        .ok_or_else(|| format!("cannot derive stem from path: {path}"))?;
+        .ok_or_else(|| format!("cannot derive filename from path: {path}"))?;
     lua.create_string(stem)
         .map(Value::String)
         .map_err(|e| e.to_string())
@@ -835,4 +915,21 @@ fn string_map_to_table(lua: &Lua, map: &BTreeMap<String, String>) -> Result<Valu
         t.set(k.as_str(), v.as_str()).map_err(|e| e.to_string())?;
     }
     Ok(Value::Table(t))
+}
+
+fn hit_table(lua: &Lua, source: &str, span: &CaptureSpan) -> Result<Table, String> {
+    let row = lua.create_table().map_err(|e| e.to_string())?;
+    let span_tbl = lua.create_table().map_err(|e| e.to_string())?;
+    span_tbl
+        .set("from", span.start as i64)
+        .map_err(|e| e.to_string())?;
+    span_tbl
+        .set("to", span.end as i64)
+        .map_err(|e| e.to_string())?;
+    row.set("span", span_tbl).map_err(|e| e.to_string())?;
+    row.set("text", &source[span.start..span.end])
+        .map_err(|e| e.to_string())?;
+    row.set("kind", span.kind.as_str())
+        .map_err(|e| e.to_string())?;
+    Ok(row)
 }

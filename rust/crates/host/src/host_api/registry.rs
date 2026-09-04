@@ -116,8 +116,9 @@ mod tests {
             "map",
             "var",
             "queryLib",
-            "glob",
-            "stem",
+            "listFiles",
+            "matchFiles",
+            "filename",
             "assert",
         ] {
             assert!(names.contains(&expected), "missing {expected}");

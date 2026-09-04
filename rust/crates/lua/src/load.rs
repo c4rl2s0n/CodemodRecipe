@@ -177,7 +177,7 @@ pub fn load_asset(source: &str, chunk_name: &str) -> Result<Asset, LoadError> {
         AssetKind::Stack => Ok(Asset::Stack(load_stack_from_table(&table, source)?)),
         AssetKind::Component => Ok(Asset::Component(load_component_from_table(&table, source)?)),
         AssetKind::Unknown => Err(LoadError::Message(
-            "unknown asset shape: expected apply, discover+parse, components (stack), map, values, queries, or fields".to_string(),
+            "unknown asset shape: expected apply, parse+verify (component), components (stack), map, values, queries, or fields".to_string(),
         )),
     }
 }
@@ -278,12 +278,10 @@ pub fn load_stack_from_table(table: &Table, source: &str) -> Result<StackDef, Lo
             "stack components must list at least one component id".to_string(),
         ));
     }
-    let globs = optional_string_map_field(table, "globs")?;
     Ok(StackDef {
         id,
         description,
         components,
-        globs,
         source: source.to_string(),
         path: None,
     })
@@ -942,8 +940,7 @@ return {
         let src = r#"
 return {
   id = "example.entity",
-  discover = function(c) return {} end,
-  identify = function(c, l) return true end,
+  identify = function(c) return {} end,
   parse = function(c, l) return {} end,
   verify = function(c, i) return {} end,
 }
@@ -959,8 +956,7 @@ return {
         let component = r#"
 return {
   id = "a.b",
-  discover = function(c) return {} end,
-  identify = function(c, l) return true end,
+  identify = function(c) return {} end,
   parse = function(c, l) return {} end,
   verify = function(c, i) return {} end,
 }

@@ -35,8 +35,8 @@ local function childParse(c, componentId, context)
 	return node
 end
 
-local function findChild(parsed, componentId, role)
-	for _, child in ipairs(parsed.children or {}) do
+local function findChild(node, componentId, role)
+	for _, child in ipairs(node.children or {}) do
 		if child.componentId == componentId and (not role or child.role == role) then
 			return child
 		end
@@ -47,8 +47,15 @@ end
 return {
 	id = "flutter.model",
 	description = "Immutable model classes under lib/models",
-	parse = function(c, context)
-		local filePath = path(context)
+	identify = function(c)
+		local out = {}
+		for _, row in ipairs(c:matchFiles("lib/models/{name}.dart")) do
+			out[#out + 1] = { path = row.path, name = row.name }
+		end
+		return out
+	end,
+	parse = function(c, locator)
+		local filePath = path(locator)
 		if not filePath then
 			return nil
 		end
@@ -59,8 +66,8 @@ return {
 			query = "flutter.model_class",
 			capture = "className",
 		})
-		local className = (#classHits > 0 and classHits[1].text) or c:stem(filePath)
-		local modelId = c:stem(filePath)
+		local className = (#classHits > 0 and classHits[1].text) or c:filename(filePath)
+		local modelId = locator.name or c:filename(filePath)
 		local identity = {
 			componentId = "flutter.model",
 			id = modelId,
@@ -77,7 +84,7 @@ return {
 		})
 		for _, hit in ipairs(fieldHits) do
 			local child = childParse(c, "flutter.property", parseContext({
-				source = source(filePath, { start = hit.start, ["end"] = hit["end"] }),
+				source = source(filePath, { from = hit.span.from, to = hit.span.to }),
 				parent = identity,
 				role = "field",
 				hints = { name = hit.text },
@@ -95,7 +102,7 @@ return {
 		})
 		for _, hit in ipairs(methodHits) do
 			local child = childParse(c, "flutter.method", parseContext({
-				source = source(filePath, { start = hit.start, ["end"] = hit["end"] }),
+				source = source(filePath, { from = hit.span.from, to = hit.span.to }),
 				parent = identity,
 				role = "method",
 				hints = { name = hit.text },
@@ -125,9 +132,9 @@ return {
 	end,
 	verify = function(_c, instance)
 		local findings = {}
-		local parsed = instance.parsed
+		local node = instance.node
 		local properties = {}
-		for _, child in ipairs(parsed.children or {}) do
+		for _, child in ipairs(node.children or {}) do
 			if child.componentId == "flutter.property" then
 				properties[#properties + 1] = child
 			end
@@ -141,7 +148,7 @@ return {
 			}
 		end
 
-		local store = findChild(parsed, "flutter.state", "store")
+		local store = findChild(node, "flutter.state", "store")
 		if not store then
 			findings[#findings + 1] = {
 				severity = "warning",
@@ -190,11 +197,11 @@ return {
 		return findings
 	end,
 	toSummary = function(_c, instance)
-		local parsed = instance.parsed
+		local node = instance.node
 		local fieldNames = {}
 		local methodCount = 0
 		local hasStore = false
-		for _, child in ipairs(parsed.children or {}) do
+		for _, child in ipairs(node.children or {}) do
 			if child.componentId == "flutter.property" then
 				fieldNames[#fieldNames + 1] = child.name
 			elseif child.componentId == "flutter.method" then
@@ -212,9 +219,9 @@ return {
 		end
 		return {
 			kind = "model",
-			title = parsed.name,
-			id = parsed.id,
-			path = parsed.source and parsed.source.path or nil,
+			title = node.name,
+			id = node.id,
+			path = node.source and node.source.path or nil,
 			facts = facts,
 			fields = fieldNames,
 		}
@@ -253,12 +260,12 @@ return {
 	},
 	operations = {
 		addStoreField = {
-			apply = function(c, args, identity)
+			apply = function(c, args, target)
 				local fieldName = args.fieldName or args.name
 				if not fieldName or fieldName == "" then
 					error("addStoreField requires args.fieldName")
 				end
-				local store = findChild(identity.parsed, "flutter.state", "store")
+				local store = findChild(target.node, "flutter.state", "store")
 				if not store or not store.source or not store.source.path then
 					error("model instance has no store child with source.path")
 				end

@@ -49,8 +49,8 @@ export const HOST_METHODS: readonly HostMethodSpec[] = [
     keys: ['capture', 'language', 'path', 'query'],
   },
   {
-    name: 'glob',
-    description: 'Workspace-relative glob (single `*` per segment).',
+    name: 'filename',
+    description: 'Basename without extension from a workspace-relative path.',
     keys: [],
   },
   {
@@ -60,6 +60,11 @@ export const HOST_METHODS: readonly HostMethodSpec[] = [
     enums: {
       anchor: ['start', 'end'],
     },
+  },
+  {
+    name: 'listFiles',
+    description: 'List workspace-relative paths matching a `*` glob (one `*` per segment).',
+    keys: [],
   },
   {
     name: 'log',
@@ -72,13 +77,18 @@ export const HOST_METHODS: readonly HostMethodSpec[] = [
     keys: [],
   },
   {
+    name: 'matchFiles',
+    description: 'Match `{placeholder}` path patterns; returns rows with `path` + captures.',
+    keys: [],
+  },
+  {
     name: 'postExec',
     description: 'Shell command after apply (Jinja-rendered); preview records only.',
     keys: ['command', 'path'],
   },
   {
     name: 'query',
-    description: 'Run a tree-sitter query; returns `{ start, ["end"], text }` spans.',
+    description: 'Run a tree-sitter query; returns hits `{ span = { from, to }, text, kind }`.',
     keys: ['capture', 'language', 'path', 'query'],
   },
   {
@@ -95,6 +105,11 @@ export const HOST_METHODS: readonly HostMethodSpec[] = [
     name: 'queryLib',
     description: 'Lookup a registered query string by id (e.g. `lib.queryName`).',
     keys: [],
+  },
+  {
+    name: 'queryMatches',
+    description: 'Per-match rows keyed by @capture name; multi → array, single → hit.',
+    keys: ['capture', 'language', 'path', 'query'],
   },
   {
     name: 'read',
@@ -114,11 +129,6 @@ export const HOST_METHODS: readonly HostMethodSpec[] = [
   {
     name: 'run',
     description: 'Run a nested recipe by id with optional arg overrides.',
-    keys: [],
-  },
-  {
-    name: 'stem',
-    description: 'File stem (basename without extension) from a workspace-relative path.',
     keys: [],
   },
   {

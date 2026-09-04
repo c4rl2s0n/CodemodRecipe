@@ -96,13 +96,25 @@ c:remove({ path = args.file, query = "...", capture = "member" })
 ### Read-only query helpers
 
 ```lua
-local spans = c:query({ path = args.file, query = "...", capture = "body" })
--- spans[i] = { start = byte, ["end"] = byte, text = "..." }
+local hits = c:query({ path = args.file, query = "...", capture = "body" })
+-- hits[i] = { span = { from = byte, to = byte }, text = "...", kind = "..." }
+
+local rows = c:queryMatches({ path = args.file, query = "..." })
+-- rows[i].captureName = hit or { hit, hit, ... }
 
 if c:queryExists({ path = args.file, query = "...", capture = "body" }) then ... end
 local n = c:queryCount({ path = args.file, query = "..." })  -- optional capture
 c:expectMatch({ ... })   -- error if zero matches
 c:expectNoMatch({ ... }) -- error if any match
+```
+
+### Path helpers
+
+```lua
+local paths = c:listFiles("lib/models/*.dart")
+local rows = c:matchFiles("lib/stores/{id}_store.dart")  -- { path, id }
+local one = c:resolve("lib/stores/{id}_store.dart", { id = "recipe" })
+local name = c:filename("lib/models/recipe.dart")  -- "recipe"
 ```
 
 ### File I/O

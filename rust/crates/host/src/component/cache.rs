@@ -1,11 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
-use codemod_recipe_lua::model::StackDef;
-
 use crate::component::types::{context_path, ComponentFinding, ComponentInstance};
 use crate::recipe::registry::RecipeRegistry;
-use crate::sandbox::workspace_glob::glob_workspace;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileFingerprint {
@@ -20,6 +17,12 @@ pub struct RootKey {
 }
 
 #[derive(Debug, Clone)]
+pub struct NewRoot {
+    pub component_id: String,
+    pub locator: serde_json::Value,
+}
+
+#[derive(Debug, Clone)]
 pub struct RootEntry {
     pub instance_id: String,
     pub component_id: String,
@@ -30,7 +33,7 @@ pub struct RootEntry {
 #[derive(Debug, Clone, Default)]
 pub struct DetectResult {
     pub dirty_paths: BTreeSet<String>,
-    pub new_roots: Vec<RootKey>,
+    pub new_roots: Vec<NewRoot>,
     pub removed_roots: Vec<RootKey>,
     pub roots_to_reparse: BTreeSet<String>,
 }
@@ -43,7 +46,6 @@ pub struct ComponentScanCache {
     pub path_index: BTreeMap<String, BTreeSet<String>>,
     pub path_fingerprints: BTreeMap<String, FileFingerprint>,
     pub known_root_paths: BTreeMap<String, Vec<String>>,
-    pub glob_patterns: BTreeMap<String, String>,
     pub root_entries: BTreeMap<String, RootEntry>,
 }
 
@@ -59,12 +61,8 @@ impl ComponentScanCache {
             path_index: BTreeMap::new(),
             path_fingerprints: BTreeMap::new(),
             known_root_paths: BTreeMap::new(),
-            glob_patterns: BTreeMap::new(),
             root_entries: BTreeMap::new(),
         };
-        if let Some(stack) = registry.stack() {
-            cache.glob_patterns = stack.globs.clone();
-        }
         cache.rebuild_indexes(registry.workspace_root());
         cache
     }
@@ -91,8 +89,18 @@ impl ComponentScanCache {
                         locator: instance.locator.clone(),
                     },
                 );
+            } else {
+                self.root_entries.insert(
+                    instance.id.clone(),
+                    RootEntry {
+                        instance_id: instance.id.clone(),
+                        component_id: instance.component_id.clone(),
+                        root_path: String::new(),
+                        locator: instance.locator.clone(),
+                    },
+                );
             }
-            index_parsed_paths(&instance.parsed, &instance.id, &mut self.path_index);
+            index_node_paths(&instance.node, &instance.id, &mut self.path_index);
             if let Some(path) = root_path {
                 self.path_index
                     .entry(path)
@@ -113,11 +121,12 @@ impl ComponentScanCache {
         }
     }
 
-    pub fn detect_changes(
+    /// Fingerprint / explicit dirty paths only. Caller merges identify-diff for new/removed roots.
+    pub fn detect_dirty_paths(
         &self,
         registry: &RecipeRegistry,
         explicit_dirty: &[String],
-    ) -> Result<DetectResult, String> {
+    ) -> DetectResult {
         let workspace_root = registry.workspace_root();
         let mut result = DetectResult::default();
 
@@ -137,8 +146,6 @@ impl ComponentScanCache {
             }
         }
 
-        glob_diff(registry, &self.glob_patterns, &self.known_root_paths, &mut result)?;
-
         for path in &result.dirty_paths {
             if let Some(ids) = self.path_index.get(path) {
                 result.roots_to_reparse.extend(ids.iter().cloned());
@@ -152,7 +159,7 @@ impl ComponentScanCache {
             }
         }
 
-        Ok(result)
+        result
     }
 
     pub fn merge_rescan(
@@ -213,36 +220,12 @@ impl ComponentScanCache {
     }
 }
 
-fn glob_diff(
-    registry: &RecipeRegistry,
-    glob_patterns: &BTreeMap<String, String>,
-    known_root_paths: &BTreeMap<String, Vec<String>>,
-    result: &mut DetectResult,
-) -> Result<(), String> {
-    let workspace_root = registry.workspace_root();
-    for (component_id, pattern) in glob_patterns {
-        let current = glob_workspace(workspace_root, pattern)?;
-        let known = known_root_paths
-            .get(component_id)
-            .map(|v| v.as_slice())
-            .unwrap_or(&[]);
-        let known_set: BTreeSet<&str> = known.iter().map(String::as_str).collect();
-        let current_set: BTreeSet<&str> = current.iter().map(String::as_str).collect();
-
-        for path in current_set.difference(&known_set) {
-            result.new_roots.push(RootKey {
-                component_id: component_id.clone(),
-                root_path: (*path).to_string(),
-            });
-        }
-        for path in known_set.difference(&current_set) {
-            result.removed_roots.push(RootKey {
-                component_id: component_id.clone(),
-                root_path: (*path).to_string(),
-            });
-        }
+pub fn locator_key(locator: &serde_json::Value) -> String {
+    if let Some(path) = context_path(locator) {
+        format!("path:{path}")
+    } else {
+        locator.to_string()
     }
-    Ok(())
 }
 
 fn root_path_for_instance(instance: &ComponentInstance) -> Option<String> {
@@ -250,7 +233,7 @@ fn root_path_for_instance(instance: &ComponentInstance) -> Option<String> {
         .map(str::to_string)
         .or_else(|| {
             instance
-                .parsed
+                .node
                 .get("source")
                 .and_then(|s| s.get("path"))
                 .and_then(|v| v.as_str())
@@ -258,14 +241,14 @@ fn root_path_for_instance(instance: &ComponentInstance) -> Option<String> {
         })
         .or_else(|| {
             instance
-                .parsed
+                .node
                 .get("path")
                 .and_then(|v| v.as_str())
                 .map(str::to_string)
         })
 }
 
-fn index_parsed_paths(
+fn index_node_paths(
     value: &serde_json::Value,
     root_id: &str,
     path_index: &mut BTreeMap<String, BTreeSet<String>>,
@@ -290,18 +273,18 @@ fn index_parsed_paths(
             }
             if let Some(children) = map.get("children").and_then(|v| v.as_array()) {
                 for child in children {
-                    index_parsed_paths(child, root_id, path_index);
+                    index_node_paths(child, root_id, path_index);
                 }
             }
             if let Some(fields) = map.get("fields").and_then(|v| v.as_array()) {
                 for field in fields {
-                    index_parsed_paths(field, root_id, path_index);
+                    index_node_paths(field, root_id, path_index);
                 }
             }
         }
         serde_json::Value::Array(items) => {
             for item in items {
-                index_parsed_paths(item, root_id, path_index);
+                index_node_paths(item, root_id, path_index);
             }
         }
         _ => {}
@@ -322,25 +305,20 @@ fn fingerprint(workspace_root: &Path, relative_path: &str) -> Option<FileFingerp
     })
 }
 
-
-pub fn stack_globs(stack: &StackDef) -> BTreeMap<String, String> {
-    stack.globs.clone()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn index_parsed_paths_includes_children() {
-        let parsed = serde_json::json!({
+    fn index_node_paths_includes_children() {
+        let node = serde_json::json!({
             "source": { "path": "lib/models/a.dart" },
             "children": [
                 { "source": { "path": "lib/stores/a_store.dart" } }
             ]
         });
         let mut index = BTreeMap::new();
-        index_parsed_paths(&parsed, "flutter.model/a", &mut index);
+        index_node_paths(&node, "flutter.model/a", &mut index);
         assert!(index.contains_key("lib/models/a.dart"));
         assert!(index.contains_key("lib/stores/a_store.dart"));
         assert_eq!(

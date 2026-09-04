@@ -26,7 +26,7 @@ fn component_scan_finds_root_instances_and_child_properties() {
         .find(|i| i["componentId"] == "example.entity")
         .expect("entity instance");
     assert_eq!(entity["id"], "example.entity/recipe");
-    let fields = entity["parsed"]["fields"].as_array().expect("fields");
+    let fields = entity["node"]["fields"].as_array().expect("fields");
     assert_eq!(fields.len(), 1);
     assert_eq!(fields[0]["name"], "title");
 
@@ -80,7 +80,7 @@ fn component_invoke_operation_preview_and_apply() {
         applied_src.contains("final String subtitle"),
         "expected new field in source"
     );
-    let rescanned = apply["instance"]["parsed"]["fields"]
+    let rescanned = apply["instance"]["node"]["fields"]
         .as_array()
         .expect("rescanned fields");
     assert_eq!(rescanned.len(), 2);

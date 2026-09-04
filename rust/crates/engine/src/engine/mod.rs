@@ -50,11 +50,12 @@ pub struct Engine {
     adapter: Box<dyn LanguageAdapter>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct CaptureSpan {
     pub start: usize,
     pub end: usize,
     pub is_block: bool,
+    pub kind: String,
 }
 
 impl Engine {
@@ -316,6 +317,7 @@ impl Engine {
                             start: node.start_byte(),
                             end: node.end_byte(),
                             is_block: node.kind() == "block",
+                            kind: node.kind().to_string(),
                         };
                         if !spans
                             .iter()
@@ -330,7 +332,7 @@ impl Engine {
 
         match spans.len() {
             0 => Ok(None),
-            1 => Ok(Some(spans[0])),
+            1 => Ok(Some(spans[0].clone())),
             n if fail_on_multiple => Err(EngineError::MultipleMatches {
                 capture: capture_name.to_string(),
                 count: n,

@@ -3,7 +3,7 @@ use std::rc::Rc;
 
 use codemod_recipe_lua::model::ComponentDef;
 
-use crate::component::cache::ComponentScanCache;
+use crate::component::cache::{locator_key, ComponentScanCache, NewRoot, RootKey};
 use crate::component::runtime::{
     hook_to_json, invoke_component_hook, make_host, try_invoke_component_hook, ComponentRunContext,
 };
@@ -14,7 +14,6 @@ use crate::component::types::{
 use crate::host_api::context::SharedHost;
 use crate::lua_runtime::RunKind;
 use crate::recipe::registry::RecipeRegistry;
-use crate::sandbox::workspace_glob::glob_workspace;
 
 #[derive(Debug, Clone, Default)]
 pub struct ComponentIncrementalScanRequest {
@@ -53,14 +52,13 @@ pub fn component_incremental_scan(
     let mut roots_to_reparse = BTreeSet::new();
 
     if request.detect_changes {
-        match cache.detect_changes(registry, &request.dirty_paths) {
-            Ok(detect) => {
-                new_roots = detect.new_roots;
-                removed_roots = detect.removed_roots;
-                roots_to_reparse.extend(detect.roots_to_reparse);
-            }
-            Err(message) => return scan_error(&message),
+        let mut detect = cache.detect_dirty_paths(registry, &request.dirty_paths);
+        if let Err(message) = identify_diff(registry, &cache, &mut detect) {
+            return scan_error(&message);
         }
+        new_roots = detect.new_roots;
+        removed_roots = detect.removed_roots;
+        roots_to_reparse.extend(detect.roots_to_reparse);
     } else {
         roots_to_reparse.extend(cache.roots_for_dirty_paths(&request.dirty_paths));
     }
@@ -93,11 +91,7 @@ pub fn component_incremental_scan(
         let Some(component) = registry.get_component(&root.component_id) else {
             continue;
         };
-        let context = normalize_parse_context(serde_json::json!({
-            "path": root.root_path,
-            "source": { "path": root.root_path },
-        }));
-        match rescan_root_context(&ctx, component, context) {
+        match rescan_root_context(&ctx, component, root.locator.clone()) {
             Ok((mut instances, mut findings)) => {
                 updated_instances.append(&mut instances);
                 updated_findings.append(&mut findings);
@@ -175,8 +169,7 @@ fn run_full_scan(
         let Some(component) = registry.get_component(component_id) else {
             continue;
         };
-        let root_glob = stack.globs.get(component_id).map(String::as_str);
-        match scan_component(&ctx, component, root_glob) {
+        match scan_component(&ctx, component) {
             Ok((mut found, mut component_findings)) => {
                 instances.append(&mut found);
                 findings.append(&mut component_findings);
@@ -212,18 +205,27 @@ fn run_full_scan(
 pub(crate) fn scan_component(
     ctx: &ComponentRunContext,
     component: &ComponentDef,
-    root_glob: Option<&str>,
 ) -> Result<(Vec<ComponentInstance>, Vec<ComponentFinding>), String> {
     let host = make_host(ctx, BTreeMap::new())?;
     let lua = codemod_recipe_lua::new_sandbox().map_err(|e| e.to_string())?;
-    let contexts = collect_parse_contexts(&lua, ctx, component, Rc::clone(&host), root_glob)?;
-    scan_component_contexts(&lua, ctx, component, Rc::clone(&host), contexts)
+    let locators = collect_identify_locators(&lua, ctx, component, Rc::clone(&host))?;
+    scan_component_contexts(&lua, ctx, component, Rc::clone(&host), locators)
+}
+
+/// Re-run identify for a root component (used by incremental detectChanges).
+pub(crate) fn identify_locators_for_component(
+    ctx: &ComponentRunContext,
+    component: &ComponentDef,
+) -> Result<Vec<serde_json::Value>, String> {
+    let host = make_host(ctx, BTreeMap::new())?;
+    let lua = codemod_recipe_lua::new_sandbox().map_err(|e| e.to_string())?;
+    collect_identify_locators(&lua, ctx, component, host)
 }
 
 fn rescan_root_context(
     ctx: &ComponentRunContext,
     component: &ComponentDef,
-    context: serde_json::Value,
+    locator: serde_json::Value,
 ) -> Result<(Vec<ComponentInstance>, Vec<ComponentFinding>), String> {
     let host = make_host(ctx, BTreeMap::new())?;
     let lua = codemod_recipe_lua::new_sandbox().map_err(|e| e.to_string())?;
@@ -232,7 +234,7 @@ fn rescan_root_context(
         ctx,
         component,
         Rc::clone(&host),
-        vec![context],
+        vec![locator],
     )
 }
 
@@ -241,38 +243,29 @@ fn scan_component_contexts(
     ctx: &ComponentRunContext,
     component: &ComponentDef,
     host: SharedHost,
-    contexts: Vec<serde_json::Value>,
+    locators: Vec<serde_json::Value>,
 ) -> Result<(Vec<ComponentInstance>, Vec<ComponentFinding>), String> {
     let mut instances = Vec::new();
     let mut findings = Vec::new();
-    for context in contexts {
-        let context_value = normalize_parse_context(context);
-        if !should_parse_after_identify(
-            lua,
-            ctx,
-            component,
-            Rc::clone(&host),
-            context_value.clone(),
-        )? {
-            continue;
-        }
+    for locator in locators {
+        let locator_value = normalize_parse_context(locator);
         let parse_raw = invoke_component_hook(
             lua,
             ctx,
             component,
             "parse",
             Rc::clone(&host),
-            Some(context_value.clone()),
+            Some(locator_value.clone()),
         )?;
-        let parsed_values = expand_parse_results(hook_to_json(&parse_raw)?)?;
-        for parsed in parsed_values {
-            let id = instance_id(&component.id, &parsed, &context_value);
-            findings.extend(soft_validate_parsed(&id, &context_value, &parsed));
+        let nodes = expand_parse_results(hook_to_json(&parse_raw)?)?;
+        for node in nodes {
+            let id = instance_id(&component.id, &node, &locator_value);
+            findings.extend(soft_validate_parsed(&id, &locator_value, &node));
             let instance_json = serde_json::json!({
                 "id": id,
                 "componentId": component.id,
-                "locator": context_value,
-                "parsed": parsed,
+                "locator": locator_value,
+                "node": node,
             });
             let verify_raw = invoke_component_hook(
                 lua,
@@ -280,32 +273,26 @@ fn scan_component_contexts(
                 component,
                 "verify",
                 Rc::clone(&host),
-                Some(instance_json),
+                Some(instance_json.clone()),
             )?;
             let verify_json = hook_to_json(&verify_raw)?;
-            let mut component_findings = normalize_findings(verify_json, &id, &context_value);
+            let mut component_findings = normalize_findings(verify_json, &id, &locator_value);
             findings.append(&mut component_findings);
-            let instance_for_summary = serde_json::json!({
-                "id": id,
-                "componentId": component.id,
-                "locator": context_value,
-                "parsed": parsed,
-            });
             let summary = try_invoke_component_hook(
                 lua,
                 ctx,
                 component,
                 "toSummary",
                 Rc::clone(&host),
-                Some(instance_for_summary),
+                Some(instance_json),
             )?
             .map(|v| hook_to_json(&v))
             .transpose()?;
             instances.push(ComponentInstance {
                 id,
                 component_id: component.id.clone(),
-                locator: context_value.clone(),
-                parsed,
+                locator: locator_value.clone(),
+                node,
                 summary,
             });
         }
@@ -313,50 +300,82 @@ fn scan_component_contexts(
     Ok((instances, findings))
 }
 
-fn collect_parse_contexts(
+fn collect_identify_locators(
     lua: &mlua::Lua,
     ctx: &ComponentRunContext,
     component: &ComponentDef,
     host: SharedHost,
-    root_glob: Option<&str>,
 ) -> Result<Vec<serde_json::Value>, String> {
-    if let Some(discover_raw) =
-        try_invoke_component_hook(lua, ctx, component, "discover", Rc::clone(&host), None)?
-    {
-        let locators = hook_to_json(&discover_raw)?;
-        return Ok(match locators {
-            serde_json::Value::Array(items) => items,
-            serde_json::Value::Null => Vec::new(),
-            other => vec![other],
-        });
-    }
-    if let Some(pattern) = root_glob {
-        let paths = glob_workspace(&ctx.workspace_root, pattern)?;
-        return Ok(paths
-            .into_iter()
-            .map(|path| serde_json::json!({ "path": path, "source": { "path": path } }))
-            .collect());
-    }
-    Ok(Vec::new())
+    let identify_raw = invoke_component_hook(lua, ctx, component, "identify", host, None)
+        .map_err(|e| {
+            if e.contains("missing required hook identify") {
+                format!(
+                    "stack root component {} requires identify(c) returning a list of locators",
+                    component.id
+                )
+            } else {
+                e
+            }
+        })?;
+    let locators = hook_to_json(&identify_raw)?;
+    Ok(match locators {
+        serde_json::Value::Array(items) => items,
+        serde_json::Value::Null => Vec::new(),
+        other => vec![other],
+    })
 }
 
-fn should_parse_after_identify(
-    lua: &mlua::Lua,
-    ctx: &ComponentRunContext,
-    component: &ComponentDef,
-    host: SharedHost,
-    context: serde_json::Value,
-) -> Result<bool, String> {
-    let Some(identify_raw) =
-        try_invoke_component_hook(lua, ctx, component, "identify", host, Some(context))?
-    else {
-        return Ok(true);
+fn identify_diff(
+    registry: &RecipeRegistry,
+    cache: &ComponentScanCache,
+    result: &mut crate::component::cache::DetectResult,
+) -> Result<(), String> {
+    let Some(stack) = registry.stack() else {
+        return Ok(());
     };
-    Ok(match hook_to_json(&identify_raw)? {
-        serde_json::Value::Bool(b) => b,
-        serde_json::Value::Null => false,
-        other => !other.is_null(),
-    })
+    let ctx = ComponentRunContext::from_registry(registry, RunKind::Preview);
+    for component_id in &stack.components {
+        let Some(component) = registry.get_component(component_id) else {
+            continue;
+        };
+        let locators = identify_locators_for_component(&ctx, component)?;
+        let current: Vec<(String, serde_json::Value)> = locators
+            .into_iter()
+            .map(|locator| {
+                let locator = normalize_parse_context(locator);
+                (locator_key(&locator), locator)
+            })
+            .collect();
+        let current_keys: BTreeSet<&str> = current.iter().map(|(k, _)| k.as_str()).collect();
+        let known: Vec<&crate::component::cache::RootEntry> = cache
+            .root_entries
+            .values()
+            .filter(|e| e.component_id == *component_id)
+            .collect();
+        let known_keys: BTreeSet<String> = known
+            .iter()
+            .map(|e| locator_key(&e.locator))
+            .collect();
+
+        for (key, locator) in &current {
+            if !known_keys.contains(key) {
+                result.new_roots.push(NewRoot {
+                    component_id: component_id.clone(),
+                    locator: locator.clone(),
+                });
+            }
+        }
+        for entry in known {
+            let key = locator_key(&entry.locator);
+            if !current_keys.contains(key.as_str()) {
+                result.removed_roots.push(RootKey {
+                    component_id: entry.component_id.clone(),
+                    root_path: entry.root_path.clone(),
+                });
+            }
+        }
+    }
+    Ok(())
 }
 
 #[cfg(test)]

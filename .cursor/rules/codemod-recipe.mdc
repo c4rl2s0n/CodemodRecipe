@@ -39,7 +39,7 @@ When you change product concepts that guide teaches (setup, Luau recipe surface,
 ## Recipe runtime
 
 - Recipes are Luau modules that `return { id, args, apply, ... }`. Mutations happen only in `apply(c, args)`.
-- Host API: `c:insert` / `c:replace` / `c:remove` / `c:query` / `c:read` / `c:create` / `c:delete` / `c:run` / `c:postExec` / `c:template` / `c:log` / `c:map` / `c:var`.
+- Host API: `c:insert` / `c:replace` / `c:remove` / `c:query` / `c:queryMatches` / `c:read` / `c:create` / `c:delete` / `c:run` / `c:postExec` / `c:template` / `c:log` / `c:map` / `c:var` / `c:listFiles` / `c:matchFiles` / `c:filename` / `c:resolve`.
 - Preview and apply both execute `apply()`. Preview keeps file ops in a WorkingTree and skips postExec (listed in the transcript). Apply re-runs Lua and flushes before each postExec.
 - Tree-sitter queries stay `.scm` or inline strings. Interactive DAP debugging of recipes is out of scope; use `c:log` and the failure transcript.
 

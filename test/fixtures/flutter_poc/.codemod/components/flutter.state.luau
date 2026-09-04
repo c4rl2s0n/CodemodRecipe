@@ -8,14 +8,14 @@ return {
 		end
 
 		local parent = context.parent
-		local modelId = parent and parent.id or c:stem(filePath):gsub("_store$", "")
+		local modelId = parent and parent.id or c:filename(filePath):gsub("_store$", "")
 		local classHits = c:query({
 			path = filePath,
 			language = "dart",
 			query = "flutter.model_class",
 			capture = "className",
 		})
-		local className = (#classHits > 0 and classHits[1].text) or c:stem(filePath)
+		local className = (#classHits > 0 and classHits[1].text) or c:filename(filePath)
 
 		local fields = {}
 		local fieldHits = c:query({
@@ -29,7 +29,7 @@ return {
 				name = hit.text,
 				source = {
 					path = filePath,
-					span = { start = hit.start, ["end"] = hit["end"] },
+					span = { from = hit.span.from, to = hit.span.to },
 				},
 			}
 		end

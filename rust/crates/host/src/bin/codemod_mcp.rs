@@ -240,7 +240,7 @@ fn handle_request(
                 },
                 {
                   "name": "component_scan",
-                  "description": "Scan stack root components: discover, parse, verify, and optional toSummary for each instance.",
+                  "description": "Scan stack root components: identify → parse → verify, and optional toSummary for each instance.",
                   "inputSchema": { "type": "object" }
                 },
                 {

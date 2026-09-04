@@ -53,7 +53,8 @@ return {
 |--------|------|
 | `args` | Recipe arguments (strings, bools, lists, objects) |
 | `c:insert` / `c:replace` / `c:remove` | AST edits (table: `path`, `query`, `capture`, …) |
-| `c:query` / `c:queryExists` / `c:queryCount` | Read-only query evaluation |
+| `c:query` / `c:queryExists` / `c:queryCount` / `c:queryMatches` | Read-only query evaluation |
+| `c:listFiles` / `c:matchFiles` / `c:filename` / `c:resolve` | Path listing, placeholder match, basename, template fill |
 | `c:read` | Current file content (WorkingTree-aware) |
 | `c:create` / `c:delete` | File create/delete |
 | `c:run(id, args?)` | Invoke another registered recipe |

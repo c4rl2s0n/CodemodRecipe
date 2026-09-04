@@ -45,6 +45,17 @@ impl Engine {
         self.collect_all_capture_spans(ctx, source, &tree, query_spec, capture_name)
     }
 
+    /// One row per tree-sitter match; map of capture name → spans in that match.
+    pub fn query_match_captures(
+        &mut self,
+        ctx: &QueryContext<'_>,
+        source: &str,
+        query_spec: &QuerySpec,
+    ) -> Result<Vec<std::collections::BTreeMap<String, Vec<CaptureSpan>>>, EngineError> {
+        let tree = self.parse_tree(source)?;
+        self.collect_match_capture_rows(ctx, source, &tree, query_spec)
+    }
+
     fn count_query_matches(
         &mut self,
         ctx: &QueryContext<'_>,
@@ -127,6 +138,7 @@ impl Engine {
                                     start: node.start_byte(),
                                     end: node.end_byte(),
                                     is_block: node.kind() == "block",
+                                    kind: node.kind().to_string(),
                                 };
                                 if !spans
                                     .iter()
@@ -139,6 +151,70 @@ impl Engine {
                     }
                 }
                 return Ok(spans);
+            }
+            scope_spans =
+                self.collect_match_root_spans(source, tree, &language, step_text, &scope_spans)?;
+            if scope_spans.is_empty() {
+                return Ok(vec![]);
+            }
+        }
+        Ok(vec![])
+    }
+
+    fn collect_match_capture_rows(
+        &mut self,
+        ctx: &QueryContext<'_>,
+        source: &str,
+        tree: &Tree,
+        query_spec: &QuerySpec,
+    ) -> Result<Vec<std::collections::BTreeMap<String, Vec<CaptureSpan>>>, EngineError> {
+        let steps = resolved_steps(ctx, query_spec)?;
+        if steps.is_empty() {
+            return Ok(vec![]);
+        }
+        let language = self.adapter_language();
+        let mut scope_spans: Vec<(usize, usize)> = vec![(0, source.len())];
+        for (i, step_text) in steps.iter().enumerate() {
+            let is_last = i == steps.len() - 1;
+            if is_last {
+                let query = Query::new(&language, step_text)
+                    .map_err(|e| EngineError::Query(e.to_string()))?;
+                let names: Vec<String> = query
+                    .capture_names()
+                    .iter()
+                    .map(|n| (*n).to_string())
+                    .collect();
+                let mut cursor = QueryCursor::new();
+                let mut rows = Vec::new();
+                for &(start, end) in &scope_spans {
+                    let scope = node_for_byte_range(tree, start, end);
+                    let mut matches = cursor.matches(&query, scope, source.as_bytes());
+                    while let Some(m) = matches.next() {
+                        let mut row: std::collections::BTreeMap<String, Vec<CaptureSpan>> =
+                            std::collections::BTreeMap::new();
+                        for cap in m.captures.iter() {
+                            let name = names
+                                .get(cap.index as usize)
+                                .cloned()
+                                .unwrap_or_else(|| format!("cap{}", cap.index));
+                            if name.starts_with("__") {
+                                continue;
+                            }
+                            let node = cap.node;
+                            let span = CaptureSpan {
+                                start: node.start_byte(),
+                                end: node.end_byte(),
+                                is_block: node.kind() == "block",
+                                kind: node.kind().to_string(),
+                            };
+                            row.entry(name).or_default().push(span);
+                        }
+                        if !row.is_empty() {
+                            rows.push(row);
+                        }
+                    }
+                }
+                return Ok(rows);
             }
             scope_spans =
                 self.collect_match_root_spans(source, tree, &language, step_text, &scope_spans)?;

@@ -120,9 +120,12 @@ If that stub is stale after upgrading the extension/host API, run
 reloads the catalog; it does not rewrite stubs.
 
 **Components and Luau types:** the platform layer uses the same `c` host context in
-component hooks (`parse`, `verify`, …). See [components.md](./components.md),
-[component-contract.md](./component-contract.md), and [luau-lsp.md](./luau-lsp.md)
-for parse trees, `c` vs `context`, and `--!strict` / `export type` ergonomics.
+component hooks (`identify`, `parse`, `verify`, …). Stack roots return locators from
+`identify(c)` (often via `c:listFiles` / `c:matchFiles`); `parse` yields a **node**;
+ops receive `target = { locator, node, … }`. Query hits use
+`{ span = { from, to }, text, kind }` (`c:queryMatches` for multi-capture rows).
+See [components.md](./components.md), [component-contract.md](./component-contract.md),
+and [luau-lsp.md](./luau-lsp.md).
 
 **Platform experiment (MCP):** when a workspace has `.codemod/stack.luau` and
 components, call `component_scan` (or `list_component_instances`) for instances /

@@ -23,16 +23,16 @@ return {
 | `id` | Yes |
 | `components` | Yes — array of component ids for **root scan** |
 
-Optional: `description`.
+Optional: `description`. There is **no** `globs` field — roots find candidates via **`identify(c)`**.
 
 ## Root scan vs child-only
 
 | | In `stack.components` | At `componentScan` | Via `c:component` |
 |--|----------------------|--------------------|-------------------|
-| **Root** (entity, store, …) | Yes | discover → identify → parse → verify | Yes |
+| **Root** (entity, store, …) | Yes | identify → parse → verify | Yes |
 | **Child-only** (property, column, …) | No | Skipped | Yes — parent passes locator |
 
-All component modules are loaded into the registry on reload. The stack only gates **who runs `discover` at scan time**.
+All component modules are loaded into the registry on reload. The stack only gates **who runs `identify` at scan time**.
 
 ## Validation
 
@@ -47,6 +47,7 @@ Recipe-only projects (no components) do not require a stack.
 
 - `stackVersion`, lockfile, migrations
 - Global conventions table (use maps/vars + per-component `conventions`)
+- Span-scoped / string-buffer queries
 
 ## Example
 

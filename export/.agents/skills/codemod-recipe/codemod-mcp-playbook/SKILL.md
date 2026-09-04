@@ -78,8 +78,8 @@ When `.codemod/stack.luau` and components exist:
 
 1. `component_scan` (or `list_component_instances`) — initial read; populates host cache
 2. After codemod apply or known file edits, prefer `component_incremental_scan` with `dirtyPaths` (or `detectChanges: true` when paths unknown)
-3. Use summaries for reasoning; use `parsed` for detail
-4. Create via host `componentScaffold` (`scaffold.apply(c, args)`); mutate via `componentInvokeOperation` (`operations.*.apply(c, args, identity)`). MCP not wired for these yet; host incremental-rescans after apply
+3. Use summaries for reasoning; use `node` for detail
+4. Create via host `componentScaffold` (`scaffold.apply(c, args)`); mutate via `componentInvokeOperation` (`operations.*.apply(c, args, target)`). MCP not wired for these yet; host incremental-rescans after apply
 
 See `docs/components.md`, `docs/stacks.md`, and `docs/flutter-poc.md`.
 

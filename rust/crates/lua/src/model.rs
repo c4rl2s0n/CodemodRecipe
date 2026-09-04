@@ -120,15 +120,13 @@ pub struct StackDef {
     pub description: Option<String>,
     /// Component ids to run at workspace root scan.
     pub components: Vec<String>,
-    /// Optional workspace globs per root component id (host-driven discover).
-    pub globs: BTreeMap<String, String>,
     #[schemars(skip)]
     pub source: String,
     #[schemars(skip)]
     pub path: Option<PathBuf>,
 }
 
-/// Component kind module (`discover` / `parse` / `verify` hooks).
+/// Component kind module (`identify` / `parse` / `verify` hooks).
 #[derive(Debug, Clone, PartialEq, Eq, JsonSchema)]
 pub struct ComponentDef {
     pub id: String,

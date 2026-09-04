@@ -115,7 +115,7 @@ Read [components.md](./components.md) and the MCP playbook skill
 | | `reference_stack` | `flutter_poc` |
 |--|-------------------|---------------|
 | Purpose | Runtime smoke test | Contract reference (tree + context) |
-| Discover | Component `discover` | `stack.globs` + host file loop |
+| Identify | `c:matchFiles` locators | `c:matchFiles("lib/models/{name}.dart")` |
 | Parse | Regex | Tree-sitter (`flutter.*` query lib) |
 | Structure | Flat `fields` | `children[]` with `source` spans |
 | Verify | Single warning | Cross-file model ↔ store via nested state child |

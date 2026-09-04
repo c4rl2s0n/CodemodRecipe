@@ -8,7 +8,7 @@ pub struct ComponentInstance {
     pub id: String,
     pub component_id: String,
     pub locator: serde_json::Value,
-    pub parsed: serde_json::Value,
+    pub node: serde_json::Value,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub summary: Option<serde_json::Value>,
 }

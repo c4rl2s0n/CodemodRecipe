@@ -1,21 +1,18 @@
 return {
 	id = "example.store",
 	description = "Store files under src/stores",
-	discover = function(c)
-		local paths = c:glob("src/stores/*_store.dart")
-		local locators = {}
-		for i, path in ipairs(paths) do
-			locators[i] = { path = path }
+	identify = function(c)
+		local out = {}
+		for _, row in ipairs(c:matchFiles("src/stores/{id}_store.dart")) do
+			out[#out + 1] = { path = row.path, id = row.id }
 		end
-		return locators
-	end,
-	identify = function(_c, locator)
-		return locator.path ~= nil and locator.path:find("_store.dart", 1, true) ~= nil
+		return out
 	end,
 	parse = function(c, locator)
+		local id = locator.id or c:filename(locator.path):gsub("_store$", "")
 		return {
-			id = c:stem(locator.path):gsub("_store$", ""),
-			name = c:stem(locator.path),
+			id = id,
+			name = c:filename(locator.path),
 			path = locator.path,
 		}
 	end,

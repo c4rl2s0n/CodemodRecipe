@@ -4,7 +4,4 @@ return {
 	components = {
 		"flutter.model",
 	},
-	globs = {
-		["flutter.model"] = "lib/models/*.dart",
-	},
 }

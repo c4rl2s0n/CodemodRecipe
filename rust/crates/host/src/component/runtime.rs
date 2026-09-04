@@ -261,7 +261,7 @@ pub fn invoke_operation(
                 "id": target.id,
                 "componentId": target.component_id,
                 "locator": target.locator,
-                "parsed": target.parsed,
+                "node": target.node,
             }),
         )?;
         let args_tbl = args_table_from_map(&lua, &request.args)?;
@@ -530,5 +530,5 @@ pub fn scan_single_component(
     ctx: &ComponentRunContext,
     component: &ComponentDef,
 ) -> Result<(Vec<ComponentInstance>, Vec<ComponentFinding>), String> {
-    scan_component(ctx, component, None)
+    scan_component(ctx, component)
 }

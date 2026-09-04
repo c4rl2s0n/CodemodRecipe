@@ -1,13 +1,14 @@
-# Component data contract (v1.2)
+# Component data contract (v1.3)
 
-Parse trees, parse context, apply signatures, and hook conventions for the platform layer.
+Parse trees, locators, apply signatures, and hook conventions for the platform layer.
 
 ## Mental model
 
 A **component instance** is a **node** in a tree:
 
-- Root scan produces top-level nodes (listed in `stack.luau` `components`).
+- Root scan: each stack root’s **`identify(c)`** returns freeform **locators**; host calls **`parse(c, locator)`** per entry.
 - Each node may nest **children** by calling `c:component(childId):parse(context)` during `parse`.
+- Instance JSON: `{ id, componentId, locator, node }` (plus optional `summary`).
 - **`source`** (`path` + optional `span`) anchors nodes for extract/edit — internal tooling, not agent summaries.
 
 ```lua
@@ -27,11 +28,11 @@ A **component instance** is a **node** in a tree:
 
 Args are **never** on `c`. Host context is sandbox only.
 
-| Surface | Signature | Identity |
-|---------|-----------|----------|
+| Surface | Signature | Target |
+|---------|-----------|--------|
 | Recipe `apply` | `apply(c, args)` | absent |
 | Component `scaffold.apply` | `apply(c, args)` | absent (create) |
-| Component `operations.*.apply` | `apply(c, args, identity)` | scanned instance |
+| Component `operations.*.apply` | `apply(c, args, target)` | scanned instance |
 
 ```lua
 -- Unbound (recipe / scaffold)
@@ -41,26 +42,34 @@ apply = function(c, args)
 end
 
 -- Bound mutate
-operations.addStoreField.apply = function(c, args, identity)
-  local path = identity.parsed.source and identity.parsed.source.path
+operations.addStoreField.apply = function(c, args, target)
+  local path = target.node.source and target.node.source.path
   local fieldName = args.fieldName
 end
 ```
 
-`identity` (mutate only) includes at least `id`, `componentId`, `locator`, and `parsed` (the parse tree).
+`target` (mutate only) includes at least `id`, `componentId`, `locator`, and **`node`** (the parse tree).
 
-## Hook signatures: `c` and `context`
+## Hook signatures: `c` and locator
 
 Read/verify hooks are **`hook(c, arg?)`** — same host table as recipe `apply` (`CodemodContext` in stubs), without `args` on `c`.
 
 | Param | Role |
 |-------|------|
-| **`c`** | Host context: `c:read`, `c:query`, `c:glob`, `c:resolve`, `c:component`, … |
-| **`context`** (2nd arg to `parse`) | Parse input from host or parent. JSON scan output uses key **`locator`** for API stability. |
+| **`c`** | Host context: `c:read`, `c:query`, `c:listFiles`, `c:matchFiles`, `c:resolve`, `c:component`, … |
+| **`locator`** (2nd arg to `parse`) | Freeform table from `identify` or parent. No host field conventions. |
 
 ```lua
-parse = function(c, context)
-  local path = context.source and context.source.path or context.path
+identify = function(c)
+  local out = {}
+  for _, row in ipairs(c:matchFiles("lib/models/{name}.dart")) do
+    out[#out + 1] = { path = row.path, name = row.name }
+  end
+  return out
+end
+
+parse = function(c, locator)
+  local path = locator.source and locator.source.path or locator.path
   if not path then return nil end
   -- ...
 end
@@ -68,17 +77,39 @@ end
 
 | Hook | Args | Returns |
 |------|------|---------|
-| `discover(c)` | optional | Candidate contexts (legacy; prefer `stack.globs` + `parse` only) |
-| `identify(c, context)` | optional | `true` / `false` — skip before `parse` when present |
-| `parse(c, context)` | required | Node table, `nil` / `{ skip = true }` to skip, or `{ instances = { ... } }` |
-| `verify(c, instance)` | required | Findings array |
+| `identify(c)` | **required on stack roots** | List of freeform locators |
+| `parse(c, locator)` | required | Node table, `nil` / `{ skip = true }` to skip, or `{ instances = { ... } }` |
+| `verify(c, instance)` | required | Findings array (`instance.node` is the parse tree) |
 | `toSummary(c, instance)` | optional | Agent-facing summary (no `source` spans) |
 | `scaffold.apply(c, args)` | optional | Create side effects |
-| `operations.*.apply(c, args, identity)` | optional | Mutate side effects |
+| `operations.*.apply(c, args, target)` | optional | Mutate side effects |
 
-**Required hooks:** `parse`, `verify` only. `discover` / `identify` / `scaffold` / `operations` are optional.
+**Required hooks:** `parse`, `verify`. Stack roots must also define **`identify`**. Child-only components typically omit `identify`.
+
+There is **no** `discover` hook and **no** `stack.globs`.
 
 Compose other components with `c:component(id)` — do not pass a components registry into `apply`.
+
+## Path helpers
+
+| Method | Pattern | Returns |
+|--------|---------|---------|
+| `c:listFiles("lib/models/*.dart")` | shell `*` globs | list of path strings |
+| `c:matchFiles("lib/models/{name}.dart")` | `{placeholder}` (one segment each) | `{ path, name, ... }` rows |
+| `c:resolve(tmpl, vars)` | `{key}` fill-in | **one** path string (no FS search) |
+| `c:filename(path)` | — | basename without extension |
+
+## Query hits
+
+`c:query` returns hits shaped:
+
+```lua
+{ span = { from = 10, to = 20 }, text = "...", kind = "identifier" }
+```
+
+(`from` / `to` because Lua reserves `end`.)
+
+`c:queryMatches` returns one row per tree-sitter match; keys are `@capture` names. One capture → a hit; multiple same-name captures → array of hits.
 
 ## Parse context (parent → child)
 
@@ -97,20 +128,6 @@ c:component("flutter.state"):parse({
 ```
 
 Parent derives paths (`c:resolve`), builds identity, calls child `parse`. Child checks at runtime what it needs (`if not context.hints.name then return nil end`).
-
-## Stack globs (host-driven discover)
-
-```lua
-return {
-  id = "my-stack",
-  components = { "flutter.model" },
-  globs = {
-    ["flutter.model"] = "lib/models/*.dart",
-  },
-}
-```
-
-When `discover` is absent, the host globs each path and calls `parse(c, { source = { path } })`.
 
 ## Findings
 

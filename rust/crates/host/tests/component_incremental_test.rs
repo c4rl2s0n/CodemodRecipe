@@ -86,7 +86,7 @@ fn incremental_dirty_paths_updates_store_drift() {
         .iter()
         .find(|i| i["id"] == "flutter.model/recipe")
         .expect("recipe instance");
-    let store_child = recipe["parsed"]["children"]
+    let store_child = recipe["node"]["children"]
         .as_array()
         .unwrap()
         .iter()

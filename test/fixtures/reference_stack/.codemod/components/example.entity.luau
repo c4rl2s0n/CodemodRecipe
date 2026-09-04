@@ -1,16 +1,12 @@
 return {
 	id = "example.entity",
 	description = "Entity files under src/entities",
-	discover = function(c)
-		local paths = c:glob("src/entities/*.dart")
-		local locators = {}
-		for i, path in ipairs(paths) do
-			locators[i] = { path = path }
+	identify = function(c)
+		local out = {}
+		for _, row in ipairs(c:matchFiles("src/entities/{name}.dart")) do
+			out[#out + 1] = { path = row.path, name = row.name }
 		end
-		return locators
-	end,
-	identify = function(_c, locator)
-		return locator.path ~= nil and locator.path:find("src/entities/", 1, true) ~= nil
+		return out
 	end,
 	parse = function(c, locator)
 		local src = c:read(locator.path)
@@ -22,15 +18,15 @@ return {
 			})
 		end
 		return {
-			id = c:stem(locator.path),
-			name = c:stem(locator.path),
+			id = locator.name or c:filename(locator.path),
+			name = locator.name or c:filename(locator.path),
 			path = locator.path,
 			fields = fields,
 		}
 	end,
 	verify = function(_c, instance)
 		local findings = {}
-		if #instance.parsed.fields == 0 then
+		if #instance.node.fields == 0 then
 			findings[#findings + 1] = {
 				severity = "warning",
 				code = "entity.no_fields",
@@ -42,13 +38,13 @@ return {
 	end,
 	operations = {
 		addField = {
-			apply = function(c, args, identity)
+			apply = function(c, args, target)
 				local fieldName = args.name
 				if not fieldName or fieldName == "" then
 					error("addField requires args.name")
 				end
 				c:insert({
-					path = identity.parsed.path,
+					path = target.node.path,
 					language = "dart",
 					query = "(class_definition) @class",
 					capture = "class",

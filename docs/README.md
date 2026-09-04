@@ -53,7 +53,7 @@ Root [README.md](../README.md) shows a compact Luau example and feature status.
 | Doc | Contents |
 |-----|----------|
 | [components.md](components.md) | Component modules, hooks, host commands, operations |
-| [stacks.md](stacks.md) | Stack manifest (`stack.luau`, globs) |
+| [stacks.md](stacks.md) | Stack manifest (`stack.luau`, root identify) |
 | [component-contract.md](component-contract.md) | Parse-tree contract (`children`, `source`, context) |
 | [flutter-poc.md](flutter-poc.md) | Reference fixture: scan, incremental rescan, `addStoreField` |
 | [luau-lsp.md](luau-lsp.md) | `--!strict` / stubs for component authoring |

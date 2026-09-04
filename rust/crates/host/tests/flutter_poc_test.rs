@@ -30,7 +30,7 @@ fn flutter_poc_scan_finds_models_with_nested_children_and_summaries() {
     assert_eq!(recipe_model["summary"]["kind"].as_str(), Some("model"));
     assert_eq!(recipe_model["summary"]["title"].as_str(), Some("Recipe"));
 
-    let children = recipe_model["parsed"]["children"].as_array().unwrap();
+    let children = recipe_model["node"]["children"].as_array().unwrap();
     let properties: Vec<_> = children
         .iter()
         .filter(|c| c["componentId"] == "flutter.property")
