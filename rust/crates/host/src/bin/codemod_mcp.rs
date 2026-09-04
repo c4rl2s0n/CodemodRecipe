@@ -247,6 +247,49 @@ fn handle_request(
                   "name": "list_component_instances",
                   "description": "Alias of component_scan — returns instances, findings, and summaries.",
                   "inputSchema": { "type": "object" }
+                },
+                {
+                  "name": "describe_component",
+                  "description": "Component metadata: hooks present (hasIdentify/hasToSummary/hasScaffold), scaffold args, and operations.",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "componentId": { "type": "string" }
+                    },
+                    "required": ["componentId"]
+                  }
+                },
+                {
+                  "name": "component_dry_run_hook",
+                  "description": "Dry-run a component hook (Preview WorkingTree; never writes disk). Returns result JSON + transcript (c:log visible). hook: identify|parse|verify|toSummary|scaffold|operation. Authoring agents: prefer this over component_apply_hook.",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "componentId": { "type": "string" },
+                      "hook": { "type": "string" },
+                      "locator": {},
+                      "instance": {},
+                      "operation": { "type": "string" },
+                      "args": { "type": "object" }
+                    },
+                    "required": ["componentId", "hook"]
+                  }
+                },
+                {
+                  "name": "component_apply_hook",
+                  "description": "Apply a component hook (flushes WorkingTree writes). Same args as component_dry_run_hook. Prefer dry-run first. Withhold this tool from authoring-only agent allowlists.",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "componentId": { "type": "string" },
+                      "hook": { "type": "string" },
+                      "locator": {},
+                      "instance": {},
+                      "operation": { "type": "string" },
+                      "args": { "type": "object" }
+                    },
+                    "required": ["componentId", "hook"]
+                  }
                 }
               ]
             })),
@@ -440,6 +483,16 @@ fn handle_request(
                 "list_component_instances" => {
                     handle_command(registry, HostCommand::ComponentListInstances)
                 }
+                "describe_component" => {
+                    let component_id = arguments
+                        .get("componentId")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    handle_command(registry, HostCommand::DescribeComponent { component_id })
+                }
+                "component_dry_run_hook" => mcp_component_invoke_hook(registry, &arguments, true),
+                "component_apply_hook" => mcp_component_invoke_hook(registry, &arguments, false),
                 _ => error_json(format!("Unknown tool: {tool}")),
             };
 
@@ -462,6 +515,53 @@ fn handle_request(
             }),
         },
     }
+}
+
+fn mcp_component_invoke_hook(
+    registry: &mut RecipeRegistry,
+    arguments: &serde_json::Value,
+    preview: bool,
+) -> serde_json::Value {
+    let component_id = arguments
+        .get("componentId")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    if component_id.is_empty() {
+        return error_json("Missing componentId");
+    }
+    let hook = arguments
+        .get("hook")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    if hook.is_empty() {
+        return error_json("Missing hook");
+    }
+    let args = arguments
+        .get("args")
+        .and_then(|v| v.as_object())
+        .map(|m| {
+            m.iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect::<BTreeMap<_, _>>()
+        })
+        .unwrap_or_default();
+    handle_command(
+        registry,
+        HostCommand::ComponentInvokeHook {
+            component_id,
+            hook,
+            preview,
+            locator: arguments.get("locator").cloned(),
+            instance: arguments.get("instance").cloned(),
+            operation: arguments
+                .get("operation")
+                .and_then(|v| v.as_str())
+                .map(String::from),
+            args,
+        },
+    )
 }
 
 fn mcp_preview_or_apply(

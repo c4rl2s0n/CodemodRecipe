@@ -27,6 +27,7 @@ export const WEBVIEW_TO_EXTENSION = {
   componentScan: 'componentScan',
   componentPreview: 'componentPreview',
   componentApply: 'componentApply',
+  componentDryRun: 'componentDryRun',
 } as const;
 
 export const EXTENSION_TO_WEBVIEW = {
@@ -95,6 +96,11 @@ export type WebviewToExtensionMessage =
   | {
       type: typeof WEBVIEW_TO_EXTENSION.componentApply;
       args: ArgValues;
+      requestId: number;
+    }
+  | {
+      type: typeof WEBVIEW_TO_EXTENSION.componentDryRun;
+      hook: string;
       requestId: number;
     };
 
@@ -227,6 +233,10 @@ export function isWebviewToExtensionMessage(
     case WEBVIEW_TO_EXTENSION.componentPreview:
     case WEBVIEW_TO_EXTENSION.componentApply:
       return isArgRecord(value.args) && typeof value.requestId === 'number';
+    case WEBVIEW_TO_EXTENSION.componentDryRun:
+      return (
+        typeof value.hook === 'string' && typeof value.requestId === 'number'
+      );
     default:
       return false;
   }

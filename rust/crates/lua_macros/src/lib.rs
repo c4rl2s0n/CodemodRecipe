@@ -65,12 +65,13 @@ pub fn derive_lua_spec(input: TokenStream) -> TokenStream {
     };
 
     let host_spec_impl = quote! {
-        impl ::codemod_recipe_lua::host_api::HostSpec for #name {
+        impl ::codemod_recipe_lua::host_api::HostType for #name {
             const NAME: &'static str = stringify!(#name);
             fn schema() -> ::schemars::schema::RootSchema {
                 ::schemars::schema_for!(#name)
             }
         }
+        impl ::codemod_recipe_lua::host_api::HostSpec for #name {}
     };
 
     quote! {
@@ -102,15 +103,14 @@ pub fn host_method(args: TokenStream, input: TokenStream) -> TokenStream {
 
     let name = &args.name;
     let description = &args.description;
-    let return_type = &args.return_type;
     let accept_string = args.accept_string;
 
     let signature = match &args.kind {
         MethodKind::Spec(spec) => quote! {
             crate::host_api::registry::HostMethodSignature::Spec(
                 crate::host_api::registry::HostSpecInfo {
-                    name: <#spec as ::codemod_recipe_lua::host_api::HostSpec>::NAME,
-                    schema: <#spec as ::codemod_recipe_lua::host_api::HostSpec>::schema,
+                    name: <#spec as ::codemod_recipe_lua::host_api::HostType>::NAME,
+                    schema: <#spec as ::codemod_recipe_lua::host_api::HostType>::schema,
                 },
             )
         },
@@ -126,8 +126,38 @@ pub fn host_method(args: TokenStream, input: TokenStream) -> TokenStream {
         MethodKind::Variadic => quote! {
             crate::host_api::registry::HostMethodSignature::Variadic
         },
+        MethodKind::Resolve => quote! {
+            crate::host_api::registry::HostMethodSignature::Resolve
+        },
+        MethodKind::Component => quote! {
+            crate::host_api::registry::HostMethodSignature::Component
+        },
     };
 
+    let return_type_expr = match &args.return_type {
+        ReturnTypeExpr::Unit(ident) => quote! {
+            crate::host_api::registry::HostReturnType::#ident
+        },
+        ReturnTypeExpr::Named(path) => quote! {
+            crate::host_api::registry::HostReturnType::Named(
+                crate::host_api::registry::HostSpecInfo {
+                    name: <#path as ::codemod_recipe_lua::host_api::HostType>::NAME,
+                    schema: <#path as ::codemod_recipe_lua::host_api::HostType>::schema,
+                },
+            )
+        },
+        ReturnTypeExpr::Array(path) => quote! {
+            crate::host_api::registry::HostReturnType::NamedArray(
+                crate::host_api::registry::HostSpecInfo {
+                    name: <#path as ::codemod_recipe_lua::host_api::HostType>::NAME,
+                    schema: <#path as ::codemod_recipe_lua::host_api::HostType>::schema,
+                },
+            )
+        },
+    };
+
+    // SAFETY: linkme element expansion emits `#[unsafe(link_section)]` into this
+    // crate; see `HOST_API_SURFACE` in `host_api/registry.rs`.
     let surface_static = quote! {
         #[allow(unsafe_code)]
         #[::linkme::distributed_slice(crate::host_api::registry::HOST_API_SURFACE)]
@@ -137,7 +167,7 @@ pub fn host_method(args: TokenStream, input: TokenStream) -> TokenStream {
                 name: #name,
                 description: #description,
                 signature: #signature,
-                return_type: crate::host_api::registry::HostReturnType::#return_type,
+                return_type: #return_type_expr,
                 accept_string: #accept_string,
             };
     };
@@ -199,8 +229,17 @@ pub fn host_method(args: TokenStream, input: TokenStream) -> TokenStream {
             .into_compile_error()
             .into();
         }
+        MethodKind::Resolve | MethodKind::Component => {
+            return syn::Error::new_spanned(
+                &item_fn,
+                "resolve/component methods must use recursive = true; registration is handled manually in build_ctx",
+            )
+            .into_compile_error()
+            .into();
+        }
     };
 
+    // SAFETY: same linkme element expansion as `surface_static` above.
     let method_static = quote! {
         #[allow(unsafe_code)]
         #[::linkme::distributed_slice(crate::host_api::registry::HOST_METHODS)]
@@ -304,7 +343,7 @@ fn pascal_case(s: &str) -> String {
 struct HostMethodArgs {
     name: String,
     description: String,
-    return_type: Ident,
+    return_type: ReturnTypeExpr,
     kind: MethodKind,
     recursive: bool,
     accept_string: bool,
@@ -316,18 +355,59 @@ enum MethodKind {
     Assert,
     Run,
     Variadic,
+    Resolve,
+    Component,
+}
+
+enum ReturnTypeExpr {
+    /// Unit variant: `Nil`, `String`, `Boolean`, `Integer`, `StringMap`, `StringList`, `ComponentDelegate`.
+    Unit(Ident),
+    /// Named HostType: `QueryHit`, `MatchFileRow`, …
+    Named(Path),
+    /// Array of HostType: `Array(QueryHit)`.
+    Array(Path),
+}
+
+fn is_unit_return_type(name: &str) -> bool {
+    matches!(
+        name,
+        "Nil" | "String" | "Boolean" | "Integer" | "StringMap" | "StringList" | "ComponentDelegate"
+    )
+}
+
+fn parse_return_type_expr(input: ParseStream) -> syn::Result<ReturnTypeExpr> {
+    if input.peek(Ident) {
+        let fork = input.fork();
+        let id: Ident = fork.parse()?;
+        if id == "Array" {
+            let _: Ident = input.parse()?;
+            let content;
+            syn::parenthesized!(content in input);
+            let path: Path = content.parse()?;
+            return Ok(ReturnTypeExpr::Array(path));
+        }
+    }
+    let path: Path = input.parse()?;
+    if let Some(ident) = path.get_ident() {
+        if is_unit_return_type(&ident.to_string()) {
+            return Ok(ReturnTypeExpr::Unit(ident.clone()));
+        }
+    }
+    Ok(ReturnTypeExpr::Named(path))
 }
 
 impl Parse for HostMethodArgs {
     fn parse(input: ParseStream) -> syn::Result<Self> {
         let mut name: Option<String> = None;
         let mut description: Option<String> = None;
-        let mut return_type: Option<Ident> = None;
+        let mut return_type: Option<ReturnTypeExpr> = None;
         let mut spec: Option<Path> = None;
         let mut string_id = false;
         let mut assert = false;
         let mut run = false;
         let mut variadic = false;
+        let mut resolve = false;
+        let mut component = false;
         let mut recursive = false;
         let mut accept_string = false;
 
@@ -342,7 +422,7 @@ impl Parse for HostMethodArgs {
                 description = Some(parse_str_lit(input)?);
             } else if ident == "return_type" {
                 input.parse::<Token![=]>()?;
-                return_type = Some(input.parse()?);
+                return_type = Some(parse_return_type_expr(input)?);
             } else if ident == "spec" {
                 input.parse::<Token![=]>()?;
                 spec = Some(input.parse()?);
@@ -354,6 +434,10 @@ impl Parse for HostMethodArgs {
                 run = true;
             } else if ident == "variadic" {
                 variadic = true;
+            } else if ident == "resolve" {
+                resolve = true;
+            } else if ident == "component" {
+                component = true;
             } else if ident == "recursive" {
                 input.parse::<Token![=]>()?;
                 recursive = parse_bool_lit(input)?;
@@ -362,8 +446,10 @@ impl Parse for HostMethodArgs {
                 accept_string = parse_bool_lit(input)?;
             } else {
                 return Err(syn::Error::new_spanned(
-                    ident,
-                    "unknown host_method argument",
+                    &ident,
+                    format!(
+                        "unknown host_method argument `{ident}`; expected name, description, return_type, spec, string_id, assert, run, variadic, resolve, component, recursive, or accept_string"
+                    ),
                 ));
             }
 
@@ -372,45 +458,39 @@ impl Parse for HostMethodArgs {
             }
         }
 
+        let kind_flags = [
+            string_id,
+            assert,
+            run,
+            variadic,
+            resolve,
+            component,
+            spec.is_some(),
+        ]
+        .iter()
+        .filter(|&&f| f)
+        .count();
+        if kind_flags != 1 {
+            return Err(syn::Error::new(
+                Span::call_site(),
+                "host_method requires exactly one of: spec, string_id, assert, run, variadic, resolve, component",
+            ));
+        }
+
         let kind = if let Some(path) = spec {
-            if string_id || assert || run || variadic {
-                return Err(syn::Error::new(
-                    Span::call_site(),
-                    "spec is mutually exclusive with string_id, assert, run, and variadic",
-                ));
-            }
             MethodKind::Spec(path)
         } else if string_id {
-            if assert || run || variadic {
-                return Err(syn::Error::new(
-                    Span::call_site(),
-                    "string_id is mutually exclusive with assert, run, and variadic",
-                ));
-            }
             MethodKind::StringId
         } else if assert {
-            if run || variadic {
-                return Err(syn::Error::new(
-                    Span::call_site(),
-                    "assert is mutually exclusive with run and variadic",
-                ));
-            }
             MethodKind::Assert
         } else if run {
-            if variadic {
-                return Err(syn::Error::new(
-                    Span::call_site(),
-                    "run is mutually exclusive with variadic",
-                ));
-            }
             MethodKind::Run
         } else if variadic {
             MethodKind::Variadic
+        } else if resolve {
+            MethodKind::Resolve
         } else {
-            return Err(syn::Error::new(
-                Span::call_site(),
-                "host_method requires one of: spec, string_id, assert, run, variadic",
-            ));
+            MethodKind::Component
         };
 
         let name =

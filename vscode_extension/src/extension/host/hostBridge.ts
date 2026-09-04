@@ -374,6 +374,27 @@ export class HostBridge {
     });
   }
 
+  async componentInvokeHook(opts: {
+    componentId: string;
+    hook: string;
+    preview?: boolean;
+    locator?: unknown;
+    instance?: unknown;
+    operation?: string;
+    args?: ArgValues;
+  }): Promise<ComponentInvokeResponse> {
+    return this.send<ComponentInvokeResponse>({
+      command: 'componentInvokeHook',
+      componentId: opts.componentId,
+      hook: opts.hook,
+      preview: opts.preview ?? true,
+      locator: opts.locator,
+      instance: opts.instance,
+      operation: opts.operation,
+      args: opts.args ?? {},
+    });
+  }
+
   dispose(): void {
     this.stopPersistentHost();
   }

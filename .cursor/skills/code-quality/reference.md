@@ -14,7 +14,10 @@ practices review.
 
 Workspace lints ([`rust/Cargo.toml`](../../../rust/Cargo.toml)):
 
-- `unsafe_code = forbid`
+- `unsafe_code = deny` (not `forbid`) so linkme `#[distributed_slice]` sites can
+  scope `#[allow(unsafe_code)]` — the macro expands to `unsafe` / `#[unsafe(link_section)]`
+  in this crate even though linkme’s public API is safe. See
+  `host_api/registry.rs` (`HOST_API_SURFACE`) for the canonical SAFETY note.
 - Clippy `all = warn`; `pedantic = allow` (do not enable pedantic globally unless asked)
 - CI: `cargo clippy --all-targets -- -D warnings`
 

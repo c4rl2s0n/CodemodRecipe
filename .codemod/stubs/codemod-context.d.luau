@@ -4,62 +4,84 @@
 -- Do not edit manually; run `scripts/generate-host-api-surface.sh`.
 
 export type CreateSpec = {
-	content?: string,
-	ifExists?: IfExists,
+	content: string?,
+	ifExists: IfExists?,
 	path: string,
-	template?: string,
+	template: string?,
 }
 
 export type DeleteSpec = {
-	ifMissing?: IfMissing,
+	ifMissing: IfMissing?,
 	path: string,
 }
 
 export type InsertSpec = {
-	anchor?: Anchor,
+	anchor: Anchor?,
 	capture: string,
-	language?: string,
+	language: string?,
 	path: string,
 	query: QuerySpec,
 	text: string,
 }
 
+export type MatchFileRow = { [string]: string }
+
 export type PostExecSpec = {
-	command?: string,
-	path?: string,
+	command: string?,
+	path: string?,
 }
 
+export type QueryCaptureSpec = {
+	capture: string,
+	language: string?,
+	path: string,
+	query: QuerySpec,
+}
+
+export type QueryHit = {
+	kind: string,
+	span: ByteSpan,
+	text: string,
+}
+
+export type QueryMatchRow = { [string]: QueryHit | { [number]: QueryHit } }
+
 export type QueryTableSpec = {
-	capture?: string,
-	language?: string,
+	capture: string?,
+	language: string?,
 	path: string,
 	query: QuerySpec,
 }
 
 export type RemoveSpec = {
 	capture: string,
-	includeLeadingTrivia?: boolean,
-	language?: string,
+	includeLeadingTrivia: boolean?,
+	language: string?,
 	path: string,
 	query: QuerySpec,
 }
 
 export type ReplaceSpec = {
 	capture: string,
-	includeLeadingTrivia?: boolean,
-	language?: string,
+	includeLeadingTrivia: boolean?,
+	language: string?,
 	path: string,
 	query: QuerySpec,
 	text: string,
 }
 
 export type TemplateSpec = {
-	env?: Env,
-	inline?: string,
-	path?: string,
+	env: Env?,
+	inline: string?,
+	path: string?,
 }
 
 export type Anchor = "start" | "end"
+
+export type ByteSpan = {
+	from: number,
+	to: number,
+}
 
 export type Env = { [string]: any }
 
@@ -69,33 +91,35 @@ export type IfMissing = "fail" | "skip"
 
 export type QuerySpec = string | { [number]: string }
 
-export type QuerySpan = {
-	start: number,
-	["end"]: number,
-	text: string,
+export type ComponentDelegate = {
+	parse: (self: ComponentDelegate, locator: any) -> any,
+	verify: (self: ComponentDelegate, instance: any) -> any,
+	readSource: (self: ComponentDelegate, locator: any) -> any,
 }
 
 export type CodemodContext = {
 	assert: (self: CodemodContext, cond: boolean, msg: string?) -> (),
+	component: (self: CodemodContext, id: string) -> ComponentDelegate,
 	create: (self: CodemodContext, spec: CreateSpec) -> (),
 	delete: (self: CodemodContext, spec: DeleteSpec) -> (),
 	expectMatch: (self: CodemodContext, spec: QueryTableSpec) -> (),
 	expectNoMatch: (self: CodemodContext, spec: QueryTableSpec) -> (),
 	filename: (self: CodemodContext, id: string) -> string,
 	insert: (self: CodemodContext, spec: InsertSpec) -> (),
-	listFiles: (self: CodemodContext, id: string) -> { [string]: string },
+	listFiles: (self: CodemodContext, id: string) -> { string },
 	log: (self: CodemodContext, ...any) -> (),
 	map: (self: CodemodContext, id: string) -> { [string]: string },
-	matchFiles: (self: CodemodContext, id: string) -> { [string]: string },
+	matchFiles: (self: CodemodContext, id: string) -> { MatchFileRow },
 	postExec: (self: CodemodContext, spec: PostExecSpec) -> (),
-	query: (self: CodemodContext, spec: QueryTableSpec) -> { QuerySpan },
+	query: (self: CodemodContext, spec: QueryCaptureSpec) -> { QueryHit },
 	queryCount: (self: CodemodContext, spec: QueryTableSpec) -> number,
 	queryExists: (self: CodemodContext, spec: QueryTableSpec) -> boolean,
 	queryLib: (self: CodemodContext, id: string) -> string,
-	queryMatches: (self: CodemodContext, spec: QueryTableSpec) -> { [string]: string },
+	queryMatches: (self: CodemodContext, spec: QueryTableSpec) -> { QueryMatchRow },
 	read: (self: CodemodContext, path: string | { path: string }) -> string,
 	remove: (self: CodemodContext, spec: RemoveSpec) -> (),
 	replace: (self: CodemodContext, spec: ReplaceSpec) -> (),
+	resolve: (self: CodemodContext, template: string, vars: { [string]: string }?) -> string,
 	run: (self: CodemodContext, id: string, args: { [string]: any }?) -> (),
 	template: (self: CodemodContext, spec: TemplateSpec) -> string,
 	var: (self: CodemodContext, id: string) -> { [string]: string },

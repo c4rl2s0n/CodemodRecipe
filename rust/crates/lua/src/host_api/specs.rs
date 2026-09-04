@@ -10,19 +10,20 @@ use serde_json::Value as JsonValue;
 
 use crate::json_lua::lua_to_json;
 
-/// Metadata trait implemented by every Luau-facing host API spec type.
+/// Schema-backed type used by the host API surface generator (inputs and returns).
+pub trait HostType: 'static + Send {
+    /// Rust/Luau name of the type (e.g. `InsertSpec`, `QueryHit`).
+    const NAME: &'static str;
+    /// JSON schema used by the surface generator.
+    fn schema() -> RootSchema;
+}
+
+/// Metadata trait implemented by every Luau-facing host API **input** spec type.
 ///
 /// The `#[derive(LuaSpec)]` macro provides the implementation for simple
 /// table specs; complex types (e.g. `QuerySpec`, `ReadSpec`, `Env`) implement
-/// it manually.
-pub trait HostSpec: FromLua + Sized + 'static + Send {
-    /// Rust/Luau name of the spec type (e.g. `InsertSpec`).
-    ///
-    /// The generated Luau type alias uses the same name.
-    const NAME: &'static str;
-    /// JSON schema for the spec table, used by the surface generator.
-    fn schema() -> RootSchema;
-}
+/// it manually. Return-only shapes implement [`HostType`] without this trait.
+pub trait HostSpec: HostType + FromLua + Sized {}
 
 /// Raw query specifier: either a single string or a chain of strings.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
@@ -61,12 +62,13 @@ impl FromLua for QuerySpec {
     }
 }
 
-impl HostSpec for QuerySpec {
+impl HostType for QuerySpec {
     const NAME: &'static str = "QuerySpec";
     fn schema() -> RootSchema {
         schema_for!(QuerySpec)
     }
 }
+impl HostSpec for QuerySpec {}
 
 /// Insert anchor position.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
@@ -92,12 +94,13 @@ impl FromLua for Anchor {
     }
 }
 
-impl HostSpec for Anchor {
+impl HostType for Anchor {
     const NAME: &'static str = "Anchor";
     fn schema() -> RootSchema {
         schema_for!(Anchor)
     }
 }
+impl HostSpec for Anchor {}
 
 /// What to do when creating a file that already exists.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
@@ -123,12 +126,13 @@ impl FromLua for IfExists {
     }
 }
 
-impl HostSpec for IfExists {
+impl HostType for IfExists {
     const NAME: &'static str = "IfExists";
     fn schema() -> RootSchema {
         schema_for!(IfExists)
     }
 }
+impl HostSpec for IfExists {}
 
 /// What to do when deleting a file that does not exist.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq, JsonSchema, Serialize, Deserialize)]
@@ -154,12 +158,13 @@ impl FromLua for IfMissing {
     }
 }
 
-impl HostSpec for IfMissing {
+impl HostType for IfMissing {
     const NAME: &'static str = "IfMissing";
     fn schema() -> RootSchema {
         schema_for!(IfMissing)
     }
 }
+impl HostSpec for IfMissing {}
 
 /// Environment table passed to template rendering. Keys are strings and values
 /// are arbitrary JSON-compatible Lua values.
@@ -211,12 +216,13 @@ impl JsonSchema for Env {
     }
 }
 
-impl HostSpec for Env {
+impl HostType for Env {
     const NAME: &'static str = "Env";
     fn schema() -> RootSchema {
         schema_for!(Env)
     }
 }
+impl HostSpec for Env {}
 
 /// `c:insert(spec)` — insert text at a tree-sitter capture.
 #[derive(Debug, Clone, PartialEq, Eq, JsonSchema, LuaSpec)]
@@ -296,18 +302,26 @@ impl FromLua for ReadSpec {
     }
 }
 
-impl HostSpec for ReadSpec {
+impl HostType for ReadSpec {
     const NAME: &'static str = "ReadSpec";
     fn schema() -> RootSchema {
         schema_for!(ReadSpec)
     }
 }
+impl HostSpec for ReadSpec {}
 
-/// Unified table shape for all query-based methods.
-///
-/// `c:query(spec)` requires `capture` at runtime; the helper methods treat it as
-/// optional. The generated Luau type keeps it optional for simplicity, so the
-/// `query` handler asserts its presence.
+/// `c:query(spec)` — requires a capture name; returns [`QueryHit`] rows.
+#[derive(Debug, Clone, PartialEq, Eq, JsonSchema, LuaSpec)]
+#[serde(rename_all = "camelCase")]
+pub struct QueryCaptureSpec {
+    pub path: String,
+    pub query: QuerySpec,
+    pub capture: String,
+    pub language: Option<String>,
+}
+
+/// Table shape for query helpers (`queryExists`, `queryCount`, `queryMatches`,
+/// `expectMatch`, `expectNoMatch`) where `capture` is optional.
 #[derive(Debug, Clone, PartialEq, Eq, JsonSchema, LuaSpec)]
 #[serde(rename_all = "camelCase")]
 pub struct QueryTableSpec {
@@ -315,6 +329,120 @@ pub struct QueryTableSpec {
     pub query: QuerySpec,
     pub capture: Option<String>,
     pub language: Option<String>,
+}
+
+/// Byte offset span returned by query hits (`from`/`to`; Lua reserves `end`).
+#[derive(Debug, Clone, PartialEq, Eq, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct ByteSpan {
+    pub from: u64,
+    pub to: u64,
+}
+
+impl HostType for ByteSpan {
+    const NAME: &'static str = "ByteSpan";
+    fn schema() -> RootSchema {
+        schema_for!(ByteSpan)
+    }
+}
+
+/// One tree-sitter query hit: span + text + node kind.
+#[derive(Debug, Clone, PartialEq, Eq, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct QueryHit {
+    pub span: ByteSpan,
+    pub text: String,
+    pub kind: String,
+}
+
+impl HostType for QueryHit {
+    const NAME: &'static str = "QueryHit";
+    fn schema() -> RootSchema {
+        schema_for!(QueryHit)
+    }
+}
+
+/// One `matchFiles` row: `path` plus `{placeholder}` captures (all string values).
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MatchFileRow;
+
+impl JsonSchema for MatchFileRow {
+    fn schema_name() -> String {
+        "MatchFileRow".to_string()
+    }
+
+    fn json_schema(_gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+        let mut schema = schemars::schema::SchemaObject::default();
+        schema.instance_type = Some(schemars::schema::SingleOrVec::Single(Box::new(
+            schemars::schema::InstanceType::Object,
+        )));
+        schema.object = Some(Box::new(schemars::schema::ObjectValidation {
+            additional_properties: Some(Box::new(schemars::schema::Schema::Object(
+                schemars::schema::SchemaObject {
+                    instance_type: Some(schemars::schema::SingleOrVec::Single(Box::new(
+                        schemars::schema::InstanceType::String,
+                    ))),
+                    ..Default::default()
+                },
+            ))),
+            ..Default::default()
+        }));
+        schemars::schema::Schema::Object(schema)
+    }
+}
+
+impl HostType for MatchFileRow {
+    const NAME: &'static str = "MatchFileRow";
+    fn schema() -> RootSchema {
+        schema_for!(MatchFileRow)
+    }
+}
+
+/// One `queryMatches` row: capture name → single hit or array of hits.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct QueryMatchRow;
+
+impl JsonSchema for QueryMatchRow {
+    fn schema_name() -> String {
+        "QueryMatchRow".to_string()
+    }
+
+    fn json_schema(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+        let hit = gen.subschema_for::<QueryHit>();
+        let hit_array = schemars::schema::SchemaObject {
+            instance_type: Some(schemars::schema::SingleOrVec::Single(Box::new(
+                schemars::schema::InstanceType::Array,
+            ))),
+            array: Some(Box::new(schemars::schema::ArrayValidation {
+                items: Some(schemars::schema::SingleOrVec::Single(Box::new(hit.clone()))),
+                ..Default::default()
+            })),
+            ..Default::default()
+        };
+        let value = schemars::schema::SchemaObject {
+            subschemas: Some(Box::new(schemars::schema::SubschemaValidation {
+                any_of: Some(vec![hit, schemars::schema::Schema::Object(hit_array)]),
+                ..Default::default()
+            })),
+            ..Default::default()
+        };
+        let mut schema = schemars::schema::SchemaObject::default();
+        schema.instance_type = Some(schemars::schema::SingleOrVec::Single(Box::new(
+            schemars::schema::InstanceType::Object,
+        )));
+        schema.object = Some(Box::new(schemars::schema::ObjectValidation {
+            additional_properties: Some(Box::new(schemars::schema::Schema::Object(value))),
+            ..Default::default()
+        }));
+        schemars::schema::Schema::Object(schema)
+    }
+}
+
+impl HostType for QueryMatchRow {
+    const NAME: &'static str = "QueryMatchRow";
+    fn schema() -> RootSchema {
+        schema_for!(QueryMatchRow)
+    }
 }
 
 /// `c:postExec(spec)` — shell command after apply.

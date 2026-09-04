@@ -10,8 +10,10 @@ members = [
 ]
 
 [workspace.lints.rust]
-# `deny` (not `forbid`) so that the host API registry can `#[allow(unsafe_code)]`
-# on `linkme` distributed-slice entries, which rely on `#[link_section]`.
+# `deny` (not `forbid`) so linkme `#[distributed_slice]` declarations can
+# `#[allow(unsafe_code)]`. Linkme is a safe API, but its macro expands into
+# this crate as `unsafe` / `#[unsafe(link_section)]`. See
+# `crates/host/src/host_api/registry.rs` (`HOST_API_SURFACE`).
 unsafe_code = "deny"
 
 [workspace.lints.clippy]

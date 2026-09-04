@@ -37,5 +37,11 @@ description: Use when applying deterministic codemod edits via the Rust codemod-
 | `validate_recipes` | Reload + validate Luau under `.codemod/` |
 | `preview_recipe` | Dry-run; returns `previewToken` |
 | `apply_recipe` | Write changes; requires `previewToken` |
+| `component_scan` / `list_component_instances` | Scan stack roots |
+| `component_incremental_scan` | Rescan after edits |
+| `describe_component` | Component hooks / args |
+| `component_dry_run_hook` | Dry-run one hook; `result` + `transcript` (`c:log`) |
+| `component_apply_hook` | Apply one hook (flush); withhold from authoring-only agents |
 
 Human-oriented setup and examples: [docs/codemod-mcp.md](../../../docs/codemod-mcp.md).
+Full playbook: [reference.md](reference.md) and `.agents/skills/codemod-recipe/codemod-mcp-playbook/`.

@@ -295,12 +295,16 @@ pub fn load_component_from_table(table: &Table, source: &str) -> Result<Componen
     let description = optional_string(table, "description")?;
     require_function(table, "parse")?;
     require_function(table, "verify")?;
+    let has_identify = has_function(table, "identify");
+    let has_to_summary = has_function(table, "toSummary");
     let operations = parse_operations(table)?;
     let (has_scaffold, scaffold_args) = parse_scaffold(table)?;
     Ok(ComponentDef {
         id,
         description,
         operations,
+        has_identify,
+        has_to_summary,
         has_scaffold,
         scaffold_args,
         source: source.to_string(),
@@ -341,6 +345,10 @@ fn require_function(table: &Table, key: &str) -> Result<(), LoadError> {
             "component requires {key} function: {e}"
         ))),
     }
+}
+
+fn has_function(table: &Table, key: &str) -> bool {
+    matches!(table.get::<Value>(key), Ok(Value::Function(_)))
 }
 
 fn string_array(table: &Table) -> Result<Vec<String>, LoadError> {

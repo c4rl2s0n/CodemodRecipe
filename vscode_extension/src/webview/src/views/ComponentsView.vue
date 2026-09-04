@@ -30,6 +30,8 @@ const props = defineProps<{
   transcript: readonly TranscriptEvent[];
   scanError?: string;
   opError?: string;
+  dryRunResult?: unknown;
+  dryRunHook?: string;
 }>();
 
 const emit = defineEmits<{
@@ -41,6 +43,13 @@ const expanded = ref<Record<string, boolean>>({});
 const fileSelections = ref<FileCardSelection[]>([]);
 const activeChangeIndex = ref(0);
 const status = ref('');
+const contextMenu = ref<{
+  x: number;
+  y: number;
+  kind: 'component' | 'instance';
+  componentId: string;
+  instanceId?: string;
+} | null>(null);
 
 watch(
   () => props.files,
@@ -55,9 +64,9 @@ watch(
 );
 
 watch(
-  () => props.opError,
-  (err) => {
-    if (err && status.value) {
+  () => [props.opError, props.dryRunResult] as const,
+  () => {
+    if (status.value) {
       status.value = '';
     }
   }
@@ -92,7 +101,19 @@ const canRunOperation = computed(
 
 const canPreview = computed(() => canRunScaffold.value || canRunOperation.value);
 
-const showReview = computed(() => props.files.length > 0);
+const showReview = computed(
+  () =>
+    props.files.length > 0 ||
+    props.transcript.length > 0 ||
+    props.dryRunResult !== undefined
+);
+
+const dryRunResultText = computed(() => {
+  if (props.dryRunResult === undefined) {
+    return '';
+  }
+  return pretty(props.dryRunResult);
+});
 
 function instancesFor(componentId: string): ComponentInstance[] {
   return props.instances.filter((i) => i.componentId === componentId);
@@ -108,10 +129,12 @@ function toggle(componentId: string): void {
 function selectComponent(componentId: string): void {
   expanded.value = { ...expanded.value, [componentId]: true };
   client.selectComponent(componentId);
+  closeContextMenu();
 }
 
 function selectInstance(instanceId: string): void {
   client.selectComponentInstance(instanceId);
+  closeContextMenu();
 }
 
 function selectAction(action: string): void {
@@ -120,6 +143,43 @@ function selectAction(action: string): void {
 
 function rescan(): void {
   client.componentScan();
+}
+
+function runDryRun(hook: string): void {
+  status.value = `Dry-run ${hook}…`;
+  closeContextMenu();
+  client.componentDryRun(hook, client.nextRequestId());
+}
+
+function onKindContextMenu(event: MouseEvent, componentId: string): void {
+  event.preventDefault();
+  selectComponent(componentId);
+  contextMenu.value = {
+    x: event.clientX,
+    y: event.clientY,
+    kind: 'component',
+    componentId,
+  };
+}
+
+function onInstanceContextMenu(
+  event: MouseEvent,
+  componentId: string,
+  instanceId: string
+): void {
+  event.preventDefault();
+  selectInstance(instanceId);
+  contextMenu.value = {
+    x: event.clientX,
+    y: event.clientY,
+    kind: 'instance',
+    componentId,
+    instanceId,
+  };
+}
+
+function closeContextMenu(): void {
+  contextMenu.value = null;
 }
 
 const actionRecipe = computed(() => {
@@ -198,7 +258,7 @@ function runApply(): void {
 </script>
 
 <template>
-  <div class="components-layout">
+  <div class="components-layout" @click="closeContextMenu">
     <div class="components-tree">
       <div class="tree-header">
         <h2>Components</h2>
@@ -214,6 +274,7 @@ function runApply(): void {
           <div
             class="kind-row"
             :class="{ selected: selectedComponentId === kind.id && !selectedInstanceId }"
+            @contextmenu="onKindContextMenu($event, kind.id)"
           >
             <button type="button" class="expand" @click="toggle(kind.id)">
               {{ expanded[kind.id] ? '▾' : '▸' }}
@@ -229,6 +290,7 @@ function runApply(): void {
               :key="inst.id"
               class="instance-row"
               :class="{ selected: selectedInstanceId === inst.id }"
+              @contextmenu="onInstanceContextMenu($event, kind.id, inst.id)"
             >
               <button type="button" @click="selectInstance(inst.id)">
                 <span class="title">{{ summaryTitle(inst) }}</span>
@@ -272,6 +334,67 @@ function runApply(): void {
             <pre>{{ pretty(selectedInstance.summary) }}</pre>
           </details>
         </template>
+
+        <h3>Debug (dry-run)</h3>
+        <p class="desc">
+          Runs hooks under Preview WorkingTree and shows result + transcript (<code>c:log</code>).
+        </p>
+        <div class="actions">
+          <button
+            v-if="detail.hasIdentify"
+            type="button"
+            class="secondary"
+            @click="runDryRun('identify')"
+          >
+            identify
+          </button>
+          <button
+            v-if="selectedInstanceId"
+            type="button"
+            class="secondary"
+            @click="runDryRun('parse')"
+          >
+            parse
+          </button>
+          <button
+            v-if="selectedInstanceId"
+            type="button"
+            class="secondary"
+            @click="runDryRun('verify')"
+          >
+            verify
+          </button>
+          <button
+            v-if="detail.hasToSummary && selectedInstanceId"
+            type="button"
+            class="secondary"
+            @click="runDryRun('toSummary')"
+          >
+            toSummary
+          </button>
+          <button
+            v-if="detail.hasScaffold"
+            type="button"
+            class="secondary"
+            @click="runDryRun('scaffold')"
+          >
+            scaffold
+          </button>
+          <button
+            v-if="action && action !== 'scaffold' && selectedInstanceId"
+            type="button"
+            class="secondary"
+            @click="runDryRun('operation')"
+          >
+            op: {{ action }}
+          </button>
+        </div>
+        <p v-if="status" class="status">{{ status }}</p>
+        <p v-if="opError" class="error">{{ opError }}</p>
+        <details v-if="dryRunResultText" open class="dry-run-result">
+          <summary>Result{{ dryRunHook ? ` (${dryRunHook})` : '' }}</summary>
+          <pre>{{ dryRunResultText }}</pre>
+        </details>
 
         <h3>Actions</h3>
         <div class="actions">
@@ -319,7 +442,6 @@ function runApply(): void {
             </button>
             <span v-if="status" class="status">{{ status }}</span>
           </div>
-          <p v-if="opError" class="error">{{ opError }}</p>
         </template>
 
         <ReviewPanel
@@ -350,6 +472,46 @@ function runApply(): void {
         </template>
       </template>
       <p v-else class="desc">Select a component or instance.</p>
+    </div>
+
+    <div
+      v-if="contextMenu"
+      class="context-menu"
+      :style="{ left: `${contextMenu.x}px`, top: `${contextMenu.y}px` }"
+      @click.stop
+    >
+      <template v-if="contextMenu.kind === 'component'">
+        <button
+          v-if="
+            components.find((c) => c.id === contextMenu!.componentId)?.isRoot
+          "
+          type="button"
+          @click="runDryRun('identify')"
+        >
+          Dry-run identify
+        </button>
+        <button
+          v-if="
+            components.find((c) => c.id === contextMenu!.componentId)
+              ?.hasScaffold
+          "
+          type="button"
+          @click="runDryRun('scaffold')"
+        >
+          Dry-run scaffold
+        </button>
+      </template>
+      <template v-else>
+        <button type="button" @click="runDryRun('parse')">Dry-run parse</button>
+        <button type="button" @click="runDryRun('verify')">Dry-run verify</button>
+        <button
+          v-if="detail?.hasToSummary"
+          type="button"
+          @click="runDryRun('toSummary')"
+        >
+          Dry-run toSummary
+        </button>
+      </template>
     </div>
   </div>
 </template>
@@ -451,6 +613,32 @@ pre {
 }
 .error {
   color: var(--vscode-errorForeground, #f44747);
+}
+.context-menu {
+  position: fixed;
+  z-index: 20;
+  min-width: 160px;
+  padding: 4px;
+  background: var(--vscode-menu-background, #252526);
+  border: 1px solid var(--vscode-menu-border, #454545);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.36);
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.context-menu button {
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--vscode-menu-foreground, #cccccc);
+  padding: 4px 8px;
+  cursor: pointer;
+}
+.context-menu button:hover {
+  background: var(--vscode-menu-selectionBackground, #094771);
+}
+.dry-run-result {
+  margin: 8px 0;
 }
 @media (max-width: 520px) {
   .components-layout {

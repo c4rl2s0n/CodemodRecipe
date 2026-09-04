@@ -151,98 +151,46 @@ pub fn invoke_operation(
     request: ComponentInvokeRequest,
 ) -> ComponentInvokeResponse {
     if registry.stack().is_none() {
-        return ComponentInvokeResponse {
-            ok: false,
-            error: Some("stack manifest is required for component operations".to_string()),
-            instance: None,
-            findings: None,
-            files: None,
-            transcript: None,
-            applied: None,
-        };
+        return ComponentInvokeResponse::fail(
+            "stack manifest is required for component operations",
+        );
     }
     let ctx = ComponentRunContext::from_registry(registry, request.kind);
     let scan = crate::component::scan::component_scan(registry);
     if !scan.ok {
-        return ComponentInvokeResponse {
-            ok: false,
-            error: scan.error,
-            instance: None,
-            findings: None,
-            files: None,
-            transcript: None,
-            applied: None,
-        };
+        return ComponentInvokeResponse::fail(
+            scan.error
+                .unwrap_or_else(|| "component scan failed".to_string()),
+        );
     }
     let instances = scan.instances.unwrap_or_default();
     let Some(target) = instances.iter().find(|i| i.id == request.instance_id) else {
-        return ComponentInvokeResponse {
-            ok: false,
-            error: Some(format!("instance not found: {}", request.instance_id)),
-            instance: None,
-            findings: None,
-            files: None,
-            transcript: None,
-            applied: None,
-        };
+        return ComponentInvokeResponse::fail(format!(
+            "instance not found: {}",
+            request.instance_id
+        ));
     };
     let component_id = target.component_id.clone();
     let Some(component) = registry.get_component(&component_id).cloned() else {
-        return ComponentInvokeResponse {
-            ok: false,
-            error: Some(format!("component not found: {component_id}")),
-            instance: None,
-            findings: None,
-            files: None,
-            transcript: None,
-            applied: None,
-        };
+        return ComponentInvokeResponse::fail(format!("component not found: {component_id}"));
     };
     if !component
         .operations
         .iter()
         .any(|op| op.name == request.operation)
     {
-        return ComponentInvokeResponse {
-            ok: false,
-            error: Some(format!(
-                "unknown operation {} on component {}",
-                request.operation, component_id
-            )),
-            instance: None,
-            findings: None,
-            files: None,
-            transcript: None,
-            applied: None,
-        };
+        return ComponentInvokeResponse::fail(format!(
+            "unknown operation {} on component {}",
+            request.operation, component_id
+        ));
     }
     let host = match make_host(&ctx, request.args.clone()) {
         Ok(h) => h,
-        Err(message) => {
-            return ComponentInvokeResponse {
-                ok: false,
-                error: Some(message),
-                instance: None,
-                findings: None,
-                files: None,
-                transcript: None,
-                applied: None,
-            };
-        }
+        Err(message) => return ComponentInvokeResponse::fail(message),
     };
     let lua = match new_sandbox() {
         Ok(l) => l,
-        Err(e) => {
-            return ComponentInvokeResponse {
-                ok: false,
-                error: Some(e.to_string()),
-                instance: None,
-                findings: None,
-                files: None,
-                transcript: None,
-                applied: None,
-            };
-        }
+        Err(e) => return ComponentInvokeResponse::fail(e.to_string()),
     };
     let result = (|| -> Result<ComponentInvokeResponse, String> {
         let ctx_table = build_ctx(&lua, Rc::clone(&host))?;
@@ -299,6 +247,7 @@ pub fn invoke_operation(
         Ok(ComponentInvokeResponse {
             ok: true,
             error: None,
+            result: None,
             instance: rescanned.instance,
             findings: rescanned.findings,
             files,
@@ -308,19 +257,16 @@ pub fn invoke_operation(
     })();
     match result {
         Ok(resp) => resp,
-        Err(message) => ComponentInvokeResponse {
-            ok: false,
-            error: Some(message),
-            instance: None,
-            findings: None,
-            files: None,
-            transcript: host
+        Err(message) => {
+            let transcript = host
                 .lock()
                 .ok()
                 .map(|mut inner| std::mem::take(&mut inner.transcript))
-                .filter(|t| !t.is_empty()),
-            applied: None,
-        },
+                .filter(|t| !t.is_empty());
+            let mut resp = ComponentInvokeResponse::fail(message);
+            resp.transcript = transcript;
+            resp
+        }
     }
 }
 
@@ -329,40 +275,19 @@ pub fn invoke_scaffold(
     request: ComponentScaffoldRequest,
 ) -> ComponentInvokeResponse {
     if registry.stack().is_none() {
-        return ComponentInvokeResponse {
-            ok: false,
-            error: Some("stack manifest is required for component scaffold".to_string()),
-            instance: None,
-            findings: None,
-            files: None,
-            transcript: None,
-            applied: None,
-        };
+        return ComponentInvokeResponse::fail("stack manifest is required for component scaffold");
     }
     let Some(component) = registry.get_component(&request.component_id).cloned() else {
-        return ComponentInvokeResponse {
-            ok: false,
-            error: Some(format!("component not found: {}", request.component_id)),
-            instance: None,
-            findings: None,
-            files: None,
-            transcript: None,
-            applied: None,
-        };
+        return ComponentInvokeResponse::fail(format!(
+            "component not found: {}",
+            request.component_id
+        ));
     };
     if !component.has_scaffold {
-        return ComponentInvokeResponse {
-            ok: false,
-            error: Some(format!(
-                "component {} has no scaffold entry",
-                request.component_id
-            )),
-            instance: None,
-            findings: None,
-            files: None,
-            transcript: None,
-            applied: None,
-        };
+        return ComponentInvokeResponse::fail(format!(
+            "component {} has no scaffold entry",
+            request.component_id
+        ));
     }
 
     // Ensure cache exists so post-scaffold detectChanges can glob-diff new roots.
@@ -371,31 +296,11 @@ pub fn invoke_scaffold(
     let ctx = ComponentRunContext::from_registry(registry, request.kind);
     let host = match make_host(&ctx, request.args.clone()) {
         Ok(h) => h,
-        Err(message) => {
-            return ComponentInvokeResponse {
-                ok: false,
-                error: Some(message),
-                instance: None,
-                findings: None,
-                files: None,
-                transcript: None,
-                applied: None,
-            };
-        }
+        Err(message) => return ComponentInvokeResponse::fail(message),
     };
     let lua = match new_sandbox() {
         Ok(l) => l,
-        Err(e) => {
-            return ComponentInvokeResponse {
-                ok: false,
-                error: Some(e.to_string()),
-                instance: None,
-                findings: None,
-                files: None,
-                transcript: None,
-                applied: None,
-            };
-        }
+        Err(e) => return ComponentInvokeResponse::fail(e.to_string()),
     };
     let result = (|| -> Result<ComponentInvokeResponse, String> {
         let ctx_table = build_ctx(&lua, Rc::clone(&host))?;
@@ -450,6 +355,7 @@ pub fn invoke_scaffold(
         Ok(ComponentInvokeResponse {
             ok: true,
             error: None,
+            result: None,
             instance: None,
             findings: scan.findings,
             files,
@@ -459,20 +365,214 @@ pub fn invoke_scaffold(
     })();
     match result {
         Ok(resp) => resp,
-        Err(message) => ComponentInvokeResponse {
-            ok: false,
-            error: Some(message),
-            instance: None,
-            findings: None,
-            files: None,
-            transcript: host
+        Err(message) => {
+            let transcript = host
                 .lock()
                 .ok()
                 .map(|mut inner| std::mem::take(&mut inner.transcript))
-                .filter(|t| !t.is_empty()),
-            applied: None,
-        },
+                .filter(|t| !t.is_empty());
+            let mut resp = ComponentInvokeResponse::fail(message);
+            resp.transcript = transcript;
+            resp
+        }
     }
+}
+
+pub struct ComponentHookRequest {
+    pub component_id: String,
+    pub hook: String,
+    pub kind: RunKind,
+    pub locator: Option<serde_json::Value>,
+    pub instance: Option<serde_json::Value>,
+    pub operation: Option<String>,
+    pub args: BTreeMap<String, serde_json::Value>,
+}
+
+/// Unified dry-run / apply entry for component hooks (identify/parse/verify/toSummary/scaffold/operation).
+pub fn invoke_hook(
+    registry: &mut RecipeRegistry,
+    request: ComponentHookRequest,
+) -> ComponentInvokeResponse {
+    match request.hook.as_str() {
+        "scaffold" => invoke_scaffold(
+            registry,
+            ComponentScaffoldRequest {
+                component_id: request.component_id,
+                args: request.args,
+                kind: request.kind,
+            },
+        ),
+        "operation" => {
+            let instance_id = request
+                .instance
+                .as_ref()
+                .and_then(|v| v.get("id"))
+                .and_then(|v| v.as_str())
+                .map(str::to_string);
+            let Some(instance_id) = instance_id else {
+                return ComponentInvokeResponse::fail(
+                    "hook=operation requires instance with id (from scan or prior dry-run)",
+                );
+            };
+            let Some(operation) = request.operation else {
+                return ComponentInvokeResponse::fail(
+                    "hook=operation requires operation name",
+                );
+            };
+            invoke_operation(
+                registry,
+                ComponentInvokeRequest {
+                    instance_id,
+                    operation,
+                    args: request.args,
+                    kind: request.kind,
+                },
+            )
+        }
+        "identify" | "parse" | "verify" | "toSummary" => {
+            invoke_read_hook(registry, request)
+        }
+        other => ComponentInvokeResponse::fail(format!(
+            "unknown component hook {other:?}; expected identify|parse|verify|toSummary|scaffold|operation"
+        )),
+    }
+}
+
+fn invoke_read_hook(
+    registry: &mut RecipeRegistry,
+    request: ComponentHookRequest,
+) -> ComponentInvokeResponse {
+    let Some(component) = registry.get_component(&request.component_id).cloned() else {
+        return ComponentInvokeResponse::fail(format!(
+            "component not found: {}",
+            request.component_id
+        ));
+    };
+    if request.hook == "identify" && !component.has_identify {
+        return ComponentInvokeResponse::fail(format!(
+            "component {} has no identify hook",
+            request.component_id
+        ));
+    }
+    if request.hook == "toSummary" && !component.has_to_summary {
+        return ComponentInvokeResponse::fail(format!(
+            "component {} has no toSummary hook",
+            request.component_id
+        ));
+    }
+
+    let arg = match request.hook.as_str() {
+        "identify" => None,
+        "parse" => {
+            let Some(locator) = request.locator else {
+                return ComponentInvokeResponse::fail("hook=parse requires locator");
+            };
+            Some(locator)
+        }
+        "verify" | "toSummary" => {
+            let Some(instance) = request.instance else {
+                return ComponentInvokeResponse::fail(format!(
+                    "hook={} requires instance",
+                    request.hook
+                ));
+            };
+            Some(instance)
+        }
+        _ => None,
+    };
+
+    let ctx = ComponentRunContext::from_registry(registry, request.kind);
+    let host = match make_host(&ctx, request.args.clone()) {
+        Ok(h) => h,
+        Err(message) => return ComponentInvokeResponse::fail(message),
+    };
+    let lua = match new_sandbox() {
+        Ok(l) => l,
+        Err(e) => return ComponentInvokeResponse::fail(e.to_string()),
+    };
+
+    let call = if request.hook == "toSummary" {
+        try_invoke_component_hook(&lua, &ctx, &component, "toSummary", Rc::clone(&host), arg)
+            .and_then(|opt| {
+                opt.ok_or_else(|| {
+                    format!("component {} has no toSummary hook", request.component_id)
+                })
+            })
+    } else {
+        invoke_component_hook(&lua, &ctx, &component, &request.hook, Rc::clone(&host), arg)
+    };
+
+    match call {
+        Ok(value) => {
+            let result_json = match hook_to_json(&value) {
+                Ok(v) => v,
+                Err(e) => {
+                    let mut resp = ComponentInvokeResponse::fail(e);
+                    resp.transcript = take_transcript(&host);
+                    return resp;
+                }
+            };
+            let (applied, files, transcript) = match finalize_host(&host, request.kind) {
+                Ok(parts) => parts,
+                Err(e) => {
+                    let mut resp = ComponentInvokeResponse::fail(e);
+                    resp.transcript = take_transcript(&host);
+                    resp.result = Some(result_json);
+                    return resp;
+                }
+            };
+            ComponentInvokeResponse {
+                ok: true,
+                error: None,
+                result: Some(result_json),
+                instance: None,
+                findings: None,
+                files,
+                transcript: Some(transcript),
+                applied,
+            }
+        }
+        Err(message) => {
+            let mut resp = ComponentInvokeResponse::fail(message);
+            resp.transcript = take_transcript(&host);
+            resp
+        }
+    }
+}
+
+fn take_transcript(host: &SharedHost) -> Option<Vec<codemod_recipe_lua::TranscriptEvent>> {
+    host.lock()
+        .ok()
+        .map(|mut inner| std::mem::take(&mut inner.transcript))
+        .filter(|t| !t.is_empty())
+}
+
+type FinalizeParts = (
+    Option<Vec<String>>,
+    Option<Vec<crate::protocol::FilePreview>>,
+    Vec<codemod_recipe_lua::TranscriptEvent>,
+);
+
+fn finalize_host(host: &SharedHost, kind: RunKind) -> Result<FinalizeParts, String> {
+    let mut inner = host.lock().map_err(|e| e.to_string())?;
+    let applied = if kind == RunKind::Apply {
+        Some(inner.flush_to_disk()?)
+    } else {
+        None
+    };
+    let changes = std::mem::replace(&mut inner.tree, WorkingTree::new()).finalize();
+    let transcript = std::mem::take(&mut inner.transcript);
+    let files = if changes.is_empty() {
+        None
+    } else {
+        Some(
+            changes
+                .iter()
+                .filter_map(|c| build_file_preview_from_change(c, false, None).ok())
+                .collect(),
+        )
+    };
+    Ok((applied, files, transcript))
 }
 
 struct RescanResult {

@@ -4,8 +4,23 @@ use codemod_recipe_lua::eval_return_table;
 use mlua::{Function, Lua, Table, Value};
 
 use crate::host_api::context::SharedHost;
-use crate::host_api::registry::{rt, set_fn};
+use crate::host_api::registry::{rt, set_fn, HostMethodSignature, HostMethodSurface, HostReturnType};
 use crate::lua_runtime::build_ctx;
+
+/// Surface metadata only; runtime binding is [`register_component_delegate`].
+///
+/// See [`crate::host_api::registry::HOST_API_SURFACE`] for why linkme needs
+/// `#[allow(unsafe_code)]` under workspace deny.
+// SAFETY: linkme element expansion emits `#[unsafe(link_section)]` here.
+#[allow(unsafe_code)]
+#[::linkme::distributed_slice(crate::host_api::registry::HOST_API_SURFACE)]
+static __HOST_API_SURFACE_COMPONENT: HostMethodSurface = HostMethodSurface {
+    name: "component",
+    description: "Get a component delegate (`parse` / `verify` / `readSource`) by id.",
+    signature: HostMethodSignature::Component,
+    return_type: HostReturnType::ComponentDelegate,
+    accept_string: false,
+};
 
 pub(crate) fn register_component_delegate(
     lua: &Lua,

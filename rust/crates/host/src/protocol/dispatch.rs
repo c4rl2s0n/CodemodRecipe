@@ -2,8 +2,9 @@ use codemod_recipe_core::apply::atomic_apply::apply_operations_atomically;
 use std::collections::BTreeMap;
 
 use crate::component::{
-    component_incremental_scan, component_scan, invoke_operation, invoke_scaffold,
-    ComponentIncrementalScanRequest, ComponentInvokeRequest, ComponentScaffoldRequest,
+    component_incremental_scan, component_scan, invoke_hook, invoke_operation, invoke_scaffold,
+    ComponentHookRequest, ComponentIncrementalScanRequest, ComponentInvokeRequest,
+    ComponentScaffoldRequest,
 };
 use crate::engine::runner::{collect_recipe_changes, planned_snapshot_paths, resolve_recipe};
 use crate::lua_runtime::{RecipeApplyError, RunKind};
@@ -375,6 +376,30 @@ pub fn handle_command(registry: &mut RecipeRegistry, cmd: HostCommand) -> serde_
                 } else {
                     RunKind::Apply
                 },
+            },
+        )),
+        HostCommand::ComponentInvokeHook {
+            component_id,
+            hook,
+            preview,
+            locator,
+            instance,
+            operation,
+            args,
+        } => to_value(invoke_hook(
+            registry,
+            ComponentHookRequest {
+                component_id,
+                hook,
+                kind: if preview {
+                    RunKind::Preview
+                } else {
+                    RunKind::Apply
+                },
+                locator,
+                instance,
+                operation,
+                args,
             },
         )),
         HostCommand::DescribeComponent { component_id } => {

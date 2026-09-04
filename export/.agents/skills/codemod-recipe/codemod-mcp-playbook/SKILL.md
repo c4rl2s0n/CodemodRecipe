@@ -24,6 +24,9 @@ MCP server `codemod-mcp` returns JSON text. Parse output and branch on `ok`.
 | `component_scan` | Scan stack root components (instances, findings, summaries); populates in-process cache |
 | `component_incremental_scan` | Rescan after edits: `dirtyPaths` (tier 1), `detectChanges` (stat + glob-diff, tier 2), or `force` (full scan) |
 | `list_component_instances` | Alias of `component_scan` |
+| `describe_component` | Hooks present, scaffold args, operations |
+| `component_dry_run_hook` | Dry-run one hook (Preview; no disk writes); `result` + `transcript` |
+| `component_apply_hook` | Apply one hook (flushes writes); same args as dry-run |
 
 ## Response envelope
 
@@ -79,7 +82,22 @@ When `.codemod/stack.luau` and components exist:
 1. `component_scan` (or `list_component_instances`) — initial read; populates host cache
 2. After codemod apply or known file edits, prefer `component_incremental_scan` with `dirtyPaths` (or `detectChanges: true` when paths unknown)
 3. Use summaries for reasoning; use `node` for detail
-4. Create via host `componentScaffold` (`scaffold.apply(c, args)`); mutate via `componentInvokeOperation` (`operations.*.apply(c, args, target)`). MCP not wired for these yet; host incremental-rescans after apply
+4. Create/mutate: `component_dry_run_hook` then `component_apply_hook` with `hook: "scaffold"` or `"operation"`
+
+### Component authoring / debug
+
+Separate MCP tools exist so hosts can **allowlist dry-run only** for authoring agents (omit `component_apply_hook` and optionally `apply_recipe`).
+
+1. Edit `.codemod/components/*.luau` → `validate_recipes`
+2. `describe_component` — confirm `hasIdentify` / `hasToSummary` / `hasScaffold` / operations
+3. `component_dry_run_hook` with `hook: "identify"` — inspect `result` (locators) + `transcript` (`c:log`)
+4. `hook: "parse"` with `locator` from identify/scan → node JSON + logs
+5. `hook: "verify"` / `"toSummary"` with `instance` (`id`, `componentId`, `locator`, `node`)
+6. Optional dry-run `scaffold` / `operation` → `files` + transcript
+7. When allowed: `component_apply_hook` to flush
+8. `component_incremental_scan` after applies
+
+`c:log` in any hook appears in dry-run `transcript[]` (`kind: "log"`), same shape as recipe preview.
 
 See `docs/components.md`, `docs/stacks.md`, and `docs/flutter-poc.md`.
 

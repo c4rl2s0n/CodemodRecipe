@@ -86,6 +86,8 @@ end
 
 **Required hooks:** `parse`, `verify`. Stack roots must also define **`identify`**. Child-only components typically omit `identify`.
 
+Dry-run any hook via host `componentInvokeHook` / MCP `component_dry_run_hook` (Preview WorkingTree): returns the hook **`result`** JSON plus a recipe-style **`transcript`** (including `c:log`). Apply uses `component_apply_hook` / `preview: false`.
+
 There is **no** `discover` hook and **no** `stack.globs`.
 
 Compose other components with `c:component(id)` — do not pass a components registry into `apply`.

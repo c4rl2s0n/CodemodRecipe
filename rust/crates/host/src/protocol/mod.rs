@@ -167,6 +167,25 @@ pub enum HostCommand {
         #[serde(default)]
         preview: bool,
     },
+    /// Dry-run or apply a single component hook (`identify` / `parse` / `verify` /
+    /// `toSummary` / `scaffold` / `operation`). MCP exposes separate tools that set
+    /// `preview` true vs false for allowlisting.
+    #[serde(rename = "componentInvokeHook")]
+    ComponentInvokeHook {
+        #[serde(rename = "componentId")]
+        component_id: String,
+        hook: String,
+        #[serde(default = "default_true")]
+        preview: bool,
+        #[serde(default)]
+        locator: Option<serde_json::Value>,
+        #[serde(default)]
+        instance: Option<serde_json::Value>,
+        #[serde(default)]
+        operation: Option<String>,
+        #[serde(default)]
+        args: std::collections::BTreeMap<String, serde_json::Value>,
+    },
     #[serde(rename = "describeComponent")]
     DescribeComponent {
         #[serde(rename = "componentId")]
@@ -359,6 +378,8 @@ pub struct ComponentDetailSchema {
     pub id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    pub has_identify: bool,
+    pub has_to_summary: bool,
     pub has_scaffold: bool,
     pub is_root: bool,
     #[serde(skip_serializing_if = "Option::is_none")]

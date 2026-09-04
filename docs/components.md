@@ -65,7 +65,7 @@ Root `parse` returns a **node** with optional **`children`** and **`source`** (`
 | `c:listFiles(pattern)` | Workspace-relative `*` glob → path strings |
 | `c:matchFiles(pattern)` | `{placeholder}` path pattern → `{ path, …captures }` rows |
 | `c:filename(path)` | Basename without extension |
-| `c:resolve(template, vars?)` | Replace `{key}` in a path template (no FS search) |
+| `c:resolve(template, vars?)` | Replace `{key}` in a path template (no FS / no MiniJinja; use `c:template` for content) |
 | `c:query` / `c:queryMatches` | Hits `{ span = { from, to }, text, kind }` / per-match capture rows |
 | `c:component(id)` | Delegate with `:parse`, `:verify`, `:readSource` (cycle-safe) |
 
@@ -78,10 +78,12 @@ All recipe host APIs (`c:read`, `c:insert`, `c:run`, maps/vars, …) are availab
 | `componentScan` | Root scan: identify → parse → verify → optional `toSummary`; populates in-process cache |
 | `componentListInstances` | Same as scan |
 | `componentIncrementalScan` | Rescan after edits: `dirtyPaths` (tier 1), `detectChanges` (stat + re-identify, tier 2), or `force` (full scan). MCP: `component_incremental_scan` |
-| `componentScaffold` | Run component `scaffold.apply(c, args)` (create; no instanceId) |
-| `componentInvokeOperation` | Run `operations.*.apply(c, args, target)`; preview or apply; incremental-rescans dirty paths after apply |
+| `componentInvokeHook` | Dry-run or apply one hook (`identify` / `parse` / `verify` / `toSummary` / `scaffold` / `operation`); returns `result` + `transcript` (+ `files` when applicable). Host `preview` flag maps to Preview vs Apply |
+| `componentScaffold` | Thin wrapper → scaffold via `componentInvokeHook` |
+| `componentInvokeOperation` | Thin wrapper → operation via `componentInvokeHook` |
+| `describeComponent` | Metadata including `hasIdentify` / `hasToSummary` / `hasScaffold` and operation args |
 
-MCP tools: `component_scan`, `list_component_instances`, `component_incremental_scan`. See [flutter-poc.md](./flutter-poc.md) for a try-it path and [codemod-mcp.md](./codemod-mcp.md) for tool setup.
+MCP tools: `component_scan`, `list_component_instances`, `component_incremental_scan`, `describe_component`, `component_dry_run_hook`, `component_apply_hook` (dry-run vs apply are separate tools for agent allowlisting; both call `componentInvokeHook`). See [flutter-poc.md](./flutter-poc.md) and [codemod-mcp.md](./codemod-mcp.md).
 
 ## Layout
 

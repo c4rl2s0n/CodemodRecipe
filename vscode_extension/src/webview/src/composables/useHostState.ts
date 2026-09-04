@@ -60,6 +60,12 @@ export function useHostState(inbound: ExtensionInbound) {
   );
   const componentScanError = computed(() => hostState.value.componentScanError);
   const componentOpError = computed(() => hostState.value.componentOpError);
+  const componentDryRunResult = computed(
+    () => hostState.value.componentDryRunResult
+  );
+  const componentDryRunHook = computed(
+    () => hostState.value.componentDryRunHook
+  );
 
   const showBootstrapOverlay = computed(
     () => bootstrapInFlight.value || bootstrapPhase.value === BOOTSTRAP_PHASES.error
@@ -121,6 +127,8 @@ export function useHostState(inbound: ExtensionInbound) {
     componentTranscript,
     componentScanError,
     componentOpError,
+    componentDryRunResult,
+    componentDryRunHook,
     showBootstrapOverlay,
     showReloadOverlay,
     showBlockingOverlay,

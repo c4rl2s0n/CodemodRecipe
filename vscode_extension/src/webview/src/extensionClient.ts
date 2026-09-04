@@ -41,6 +41,7 @@ export interface ExtensionClient {
   componentScan(): void;
   componentPreview(args: ArgValues, requestId: number): void;
   componentApply(args: ArgValues, requestId: number): void;
+  componentDryRun(hook: string, requestId: number): void;
   /** Allocate a monotonic request id for fire-and-forget correlated ops (preview). */
   nextRequestId(): number;
 }
@@ -267,6 +268,9 @@ export function createExtensionClient(deps: ExtensionClientDeps): ExtensionClien
     },
     componentApply(args: ArgValues, requestId: number) {
       post({ type: WEBVIEW_TO_EXTENSION.componentApply, args, requestId });
+    },
+    componentDryRun(hook: string, requestId: number) {
+      post({ type: WEBVIEW_TO_EXTENSION.componentDryRun, hook, requestId });
     },
   };
 }

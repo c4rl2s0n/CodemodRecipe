@@ -53,13 +53,14 @@ return {
 |--------|------|
 | `args` | Recipe arguments (strings, bools, lists, objects) |
 | `c:insert` / `c:replace` / `c:remove` | AST edits (table: `path`, `query`, `capture`, …) |
-| `c:query` / `c:queryExists` / `c:queryCount` / `c:queryMatches` | Read-only query evaluation |
-| `c:listFiles` / `c:matchFiles` / `c:filename` / `c:resolve` | Path listing, placeholder match, basename, template fill |
+| `c:query` / `c:queryExists` / `c:queryCount` / `c:queryMatches` | Read-only query evaluation (`query` needs `capture`; helpers optional) |
+| `c:listFiles` / `c:matchFiles` / `c:filename` / `c:resolve` | Path listing, placeholder match, basename, `{key}` path fill |
 | `c:read` | Current file content (WorkingTree-aware) |
 | `c:create` / `c:delete` | File create/delete |
 | `c:run(id, args?)` | Invoke another registered recipe |
 | `c:postExec({ command = "..." })` | Shell command (skipped on preview) |
-| `c:template` | MiniJinja rendering |
+| `c:template` | MiniJinja content rendering (not path fill — use `resolve`) |
+| `c:component(id)` | Component delegate (`parse` / `verify` / `readSource`) |
 | `c:map(id)` / `c:var(id)` / `c:queryLib(id)` | Lookup registered assets |
 
 Set `language = "dart"` (etc.) on edit ops when the path is ambiguous.
@@ -75,7 +76,7 @@ Set `language = "dart"` (etc.) on edit ops when the path is ambiguous.
 1. **Read and follow** [reference.md](reference.md) for the full host API, asset modules, and examples.
 2. Call `validate_recipes` after editing recipe Luau.
 3. Path resolution: update `rust/crates/core/src/resource_path.rs` — do not add ad hoc joins in host/engine.
-4. Recipe loading/validation: `rust/crates/lua/src/load.rs`; host API handlers/source of truth: `rust/crates/host/src/host_api/handlers.rs`; runtime binding: `rust/crates/host/src/host_api/registry.rs` + `lua_runtime.rs`.
+4. Recipe loading/validation: `rust/crates/lua/src/load.rs`; host API handlers/source of truth: `rust/crates/host/src/host_api/handlers.rs` + `rust/crates/lua/src/host_api/specs.rs`; runtime binding: `rust/crates/host/src/host_api/registry.rs` + `lua_runtime.rs`. After changing specs/returns, run `scripts/generate-host-api-surface.sh` (see `docs/luau-lsp.md`).
 
 ## Related skills
 

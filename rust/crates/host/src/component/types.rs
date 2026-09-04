@@ -45,6 +45,9 @@ pub struct ComponentInvokeResponse {
     pub ok: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub error: Option<String>,
+    /// JSON return value of read hooks (`identify` / `parse` / `verify` / `toSummary`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub result: Option<serde_json::Value>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub instance: Option<ComponentInstance>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -55,6 +58,21 @@ pub struct ComponentInvokeResponse {
     pub transcript: Option<Vec<codemod_recipe_lua::TranscriptEvent>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub applied: Option<Vec<String>>,
+}
+
+impl ComponentInvokeResponse {
+    pub fn fail(error: impl Into<String>) -> Self {
+        Self {
+            ok: false,
+            error: Some(error.into()),
+            result: None,
+            instance: None,
+            findings: None,
+            files: None,
+            transcript: None,
+            applied: None,
+        }
+    }
 }
 
 pub fn instance_id(

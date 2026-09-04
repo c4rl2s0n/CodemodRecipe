@@ -135,6 +135,9 @@ export async function handleWebviewMessage(
     case WEBVIEW_TO_EXTENSION.componentApply:
       await handleComponentPreview(host, message.args, message.requestId, false);
       break;
+    case WEBVIEW_TO_EXTENSION.componentDryRun:
+      await handleComponentDryRun(host, message.hook, message.requestId);
+      break;
     default:
       assertNever(message);
   }
@@ -322,6 +325,139 @@ async function handleComponentPreview(
     }
   } catch (err) {
     host.state.setComponentPreviewResult(
+      [],
+      [],
+      err instanceof Error ? err.message : String(err)
+    );
+    host.postState();
+  }
+}
+
+async function handleComponentDryRun(
+  host: RecipeRunnerHandlerHost,
+  hook: string,
+  _requestId: number
+): Promise<void> {
+  const componentId = host.state.selectedComponentId;
+  if (!componentId) {
+    host.state.setComponentDryRunResult(hook, undefined, [], [], 'Select a component first');
+    host.postState();
+    return;
+  }
+
+  const selected = host.state.componentInstances.find(
+    (i) => i.id === host.state.selectedInstanceId
+  );
+
+  let locator: unknown | undefined;
+  let instance: unknown | undefined;
+  let operation: string | undefined;
+  let args: ArgValues = {};
+
+  if (hook === 'parse') {
+    if (!selected) {
+      host.state.setComponentDryRunResult(
+        hook,
+        undefined,
+        [],
+        [],
+        'Select an instance to dry-run parse (uses its locator)'
+      );
+      host.postState();
+      return;
+    }
+    locator = selected.locator;
+  } else if (hook === 'verify' || hook === 'toSummary') {
+    if (!selected) {
+      host.state.setComponentDryRunResult(
+        hook,
+        undefined,
+        [],
+        [],
+        `Select an instance to dry-run ${hook}`
+      );
+      host.postState();
+      return;
+    }
+    instance = {
+      id: selected.id,
+      componentId: selected.componentId,
+      locator: selected.locator,
+      node: selected.node,
+    };
+  } else if (hook === 'scaffold') {
+    args = host.state.componentArgs;
+  } else if (hook === 'operation') {
+    const opName = host.state.componentAction;
+    if (!opName || opName === 'scaffold') {
+      host.state.setComponentDryRunResult(
+        hook,
+        undefined,
+        [],
+        [],
+        'Select an operation action first'
+      );
+      host.postState();
+      return;
+    }
+    if (!selected) {
+      host.state.setComponentDryRunResult(
+        hook,
+        undefined,
+        [],
+        [],
+        'Select an instance to dry-run this operation'
+      );
+      host.postState();
+      return;
+    }
+    operation = opName;
+    instance = {
+      id: selected.id,
+      componentId: selected.componentId,
+      locator: selected.locator,
+      node: selected.node,
+    };
+    args = host.state.componentArgs;
+  }
+
+  try {
+    const response = await host.bridge.componentInvokeHook({
+      componentId,
+      hook,
+      preview: true,
+      locator,
+      instance,
+      operation,
+      args,
+    });
+    if (!response.ok) {
+      host.state.setComponentDryRunResult(
+        hook,
+        response.result,
+        [],
+        response.transcript ?? [],
+        response.error ?? 'Component dry-run failed'
+      );
+      host.postState();
+      return;
+    }
+    const files = response.files ?? [];
+    for (const file of files) {
+      host.diffProvider.store(diffOriginalKey(file.path), file.original ?? '');
+      host.diffProvider.store(diffModifiedKey(file.path), file.modified ?? '');
+    }
+    host.state.setComponentDryRunResult(
+      hook,
+      response.result,
+      files,
+      response.transcript ?? []
+    );
+    host.postState();
+  } catch (err) {
+    host.state.setComponentDryRunResult(
+      hook,
+      undefined,
       [],
       [],
       err instanceof Error ? err.message : String(err)

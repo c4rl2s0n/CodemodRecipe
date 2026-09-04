@@ -113,6 +113,7 @@ c:expectNoMatch({ ... }) -- error if any match
 ```lua
 local paths = c:listFiles("lib/models/*.dart")
 local rows = c:matchFiles("lib/stores/{id}_store.dart")  -- { path, id }
+-- resolve = {key} fill-in only (no MiniJinja). Prefer over template for paths.
 local one = c:resolve("lib/stores/{id}_store.dart", { id = "recipe" })
 local name = c:filename("lib/models/recipe.dart")  -- "recipe"
 ```

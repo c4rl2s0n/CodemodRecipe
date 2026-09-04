@@ -132,6 +132,10 @@ pub struct ComponentDef {
     pub id: String,
     pub description: Option<String>,
     pub operations: Vec<OperationDef>,
+    /// True when the module defines a top-level `identify` function.
+    pub has_identify: bool,
+    /// True when the module defines a top-level `toSummary` function.
+    pub has_to_summary: bool,
     /// True when the module defines a top-level `scaffold` table with `apply`.
     pub has_scaffold: bool,
     /// Args declared on `scaffold.args` (empty when no scaffold or no args table).

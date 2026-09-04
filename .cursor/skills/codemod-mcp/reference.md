@@ -153,6 +153,22 @@ Set `language` when the path is ambiguous. See skill `codemod-luau-recipes`.
 }
 ```
 
+## Platform components
+
+| Tool | Notes |
+|------|-------|
+| `component_scan` / `list_component_instances` | Full root scan |
+| `component_incremental_scan` | `dirtyPaths` / `detectChanges` / `force` |
+| `describe_component` | `{ "componentId": "…" }` |
+| `component_dry_run_hook` | Preview only — authoring/debug |
+| `component_apply_hook` | Flushes disk — trusted agents |
+
+Both invoke tools share args: `componentId`, `hook` (`identify`\|`parse`\|`verify`\|`toSummary`\|`scaffold`\|`operation`), optional `locator` / `instance` / `operation` / `args`. Returns `result`, `transcript`, optional `files`.
+
+**Allowlisting:** grant authoring agents dry-run + scan + describe; omit `component_apply_hook` (and `apply_recipe` if desired) so they can iterate with `c:log` without writing the workspace.
+
+Debug loop: `validate_recipes` → `describe_component` → dry-run `identify` → `parse` → `verify` → optional scaffold/op dry-run → apply when ready → `component_incremental_scan`.
+
 ## Troubleshooting
 
 - `Missing recipe or inlineRecipe`: provide one of them

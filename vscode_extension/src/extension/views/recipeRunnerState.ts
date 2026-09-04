@@ -51,6 +51,8 @@ export class RecipeRunnerState {
   componentTranscript: TranscriptEvent[] = [];
   componentScanError: string | undefined;
   componentOpError: string | undefined;
+  componentDryRunResult: unknown | undefined;
+  componentDryRunHook: string | undefined;
 
   setRecipesRefreshing(inFlight: boolean): void {
     this.recipesRefreshing = inFlight;
@@ -101,6 +103,8 @@ export class RecipeRunnerState {
     this.componentFiles = [];
     this.componentTranscript = [];
     this.componentOpError = undefined;
+    this.componentDryRunResult = undefined;
+    this.componentDryRunHook = undefined;
     this.activeTab = RUNNER_TABS.components;
   }
 
@@ -122,6 +126,8 @@ export class RecipeRunnerState {
     this.componentFiles = [];
     this.componentTranscript = [];
     this.componentOpError = undefined;
+    this.componentDryRunResult = undefined;
+    this.componentDryRunHook = undefined;
     this.activeTab = RUNNER_TABS.components;
   }
 
@@ -131,6 +137,8 @@ export class RecipeRunnerState {
     this.componentFiles = [];
     this.componentTranscript = [];
     this.componentOpError = undefined;
+    this.componentDryRunResult = undefined;
+    this.componentDryRunHook = undefined;
   }
 
   setComponentPreviewResult(
@@ -143,10 +151,26 @@ export class RecipeRunnerState {
     this.componentOpError = error;
   }
 
+  setComponentDryRunResult(
+    hook: string,
+    result: unknown | undefined,
+    files: FilePreview[],
+    transcript: TranscriptEvent[],
+    error?: string
+  ): void {
+    this.componentDryRunHook = hook;
+    this.componentDryRunResult = result;
+    this.componentFiles = files;
+    this.componentTranscript = transcript;
+    this.componentOpError = error;
+  }
+
   clearComponentPreview(): void {
     this.componentFiles = [];
     this.componentTranscript = [];
     this.componentOpError = undefined;
+    this.componentDryRunResult = undefined;
+    this.componentDryRunHook = undefined;
   }
 
   setContextMatching(
@@ -262,6 +286,8 @@ export class RecipeRunnerState {
       componentTranscript: this.componentTranscript,
       componentScanError: this.componentScanError,
       componentOpError: this.componentOpError,
+      componentDryRunResult: this.componentDryRunResult,
+      componentDryRunHook: this.componentDryRunHook,
     };
   }
 }

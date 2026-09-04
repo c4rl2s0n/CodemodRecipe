@@ -23,6 +23,11 @@ export const HOST_METHODS: readonly HostMethodSpec[] = [
     keys: [],
   },
   {
+    name: 'component',
+    description: 'Get a component delegate (`parse` / `verify` / `readSource`) by id.',
+    keys: [],
+  },
+  {
     name: 'create',
     description: 'Create a file (`path` + `content` or `template`).',
     keys: ['content', 'ifExists', 'path', 'template'],
@@ -125,6 +130,11 @@ export const HOST_METHODS: readonly HostMethodSpec[] = [
     name: 'replace',
     description: 'Replace a capture span with `text`.',
     keys: ['capture', 'includeLeadingTrivia', 'language', 'path', 'query', 'text'],
+  },
+  {
+    name: 'resolve',
+    description: 'Fill `{key}` placeholders in a path template (no MiniJinja / no FS).',
+    keys: [],
   },
   {
     name: 'run',

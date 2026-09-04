@@ -47,33 +47,31 @@ fn collect_specs_and_definitions() -> (BTreeMap<String, RootSchema>, schemars::M
 {
     let mut spec_types: BTreeMap<String, RootSchema> = BTreeMap::new();
     let mut all_definitions: schemars::Map<String, Schema> = schemars::Map::new();
+
+    let mut ingest = |info: &codemod_recipe_host::host_api::registry::HostSpecInfo| {
+        let schema = (info.schema)();
+        for (k, v) in schema.definitions.iter() {
+            all_definitions
+                .entry(k.clone())
+                .or_insert_with(|| v.clone());
+        }
+        spec_types.insert(info.name.to_string(), schema);
+    };
+
     for method in HOST_API_SURFACE.iter() {
         if let HostMethodSignature::Spec(info) = method.signature {
-            let schema = (info.schema)();
-            for (k, v) in schema.definitions.iter() {
-                all_definitions
-                    .entry(k.clone())
-                    .or_insert_with(|| v.clone());
-            }
-            spec_types.insert(info.name.to_string(), schema);
+            ingest(&info);
+        }
+        match method.return_type {
+            HostReturnType::Named(info) | HostReturnType::NamedArray(info) => ingest(&info),
+            _ => {}
         }
     }
     (spec_types, all_definitions)
 }
 
 fn collect_definitions() -> schemars::Map<String, Schema> {
-    let mut all_definitions: schemars::Map<String, Schema> = schemars::Map::new();
-    for method in HOST_API_SURFACE.iter() {
-        if let HostMethodSignature::Spec(info) = method.signature {
-            let schema = (info.schema)();
-            for (k, v) in schema.definitions.iter() {
-                all_definitions
-                    .entry(k.clone())
-                    .or_insert_with(|| v.clone());
-            }
-        }
-    }
-    all_definitions
+    collect_specs_and_definitions().1
 }
 
 // --- Luau generation ---
@@ -114,11 +112,10 @@ fn generate_dluau() -> String {
         out.push_str(&format!("export type {name} = {body}\n\n"));
     }
 
-    // QuerySpan is not derived from a Rust spec; it is the runtime return shape.
-    out.push_str("export type QuerySpan = {\n");
-    out.push_str("\tstart: number,\n");
-    out.push_str("\t[\"end\"]: number,\n");
-    out.push_str("\ttext: string,\n");
+    out.push_str("export type ComponentDelegate = {\n");
+    out.push_str("\tparse: (self: ComponentDelegate, locator: any) -> any,\n");
+    out.push_str("\tverify: (self: ComponentDelegate, instance: any) -> any,\n");
+    out.push_str("\treadSource: (self: ComponentDelegate, locator: any) -> any,\n");
     out.push_str("}\n\n");
 
     out.push_str("export type CodemodContext = {\n");
@@ -260,13 +257,21 @@ fn object_schema_to_luau(
         let prop = props.get(&key).expect("present");
         let optional = !required.contains(&key);
         let value = schema_to_luau(prop, definitions, indent + 1);
-        let suffix = if optional { "?" } else { "" };
+        let typed = if optional {
+            if value.ends_with('?') {
+                value
+            } else {
+                format!("{value}?")
+            }
+        } else {
+            value
+        };
         let key_str = if is_valid_luau_identifier(&key) {
             key.clone()
         } else {
             format!("[\"{key}\"]")
         };
-        lines.push(format!("\t{}{suffix}: {value},", key_str));
+        lines.push(format!("\t{key_str}: {typed},"));
     }
 
     if lines.is_empty() {
@@ -326,7 +331,13 @@ fn method_signature_luau(method: &HostMethodSurface) -> String {
         }
         HostMethodSignature::StringId => match method.return_type {
             HostReturnType::String => format!("(self: CodemodContext, id: string) -> {ret}"),
-            _ => "(self: CodemodContext, id: string) -> { [string]: string }".to_string(),
+            HostReturnType::StringList
+            | HostReturnType::StringMap
+            | HostReturnType::Named(_)
+            | HostReturnType::NamedArray(_) => {
+                format!("(self: CodemodContext, id: string) -> {ret}")
+            }
+            _ => format!("(self: CodemodContext, id: string) -> {ret}"),
         },
         HostMethodSignature::Assert => {
             "(self: CodemodContext, cond: boolean, msg: string?) -> ()".to_string()
@@ -335,17 +346,27 @@ fn method_signature_luau(method: &HostMethodSurface) -> String {
             "(self: CodemodContext, id: string, args: { [string]: any }?) -> ()".to_string()
         }
         HostMethodSignature::Variadic => "(self: CodemodContext, ...any) -> ()".to_string(),
+        HostMethodSignature::Resolve => {
+            "(self: CodemodContext, template: string, vars: { [string]: string }?) -> string"
+                .to_string()
+        }
+        HostMethodSignature::Component => {
+            "(self: CodemodContext, id: string) -> ComponentDelegate".to_string()
+        }
     }
 }
 
-fn return_type_luau(ret: HostReturnType) -> &'static str {
+fn return_type_luau(ret: HostReturnType) -> String {
     match ret {
-        HostReturnType::Nil => "()",
-        HostReturnType::String => "string",
-        HostReturnType::Boolean => "boolean",
-        HostReturnType::Integer => "number",
-        HostReturnType::Table => "{ [string]: string }",
-        HostReturnType::QuerySpans => "{ QuerySpan }",
+        HostReturnType::Nil => "()".to_string(),
+        HostReturnType::String => "string".to_string(),
+        HostReturnType::Boolean => "boolean".to_string(),
+        HostReturnType::Integer => "number".to_string(),
+        HostReturnType::StringMap => "{ [string]: string }".to_string(),
+        HostReturnType::StringList => "{ string }".to_string(),
+        HostReturnType::Named(info) => info.name.to_string(),
+        HostReturnType::NamedArray(info) => format!("{{ {} }}", info.name),
+        HostReturnType::ComponentDelegate => "ComponentDelegate".to_string(),
     }
 }
 
@@ -505,7 +526,9 @@ fn method_keys_and_enums(
         HostMethodSignature::StringId
         | HostMethodSignature::Assert
         | HostMethodSignature::Run
-        | HostMethodSignature::Variadic => (Vec::new(), None),
+        | HostMethodSignature::Variadic
+        | HostMethodSignature::Resolve
+        | HostMethodSignature::Component => (Vec::new(), None),
     }
 }
 

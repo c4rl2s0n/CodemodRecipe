@@ -176,6 +176,8 @@ export interface ComponentOperationSchema {
 export interface ComponentDetailSchema {
   id: string;
   description?: string;
+  hasIdentify: boolean;
+  hasToSummary: boolean;
   hasScaffold: boolean;
   isRoot: boolean;
   sourceFile?: string;
@@ -262,6 +264,8 @@ export interface DescribeResponse {
 export interface ComponentInvokeResponse {
   ok: boolean;
   error?: string;
+  /** JSON return value from read hooks (identify/parse/verify/toSummary). */
+  result?: unknown;
   instance?: ComponentInstance;
   findings?: ComponentFinding[];
   files?: FilePreview[];
@@ -388,6 +392,16 @@ export type HostCommand =
       componentId: string;
       args?: ArgValues;
       preview?: boolean;
+    }
+  | {
+      command: 'componentInvokeHook';
+      componentId: string;
+      hook: string;
+      preview?: boolean;
+      locator?: unknown;
+      instance?: unknown;
+      operation?: string;
+      args?: ArgValues;
     }
   | {
       command: 'describeComponent';
@@ -535,6 +549,9 @@ export interface RecipeViewState {
   componentTranscript?: readonly TranscriptEvent[];
   componentScanError?: string;
   componentOpError?: string;
+  /** JSON result from the last component hook dry-run. */
+  componentDryRunResult?: unknown;
+  componentDryRunHook?: string;
 }
 
 export interface PersistedWebviewState {

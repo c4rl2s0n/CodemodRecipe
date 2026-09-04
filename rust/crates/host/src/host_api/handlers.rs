@@ -7,8 +7,8 @@ use codemod_recipe_engine::ops::{
 };
 use codemod_recipe_lua::host_api::specs::{
     Anchor, CreateSpec, DeleteSpec, IfExists as LuaIfExists, IfMissing as LuaIfMissing, InsertSpec,
-    PostExecSpec, QuerySpec as RawQuerySpec, QueryTableSpec, ReadSpec, RemoveSpec, ReplaceSpec,
-    TemplateSpec,
+    MatchFileRow, PostExecSpec, QueryCaptureSpec, QueryHit, QueryMatchRow,
+    QuerySpec as RawQuerySpec, QueryTableSpec, ReadSpec, RemoveSpec, ReplaceSpec, TemplateSpec,
 };
 use codemod_recipe_lua::model::{TranscriptEvent, TranscriptStats};
 use codemod_recipe_lua_macros::host_method;
@@ -282,18 +282,15 @@ pub(crate) fn do_read(host: &SharedHost, lua: &Lua, spec: ReadSpec) -> Result<Va
 #[host_method(
     name = "query",
     description = "Run a tree-sitter query; returns hits `{ span = { from, to }, text, kind }`.",
-    spec = QueryTableSpec,
-    return_type = QuerySpans,
+    spec = QueryCaptureSpec,
+    return_type = Array(QueryHit),
 )]
 pub(crate) fn do_query(
     host: &SharedHost,
     lua: &Lua,
-    spec: QueryTableSpec,
+    spec: QueryCaptureSpec,
 ) -> Result<Value, String> {
-    let capture = spec
-        .capture
-        .as_deref()
-        .ok_or_else(|| "query requires capture".to_string())?;
+    let capture = spec.capture.as_str();
     let mut inner = host.lock().map_err(|e| e.to_string())?;
     let query = query_spec_to_engine(&spec.query, &inner.queries)?;
     let lang_id = inner
@@ -339,7 +336,7 @@ pub(crate) fn do_query(
     name = "queryMatches",
     description = "Per-match rows keyed by @capture name; multi → array, single → hit.",
     spec = QueryTableSpec,
-    return_type = Table,
+    return_type = Array(QueryMatchRow),
 )]
 pub(crate) fn do_query_matches(
     host: &SharedHost,
@@ -629,7 +626,7 @@ fn format_log_value(value: &Value) -> Result<String, String> {
     name = "map",
     description = "Lookup a registered map by id → string→string table.",
     string_id,
-    return_type = Table,
+    return_type = StringMap,
 )]
 pub(crate) fn do_map(host: &SharedHost, lua: &Lua, id: String) -> Result<Value, String> {
     let inner = host.lock().map_err(|e| e.to_string())?;
@@ -644,7 +641,7 @@ pub(crate) fn do_map(host: &SharedHost, lua: &Lua, id: String) -> Result<Value, 
     name = "var",
     description = "Lookup registered variables by id → string→string table.",
     string_id,
-    return_type = Table,
+    return_type = StringMap,
 )]
 pub(crate) fn do_var(host: &SharedHost, lua: &Lua, id: String) -> Result<Value, String> {
     let inner = host.lock().map_err(|e| e.to_string())?;
@@ -676,7 +673,7 @@ pub(crate) fn do_query_lib(host: &SharedHost, lua: &Lua, id: String) -> Result<V
     name = "listFiles",
     description = "List workspace-relative paths matching a `*` glob (one `*` per segment).",
     string_id,
-    return_type = Table,
+    return_type = StringList,
 )]
 pub(crate) fn do_list_files(
     host: &SharedHost,
@@ -697,7 +694,7 @@ pub(crate) fn do_list_files(
     name = "matchFiles",
     description = "Match `{placeholder}` path patterns; returns rows with `path` + captures.",
     string_id,
-    return_type = Table,
+    return_type = Array(MatchFileRow),
 )]
 pub(crate) fn do_match_files(
     host: &SharedHost,
@@ -733,6 +730,23 @@ pub(crate) fn do_filename(_host: &SharedHost, lua: &Lua, path: String) -> Result
         .map(Value::String)
         .map_err(|e| e.to_string())
 }
+
+/// Surface metadata for `c:resolve`; runtime binding is in
+/// [`crate::lua_runtime::build_ctx`] (two-arg signature).
+///
+/// See [`crate::host_api::registry::HOST_API_SURFACE`] for why linkme needs
+/// `#[allow(unsafe_code)]` under workspace deny.
+// SAFETY: linkme element expansion emits `#[unsafe(link_section)]` here.
+#[allow(unsafe_code)]
+#[::linkme::distributed_slice(crate::host_api::registry::HOST_API_SURFACE)]
+static __HOST_API_SURFACE_DO_RESOLVE: crate::host_api::registry::HostMethodSurface =
+    crate::host_api::registry::HostMethodSurface {
+        name: "resolve",
+        description: "Fill `{key}` placeholders in a path template (no MiniJinja / no FS).",
+        signature: crate::host_api::registry::HostMethodSignature::Resolve,
+        return_type: crate::host_api::registry::HostReturnType::String,
+        accept_string: false,
+    };
 
 pub(crate) fn do_resolve(
     _host: &SharedHost,
