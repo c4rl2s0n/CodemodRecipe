@@ -70,6 +70,7 @@ pub fn collect_recipe_changes(
             vars: registry.vars_by_id().clone(),
             queries,
             recipes: registry.recipes_map().clone(),
+            components: registry.components().clone(),
             workspace_root: registry.workspace_root.clone(),
             language_config: registry.language_registry.config().clone(),
             codemod_root: registry.codemod_root().to_path_buf(),

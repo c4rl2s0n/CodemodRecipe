@@ -1,3 +1,4 @@
+pub mod component;
 pub mod config;
 pub mod diagnostics;
 pub mod engine;

@@ -187,7 +187,7 @@ Integration tests: [`rust/crates/host/tests/jinja_examples_test.rs`](../rust/cra
 args = {
   { name = "includeTests", defaultsTo = "false" },
 }
-apply = function(c)
+apply = function(c, args)
   c:create({
     path = c:template({ inline = "lib/{{ className | snake_case }}/{{ className | snake_case }}_widget.dart" }),
     content = c:template({ path = "templates/conditional_widget.dart.template" }),
@@ -212,7 +212,7 @@ class {{ className | pascal_case }}Widget {
 args = {
   { name = "label", required = true },
 }
-apply = function(c)
+apply = function(c, args)
   c:run("jinja.defaults.child")  -- child declares verbose with defaultsTo = "false"
 end
 ```

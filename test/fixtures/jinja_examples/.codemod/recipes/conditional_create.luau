@@ -6,7 +6,7 @@ return {
 		{ name = "className", required = true, inputKind = "symbol" },
 		{ name = "includeTests", required = false, defaultsTo = "false", inputKind = "text" },
 	},
-	apply = function(c)
+	apply = function(c, args)
 		c:create({
 			path = c:template({ inline = "lib/generated/{{ className | snake_case }}_widget.dart" }),
 			content = c:template({ path = "templates/conditional_widget.dart.template" }),

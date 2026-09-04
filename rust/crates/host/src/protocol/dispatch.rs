@@ -2,6 +2,10 @@ use codemod_recipe_core::apply::atomic_apply::apply_operations_atomically;
 use std::collections::BTreeMap;
 
 use crate::engine::runner::{collect_recipe_changes, planned_snapshot_paths, resolve_recipe};
+use crate::component::{
+    component_incremental_scan, component_scan, invoke_operation, invoke_scaffold,
+    ComponentIncrementalScanRequest, ComponentInvokeRequest, ComponentScaffoldRequest,
+};
 use crate::lua_runtime::{RecipeApplyError, RunKind};
 use crate::preview::diff::build_file_preview_from_change;
 use crate::preview::patch_selector::{apply_changes_with_selection, parse_selection};
@@ -313,6 +317,63 @@ pub fn handle_command(registry: &mut RecipeRegistry, cmd: HostCommand) -> serde_
             },
             &path,
         ),
+        HostCommand::ComponentScan => to_value(component_scan(registry)),
+        HostCommand::ComponentIncrementalScan {
+            dirty_paths,
+            detect_changes,
+            force,
+        } => to_value(component_incremental_scan(
+            registry,
+            ComponentIncrementalScanRequest {
+                dirty_paths,
+                detect_changes,
+                force,
+            },
+        )),
+        HostCommand::ComponentListInstances => {
+            let scan = component_scan(registry);
+            to_value(serde_json::json!({
+                "ok": scan.ok,
+                "error": scan.error,
+                "instances": scan.instances,
+                "findings": scan.findings,
+                "diagnostics": scan.diagnostics,
+            }))
+        }
+        HostCommand::ComponentInvokeOperation {
+            instance_id,
+            operation,
+            args,
+            preview,
+        } => to_value(invoke_operation(
+            registry,
+            ComponentInvokeRequest {
+                instance_id,
+                operation,
+                args,
+                kind: if preview {
+                    RunKind::Preview
+                } else {
+                    RunKind::Apply
+                },
+            },
+        )),
+        HostCommand::ComponentScaffold {
+            component_id,
+            args,
+            preview,
+        } => to_value(invoke_scaffold(
+            registry,
+            ComponentScaffoldRequest {
+                component_id,
+                args,
+                kind: if preview {
+                    RunKind::Preview
+                } else {
+                    RunKind::Apply
+                },
+            },
+        )),
     }
 }
 

@@ -40,9 +40,9 @@ return {
   args = {
     { name = "properties", inputKind = { "ClassProperty" } },
   },
-  apply = function(c)
+  apply = function(c, args)
     local lines = {}
-    for _, p in ipairs(c.args.properties or {}) do
+    for _, p in ipairs(args.properties or {}) do
       table.insert(lines, p.type .. " " .. p.name)
     end
     c:create({

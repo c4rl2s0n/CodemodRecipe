@@ -330,9 +330,9 @@ return {
   id = "post_exec_rustfmt",
   args = { { name = "file", required = true } },
   postExecution = { "rustfmt {{file}}" },
-  apply = function(c)
+  apply = function(c, args)
     c:create({
-      path = c.args.file,
+      path = args.file,
       content = c:template({ inline = "fn main(){println!(\"hi\");}\n" }),
     })
   end,
@@ -811,9 +811,9 @@ fn inline_recipe_preview_and_apply() {
 return {
   id = "inline_insert",
   args = { { name = "file", required = true } },
-  apply = function(c)
+  apply = function(c, args)
     c:insert({
-      path = c.args.file,
+      path = args.file,
       language = "dart",
       query = "(class_definition name: (identifier) @className body: (class_body (method_signature (function_signature name: (identifier) @methodName)) (function_body (block) @body)) (#eq? @className \"Settings\") (#eq? @methodName \"update\"))",
       capture = "body",
@@ -890,7 +890,7 @@ fn content_classification_recognizes_recipe_in_maps_directory() {
     std::fs::create_dir_all(&maps_dir).unwrap();
     std::fs::write(
         maps_dir.join("my_recipe.luau"),
-        r#"return { id = "my_recipe", apply = function(c) end }"#,
+        r#"return { id = "my_recipe", apply = function(c, args) end }"#,
     )
     .unwrap();
 
@@ -981,7 +981,7 @@ fn content_classification_skips_d_luau_in_stubs_directory() {
     std::fs::write(stubs_dir.join("codemod-context.d.luau"), "return {}").unwrap();
     std::fs::write(
         stubs_dir.join("actual_recipe.luau"),
-        r#"return { id = "actual_recipe", apply = function(c) end }"#,
+        r#"return { id = "actual_recipe", apply = function(c, args) end }"#,
     )
     .unwrap();
 
@@ -1042,7 +1042,7 @@ fn content_classification_skips_d_lua_files() {
     std::fs::write(codemod_dir.join("stubs.d.lua"), "return {}").unwrap();
     std::fs::write(
         codemod_dir.join("actual_recipe.luau"),
-        r#"return { id = "actual_recipe", apply = function(c) end }"#,
+        r#"return { id = "actual_recipe", apply = function(c, args) end }"#,
     )
     .unwrap();
 

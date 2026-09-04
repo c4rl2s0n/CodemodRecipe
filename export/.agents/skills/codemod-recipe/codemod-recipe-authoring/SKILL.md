@@ -31,7 +31,7 @@ Dart grammars from **tree-sitter-language-pack** use `class_definition` (not `cl
 
 ```lua
 c:insert({
-  path = c.args.file,
+  path = args.file,
   query = [[
     (class_definition
       name: (identifier) @className
@@ -41,8 +41,8 @@ c:insert({
             name: (identifier) @methodName))
         (function_body
           (block) @body))
-      (#eq? @className "]] .. c.args.className .. [[")
-      (#eq? @methodName "]] .. c.args.methodName .. [["))
+      (#eq? @className "]] .. args.className .. [[")
+      (#eq? @methodName "]] .. args.methodName .. [["))
   ]],
   capture = "body",
   anchor = "end",
@@ -66,14 +66,14 @@ After apply, re-run `preview_recipe` — expect `files: []` for idempotent recip
 
 ## Args
 
-Declare dynamics in `args`; reference as `c.args.name` or via `c:template`.
+Declare dynamics in `args`; reference as `args.name` or via `c:template`.
 
 ## Multi-file recipes
 
 Use sequential calls in `apply`:
 
 ```lua
-apply = function(c)
+apply = function(c, args)
   c:create({ path = "...", content = "..." })
   c:insert({ path = "...", query = "...", capture = "...", anchor = "end", text = "..." })
   c:delete({ path = "...", ifMissing = "skip" })

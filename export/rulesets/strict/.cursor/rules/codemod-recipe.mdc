@@ -7,7 +7,7 @@ alwaysApply: true
 
 # Codemod Recipe
 
-Use **codemod-recipe** for structural, scaffolding, multi-file, and AST-boundary changes. Recipes are **Luau modules** (`.codemod/recipes/*.luau`); `apply(c)` is the only mutation entrypoint. Dart is the default language; set `language` on edit ops for non-Dart files.
+Use **codemod-recipe** for structural, scaffolding, multi-file, and AST-boundary changes. Recipes are **Luau modules** (`.codemod/recipes/*.luau`); `apply(c, args)` is the only mutation entrypoint. Dart is the default language; set `language` on edit ops for non-Dart files.
 
 Layout: `.codemod/recipes/`, `.codemod/maps/`, `.codemod/types/`, `.codemod/templates/`, `.codemod/queries/`.
 

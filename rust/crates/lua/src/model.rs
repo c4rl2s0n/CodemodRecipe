@@ -113,6 +113,42 @@ pub struct QueryLibAsset {
     pub queries: BTreeMap<String, String>,
 }
 
+/// Root-scan stack manifest (`.codemod/stack.luau`).
+#[derive(Debug, Clone, PartialEq, Eq, JsonSchema)]
+pub struct StackDef {
+    pub id: String,
+    pub description: Option<String>,
+    /// Component ids to run at workspace root scan.
+    pub components: Vec<String>,
+    /// Optional workspace globs per root component id (host-driven discover).
+    pub globs: BTreeMap<String, String>,
+    #[schemars(skip)]
+    pub source: String,
+    #[schemars(skip)]
+    pub path: Option<PathBuf>,
+}
+
+/// Component kind module (`discover` / `parse` / `verify` hooks).
+#[derive(Debug, Clone, PartialEq, Eq, JsonSchema)]
+pub struct ComponentDef {
+    pub id: String,
+    pub description: Option<String>,
+    pub operations: Vec<String>,
+    /// True when the module defines a top-level `scaffold` table with `apply`.
+    pub has_scaffold: bool,
+    #[schemars(skip)]
+    pub source: String,
+    #[schemars(skip)]
+    pub path: Option<PathBuf>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, JsonSchema)]
+pub struct OperationDef {
+    pub name: String,
+    pub description: Option<String>,
+    pub args: Vec<Arg>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct TranscriptStats {

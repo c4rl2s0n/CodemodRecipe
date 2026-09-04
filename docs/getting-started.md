@@ -10,7 +10,7 @@ For a full documentation index, see [README.md](README.md) in this folder.
 ## What you’re getting
 
 **codemod-recipe** applies deterministic, AST-safe edits from **sandboxed Luau
-recipes**. Each recipe is a module that `return`s metadata plus an `apply(c)`
+recipes**. Each recipe is a module that `return`s metadata plus an `apply(c, args)`
 function. Edits use tree-sitter queries (`c:insert` / `c:replace` / `c:remove`), so the same
 recipe + args + file contents produce the same patches every time.
 
@@ -109,15 +109,28 @@ Details and settings: [vscode_extension/README.md](../vscode_extension/README.md
 
 **Recipe editor IntelliSense:** under `.codemod/**/*.luau` the extension
 completes `c:` methods, spec keys, recipe/map/var/query ids (`c:map` /
-`c:var` / `c:queryLib` / `c:run`), languages, captures, and `c.args.*` from
+`c:var` / `c:queryLib` / `c:run`), languages, captures, and `args.*` from
 the recipe source; CodeLens on `id = "…"`; go-to-definition on `c:run("…")`.
 Install **Luau Language Server** (`JohnnyMorganz.luau-lsp`) and point it at
 `.codemod/stubs/codemod-context.d.luau` (via scaffolded
-`luau-lsp.types.definitionFiles`) for typed `CodemodContext` on `apply(c)`.
+`luau-lsp.types.definitionFiles`) for typed `CodemodContext` on `apply(c, args)`.
 If that stub is stale after upgrading the extension/host API, run
 **Codemod Recipe: Update Project Scaffold** (or MCP `bootstrap_project` with
 `force`) — soft Scaffold skips existing files. **Refresh Recipes** only
 reloads the catalog; it does not rewrite stubs.
+
+**Components and Luau types:** the platform layer uses the same `c` host context in
+component hooks (`parse`, `verify`, …). See [components.md](./components.md),
+[component-contract.md](./component-contract.md), and [luau-lsp.md](./luau-lsp.md)
+for parse trees, `c` vs `context`, and `--!strict` / `export type` ergonomics.
+
+**Platform experiment (MCP):** when a workspace has `.codemod/stack.luau` and
+components, call `component_scan` (or `list_component_instances`) for instances /
+findings / summaries, then `component_incremental_scan` after edits
+(`dirtyPaths` when known, or `detectChanges: true`). Create with host
+`componentScaffold`; mutate with `componentInvokeOperation` (not MCP tools yet).
+Try the in-repo fixture: [flutter-poc.md](./flutter-poc.md)
+(`test/fixtures/flutter_poc/`).
 
 **Review panel:** after preview, inspect **Files** (diffs) and **Transcript**
 (every `c:` call, including postExec entries skipped on preview). Edit rows
@@ -162,9 +175,9 @@ return {
     { name = "methodName", required = true, inputKind = "text" },
   },
   postExecution = { "dart format ." },
-  apply = function(c)
+  apply = function(c, args)
     c:insert({
-      path = c.args.file,
+      path = args.file,
       query = [[
         (class_definition
           name: (identifier) @className
@@ -174,8 +187,8 @@ return {
                 name: (identifier) @methodName))
             (function_body
               (block) @body))
-          (#eq? @className "]] .. c.args.className .. [[")
-          (#eq? @methodName "]] .. c.args.methodName .. [["))
+          (#eq? @className "]] .. args.className .. [[")
+          (#eq? @methodName "]] .. args.methodName .. [["))
       ]],
       capture = "body",
       anchor = "end",
@@ -185,7 +198,7 @@ return {
 }
 ```
 
-**`apply(c)` is the only mutation entrypoint.** Use Luau `if` / `for` in `apply` for
+**`apply(c, args)` is the only mutation entrypoint.** Use Luau `if` / `for` in `apply` for
 guards and idempotency.
 
 Args are JSON values, not only strings: builtins are `text`, `bool`, `choice`,
@@ -216,7 +229,7 @@ a successful apply. Preview records these in the transcript but does not run the
 
 | Method | Role |
 |--------|------|
-| `c.args` | Resolved recipe arguments |
+| `args` (2nd param to `apply`) | Resolved recipe arguments — **not** on `c` |
 | `c:insert` / `c:replace` / `c:remove` | AST patches |
 | `c:query` / `c:read` | Read-only inspection |
 | `c:create` / `c:delete` | File create/delete |
@@ -272,7 +285,7 @@ Call other recipes from `apply`:
 
 ```lua
 c:run("dart.settings.add_counter_field")
-c:run("dart.logging.add_log_line", { file = c.args.file })
+c:run("dart.logging.add_log_line", { file = args.file })
 ```
 
 Or pass a full module as MCP **`inlineRecipe`** (Luau source string, no file on disk).

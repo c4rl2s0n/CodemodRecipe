@@ -21,7 +21,7 @@ description: Luau recipe authoring for codemod-recipe — recipe module shape, h
 
 ## Recipe shape
 
-Luau modules **return a table**. `apply = function(c)` is the only mutation entrypoint.
+Luau modules **return a table**. `apply = function(c, args)` is the only mutation entrypoint.
 
 ```lua
 return {
@@ -35,9 +35,9 @@ return {
   queries = { body = "(program) @root" }, -- optional inline query ids
   postExecution = { "dart format ." },    -- optional; runs after apply only
   explorerMenu = { { kind = "file" } },   -- optional VS Code Explorer menu
-  apply = function(c)
+  apply = function(c, args)
     c:insert({
-      path = c.args.file,
+      path = args.file,
       query = "(class_definition ...) @body",
       capture = "body",
       anchor = "end",
@@ -51,7 +51,7 @@ return {
 
 | Method | Role |
 |--------|------|
-| `c.args` | Recipe arguments (strings, bools, lists, objects) |
+| `args` | Recipe arguments (strings, bools, lists, objects) |
 | `c:insert` / `c:replace` / `c:remove` | AST edits (table: `path`, `query`, `capture`, …) |
 | `c:query` / `c:queryExists` / `c:queryCount` | Read-only query evaluation |
 | `c:read` | Current file content (WorkingTree-aware) |

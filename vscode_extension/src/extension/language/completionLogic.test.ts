@@ -113,7 +113,7 @@ describe('collectCompletionSuggestions', () => {
   it('suggests remaining insert spec keys', () => {
     const lines = [
       '		c:insert({',
-      '			path = c.args.file,',
+      '			path = args.file,',
       '			que',
     ];
     const items = collectCompletionSuggestions({
@@ -131,7 +131,7 @@ describe('collectCompletionSuggestions', () => {
   it('suggests anchor enum values', () => {
     const lines = [
       '		c:insert({',
-      '			path = c.args.file,',
+      '			path = args.file,',
       '			anchor = "s',
     ];
     const items = collectCompletionSuggestions({
@@ -198,13 +198,13 @@ describe('collectCompletionSuggestions', () => {
     expect(items?.map((i) => i.label)).toEqual(['body']);
   });
 
-  it('suggests c.args fields from recipe source', () => {
+  it('suggests args fields from recipe source', () => {
     const lines = [
       'return {',
       '	id = "x",',
       '	args = { { name = "file" }, { name = "className" } },',
-      '	apply = function(c)',
-      '		local p = c.args.cl',
+      '	apply = function(c, args)',
+      '		local p = args.cl',
       '	end,',
       '}',
     ];
@@ -265,7 +265,7 @@ describe('collectCompletionSuggestions', () => {
     const lines = [
       'return {',
       '	args = { { name = "file" } },',
-      '	apply = function(c)',
+      '	apply = function(c, args)',
       '		c:postExec({ command = "{{ fi',
     ];
     const items = collectCompletionSuggestions({

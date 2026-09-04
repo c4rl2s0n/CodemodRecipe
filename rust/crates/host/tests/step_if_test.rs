@@ -39,8 +39,8 @@ fn bool_if_skips_create() {
 return {
   id = "gated_create",
   args = { { name = "includeFile", defaultsTo = "false" } },
-  apply = function(c)
-    if c.args.includeFile == "true" then
+  apply = function(c, args)
+    if args.includeFile == "true" then
       c:create({
         path = "lib/generated.dart",
         content = "class Generated {}\n",
@@ -73,11 +73,11 @@ fn file_exists_if_not_skips_when_on_disk() {
 return {
   id = "gated_by_exists",
   args = { { name = "file", required = true } },
-  apply = function(c)
+  apply = function(c, args)
     local function pathExists(path)
       return pcall(function() c:read(path) end)
     end
-    if not pathExists(c.args.file) then
+    if not pathExists(args.file) then
       c:create({
         path = "lib/other.dart",
         content = "class Other {}\n",
@@ -108,15 +108,15 @@ fn file_exists_sees_prior_create_in_same_recipe() {
 return {
   id = "staged_exists",
   args = { { name = "file", required = true } },
-  apply = function(c)
+  apply = function(c, args)
     local function pathExists(path)
       return pcall(function() c:read(path) end)
     end
     c:create({
-      path = c.args.file,
+      path = args.file,
       content = "class A {}\n",
     })
-    if not pathExists(c.args.file) then
+    if not pathExists(args.file) then
       c:create({
         path = "lib/second.dart",
         content = "class B {}\n",
@@ -150,9 +150,9 @@ fn conditioned_recipe_ref_skips_subtree() {
 return {
   id = "child_create",
   args = { { name = "file", required = true } },
-  apply = function(c)
+  apply = function(c, args)
     c:create({
-      path = c.args.file,
+      path = args.file,
       content = "class Child {}\n",
     })
   end,
@@ -169,9 +169,9 @@ return {
     { name = "includeChild", defaultsTo = "false" },
     { name = "file", required = true },
   },
-  apply = function(c)
-    if c.args.includeChild == "true" then
-      c:run("child_create", { file = c.args.file })
+  apply = function(c, args)
+    if args.includeChild == "true" then
+      c:run("child_create", { file = args.file })
     end
   end,
 }
@@ -226,8 +226,8 @@ fn lua_if_gates_multiple_creates() {
 return {
   id = "gated_group",
   args = { { name = "includeExtra", defaultsTo = "false" } },
-  apply = function(c)
-    if c.args.includeExtra == "true" then
+  apply = function(c, args)
+    if args.includeExtra == "true" then
       c:create({ path = "lib/one.dart", content = "class One {}\n" })
       c:create({ path = "lib/two.dart", content = "class Two {}\n" })
     end
@@ -259,10 +259,10 @@ return {
     { name = "includeGroup", defaultsTo = "true" },
     { name = "includeSecond", defaultsTo = "false" },
   },
-  apply = function(c)
-    if c.args.includeGroup == "true" then
+  apply = function(c, args)
+    if args.includeGroup == "true" then
       c:create({ path = "lib/one.dart", content = "class One {}\n" })
-      if c.args.includeSecond == "true" then
+      if args.includeSecond == "true" then
         c:create({ path = "lib/two.dart", content = "class Two {}\n" })
       end
     end
@@ -303,7 +303,7 @@ fn if_with_recipe_refs_expands_and_gates() {
         r#"
 return {
   id = "child_a",
-  apply = function(c)
+  apply = function(c, args)
     c:create({ path = "lib/a.dart", content = "class A {}\n" })
   end,
 }
@@ -315,7 +315,7 @@ return {
         r#"
 return {
   id = "child_b",
-  apply = function(c)
+  apply = function(c, args)
     c:create({ path = "lib/b.dart", content = "class B {}\n" })
   end,
 }
@@ -328,8 +328,8 @@ return {
 return {
   id = "parent_if",
   args = { { name = "includeChildren", defaultsTo = "false" } },
-  apply = function(c)
-    if c.args.includeChildren == "true" then
+  apply = function(c, args)
+    if args.includeChildren == "true" then
       c:run("child_a")
       c:run("child_b")
     end

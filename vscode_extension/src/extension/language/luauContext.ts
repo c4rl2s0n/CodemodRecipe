@@ -159,11 +159,11 @@ export function parseRecipeArgNames(source: string): string[] {
   return names;
 }
 
-/** `c.args.` completion prefix. */
+/** `args.` completion prefix (apply's second parameter). */
 export function argsFieldCompletionContext(
   before: string
 ): { typed: string; start: number } | undefined {
-  const match = /\bc\.args\.([A-Za-z_]\w*)$/.exec(before);
+  const match = /\bargs\.([A-Za-z_]\w*)$/.exec(before);
   if (!match || match.index === undefined) {
     return undefined;
   }

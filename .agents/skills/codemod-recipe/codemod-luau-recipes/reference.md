@@ -1,7 +1,7 @@
 # Luau Recipe Reference
 
 Recipes are **sandboxed Luau** modules (`.luau` or `.lua`) anywhere under `.codemod/`.
-They `return` a table; **`apply = function(c)`** is the only mutation entrypoint and the
+They `return` a table; **`apply = function(c, args)`** is the only mutation entrypoint and the
 registry uses it to identify a recipe. The `.codemod/recipes/` directory is a convention, not a
 requirement.
 
@@ -49,9 +49,9 @@ Arg defaults use `defaultsTo`. Unknown keys on an arg entry fail validation.
 
 ## Host context (`c`)
 
-### `c.args`
+### `args`
 
-Resolved recipe arguments: strings, bools, lists, and objects (`c.args.file`, `c.args.properties[1].name`).
+Resolved recipe arguments: strings, bools, lists, and objects (`args.file`, `args.properties[1].name`).
 
 ### AST edits
 
@@ -75,32 +75,32 @@ All edit methods take a **spec table**:
 
 ```lua
 c:insert({
-  path = c.args.file,
+  path = args.file,
   language = "dart",
   query = [[
     (class_definition
       name: (identifier) @className
       body: (class_body
         (function_body (block) @body))
-      (#eq? @className "]] .. c.args.className .. [["))
+      (#eq? @className "]] .. args.className .. [["))
   ]],
   capture = "body",
   anchor = "end",
   text = "    print('codemod');\n",
 })
 
-c:replace({ path = c.args.file, query = "...", capture = "member", text = "  final int count = 0;\n" })
-c:remove({ path = c.args.file, query = "...", capture = "member" })
+c:replace({ path = args.file, query = "...", capture = "member", text = "  final int count = 0;\n" })
+c:remove({ path = args.file, query = "...", capture = "member" })
 ```
 
 ### Read-only query helpers
 
 ```lua
-local spans = c:query({ path = c.args.file, query = "...", capture = "body" })
+local spans = c:query({ path = args.file, query = "...", capture = "body" })
 -- spans[i] = { start = byte, ["end"] = byte, text = "..." }
 
-if c:queryExists({ path = c.args.file, query = "...", capture = "body" }) then ... end
-local n = c:queryCount({ path = c.args.file, query = "..." })  -- optional capture
+if c:queryExists({ path = args.file, query = "...", capture = "body" }) then ... end
+local n = c:queryCount({ path = args.file, query = "..." })  -- optional capture
 c:expectMatch({ ... })   -- error if zero matches
 c:expectNoMatch({ ... }) -- error if any match
 ```
@@ -108,7 +108,7 @@ c:expectNoMatch({ ... }) -- error if any match
 ### File I/O
 
 ```lua
-local source = c:read(c.args.file)  -- or c:read({ path = "..." })
+local source = c:read(args.file)  -- or c:read({ path = "..." })
 
 c:create({
   path = "lib/new.dart",
@@ -123,7 +123,7 @@ c:delete({ path = "lib/legacy.dart", ifMissing = "skip" })  -- or "fail"
 
 ```lua
 c:run("dart.settings.add_counter_field")
-c:run("dart.logging.add_log_line", { file = c.args.file, className = "Settings" })
+c:run("dart.logging.add_log_line", { file = args.file, className = "Settings" })
 ```
 
 Child recipe `postExecution` runs inline; parent args are restored afterward.
@@ -133,7 +133,7 @@ Child recipe `postExecution` runs inline; parent args are restored afterward.
 ```lua
 local text = c:template({
   inline = "class {{ className | pascal_case }} {}\n",
-  env = { className = c.args.className },  -- optional extra vars
+  env = { className = args.className },  -- optional extra vars
 })
 
 local fileBody = c:template({
@@ -144,7 +144,7 @@ local fileBody = c:template({
 ### Logging
 
 ```lua
-c:log("exports", c.args.exports)
+c:log("exports", args.exports)
 ```
 
 Appends a `log` event to the recipe transcript (visible in preview even when later ops fail).
@@ -225,7 +225,7 @@ Centralized in `rust/crates/core/src/resource_path.rs`:
 
 ```json
 {
-  "inlineRecipe": "return {\n  id = \"__inline\",\n  apply = function(c)\n    c:insert({ path = \"lib/a.dart\", query = \"(program) @root\", capture = \"root\", anchor = \"end\", text = \"// x\\n\" })\n  end,\n}"
+  "inlineRecipe": "return {\n  id = \"__inline\",\n  apply = function(c, args)\n    c:insert({ path = \"lib/a.dart\", query = \"(program) @root\", capture = \"root\", anchor = \"end\", text = \"// x\\n\" })\n  end,\n}"
 }
 ```
 

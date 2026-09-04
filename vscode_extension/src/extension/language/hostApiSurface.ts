@@ -13,7 +13,8 @@ export type HostMethodSpec = {
   enums?: Record<string, string[]>;
 };
 
-export const HOST_CONTEXT_FIELD = 'args';
+/** Recipe apply args are the 2nd parameter: `apply(c, args)`. Not a field on `c`. */
+export const HOST_CONTEXT_FIELD: string | null = null;
 
 export const HOST_METHODS: readonly HostMethodSpec[] = [
   {
@@ -46,6 +47,11 @@ export const HOST_METHODS: readonly HostMethodSpec[] = [
     name: 'expectNoMatch',
     description: 'Error if the query has any match.',
     keys: ['capture', 'language', 'path', 'query'],
+  },
+  {
+    name: 'glob',
+    description: 'Workspace-relative glob (single `*` per segment).',
+    keys: [],
   },
   {
     name: 'insert',
@@ -111,6 +117,11 @@ export const HOST_METHODS: readonly HostMethodSpec[] = [
     keys: [],
   },
   {
+    name: 'stem',
+    description: 'File stem (basename without extension) from a workspace-relative path.',
+    keys: [],
+  },
+  {
     name: 'template',
     description: 'Render MiniJinja from `inline` or file `path` (exactly one required).',
     keys: ['env', 'inline', 'path'],
@@ -140,7 +151,7 @@ export const RECIPE_MODULE_DOCS: Record<string, string> = {
   name: 'Display name in the recipe runner.',
   description: 'Short description shown in the runner and hover.',
   args: 'List of arg definition tables (`name`, `inputKind`, …).',
-  apply: '`function(c)` — only mutation entrypoint.',
+  apply: '`function(c, args)` — only mutation entrypoint.',
   maps: 'Recipe-local maps `{ mapId = { key = "value" } }`.',
   types: 'Recipe-local named types `{ TypeId = { fields = { … } } }`.',
   queries: 'Inline query strings `{ queryId = "(…) @cap" }`.',
@@ -162,7 +173,7 @@ export const ARG_DEFINITION_KEYS: readonly string[] = [
 ];
 
 export const ARG_DEFINITION_DOCS: Record<string, string> = {
-  name: 'Argument name (available as `c.args.<name>`).',
+  name: 'Argument name (available as `args.<name>` in apply).',
   required: 'Whether the runner requires a value.',
   inputKind: '`text` | `bool` | `choice` | `file` | `directory` | TypeId | `{ TypeId }` list.',
   defaultsTo: 'Default when the arg is omitted.',

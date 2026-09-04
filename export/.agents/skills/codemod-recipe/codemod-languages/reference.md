@@ -148,7 +148,7 @@ The pack ships a **different Dart AST** than the old `tree-sitter-dart` crate. N
 
 ```lua
 c:insert({
-  path = c.args.file,
+  path = args.file,
   language = "dart",
   query = [[
     (class_definition
@@ -172,7 +172,7 @@ c:insert({
 
 ```lua
 c:remove({
-  path = c.args.file,
+  path = args.file,
   language = "dart",
   query = [[
     (class_definition

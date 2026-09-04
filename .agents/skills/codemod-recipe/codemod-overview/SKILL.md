@@ -8,7 +8,7 @@ description: Orientation for codemod-recipe — what it is, when to use MCP tool
 ## What it is
 
 **codemod-recipe** applies deterministic, AST-safe edits using **sandboxed Luau recipes**.
-Each recipe `return`s metadata plus `apply(c)`. The Rust MCP server exposes preview/apply tools for agents.
+Each recipe `return`s metadata plus `apply(c, args)`. The Rust MCP server exposes preview/apply tools for agents.
 
 **Languages:** Dart is the default, with lazy-loaded support for Rust, Java, Kotlin, SQL/SQLite, and 300+ grammars via tree-sitter-language-pack. See skill `codemod-languages`.
 

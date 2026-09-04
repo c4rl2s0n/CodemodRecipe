@@ -49,7 +49,7 @@ Conventional `.codemod/` subdirectories (the registry classifies assets by conte
 
 | Location | Identified by | Return shape |
 |----------|---------------|--------------|
-| `.codemod/recipes/` | `apply` function | `{ id, apply = function(c) ... }` |
+| `.codemod/recipes/` | `apply` function | `{ id, apply = function(c, args) ... }` |
 | `.codemod/maps/` | `map` table | `{ id, map = { ... } }` |
 | `.codemod/variables/` | `values` table | `{ id, values = { ... } }` |
 | `.codemod/queries/` | `queries` table | `{ id, queries = { ... } }` |
@@ -57,7 +57,7 @@ Conventional `.codemod/` subdirectories (the registry classifies assets by conte
 
 ## Luau recipe format
 
-Recipes are Luau modules that `return` a table. **`apply(c)`** is the only mutation entrypoint:
+Recipes are Luau modules that `return` a table. **`apply(c, args)`** is the only mutation entrypoint:
 
 ```lua
 return {
@@ -68,9 +68,9 @@ return {
     { name = "methodName", required = true, inputKind = "symbol" },
   },
   postExecution = { "dart format ." },
-  apply = function(c)
+  apply = function(c, args)
     c:insert({
-      path = c.args.file,
+      path = args.file,
       query = [[
         (class_definition
           name: (identifier) @className
@@ -80,8 +80,8 @@ return {
                 name: (identifier) @methodName))
             (function_body
               (block) @body))
-          (#eq? @className "]] .. c.args.className .. [[")
-          (#eq? @methodName "]] .. c.args.methodName .. [["))
+          (#eq? @className "]] .. args.className .. [[")
+          (#eq? @methodName "]] .. args.methodName .. [["))
       ]],
       capture = "body",
       anchor = "end",
@@ -100,7 +100,7 @@ places an insert before or after that span. Full walkthrough:
 
 | Method | Role |
 |--------|------|
-| `c.args` | Recipe argument map |
+| `args` | Recipe argument map |
 | `c:insert` / `c:replace` / `c:remove` | AST edits |
 | `c:query` / `c:read` | Read-only inspection |
 | `c:create` / `c:delete` | File create/delete |
@@ -126,9 +126,9 @@ See [docs/recipe-templates.md](docs/recipe-templates.md).
 ### Composition
 
 ```lua
-apply = function(c)
+apply = function(c, args)
   c:run("dart.settings.add_counter_field")
-  c:run("dart.logging.add_log_line", { file = c.args.file })
+  c:run("dart.logging.add_log_line", { file = args.file })
 end
 ```
 

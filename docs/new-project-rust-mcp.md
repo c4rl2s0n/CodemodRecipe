@@ -65,9 +65,9 @@ return {
 
   postExecution = { "dart format ." },
 
-  apply = function(c)
+  apply = function(c, args)
     c:insert({
-      path = c.args.file,
+      path = args.file,
       query = [[
         (class_definition
           name: (identifier) @className
@@ -77,8 +77,8 @@ return {
                 name: (identifier) @methodName))
             (function_body
               (block) @body))
-          (#eq? @className "]] .. c.args.className .. [[")
-          (#eq? @methodName "]] .. c.args.methodName .. [["))
+          (#eq? @className "]] .. args.className .. [[")
+          (#eq? @methodName "]] .. args.methodName .. [["))
       ]],
       capture = "body",
       anchor = "end",
@@ -95,10 +95,10 @@ return {
 c:create({ path = "lib/new.dart", content = c:template({ path = "templates/x.template" }) })
 
 -- delete
-c:delete({ path = c.args.legacyPath, ifMissing = "skip" })
+c:delete({ path = args.legacyPath, ifMissing = "skip" })
 
 -- compose
-c:run("other.recipe.id", { file = c.args.file })
+c:run("other.recipe.id", { file = args.file })
 ```
 
 ## 6) Start the Rust MCP server
@@ -123,7 +123,7 @@ Pass Luau source as `inlineRecipe`:
 
 ```json
 {
-  "inlineRecipe": "return { id = \"__inline\", apply = function(c) c:create({ path = \"lib/x.dart\", content = \"// new\\n\" }) end }"
+  "inlineRecipe": "return { id = \"__inline\", apply = function(c, args) c:create({ path = \"lib/x.dart\", content = \"// new\\n\" }) end }"
 }
 ```
 

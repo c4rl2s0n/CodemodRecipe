@@ -26,7 +26,7 @@ return {
     { name = "className", required = true },
     { name = "methodName", required = true },
   },
-  apply = function(c)
+  apply = function(c, args)
     local classQuery = c:template({ inline = c:queryLib("dart_queries.class_named") })
     local methodQuery = c:template({ inline = c:queryLib("dart_queries.method_body") })
     c:insert({
@@ -78,7 +78,7 @@ return {
     { name = "className", required = true },
     { name = "methodName", required = true },
   },
-  apply = function(c)
+  apply = function(c, args)
     local classQuery = c:template({ inline = c:queryLib("dart_queries.class_named") })
     c:insert({
       path = "lib/foo.dart",

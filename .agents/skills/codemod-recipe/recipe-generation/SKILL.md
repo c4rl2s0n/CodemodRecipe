@@ -38,7 +38,7 @@ Recipe generation:
 
 ### 6. Author
 
-Write `.codemod/recipes/<id>.luau` with `return { id, args, apply = function(c) ... end }`.
+Write `.codemod/recipes/<id>.luau` with `return { id, args, apply = function(c, args) ... end }`.
 
 - Module shape / host API: skill `codemod-luau-recipes`
 - Queries: `codemod-recipe-authoring`, `codemod-tree-sitter-queries`

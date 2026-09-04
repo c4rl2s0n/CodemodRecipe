@@ -5,7 +5,7 @@ return {
 	args = {
 		{ name = "className", required = true, inputKind = "symbol" },
 	},
-	apply = function(c)
+	apply = function(c, args)
 		c:create({
 			path = "lib/counter/counter_repository.dart",
 			content = c:template({ path = "templates/counter_repository.dart.template" }),

@@ -15,7 +15,7 @@ Full host API: skill `codemod-luau-recipes` → `reference.md`.
 3. **Set `capture`** — the `@name` whose **text span** the op edits (omit the
    `@` in the spec: `@body` → `capture = "body"`).
 4. **For `c:insert` only** — set `anchor = "start"` or `"end"`.
-5. **Use `c.args`** — declare dynamics as recipe args; build query/text strings in Luau
+5. **Use `args`** — declare dynamics as recipe args; build query/text strings in Luau
    or render with `c:template`.
 6. **Validate → preview → apply** — then re-preview; an idempotent recipe
    returns no patches.
@@ -25,7 +25,7 @@ see [language-support.md](language-support.md).
 
 ## Recipe shape
 
-Recipes are Luau modules (`.luau` or `.lua`) under `.codemod/` that **return a table** with `id` and `apply = function(c)`. The `.codemod/recipes/` directory is a convention, not a requirement — the registry identifies a recipe by the `apply` function in its returned table.
+Recipes are Luau modules (`.luau` or `.lua`) under `.codemod/` that **return a table** with `id` and `apply = function(c, args)`. The `.codemod/recipes/` directory is a convention, not a requirement — the registry identifies a recipe by the `apply` function in its returned table.
 
 ```lua
 return {
@@ -37,13 +37,13 @@ return {
   queries = {},                   -- optional inline query ids
   postExecution = { "dart format ." },  -- optional; apply only
   explorerMenu = {},              -- optional Explorer submenu
-  apply = function(c)
+  apply = function(c, args)
     -- all mutations here
   end,
 }
 ```
 
-**`apply(c)` is the only mutation entrypoint.** Use Luau `if`/`for` for guards and
+**`apply(c, args)` is the only mutation entrypoint.** Use Luau `if`/`for` for guards and
 idempotency checks (e.g. `c:queryExists` before insert).
 
 ### Arguments (`args`)
@@ -78,7 +78,7 @@ args = {
   { name = "properties", inputKind = { "ClassProperty" } },
 }
 -- in apply:
-for _, p in ipairs(c.args.properties or {}) do
+for _, p in ipairs(args.properties or {}) do
   c:run("add_property", { type = p.type, name = p.name })
 end
 ```
@@ -87,13 +87,13 @@ see [recipe-shortcuts.md](recipe-shortcuts.md).
 
 ## Host API
 
-Access arguments as `c.args.name`. All mutation methods are on `c`:
+Access arguments as `args.name`. All mutation methods are on `c`:
 
 ### AST edits
 
 ```lua
 c:insert({
-  path = c.args.file,
+  path = args.file,
   language = "dart",       -- optional when extension is unambiguous
   query = "(class_definition ...) @body",
   capture = "body",
@@ -101,8 +101,8 @@ c:insert({
   text = "    print('codemod');\n",
 })
 
-c:replace({ path = c.args.file, query = "...", capture = "member", text = "  final int x = 0;\n" })
-c:remove({ path = c.args.file, query = "...", capture = "member", includeLeadingTrivia = true })
+c:replace({ path = args.file, query = "...", capture = "member", text = "  final int x = 0;\n" })
+c:remove({ path = args.file, query = "...", capture = "member", includeLeadingTrivia = true })
 ```
 
 ### File create/delete
@@ -120,16 +120,16 @@ c:delete({ path = "lib/legacy.dart", ifMissing = "skip" })
 ### Read-only helpers
 
 ```lua
-local text = c:read(c.args.file)
-local spans = c:query({ path = c.args.file, query = "...", capture = "body" })
-if c:queryExists({ path = c.args.file, query = "..." }) then return end
+local text = c:read(args.file)
+local spans = c:query({ path = args.file, query = "...", capture = "body" })
+if c:queryExists({ path = args.file, query = "..." }) then return end
 ```
 
 ### Composition
 
 ```lua
 c:run("dart.settings.add_counter_field")
-c:run("dart.logging.add_log_line", { file = c.args.file, className = c.args.className })
+c:run("dart.logging.add_log_line", { file = args.file, className = args.className })
 ```
 
 ### Templates
@@ -137,7 +137,7 @@ c:run("dart.logging.add_log_line", { file = c.args.file, className = c.args.clas
 ```lua
 local rendered = c:template({
   inline = "class {{ name | pascal_case }} {}\n",
-  env = { name = c.args.className },
+  env = { name = args.className },
 })
 ```
 
@@ -146,7 +146,7 @@ See [recipe-templates.md](recipe-templates.md).
 ### Logging
 
 ```lua
-c:log("args", c.args)
+c:log("args", args)
 ```
 
 Log lines appear in the Runner transcript. On preview/apply failure, the partial transcript (including logs) is still returned.
@@ -195,9 +195,9 @@ Full query language: [tree-sitter-queries.md](tree-sitter-queries.md).
 ## Worked insert example
 
 ```lua
-apply = function(c)
+apply = function(c, args)
   c:insert({
-    path = c.args.file,
+    path = args.file,
     query = [[
       (class_definition
         name: (identifier) @className
@@ -207,8 +207,8 @@ apply = function(c)
               name: (identifier) @methodName))
           (function_body
             (block) @body))
-        (#eq? @className "]] .. c.args.className .. [[")
-        (#eq? @methodName "]] .. c.args.methodName .. [["))
+        (#eq? @className "]] .. args.className .. [[")
+        (#eq? @methodName "]] .. args.methodName .. [["))
     ]],
     capture = "body",
     anchor = "end",
@@ -227,7 +227,7 @@ Prefer recipes that produce **no patches** on a second apply:
   matches when the snippet is absent
 
 ```lua
-if c:queryExists({ path = c.args.file, query = alreadyThereQuery }) then
+if c:queryExists({ path = args.file, query = alreadyThereQuery }) then
   return
 end
 c:insert({ ... })
@@ -270,7 +270,7 @@ See [getting-started.md](getting-started.md#day-1-success-run-a-recipe) and
 
 ```json
 {
-  "inlineRecipe": "return { id = \"__inline\", apply = function(c) c:insert({ path = \"lib/a.dart\", query = \"(program) @root\", capture = \"root\", anchor = \"end\", text = \"// x\\n\" }) end }"
+  "inlineRecipe": "return { id = \"__inline\", apply = function(c, args) c:insert({ path = \"lib/a.dart\", query = \"(program) @root\", capture = \"root\", anchor = \"end\", text = \"// x\\n\" }) end }"
 }
 ```
 

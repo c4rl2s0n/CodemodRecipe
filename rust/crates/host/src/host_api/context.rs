@@ -4,7 +4,7 @@ use std::rc::Rc;
 use std::sync::Mutex;
 
 use codemod_recipe_engine::{LanguageRegistry, RegistryConfig};
-use codemod_recipe_lua::model::{Recipe, TranscriptEvent};
+use codemod_recipe_lua::model::{ComponentDef, Recipe, TranscriptEvent};
 
 use crate::engine::working_tree::WorkingTree;
 use crate::sandbox::path_sandbox::PathSandbox;
@@ -43,9 +43,10 @@ pub struct RecipeRunRequest {
     pub vars: BTreeMap<String, BTreeMap<String, String>>,
     pub queries: BTreeMap<String, String>,
     pub recipes: BTreeMap<String, Recipe>,
+    pub components: BTreeMap<String, ComponentDef>,
     pub workspace_root: PathBuf,
-    pub language_config: RegistryConfig,
     pub codemod_root: PathBuf,
+    pub language_config: RegistryConfig,
 }
 
 pub(crate) const MAX_OPS: usize = 50_000;
@@ -62,6 +63,8 @@ pub(crate) struct HostInner {
     pub(crate) vars: BTreeMap<String, BTreeMap<String, String>>,
     pub(crate) queries: BTreeMap<String, String>,
     pub(crate) recipes: BTreeMap<String, Recipe>,
+    pub(crate) components: BTreeMap<String, ComponentDef>,
+    pub(crate) component_stack: Vec<String>,
     pub(crate) recipe_path: Option<PathBuf>,
     pub(crate) codemod_root: PathBuf,
     pub(crate) transcript: Vec<TranscriptEvent>,

@@ -9,7 +9,7 @@ host protocol.
 | Component | Location | Role |
 |-----------|----------|------|
 | Luau loader + model | `rust/crates/lua/` | Parse/validate recipe modules, maps, variables, query libs |
-| Luau runtime | `rust/crates/host/src/host_api/handlers.rs` + `registry.rs` + `lua_runtime.rs` | Sandboxed `apply(c)` execution, host API (source of truth in handlers) |
+| Luau runtime | `rust/crates/host/src/host_api/handlers.rs` + `registry.rs` + `lua_runtime.rs` | Sandboxed `apply(c, args)` execution, host API (source of truth in handlers) |
 | Tree-sitter engine | `rust/crates/engine/` | Query evaluation, insert/replace/remove |
 | Core types | `rust/crates/core/` | Patches, file changes, atomic apply, path resolution |
 | Host + MCP | `rust/crates/host/` | Registry, preview/apply/diff, bootstrap, `codemod_mcp` |
@@ -34,7 +34,7 @@ flowchart LR
 
 1. **Determinism** — Same recipe + args + file contents produce the same patches.
 2. **Preview before apply** — Host returns a `previewToken`; apply requires it and optional per-patch selection.
-3. **Single mutation entrypoint** — All edits flow through `apply(c)`; no declarative YAML step lists.
+3. **Single mutation entrypoint** — All edits flow through `apply(c, args)`; no declarative YAML step lists.
 4. **Tree-sitter queries** — Edits target AST nodes via captures.
 5. **Multi-language** — `language` on edit ops (or extension inference) selects grammars.
 
@@ -46,7 +46,7 @@ Recipes are Luau modules:
 return {
   id = "my.recipe",
   args = { ... },
-  apply = function(c) ... end,
+  apply = function(c, args) ... end,
   postExecution = { "dart format ." },  -- optional
 }
 ```
@@ -88,5 +88,5 @@ preview skipped postExec, apply may diverge — surfaced as `applyMayDiverge`.
 ## Recipe runtime
 
 Recipes are sandboxed Luau modules (`rust/crates/lua`, `rust/crates/host/src/host_api/`).
-Mutations happen only in `apply(c)`. MiniJinja is used via `c:template` /
+Mutations happen only in `apply(c, args)`. MiniJinja is used via `c:template` /
 `c:template`. Host API detail: skill `codemod-luau-recipes`.

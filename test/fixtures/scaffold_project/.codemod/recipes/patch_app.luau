@@ -2,7 +2,7 @@ return {
 	id = "patch_app",
 	name = "patch_app",
 	description = "Insert a log line in App.run()",
-	apply = function(c)
+	apply = function(c, args)
 		c:insert({
 			path = "lib/app.dart",
 			language = "dart",

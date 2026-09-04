@@ -225,6 +225,28 @@ fn handle_request(
                     },
                     "required": ["template"]
                   }
+                },
+                {
+                  "name": "component_incremental_scan",
+                  "description": "Incremental component scan: pass dirtyPaths and/or detectChanges to reparse affected roots without full workspace scan.",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "dirtyPaths": { "type": "array", "items": { "type": "string" } },
+                      "detectChanges": { "type": "boolean" },
+                      "force": { "type": "boolean" }
+                    }
+                  }
+                },
+                {
+                  "name": "component_scan",
+                  "description": "Scan stack root components: discover, parse, verify, and optional toSummary for each instance.",
+                  "inputSchema": { "type": "object" }
+                },
+                {
+                  "name": "list_component_instances",
+                  "description": "Alias of component_scan — returns instances, findings, and summaries.",
+                  "inputSchema": { "type": "object" }
                 }
               ]
             })),
@@ -387,6 +409,37 @@ fn handle_request(
                             .to_string(),
                     },
                 ),
+                "component_scan" => handle_command(registry, HostCommand::ComponentScan),
+                "component_incremental_scan" => {
+                    let dirty_paths = arguments
+                        .get("dirtyPaths")
+                        .and_then(|v| v.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| v.as_str().map(String::from))
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                    let detect_changes = arguments
+                        .get("detectChanges")
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false);
+                    let force = arguments
+                        .get("force")
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false);
+                    handle_command(
+                        registry,
+                        HostCommand::ComponentIncrementalScan {
+                            dirty_paths,
+                            detect_changes,
+                            force,
+                        },
+                    )
+                }
+                "list_component_instances" => {
+                    handle_command(registry, HostCommand::ComponentListInstances)
+                }
                 _ => error_json(format!("Unknown tool: {tool}")),
             };
 

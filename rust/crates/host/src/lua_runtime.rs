@@ -16,7 +16,8 @@ use crate::host_api::context::{HostInner, SharedHost};
 pub use crate::host_api::context::{
     RecipeApplyError, RecipeRunRequest, RecipeRunResult, RunKind,
 };
-use crate::host_api::handlers::{do_log, post_exec_cmd};
+use crate::component::delegate::register_component_delegate;
+use crate::host_api::handlers::{do_log, do_resolve, post_exec_cmd};
 use crate::host_api::registry::{rt, set_fn, HOST_METHODS};
 use crate::sandbox::path_sandbox::PathSandbox;
 
@@ -39,6 +40,8 @@ pub fn run_recipe(
         vars: request.vars,
         queries: request.queries,
         recipes: request.recipes,
+        components: request.components,
+        component_stack: Vec::new(),
         recipe_path: recipe.path.clone(),
         codemod_root: request.codemod_root,
         transcript: Vec::new(),
@@ -48,7 +51,10 @@ pub fn run_recipe(
     let ctx = build_ctx(&lua, Rc::clone(&inner)).map_err(|message| {
         take_apply_error(&inner, message)
     })?;
-    if let Err(message) = invoke_apply(&lua, recipe, ctx) {
+    let args_tbl = args_table_from_host(&lua, &inner).map_err(|message| {
+        take_apply_error(&inner, message)
+    })?;
+    if let Err(message) = invoke_apply(&lua, recipe, ctx, args_tbl) {
         return Err(take_apply_error(&inner, message));
     }
     if !recipe.post_execution.is_empty() {
@@ -92,7 +98,12 @@ fn take_apply_error(host: &SharedHost, message: String) -> RecipeApplyError {
     }
 }
 
-pub(crate) fn invoke_apply(lua: &Lua, recipe: &Recipe, ctx: Table) -> Result<(), String> {
+pub(crate) fn invoke_apply(
+    lua: &Lua,
+    recipe: &Recipe,
+    ctx: Table,
+    args: Table,
+) -> Result<(), String> {
     let name = recipe
         .path
         .as_ref()
@@ -103,22 +114,36 @@ pub(crate) fn invoke_apply(lua: &Lua, recipe: &Recipe, ctx: Table) -> Result<(),
         .get("apply")
         .map_err(|_| "recipe apply function is required".to_string())?;
     apply
-        .call::<()>(ctx)
+        .call::<()>((ctx, args))
         .map_err(|e| format!("recipe apply failed: {e}"))
+}
+
+pub(crate) fn args_table_from_host(lua: &Lua, host: &SharedHost) -> Result<Table, String> {
+    let args_tbl = lua.create_table().map_err(|e| e.to_string())?;
+    let inner = host.lock().map_err(|e| e.to_string())?;
+    for (k, v) in &inner.args {
+        args_tbl
+            .set(k.as_str(), json_to_lua(lua, v)?)
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(args_tbl)
+}
+
+pub(crate) fn args_table_from_map(
+    lua: &Lua,
+    args: &std::collections::BTreeMap<String, serde_json::Value>,
+) -> Result<Table, String> {
+    let args_tbl = lua.create_table().map_err(|e| e.to_string())?;
+    for (k, v) in args {
+        args_tbl
+            .set(k.as_str(), json_to_lua(lua, v)?)
+            .map_err(|e| e.to_string())?;
+    }
+    Ok(args_tbl)
 }
 
 pub(crate) fn build_ctx(lua: &Lua, host: SharedHost) -> Result<Table, String> {
     let ctx = lua.create_table().map_err(|e| e.to_string())?;
-    let args_tbl = lua.create_table().map_err(|e| e.to_string())?;
-    {
-        let inner = host.lock().map_err(|e| e.to_string())?;
-        for (k, v) in &inner.args {
-            args_tbl
-                .set(k.as_str(), json_to_lua(lua, v)?)
-                .map_err(|e| e.to_string())?;
-        }
-    }
-    ctx.set("args", args_tbl).map_err(|e| e.to_string())?;
 
     for method in HOST_METHODS {
         (method.register)(lua, &ctx, &host)?;
@@ -143,6 +168,18 @@ pub(crate) fn build_ctx(lua: &Lua, host: SharedHost) -> Result<Table, String> {
         "log",
         move |lua, (_this, args): (Value, mlua::Variadic<Value>)| {
             do_log(&log_host, lua, args).map_err(rt)
+        },
+    )?;
+
+    register_component_delegate(lua, &ctx, &host)?;
+
+    let resolve_host = Rc::clone(&host);
+    set_fn(
+        lua,
+        &ctx,
+        "resolve",
+        move |lua, (_this, template, vars): (Value, String, Option<Table>)| {
+            do_resolve(&resolve_host, lua, template, vars).map_err(rt)
         },
     )?;
 
@@ -192,7 +229,9 @@ fn do_run(host: &SharedHost, lua: &Lua, id: String, args: Option<Table>) -> Resu
             }),
         ));
     }
-    invoke_apply(lua, &child, build_ctx(lua, Rc::clone(host))?)?;
+    let child_ctx = build_ctx(lua, Rc::clone(host))?;
+    let child_args_tbl = args_table_from_host(lua, host)?;
+    invoke_apply(lua, &child, child_ctx, child_args_tbl)?;
     if !child.post_execution.is_empty() {
         for cmd in &child.post_execution {
             post_exec_cmd(host, cmd)?;

@@ -12,7 +12,7 @@ return {
 			label = "String",
 		},
 	},
-	apply = function(c)
+	apply = function(c, args)
 		local query = c:template({ inline = [[
 (class_definition
   name: (identifier) @className

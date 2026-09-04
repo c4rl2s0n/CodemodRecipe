@@ -6,8 +6,8 @@ use thiserror::Error;
 
 use crate::input_kind::InputKind;
 use crate::model::{
-    Arg, ArgFrom, ArgFromSpec, ExplorerMenuEntry, ExplorerMenuKind, MapAsset, QueryLibAsset,
-    Recipe, TypeDef, VariablesAsset,
+    Arg, ArgFrom, ArgFromSpec, ComponentDef, ExplorerMenuEntry, ExplorerMenuKind, MapAsset,
+    QueryLibAsset, Recipe, StackDef, TypeDef, VariablesAsset,
 };
 
 #[derive(Debug, Error)]
@@ -48,6 +48,8 @@ pub enum AssetKind {
     Variables,
     QueryLib,
     Type,
+    Stack,
+    Component,
     Unknown,
 }
 
@@ -58,6 +60,8 @@ pub enum Asset {
     Variables(VariablesAsset),
     QueryLib(QueryLibAsset),
     Type(TypeDef),
+    Stack(StackDef),
+    Component(ComponentDef),
 }
 
 const MAX_INTERRUPTS: u64 = 50_000_000;
@@ -107,6 +111,29 @@ pub fn classify_table(table: &Table) -> Result<AssetKind, LoadError> {
             )));
         }
     }
+    let has_parse = table
+        .get::<Option<mlua::Function>>("parse")
+        .map_err(|e| LoadError::Message(e.to_string()))?
+        .is_some();
+    let has_verify = table
+        .get::<Option<mlua::Function>>("verify")
+        .map_err(|e| LoadError::Message(e.to_string()))?
+        .is_some();
+    if has_parse {
+        if has_verify {
+            return Ok(AssetKind::Component);
+        }
+        return Err(LoadError::Message(
+            "component requires verify when parse is present".to_string(),
+        ));
+    }
+    if table
+        .get::<Option<Table>>("components")
+        .map_err(|e| LoadError::Message(e.to_string()))?
+        .is_some()
+    {
+        return Ok(AssetKind::Stack);
+    }
     if table
         .get::<Option<Table>>("map")
         .map_err(|e| LoadError::Message(e.to_string()))?
@@ -147,8 +174,10 @@ pub fn load_asset(source: &str, chunk_name: &str) -> Result<Asset, LoadError> {
         AssetKind::Variables => Ok(Asset::Variables(load_variables_from_table(&table)?)),
         AssetKind::QueryLib => Ok(Asset::QueryLib(load_query_lib_from_table(&table)?)),
         AssetKind::Type => Ok(Asset::Type(load_type_from_table(&table)?)),
+        AssetKind::Stack => Ok(Asset::Stack(load_stack_from_table(&table, source)?)),
+        AssetKind::Component => Ok(Asset::Component(load_component_from_table(&table, source)?)),
         AssetKind::Unknown => Err(LoadError::Message(
-            "unknown asset shape: expected apply, map, values, queries, or fields".to_string(),
+            "unknown asset shape: expected apply, discover+parse, components (stack), map, values, queries, or fields".to_string(),
         )),
     }
 }
@@ -235,6 +264,130 @@ pub fn load_type(source: &str, chunk_name: &str) -> Result<TypeDef, LoadError> {
 
 pub fn load_type_from_table(table: &Table) -> Result<TypeDef, LoadError> {
     type_from_table(table, None)
+}
+
+pub fn load_stack_from_table(table: &Table, source: &str) -> Result<StackDef, LoadError> {
+    let id = required_string(table, "id")?;
+    let description = optional_string(table, "description")?;
+    let components_tbl: Table = table.get("components").map_err(|_| {
+        LoadError::Message("stack requires components = { ... }".to_string())
+    })?;
+    let components = string_array(&components_tbl)?;
+    if components.is_empty() {
+        return Err(LoadError::Message(
+            "stack components must list at least one component id".to_string(),
+        ));
+    }
+    let globs = optional_string_map_field(table, "globs")?;
+    Ok(StackDef {
+        id,
+        description,
+        components,
+        globs,
+        source: source.to_string(),
+        path: None,
+    })
+}
+
+pub fn load_component_from_table(table: &Table, source: &str) -> Result<ComponentDef, LoadError> {
+    let id = required_string(table, "id")?;
+    if id.trim().is_empty() {
+        return Err(LoadError::Message("component id is required".to_string()));
+    }
+    let description = optional_string(table, "description")?;
+    require_function(table, "parse")?;
+    require_function(table, "verify")?;
+    let operations = parse_operations(table)?;
+    let has_scaffold = parse_scaffold(table)?;
+    Ok(ComponentDef {
+        id,
+        description,
+        operations,
+        has_scaffold,
+        source: source.to_string(),
+        path: None,
+    })
+}
+
+fn parse_scaffold(table: &Table) -> Result<bool, LoadError> {
+    let Ok(scaffold): Result<Table, _> = table.get("scaffold") else {
+        return Ok(false);
+    };
+    match scaffold.get::<Value>("apply") {
+        Ok(Value::Function(_)) => Ok(true),
+        Ok(other) => Err(LoadError::Message(format!(
+            "scaffold requires apply function, got {}",
+            other.type_name()
+        ))),
+        Err(e) => Err(LoadError::Message(format!(
+            "scaffold requires apply function: {e}"
+        ))),
+    }
+}
+
+fn require_function(table: &Table, key: &str) -> Result<(), LoadError> {
+    match table.get::<Value>(key) {
+        Ok(Value::Function(_)) => Ok(()),
+        Ok(other) => Err(LoadError::Message(format!(
+            "component requires {key} function, got {}",
+            other.type_name()
+        ))),
+        Err(e) => Err(LoadError::Message(format!(
+            "component requires {key} function: {e}"
+        ))),
+    }
+}
+
+fn string_array(table: &Table) -> Result<Vec<String>, LoadError> {
+    let mut out = Vec::new();
+    for value in table.sequence_values::<Value>() {
+        match value.map_err(|e| LoadError::Message(e.to_string()))? {
+            Value::String(s) => out.push(s.to_str()?.to_string()),
+            other => {
+                return Err(LoadError::Message(format!(
+                    "expected string in array, got {}",
+                    other.type_name()
+                )));
+            }
+        }
+    }
+    Ok(out)
+}
+
+fn parse_operations(table: &Table) -> Result<Vec<String>, LoadError> {
+    let Ok(ops): Result<Table, _> = table.get("operations") else {
+        return Ok(vec![]);
+    };
+    let mut names = Vec::new();
+    for pair in ops.pairs::<Value, Table>() {
+        let (key, op_tbl) = pair.map_err(|e| LoadError::Message(e.to_string()))?;
+        let name = match key {
+            Value::String(s) => s.to_str()?.to_string(),
+            other => {
+                return Err(LoadError::Message(format!(
+                    "operation name must be string, got {}",
+                    other.type_name()
+                )));
+            }
+        };
+        match op_tbl.get::<Value>("apply") {
+            Ok(Value::Function(_)) => {}
+            Ok(other) => {
+                return Err(LoadError::Message(format!(
+                    "operation {name} requires apply function, got {}",
+                    other.type_name()
+                )));
+            }
+            Err(e) => {
+                return Err(LoadError::Message(format!(
+                    "operation {name} requires apply function: {e}"
+                )));
+            }
+        }
+        names.push(name);
+    }
+    names.sort();
+    Ok(names)
 }
 
 fn recipe_from_table(table: &Table) -> Result<Recipe, LoadError> {
@@ -774,5 +927,49 @@ return {
         let src = r#"return { id = "x" }"#;
         let err = load_asset(src, "x.luau").unwrap_err().to_string();
         assert!(err.contains("unknown asset shape"));
+    }
+
+    #[test]
+    fn classify_table_stack() {
+        let src = r#"return { id = "s", components = { "a.b" } }"#;
+        let lua = new_sandbox().unwrap();
+        let table = eval_return_table(&lua, src, "stack.luau").unwrap();
+        assert_eq!(classify_table(&table).unwrap(), AssetKind::Stack);
+    }
+
+    #[test]
+    fn classify_table_component() {
+        let src = r#"
+return {
+  id = "example.entity",
+  discover = function(c) return {} end,
+  identify = function(c, l) return true end,
+  parse = function(c, l) return {} end,
+  verify = function(c, i) return {} end,
+}
+"#;
+        let lua = new_sandbox().unwrap();
+        let table = eval_return_table(&lua, src, "entity.luau").unwrap();
+        assert_eq!(classify_table(&table).unwrap(), AssetKind::Component);
+    }
+
+    #[test]
+    fn load_asset_stack_and_component() {
+        let stack = r#"return { id = "stack", components = { "a.b" } }"#;
+        let component = r#"
+return {
+  id = "a.b",
+  discover = function(c) return {} end,
+  identify = function(c, l) return true end,
+  parse = function(c, l) return {} end,
+  verify = function(c, i) return {} end,
+}
+"#;
+        assert!(matches!(
+            load_asset(stack, "stack.luau").unwrap(),
+            Asset::Stack(s) if s.id == "stack"
+        ));
+        let loaded = load_asset(component, "a.b.luau").unwrap();
+        assert!(matches!(loaded, Asset::Component(c) if c.id == "a.b"));
     }
 }

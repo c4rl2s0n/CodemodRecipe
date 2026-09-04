@@ -135,6 +135,38 @@ pub enum HostCommand {
         #[serde(default, rename = "queryId")]
         query_id: Option<String>,
     },
+    #[serde(rename = "componentScan")]
+    ComponentScan,
+    #[serde(rename = "componentIncrementalScan")]
+    ComponentIncrementalScan {
+        #[serde(default, rename = "dirtyPaths")]
+        dirty_paths: Vec<String>,
+        #[serde(default, rename = "detectChanges")]
+        detect_changes: bool,
+        #[serde(default)]
+        force: bool,
+    },
+    #[serde(rename = "componentListInstances")]
+    ComponentListInstances,
+    #[serde(rename = "componentInvokeOperation")]
+    ComponentInvokeOperation {
+        #[serde(rename = "instanceId")]
+        instance_id: String,
+        operation: String,
+        #[serde(default)]
+        args: std::collections::BTreeMap<String, serde_json::Value>,
+        #[serde(default)]
+        preview: bool,
+    },
+    #[serde(rename = "componentScaffold")]
+    ComponentScaffold {
+        #[serde(rename = "componentId")]
+        component_id: String,
+        #[serde(default)]
+        args: std::collections::BTreeMap<String, serde_json::Value>,
+        #[serde(default)]
+        preview: bool,
+    },
 }
 
 fn default_true() -> bool {
@@ -432,6 +464,10 @@ pub struct ResolveStaticPathResponse {
     pub path: Option<String>,
     pub static_resolvable: bool,
 }
+
+pub use crate::component::types::{
+    ComponentFinding, ComponentInstance, ComponentInvokeResponse, ComponentScanResponse,
+};
 
 #[cfg(test)]
 mod tests {

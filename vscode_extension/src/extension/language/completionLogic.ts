@@ -115,7 +115,7 @@ export function collectCompletionSuggestions(
       .map((name) => ({
         label: name,
         kind: 'field' as const,
-        detail: 'c.args',
+        detail: 'args',
         range: { start: argsCtx.start, end: character },
       }));
   }
@@ -130,7 +130,10 @@ export function collectCompletionSuggestions(
       detail: m.description,
       range: { start: methodCtx.start, end: character },
     }));
-    if (!methodCtx.typed || HOST_CONTEXT_FIELD.startsWith(methodCtx.typed)) {
+    if (
+      HOST_CONTEXT_FIELD &&
+      (!methodCtx.typed || HOST_CONTEXT_FIELD.startsWith(methodCtx.typed))
+    ) {
       items.unshift({
         label: HOST_CONTEXT_FIELD,
         kind: 'field',

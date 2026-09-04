@@ -6,7 +6,7 @@ return {
 		{ name = "featureDir", required = true, inputKind = "directory" },
 		{ name = "file", required = true, inputKind = "file" },
 	},
-	apply = function(c)
+	apply = function(c, args)
 		c:create({
 			path = c:template({ inline = "lib/generated/{{ featureDir | basename }}_path.dart" }),
 			content = c:template({ inline = [[

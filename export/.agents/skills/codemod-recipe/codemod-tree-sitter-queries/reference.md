@@ -107,7 +107,7 @@ A single pattern may define **multiple captures**. Use extra captures for filter
 
 ```lua
 c:replace({
-  path = c.args.file,
+  path = args.file,
   query = [[
     (class_definition
       name: (identifier) @className
@@ -223,7 +223,7 @@ The Rust engine uses standard `tree_sitter::Query` — predicates supported by t
 (#eq? @a @b)
 ```
 
-Build the predicate literal with Luau (`.. c.args.className`) or MiniJinja (`c:template`) so the query parser sees a concrete string.
+Build the predicate literal with Luau (`.. args.className`) or MiniJinja (`c:template`) so the query parser sees a concrete string.
 
 ### Regular expressions
 
@@ -266,7 +266,7 @@ query = [[
   (class_definition
     name: (identifier) @className
     body: (class_body (block) @body)
-    (#eq? @className "]] .. c.args.className .. [["))
+    (#eq? @className "]] .. args.className .. [["))
 ]]
 ```
 
@@ -344,7 +344,7 @@ Use node names from the grammar for `language` on the op (pack Dart uses `class_
 
 ```lua
 c:insert({
-  path = c.args.file,
+  path = args.file,
   query = c:template({
     inline = [[
 (class_definition
@@ -369,7 +369,7 @@ c:insert({
 
 ```lua
 c:remove({
-  path = c.args.file,
+  path = args.file,
   query = [[
     (class_definition
       name: (identifier) @className
@@ -419,7 +419,7 @@ Recipe:
 
 ```lua
 c:insert({
-  path = c.args.file,
+  path = args.file,
   query = "settings_update_body.scm",
   capture = "body",
   anchor = "end",

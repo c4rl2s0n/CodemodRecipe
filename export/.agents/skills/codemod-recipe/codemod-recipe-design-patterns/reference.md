@@ -76,7 +76,7 @@ Insert, replace, or remove AST nodes in existing files.
 Run a "new feature" workflow end-to-end: create files, wire into existing code, optional
 cleanup.
 
-- Call children with `c:run("child.id")` or `c:run("child.id", { className = c.args.featureName })`.
+- Call children with `c:run("child.id")` or `c:run("child.id", { className = args.featureName })`.
 - Parent args stay on the parent; pass a table to remap or hardcode child args.
 
 ```lua
@@ -86,9 +86,9 @@ return {
     { name = "featureName", required = true },
     { name = "fieldName", required = true },
   },
-  apply = function(c)
-    c:run("create_repository", { className = c.args.featureName })
-    c:run("patch_counter", { className = c.args.featureName })
+  apply = function(c, args)
+    c:run("create_repository", { className = args.featureName })
+    c:run("patch_counter", { className = args.featureName })
     c:run("patch_app")
     c:delete({ path = "lib/legacy/stale.dart", ifMissing = "skip" })
   end,
@@ -159,7 +159,7 @@ Prefer small, reusable atomics composed by orchestrators:
 
 ```lua
 -- scaffold_bloc_feature.luau
-apply = function(c)
+apply = function(c, args)
   c:run("create_bloc_state")
   c:run("create_bloc_event")
   c:run("create_bloc")
@@ -264,7 +264,7 @@ return {
   args = {
     { name = "feature", required = true, inputKind = "text" },
   },
-  apply = function(c)
+  apply = function(c, args)
     c:run("create_bloc_state")
     c:run("create_bloc_event")
     c:run("create_bloc")
@@ -286,7 +286,7 @@ return {
   maps = {
     dart_types = { email = "String", count = "int" },
   },
-  apply = function(c)
+  apply = function(c, args)
     local path = c:template({
       inline = "lib/features/{{ feature | snake_case }}/{{ feature | snake_case }}_state.dart",
     })

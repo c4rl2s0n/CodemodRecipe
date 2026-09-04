@@ -12,7 +12,7 @@ description: >-
 ## What it is
 
 codemod-recipe applies deterministic, AST-safe edits using **sandboxed Luau recipes**
-(any `.luau` or `.lua` module under `.codemod/` that returns `{ id, apply = function(c) ... }`).
+(any `.luau` or `.lua` module under `.codemod/` that returns `{ id, apply = function(c, args) ... }`).
 The `.codemod/recipes/` directory is a convention, not a requirement. The Rust MCP server exposes
 preview/apply tools for agents. Dart is the default language; set `language` on edit ops for non-Dart files.
 

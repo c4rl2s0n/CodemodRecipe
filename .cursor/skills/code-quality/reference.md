@@ -23,7 +23,7 @@ Workspace lints ([`rust/Cargo.toml`](../../../rust/Cargo.toml)):
 Prefer centralized owners:
 
 - `rust/crates/lua/src/load.rs` — parse recipe/map/variable/query-lib tables
-- `rust/crates/host/src/lua_runtime.rs` — sandboxed `apply(c)` host API
+- `rust/crates/host/src/lua_runtime.rs` — sandboxed `apply(c, args)` host API
 - `rust/crates/host/src/protocol_keys.rs` — host transport keys only
 
 YAML DSL codegen (`scripts/generate-dsl-artifacts.sh`) is **deprecated**.

@@ -38,7 +38,7 @@ repo-root `./build.sh`). **Dev fallback:** `cargo run -p codemod_recipe_host
 1. Create a `.codemod/` directory in your workspace root — or run
    **Codemod Recipe: Scaffold Project** (also offered when `.codemod` is missing).
 2. Add Luau recipe modules (`.luau` or `.lua`) anywhere under `.codemod/`.
-   Each recipe must `return { id, apply = function(c) ... end }`. The `.codemod/recipes/`
+   Each recipe must `return { id, apply = function(c, args) ... end }`. The `.codemod/recipes/`
    directory is a convention; the registry identifies recipes by the `apply` function.
    Use dotted ids like `rust.data.add_log_line` to organize the Recipes tab tree.
 3. Optionally add maps, variables, query libraries, and types as Luau modules anywhere under
@@ -112,7 +112,7 @@ Default chords: `Ctrl+Shift+I` then `1` (run/auto), `Ctrl+Shift+T` then `1` (ope
 
 Under `codemodRecipe.codemodRoot` (default `.codemod`) Luau/Lua recipe files get:
 
-- **Completions** for `c:` methods, edit-spec keys, recipe ids (`id =` / `c:run`), map/var/query ids (`c:map` / `c:var` / `c:queryLib`), `language`, captures, `c.args.*` (from the open recipe’s `args` table), and nested `c:run` args
+- **Completions** for `c:` methods, edit-spec keys, recipe ids (`id =` / `c:run`), map/var/query ids (`c:map` / `c:var` / `c:queryLib`), `language`, captures, `args.*` (from the open recipe’s `args` table), and nested `c:run` args
 - **Go to Definition** on `c:run("recipe.id")`
 - **Hover** on host methods and recipe refs
 - **CodeLens** on top-level `id = "..."` (runner / keybinding / slot)

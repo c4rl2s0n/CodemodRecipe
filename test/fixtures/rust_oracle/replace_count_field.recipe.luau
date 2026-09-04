@@ -6,9 +6,9 @@ return {
 		{ name = "file", required = true, inputKind = "file" },
 	},
 	postExecution = {},
-	apply = function(c)
+	apply = function(c, args)
 		c:replace({
-			path = c.args.file,
+			path = args.file,
 			language = "dart",
 			query = [[
 (class_definition

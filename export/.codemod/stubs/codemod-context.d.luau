@@ -76,12 +76,12 @@ export type QuerySpan = {
 }
 
 export type CodemodContext = {
-	args: { [string]: any },
 	assert: (self: CodemodContext, cond: boolean, msg: string?) -> (),
 	create: (self: CodemodContext, spec: CreateSpec) -> (),
 	delete: (self: CodemodContext, spec: DeleteSpec) -> (),
 	expectMatch: (self: CodemodContext, spec: QueryTableSpec) -> (),
 	expectNoMatch: (self: CodemodContext, spec: QueryTableSpec) -> (),
+	glob: (self: CodemodContext, id: string) -> { [string]: string },
 	insert: (self: CodemodContext, spec: InsertSpec) -> (),
 	log: (self: CodemodContext, ...any) -> (),
 	map: (self: CodemodContext, id: string) -> { [string]: string },
@@ -94,6 +94,7 @@ export type CodemodContext = {
 	remove: (self: CodemodContext, spec: RemoveSpec) -> (),
 	replace: (self: CodemodContext, spec: ReplaceSpec) -> (),
 	run: (self: CodemodContext, id: string, args: { [string]: any }?) -> (),
+	stem: (self: CodemodContext, id: string) -> string,
 	template: (self: CodemodContext, spec: TemplateSpec) -> string,
 	var: (self: CodemodContext, id: string) -> { [string]: string },
 }

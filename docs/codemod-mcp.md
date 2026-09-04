@@ -2,7 +2,7 @@
 
 MCP server that exposes the Rust `CodemodHost` protocol as tools for AI agents.
 Use it to preview and apply deterministic AST edits from registered **Luau
-recipes** (`.luau` or `.lua` modules anywhere under `.codemod/` that return `{ id, apply = function(c) ... }`)
+recipes** (`.luau` or `.lua` modules anywhere under `.codemod/` that return `{ id, apply = function(c, args) ... }`)
 or `inlineRecipe` Luau source strings. The `.codemod/recipes/` directory is a convention.
 Supports Dart, Rust, Java, Kotlin, SQL/SQLite, and 300+ languages via lazy-loaded
 tree-sitter grammars.
@@ -110,6 +110,16 @@ All tools return a JSON string. Parse it, then check `ok`.
 | `debug_query` | Run a query; return match roots and captures |
 | `generate_query` | Starter query from byte `start`/`end` in a file |
 | `resolve_static_path` | Jinja-render a path with empty args (static paths only) |
+| `component_scan` | Scan stack root components (instances, findings, summaries); populates cache |
+| `list_component_instances` | Alias of `component_scan` |
+| `component_incremental_scan` | Rescan after edits: `dirtyPaths`, `detectChanges`, or `force` |
+
+When `.codemod/stack.luau` and components exist: `component_scan` first, then
+`component_incremental_scan` after file edits (pass `dirtyPaths` when known, or
+`detectChanges: true`). Component mutations (`componentInvokeOperation`) are
+host-dispatch only for now — not an MCP tool. Experiment fixture:
+[flutter-poc.md](flutter-poc.md). Playbook:
+`.agents/skills/codemod-recipe/codemod-mcp-playbook/`.
 
 ## End-to-end workflow
 
@@ -122,7 +132,7 @@ All tools return a JSON string. Parse it, then check `ok`.
 
 ## Preview vs apply
 
-- Both run `apply(c)`. Preview uses a WorkingTree; **postExec is skipped** (listed in transcript).
+- Both run `apply(c, args)`. Preview uses a WorkingTree; **postExec is skipped** (listed in transcript).
 - Apply **re-runs** Luau and flushes before postExec / `postExecution`.
 - `previewToken` = hash(recipe + args + starting file contents).
 
@@ -163,7 +173,7 @@ All tools return a JSON string. Parse it, then check `ok`.
 
 ```json
 {
-  "inlineRecipe": "return {\n  id = \"__inline_insert\",\n  apply = function(c)\n    c:insert({\n      path = \"lib/settings.dart\",\n      query = \"(class_definition name: (identifier) @className body: (class_body (method_signature (function_signature name: (identifier) @methodName)) (function_body (block) @body)) (#eq? @className \\\"Settings\\\") (#eq? @methodName \\\"update\\\"))\",\n      capture = \"body\",\n      anchor = \"end\",\n      text = \"    print('codemod');\\n\",\n    })\n  end,\n}"
+  "inlineRecipe": "return {\n  id = \"__inline_insert\",\n  apply = function(c, args)\n    c:insert({\n      path = \"lib/settings.dart\",\n      query = \"(class_definition name: (identifier) @className body: (class_body (method_signature (function_signature name: (identifier) @methodName)) (function_body (block) @body)) (#eq? @className \\\"Settings\\\") (#eq? @methodName \\\"update\\\"))\",\n      capture = \"body\",\n      anchor = \"end\",\n      text = \"    print('codemod');\\n\",\n    })\n  end,\n}"
 }
 ```
 

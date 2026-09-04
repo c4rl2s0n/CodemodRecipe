@@ -95,7 +95,7 @@ Optional:
 
 ```json
 {
-  "inlineRecipe": "return { id = \"__inline\", apply = function(c) c:insert({ path = \"lib/a.dart\", query = \"(program) @root\", capture = \"root\", anchor = \"end\", text = \"// x\\n\" }) end }"
+  "inlineRecipe": "return { id = \"__inline\", apply = function(c, args) c:insert({ path = \"lib/a.dart\", query = \"(program) @root\", capture = \"root\", anchor = \"end\", text = \"// x\\n\" }) end }"
 }
 ```
 
@@ -149,7 +149,7 @@ Set `language` when the path is ambiguous. See skill `codemod-luau-recipes`.
 
 ```json
 {
-  "inlineRecipe": "return {\n  id = \"__inline_replace\",\n  apply = function(c)\n    c:replace({\n      path = \"lib/settings.dart\",\n      query = \"(class_definition name: (identifier) @className body: (class_body (declaration (initialized_identifier_list (initialized_identifier (identifier) @fieldName))) @member) (#eq? @className \\\"Settings\\\") (#eq? @fieldName \\\"count\\\"))\",\n      capture = \"member\",\n      text = \"  final int count = 0;\"\n    })\n  end,\n}"
+  "inlineRecipe": "return {\n  id = \"__inline_replace\",\n  apply = function(c, args)\n    c:replace({\n      path = \"lib/settings.dart\",\n      query = \"(class_definition name: (identifier) @className body: (class_body (declaration (initialized_identifier_list (initialized_identifier (identifier) @fieldName))) @member) (#eq? @className \\\"Settings\\\") (#eq? @fieldName \\\"count\\\"))\",\n      capture = \"member\",\n      text = \"  final int count = 0;\"\n    })\n  end,\n}"
 }
 ```
 

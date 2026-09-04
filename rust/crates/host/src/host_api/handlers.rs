@@ -12,7 +12,7 @@ use codemod_recipe_lua::host_api::specs::{
 };
 use codemod_recipe_lua::model::{TranscriptEvent, TranscriptStats};
 use codemod_recipe_lua_macros::host_method;
-use mlua::{Lua, Value};
+use mlua::{Lua, Table, Value};
 use serde_json::json;
 
 use crate::engine::post_execution::run_post_execution_command;
@@ -603,6 +603,62 @@ pub(crate) fn do_query_lib(host: &SharedHost, lua: &Lua, id: String) -> Result<V
         .get(&id)
         .ok_or_else(|| format!("unknown query '{id}'"))?;
     lua.create_string(q)
+        .map(Value::String)
+        .map_err(|e| e.to_string())
+}
+
+#[host_method(
+    name = "glob",
+    description = "Workspace-relative glob (single `*` per segment).",
+    string_id,
+    return_type = Table,
+)]
+pub(crate) fn do_glob(host: &SharedHost, lua: &Lua, pattern: String) -> Result<Value, String> {
+    let inner = host.lock().map_err(|e| e.to_string())?;
+    let paths = crate::sandbox::workspace_glob::glob_workspace(
+        inner.sandbox.workspace_root(),
+        &pattern,
+    )?;
+    let tbl = lua.create_table().map_err(|e| e.to_string())?;
+    for (i, path) in paths.iter().enumerate() {
+        tbl.set(i + 1, path.as_str()).map_err(|e| e.to_string())?;
+    }
+    Ok(Value::Table(tbl))
+}
+
+#[host_method(
+    name = "stem",
+    description = "File stem (basename without extension) from a workspace-relative path.",
+    string_id,
+    return_type = String,
+)]
+pub(crate) fn do_stem(_host: &SharedHost, lua: &Lua, path: String) -> Result<Value, String> {
+    let stem = crate::sandbox::path_template::stem_from_path(&path)
+        .ok_or_else(|| format!("cannot derive stem from path: {path}"))?;
+    lua.create_string(stem)
+        .map(Value::String)
+        .map_err(|e| e.to_string())
+}
+
+pub(crate) fn do_resolve(
+    _host: &SharedHost,
+    lua: &Lua,
+    template: String,
+    vars: Option<Table>,
+) -> Result<Value, String> {
+    let mut map = BTreeMap::new();
+    if let Some(tbl) = vars {
+        for pair in tbl.pairs::<String, Value>() {
+            let (k, v) = pair.map_err(|e| e.to_string())?;
+            let s = match v {
+                Value::String(s) => s.to_str().map_err(|e| e.to_string())?.to_string(),
+                other => return Err(format!("resolve vars must be strings, got {}", other.type_name())),
+            };
+            map.insert(k, s);
+        }
+    }
+    let resolved = crate::sandbox::path_template::resolve_template(&template, &map);
+    lua.create_string(resolved)
         .map(Value::String)
         .map_err(|e| e.to_string())
 }

@@ -116,6 +116,8 @@ mod tests {
             "map",
             "var",
             "queryLib",
+            "glob",
+            "stem",
             "assert",
         ] {
             assert!(names.contains(&expected), "missing {expected}");

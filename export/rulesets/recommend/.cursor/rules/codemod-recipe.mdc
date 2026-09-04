@@ -38,7 +38,7 @@ Skills use SKILL.md routers; read `reference.md` in a sub-skill directory when y
 
 ## Recipe runtime
 
-- Recipes are Luau modules that `return { id, args, apply, ... }`. Mutations happen only in `apply(c)`.
+- Recipes are Luau modules that `return { id, args, apply, ... }`. Mutations happen only in `apply(c, args)`.
 - Host API: `c:insert` / `c:replace` / `c:remove` / `c:query` / `c:read` / `c:create` / `c:delete` / `c:run` / `c:postExec` / `c:template` / `c:map` / `c:var` / `c:queryLib`.
 - Preview and apply both execute `apply()`. Preview keeps file ops in a WorkingTree and skips postExec (transcript only). Apply re-runs Lua and flushes before postExec.
 - Tree-sitter queries stay `.scm` or inline strings. Query libraries are Luau under `.codemod/queries/`.

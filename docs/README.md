@@ -48,6 +48,16 @@ Root [README.md](../README.md) shows a compact Luau example and feature status.
 | [tree-sitter-queries.md — Query Tools](tree-sitter-queries.md#query-tools-vs-code) | AST browse, generate/run queries, MCP debug tools |
 | [recipe-shortcuts.md](recipe-shortcuts.md) | Slots, `from` / `contextKey`, explorer menu |
 
+## Platform (components / stacks)
+
+| Doc | Contents |
+|-----|----------|
+| [components.md](components.md) | Component modules, hooks, host commands, operations |
+| [stacks.md](stacks.md) | Stack manifest (`stack.luau`, globs) |
+| [component-contract.md](component-contract.md) | Parse-tree contract (`children`, `source`, context) |
+| [flutter-poc.md](flutter-poc.md) | Reference fixture: scan, incremental rescan, `addStoreField` |
+| [luau-lsp.md](luau-lsp.md) | `--!strict` / stubs for component authoring |
+
 ## Architecture and contributing
 
 | Doc | Contents |

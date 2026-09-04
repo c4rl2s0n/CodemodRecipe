@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use codemod_recipe_lua::load::{load_asset, Asset, LoadError};
-use codemod_recipe_lua::model::{Arg, ArgFrom, ExplorerMenuEntry, Recipe, TypeDef};
+use codemod_recipe_lua::model::{Arg, ArgFrom, ComponentDef, ExplorerMenuEntry, Recipe, StackDef, TypeDef};
 use codemod_recipe_lua::InputKind;
 
 use crate::diagnostics::diag_source::source_file_only;
@@ -20,6 +20,9 @@ pub struct RecipeRegistry {
     queries_by_id: BTreeMap<String, String>,
     types_by_id: BTreeMap<String, TypeDef>,
     recipes: BTreeMap<String, Recipe>,
+    stack: Option<StackDef>,
+    components: BTreeMap<String, ComponentDef>,
+    component_scan_cache: Option<crate::component::cache::ComponentScanCache>,
     diagnostics: Vec<RecipeDiagnostic>,
 }
 
@@ -35,6 +38,9 @@ impl RecipeRegistry {
             queries_by_id: BTreeMap::new(),
             types_by_id: BTreeMap::new(),
             recipes: BTreeMap::new(),
+            stack: None,
+            components: BTreeMap::new(),
+            component_scan_cache: None,
             diagnostics: Vec::new(),
         }
     }
@@ -90,6 +96,32 @@ impl RecipeRegistry {
         &self.recipes
     }
 
+    pub fn stack(&self) -> Option<&StackDef> {
+        self.stack.as_ref()
+    }
+
+    pub fn components(&self) -> &BTreeMap<String, ComponentDef> {
+        &self.components
+    }
+
+    pub fn get_component(&self, id: &str) -> Option<&ComponentDef> {
+        self.components.get(id)
+    }
+
+    pub fn workspace_root(&self) -> &Path {
+        &self.workspace_root
+    }
+
+    pub fn component_scan_cache(&self) -> Option<&crate::component::cache::ComponentScanCache> {
+        self.component_scan_cache.as_ref()
+    }
+
+    pub fn component_scan_cache_mut(
+        &mut self,
+    ) -> &mut Option<crate::component::cache::ComponentScanCache> {
+        &mut self.component_scan_cache
+    }
+
     pub fn language_registry(&mut self) -> &mut codemod_recipe_engine::LanguageRegistry {
         &mut self.language_registry
     }
@@ -100,6 +132,9 @@ impl RecipeRegistry {
         self.queries_by_id.clear();
         self.types_by_id.clear();
         self.recipes.clear();
+        self.stack = None;
+        self.components.clear();
+        self.component_scan_cache = None;
         self.diagnostics.clear();
         self.ast_cache.clear();
 
@@ -113,6 +148,40 @@ impl RecipeRegistry {
             match load_asset(&text, &name) {
                 Ok(asset) => self.register_asset(asset, &path, &relative),
                 Err(err) => self.push_load_error(&relative, err),
+            }
+        }
+        self.validate_stack();
+    }
+
+    fn validate_stack(&mut self) {
+        if self.components.is_empty() {
+            return;
+        }
+        let Some(stack) = self.stack.as_ref() else {
+            self.diagnostics.push(RecipeDiagnostic::simple(
+                "error",
+                "E_STACK_MISSING",
+                "Missing stack manifest at .codemod/stack.luau".to_string(),
+                vec![source_file_only(".codemod/stack.luau")],
+            ));
+            return;
+        };
+        for component_id in &stack.components {
+            if !self.components.contains_key(component_id) {
+                let stack_file = stack
+                    .path
+                    .as_ref()
+                    .map(|p| relative_path(&self.workspace_root, p))
+                    .unwrap_or_else(|| ".codemod/stack.luau".to_string());
+                self.diagnostics.push(RecipeDiagnostic::simple(
+                    "error",
+                    "E_STACK_COMPONENT",
+                    format!(
+                        "stack {} references unknown component {}",
+                        stack.id, component_id
+                    ),
+                    vec![source_file_only(&stack_file)],
+                ));
             }
         }
     }
@@ -160,6 +229,32 @@ impl RecipeRegistry {
                 } else {
                     let id = asset.id.clone();
                     self.types_by_id.insert(id, asset);
+                }
+            }
+            Asset::Stack(mut stack) => {
+                if self.stack.is_some() {
+                    self.diagnostics.push(RecipeDiagnostic::simple(
+                        "error",
+                        "E_DUP_STACK",
+                        "Only one stack manifest is allowed (.codemod/stack.luau)".to_string(),
+                        vec![source_file_only(relative)],
+                    ));
+                } else {
+                    stack.path = Some(path.to_path_buf());
+                    self.stack = Some(stack);
+                }
+            }
+            Asset::Component(mut component) => {
+                if self.components.contains_key(&component.id) {
+                    self.diagnostics.push(RecipeDiagnostic::simple(
+                        "error",
+                        "E_DUP_ID",
+                        format!("Duplicate component id {}", component.id),
+                        vec![source_file_only(relative)],
+                    ));
+                } else {
+                    component.path = Some(path.to_path_buf());
+                    self.components.insert(component.id.clone(), component);
                 }
             }
         }
