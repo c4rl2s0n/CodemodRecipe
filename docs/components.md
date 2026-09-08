@@ -34,7 +34,7 @@ return {
 }
 ```
 
-Classification: a module with `parse` and `verify` loads as `AssetKind::Component`.
+Classification: a module with top-level `id` plus `parse` and `verify` loads as `AssetKind::Component`. Helpers without `id` are libraries (`require`-able); see [luau-lsp.md](./luau-lsp.md#runtime-require-library-helpers).
 
 ## Hooks
 

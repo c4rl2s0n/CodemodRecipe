@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use codemod_recipe_lua::eval_return_table;
+use codemod_recipe_lua::{eval_return_table, require_chunk_name};
 use mlua::{Function, Lua, Table, Value};
 
 use crate::host_api::context::SharedHost;
@@ -142,9 +142,9 @@ fn call_child_hook(
     let name = component
         .path
         .as_ref()
-        .and_then(|p| p.to_str())
-        .unwrap_or(component.id.as_str());
-    let module = eval_return_table(lua, &component.source, name).map_err(|e| e.to_string())?;
+        .map(|p| require_chunk_name(p))
+        .unwrap_or_else(|| component.id.clone());
+    let module = eval_return_table(lua, &component.source, &name).map_err(|e| e.to_string())?;
     let func: Function = module
         .get(hook)
         .map_err(|_| format!("component {} has no {hook} hook", component.id))?;

@@ -1,5 +1,6 @@
 use mlua::{Lua, Table, Value};
 use std::collections::BTreeMap;
+use std::path::Path;
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use thiserror::Error;
@@ -50,6 +51,8 @@ pub enum AssetKind {
     Type,
     Stack,
     Component,
+    /// Helper module (no top-level `id`); not catalogued, loadable via `require`.
+    Library,
     Unknown,
 }
 
@@ -64,10 +67,38 @@ pub enum Asset {
     Component(ComponentDef),
 }
 
+/// Outcome of loading a `.codemod` Luau module for the catalog.
+#[derive(Debug)]
+pub enum LoadResult {
+    Asset(Asset),
+    /// Helper module — not registered as a catalog asset.
+    Library,
+}
+
 const MAX_INTERRUPTS: u64 = 50_000_000;
 
+/// True for IDE-only declaration stubs (`.d.luau` / `.d.lua`).
+pub fn is_declaration_file_name(path: &Path) -> bool {
+    path.file_name()
+        .and_then(|n| n.to_str())
+        .map(|name| name.ends_with(".d.luau") || name.ends_with(".d.lua"))
+        .unwrap_or(false)
+}
+
 pub fn new_sandbox() -> Result<Lua, LoadError> {
+    new_sandbox_inner(None)
+}
+
+/// Sandbox with `require` limited to Library modules under `codemod_root`.
+pub fn new_sandbox_with_require(codemod_root: &Path) -> Result<Lua, LoadError> {
+    new_sandbox_inner(Some(codemod_root))
+}
+
+fn new_sandbox_inner(codemod_root: Option<&Path>) -> Result<Lua, LoadError> {
     let lua = Lua::new();
+    if let Some(root) = codemod_root {
+        crate::require::install_codemod_require(&lua, root)?;
+    }
     lua.sandbox(true)
         .map_err(|e| LoadError::Message(format!("failed to enable Luau sandbox: {e}")))?;
     let counter = Arc::new(AtomicU64::new(0));
@@ -101,20 +132,38 @@ pub fn eval_return_table(lua: &Lua, source: &str, chunk_name: &str) -> Result<Ta
 }
 
 pub fn classify_table(table: &Table) -> Result<AssetKind, LoadError> {
-    match table.get::<Value>("apply") {
-        Ok(Value::Function(_)) => return Ok(AssetKind::Recipe),
-        Ok(Value::Nil) | Err(_) => {}
+    let has_id = match table.get::<Value>("id") {
+        Ok(Value::Nil) | Err(_) => false,
+        Ok(_) => true,
+    };
+    let has_apply = match table.get::<Value>("apply") {
+        Ok(Value::Function(_)) => true,
+        Ok(Value::Nil) | Err(_) => false,
         Ok(other) => {
             return Err(LoadError::Message(format!(
                 "apply must be a function, got {}",
                 other.type_name()
             )));
         }
-    }
+    };
     let has_parse = table
         .get::<Option<mlua::Function>>("parse")
         .map_err(|e| LoadError::Message(e.to_string()))?
         .is_some();
+
+    if !has_id {
+        if has_apply || has_parse {
+            return Err(LoadError::Message(
+                "asset requires top-level id (apply/parse without id is not a library module)"
+                    .to_string(),
+            ));
+        }
+        return Ok(AssetKind::Library);
+    }
+
+    if has_apply {
+        return Ok(AssetKind::Recipe);
+    }
     let has_verify = table
         .get::<Option<mlua::Function>>("verify")
         .map_err(|e| LoadError::Message(e.to_string()))?
@@ -165,20 +214,55 @@ pub fn classify_table(table: &Table) -> Result<AssetKind, LoadError> {
     Ok(AssetKind::Unknown)
 }
 
-pub fn load_asset(source: &str, chunk_name: &str) -> Result<Asset, LoadError> {
-    let lua = new_sandbox()?;
+pub fn load_asset(source: &str, chunk_name: &str) -> Result<LoadResult, LoadError> {
+    load_asset_with_root(source, chunk_name, None)
+}
+
+/// Load a catalog asset; when `codemod_root` is set, top-level `require` of Library helpers is allowed.
+pub fn load_asset_with_root(
+    source: &str,
+    chunk_name: &str,
+    codemod_root: Option<&Path>,
+) -> Result<LoadResult, LoadError> {
+    let lua = match codemod_root {
+        Some(root) => new_sandbox_with_require(root)?,
+        None => new_sandbox()?,
+    };
     let table = eval_return_table(&lua, source, chunk_name)?;
     match classify_table(&table)? {
-        AssetKind::Recipe => Ok(Asset::Recipe(load_recipe_from_table(&table, source)?)),
-        AssetKind::Map => Ok(Asset::Map(load_map_from_table(&table)?)),
-        AssetKind::Variables => Ok(Asset::Variables(load_variables_from_table(&table)?)),
-        AssetKind::QueryLib => Ok(Asset::QueryLib(load_query_lib_from_table(&table)?)),
-        AssetKind::Type => Ok(Asset::Type(load_type_from_table(&table)?)),
-        AssetKind::Stack => Ok(Asset::Stack(load_stack_from_table(&table, source)?)),
-        AssetKind::Component => Ok(Asset::Component(load_component_from_table(&table, source)?)),
+        AssetKind::Library => Ok(LoadResult::Library),
+        AssetKind::Recipe => Ok(LoadResult::Asset(Asset::Recipe(load_recipe_from_table(
+            &table, source,
+        )?))),
+        AssetKind::Map => Ok(LoadResult::Asset(Asset::Map(load_map_from_table(&table)?))),
+        AssetKind::Variables => Ok(LoadResult::Asset(Asset::Variables(
+            load_variables_from_table(&table)?,
+        ))),
+        AssetKind::QueryLib => Ok(LoadResult::Asset(Asset::QueryLib(
+            load_query_lib_from_table(&table)?,
+        ))),
+        AssetKind::Type => Ok(LoadResult::Asset(Asset::Type(load_type_from_table(
+            &table,
+        )?))),
+        AssetKind::Stack => Ok(LoadResult::Asset(Asset::Stack(load_stack_from_table(
+            &table, source,
+        )?))),
+        AssetKind::Component => Ok(LoadResult::Asset(Asset::Component(
+            load_component_from_table(&table, source)?,
+        ))),
         AssetKind::Unknown => Err(LoadError::Message(
             "unknown asset shape: expected apply, parse+verify (component), components (stack), map, values, queries, or fields".to_string(),
         )),
+    }
+}
+
+/// Classify a loaded module table for `require`: libraries are allowed; assets are rejected.
+pub fn assert_library_module(table: &Table) -> Result<(), LoadError> {
+    match classify_table(table)? {
+        AssetKind::Library => Ok(()),
+        kind => Err(LoadError::Message(format!(
+            "cannot require {kind:?} module; use c:run / c:component / catalog lookup for assets (helpers must not have top-level id)"
+        ))),
     }
 }
 
@@ -931,14 +1015,17 @@ return {
 }
 "#;
         let asset = load_asset(src, "demo.luau").unwrap();
-        assert!(matches!(asset, Asset::Recipe(r) if r.id == "demo.insert"));
+        assert!(matches!(asset, LoadResult::Asset(Asset::Recipe(r)) if r.id == "demo.insert"));
     }
 
     #[test]
     fn load_asset_map() {
         let src = r#"return { id = "m", map = { a = "b" } }"#;
         let asset = load_asset(src, "m.luau").unwrap();
-        assert!(matches!(asset, Asset::Map(m) if m.id == "m" && m.map["a"] == "b"));
+        assert!(matches!(
+            asset,
+            LoadResult::Asset(Asset::Map(m)) if m.id == "m" && m.map["a"] == "b"
+        ));
     }
 
     #[test]
@@ -946,6 +1033,32 @@ return {
         let src = r#"return { id = "x" }"#;
         let err = load_asset(src, "x.luau").unwrap_err().to_string();
         assert!(err.contains("unknown asset shape"));
+    }
+
+    #[test]
+    fn classify_table_library() {
+        let src = r#"return { contains = function(s, sub) return true end }"#;
+        let lua = new_sandbox().unwrap();
+        let table = eval_return_table(&lua, src, "lib.luau").unwrap();
+        assert_eq!(classify_table(&table).unwrap(), AssetKind::Library);
+    }
+
+    #[test]
+    fn classify_table_apply_without_id_is_malformed() {
+        let src = r#"return { apply = function(c) end }"#;
+        let lua = new_sandbox().unwrap();
+        let table = eval_return_table(&lua, src, "bad.luau").unwrap();
+        let err = classify_table(&table).unwrap_err().to_string();
+        assert!(err.contains("requires top-level id"));
+    }
+
+    #[test]
+    fn load_asset_library() {
+        let src = r#"return { helper = function() return 1 end }"#;
+        assert!(matches!(
+            load_asset(src, "lib.luau").unwrap(),
+            LoadResult::Library
+        ));
     }
 
     #[test]
@@ -984,9 +1097,12 @@ return {
 "#;
         assert!(matches!(
             load_asset(stack, "stack.luau").unwrap(),
-            Asset::Stack(s) if s.id == "stack"
+            LoadResult::Asset(Asset::Stack(s)) if s.id == "stack"
         ));
         let loaded = load_asset(component, "a.b.luau").unwrap();
-        assert!(matches!(loaded, Asset::Component(c) if c.id == "a.b"));
+        assert!(matches!(
+            loaded,
+            LoadResult::Asset(Asset::Component(c)) if c.id == "a.b"
+        ));
     }
 }

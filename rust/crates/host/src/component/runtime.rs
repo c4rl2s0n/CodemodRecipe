@@ -6,7 +6,7 @@ use std::sync::Mutex;
 use codemod_recipe_engine::{LanguageRegistry, RegistryConfig};
 use codemod_recipe_lua::json_lua::{json_to_lua, lua_to_json};
 use codemod_recipe_lua::model::ComponentDef;
-use codemod_recipe_lua::{eval_return_table, new_sandbox};
+use codemod_recipe_lua::{eval_return_table, new_sandbox_with_require, require_chunk_name};
 use mlua::{Function, Lua, Table, Value};
 
 use crate::component::scan::{
@@ -30,6 +30,14 @@ pub struct ComponentRunContext {
     pub workspace_root: PathBuf,
     pub codemod_root: PathBuf,
     pub language_config: RegistryConfig,
+}
+
+fn component_chunk_name(component: &ComponentDef) -> String {
+    component
+        .path
+        .as_ref()
+        .map(|p| require_chunk_name(p))
+        .unwrap_or_else(|| component.id.clone())
 }
 
 impl ComponentRunContext {
@@ -70,12 +78,8 @@ pub(crate) fn invoke_component_hook(
     arg: Option<serde_json::Value>,
 ) -> Result<Value, String> {
     let ctx_table = build_ctx(lua, host)?;
-    let name = component
-        .path
-        .as_ref()
-        .and_then(|p| p.to_str())
-        .unwrap_or(component.id.as_str());
-    let module = eval_return_table(lua, &component.source, name).map_err(|e| e.to_string())?;
+    let name = component_chunk_name(component);
+    let module = eval_return_table(lua, &component.source, &name).map_err(|e| e.to_string())?;
     let func: Function = module.get(hook).map_err(|_| {
         if hook == "readSource" {
             format!("component {} has no readSource hook", component.id)
@@ -106,12 +110,8 @@ pub(crate) fn try_invoke_component_hook(
     host: SharedHost,
     arg: Option<serde_json::Value>,
 ) -> Result<Option<Value>, String> {
-    let name = component
-        .path
-        .as_ref()
-        .and_then(|p| p.to_str())
-        .unwrap_or(component.id.as_str());
-    let module = eval_return_table(lua, &component.source, name).map_err(|e| e.to_string())?;
+    let name = component_chunk_name(component);
+    let module = eval_return_table(lua, &component.source, &name).map_err(|e| e.to_string())?;
     if module
         .get::<Option<Function>>(hook)
         .map_err(|e| e.to_string())?
@@ -188,18 +188,14 @@ pub fn invoke_operation(
         Ok(h) => h,
         Err(message) => return ComponentInvokeResponse::fail(message),
     };
-    let lua = match new_sandbox() {
+    let lua = match new_sandbox_with_require(&ctx.codemod_root) {
         Ok(l) => l,
         Err(e) => return ComponentInvokeResponse::fail(e.to_string()),
     };
     let result = (|| -> Result<ComponentInvokeResponse, String> {
         let ctx_table = build_ctx(&lua, Rc::clone(&host))?;
-        let name = component
-            .path
-            .as_ref()
-            .and_then(|p| p.to_str())
-            .unwrap_or(component.id.as_str());
-        let module = eval_return_table(&lua, &component.source, name).map_err(|e| e.to_string())?;
+        let name = component_chunk_name(&component);
+        let module = eval_return_table(&lua, &component.source, &name).map_err(|e| e.to_string())?;
         let ops: Table = module
             .get("operations")
             .map_err(|e| format!("operations table missing: {e}"))?;
@@ -298,18 +294,14 @@ pub fn invoke_scaffold(
         Ok(h) => h,
         Err(message) => return ComponentInvokeResponse::fail(message),
     };
-    let lua = match new_sandbox() {
+    let lua = match new_sandbox_with_require(&ctx.codemod_root) {
         Ok(l) => l,
         Err(e) => return ComponentInvokeResponse::fail(e.to_string()),
     };
     let result = (|| -> Result<ComponentInvokeResponse, String> {
         let ctx_table = build_ctx(&lua, Rc::clone(&host))?;
-        let name = component
-            .path
-            .as_ref()
-            .and_then(|p| p.to_str())
-            .unwrap_or(component.id.as_str());
-        let module = eval_return_table(&lua, &component.source, name).map_err(|e| e.to_string())?;
+        let name = component_chunk_name(&component);
+        let module = eval_return_table(&lua, &component.source, &name).map_err(|e| e.to_string())?;
         let scaffold: Table = module
             .get("scaffold")
             .map_err(|e| format!("scaffold table missing: {e}"))?;
@@ -486,7 +478,7 @@ fn invoke_read_hook(
         Ok(h) => h,
         Err(message) => return ComponentInvokeResponse::fail(message),
     };
-    let lua = match new_sandbox() {
+    let lua = match new_sandbox_with_require(&ctx.codemod_root) {
         Ok(l) => l,
         Err(e) => return ComponentInvokeResponse::fail(e.to_string()),
     };

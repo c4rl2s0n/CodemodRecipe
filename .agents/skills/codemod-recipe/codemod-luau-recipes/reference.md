@@ -175,8 +175,11 @@ Shared assets are Luau modules:
 | `.codemod/variables/*.luau` | `values` table | `{ id = "...", values = { key = "value" } }` |
 | `.codemod/queries/*.luau` | `queries` table | `{ id = "...", queries = { name = "(...) @x" } }` |
 
-These files can live anywhere under `.codemod/`; the registry classifies them by their returned
-table shape, not by directory.
+These files can live anywhere under `.codemod/`; the registry classifies them by top-level
+`id` plus returned table shape, not by directory. Modules **without** `id` are libraries
+(not catalogued); `require` them from recipes/components under `.codemod/`
+([docs/luau-lsp.md](../../../../docs/luau-lsp.md#runtime-require-library-helpers)).
+`.d.luau` stubs remain IDE-only.
 
 ```lua
 local m = c:map("column_type")

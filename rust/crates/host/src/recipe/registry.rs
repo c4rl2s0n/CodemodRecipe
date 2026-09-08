@@ -1,7 +1,8 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use codemod_recipe_lua::load::{load_asset, Asset, LoadError};
+use codemod_recipe_lua::load::{load_asset_with_root, Asset, LoadError, LoadResult};
+use codemod_recipe_lua::require_chunk_name;
 use codemod_recipe_lua::model::{
     Arg, ArgFrom, ComponentDef, ExplorerMenuEntry, Recipe, StackDef, TypeDef,
 };
@@ -177,9 +178,10 @@ impl RecipeRegistry {
                 continue;
             };
             let relative = relative_path(&self.workspace_root, &path);
-            let name = path.to_string_lossy();
-            match load_asset(&text, &name) {
-                Ok(asset) => self.register_asset(asset, &path, &relative),
+            let name = require_chunk_name(&path);
+            match load_asset_with_root(&text, &name, Some(&self.codemod_root)) {
+                Ok(LoadResult::Asset(asset)) => self.register_asset(asset, &path, &relative),
+                Ok(LoadResult::Library) => {}
                 Err(err) => self.push_load_error(&relative, err),
             }
         }
@@ -509,10 +511,7 @@ fn visit(dir: &Path, out: &mut Vec<PathBuf>) {
 }
 
 fn is_declaration_file(path: &Path) -> bool {
-    let Some(name) = path.file_name().and_then(|s| s.to_str()) else {
-        return false;
-    };
-    name.ends_with(".d.luau") || name.ends_with(".d.lua")
+    codemod_recipe_lua::is_declaration_file_name(path)
 }
 
 fn relative_path(root: &Path, path: &Path) -> String {

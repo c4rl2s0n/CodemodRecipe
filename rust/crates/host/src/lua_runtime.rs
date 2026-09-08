@@ -6,7 +6,7 @@ use std::sync::Mutex;
 use codemod_recipe_engine::LanguageRegistry;
 use codemod_recipe_lua::json_lua::{json_to_lua, lua_to_json};
 use codemod_recipe_lua::model::{Recipe, TranscriptEvent};
-use codemod_recipe_lua::{eval_return_table, new_sandbox};
+use codemod_recipe_lua::{eval_return_table, new_sandbox_with_require, require_chunk_name};
 use codemod_recipe_lua_macros::host_method;
 use mlua::{Lua, Table, Value};
 use serde_json::json;
@@ -23,7 +23,7 @@ pub fn run_recipe(
     recipe: &Recipe,
     request: RecipeRunRequest,
 ) -> Result<RecipeRunResult, RecipeApplyError> {
-    let lua = new_sandbox().map_err(|e| RecipeApplyError {
+    let lua = new_sandbox_with_require(&request.codemod_root).map_err(|e| RecipeApplyError {
         message: e.to_string(),
         transcript: Vec::new(),
     })?;
@@ -41,7 +41,7 @@ pub fn run_recipe(
         components: request.components,
         component_stack: Vec::new(),
         recipe_path: recipe.path.clone(),
-        codemod_root: request.codemod_root,
+        codemod_root: request.codemod_root.clone(),
         transcript: Vec::new(),
         saw_post_exec: false,
         op_count: 0,
@@ -103,9 +103,9 @@ pub(crate) fn invoke_apply(
     let name = recipe
         .path
         .as_ref()
-        .and_then(|p| p.to_str())
-        .unwrap_or(recipe.id.as_str());
-    let table = eval_return_table(lua, &recipe.source, name).map_err(|e| e.to_string())?;
+        .map(|p| require_chunk_name(p))
+        .unwrap_or_else(|| recipe.id.clone());
+    let table = eval_return_table(lua, &recipe.source, &name).map_err(|e| e.to_string())?;
     let apply: mlua::Function = table
         .get("apply")
         .map_err(|_| "recipe apply function is required".to_string())?;

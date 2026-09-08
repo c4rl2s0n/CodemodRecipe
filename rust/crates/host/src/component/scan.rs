@@ -213,7 +213,8 @@ pub(crate) fn scan_component(
     component: &ComponentDef,
 ) -> Result<(Vec<ComponentInstance>, Vec<ComponentFinding>), String> {
     let host = make_host(ctx, BTreeMap::new())?;
-    let lua = codemod_recipe_lua::new_sandbox().map_err(|e| e.to_string())?;
+    let lua = codemod_recipe_lua::new_sandbox_with_require(&ctx.codemod_root)
+        .map_err(|e| e.to_string())?;
     let locators = collect_identify_locators(&lua, ctx, component, Rc::clone(&host))?;
     scan_component_contexts(&lua, ctx, component, Rc::clone(&host), locators)
 }
@@ -224,7 +225,8 @@ pub(crate) fn identify_locators_for_component(
     component: &ComponentDef,
 ) -> Result<Vec<serde_json::Value>, String> {
     let host = make_host(ctx, BTreeMap::new())?;
-    let lua = codemod_recipe_lua::new_sandbox().map_err(|e| e.to_string())?;
+    let lua = codemod_recipe_lua::new_sandbox_with_require(&ctx.codemod_root)
+        .map_err(|e| e.to_string())?;
     collect_identify_locators(&lua, ctx, component, host)
 }
 
@@ -234,7 +236,8 @@ fn rescan_root_context(
     locator: serde_json::Value,
 ) -> Result<(Vec<ComponentInstance>, Vec<ComponentFinding>), String> {
     let host = make_host(ctx, BTreeMap::new())?;
-    let lua = codemod_recipe_lua::new_sandbox().map_err(|e| e.to_string())?;
+    let lua = codemod_recipe_lua::new_sandbox_with_require(&ctx.codemod_root)
+        .map_err(|e| e.to_string())?;
     scan_component_contexts(&lua, ctx, component, Rc::clone(&host), vec![locator])
 }
 

@@ -114,6 +114,8 @@ the recipe source; CodeLens on `id = "…"`; go-to-definition on `c:run("…")`.
 Install **Luau Language Server** (`JohnnyMorganz.luau-lsp`) and point it at
 `.codemod/stubs/codemod-context.d.luau` (via scaffolded
 `luau-lsp.types.definitionFiles`) for typed `CodemodContext` on `apply(c, args)`.
+Helper modules under `.codemod/` with **no** top-level `id` are libraries you can
+`require` at runtime; `.d.luau` stubs stay IDE-only — see [luau-lsp.md](./luau-lsp.md).
 If that stub is stale after upgrading the extension/host API, run
 **Codemod Recipe: Update Project Scaffold** (or MCP `bootstrap_project` with
 `force`) — soft Scaffold skips existing files. **Refresh Recipes** only
@@ -271,7 +273,7 @@ Full guide: [recipe-templates.md](recipe-templates.md).
 
 ### Maps, variables, types, and query libraries
 
-Shared assets are Luau modules (`*.luau` or `*.lua`) anywhere under `.codemod/`. The registry identifies each asset by its returned table shape, so the directories below are conventions, not requirements:
+Shared assets are Luau modules (`*.luau` or `*.lua`) anywhere under `.codemod/`. A top-level **`id`** marks asset intent; the registry classifies by shape (`apply`, `parse`+`verify`, `map`, …). Modules **without** `id` are libraries (not catalogued) and may be `require`d — see [luau-lsp.md](./luau-lsp.md#runtime-require-library-helpers). Directories below are conventions, not requirements:
 
 | Kind | Conventional path | Return shape |
 |------|-------------------|--------------|
