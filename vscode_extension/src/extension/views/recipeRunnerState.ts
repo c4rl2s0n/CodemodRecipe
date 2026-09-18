@@ -7,6 +7,7 @@ import {
   type ComponentInstance,
   type ComponentSchema,
   type ContextRecipeMatch,
+  type ComponentCoverageResponse,
   type FilePreview,
   type RecipeDiagnostic,
   type RecipeSchema,
@@ -53,6 +54,7 @@ export class RecipeRunnerState {
   componentOpError: string | undefined;
   componentDryRunResult: unknown | undefined;
   componentDryRunHook: string | undefined;
+  componentCoverage: ComponentCoverageResponse | undefined = undefined;
 
   setRecipesRefreshing(inFlight: boolean): void {
     this.recipesRefreshing = inFlight;
@@ -90,6 +92,10 @@ export class RecipeRunnerState {
     ) {
       this.selectedInstanceId = undefined;
     }
+  }
+
+  setComponentCoverage(coverage: ComponentCoverageResponse | undefined): void {
+    this.componentCoverage = coverage;
   }
 
   selectComponent(componentId: string, detail?: ComponentDetailSchema): void {
@@ -288,6 +294,7 @@ export class RecipeRunnerState {
       componentOpError: this.componentOpError,
       componentDryRunResult: this.componentDryRunResult,
       componentDryRunHook: this.componentDryRunHook,
+      componentCoverage: this.componentCoverage,
     };
   }
 }

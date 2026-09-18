@@ -39,6 +39,12 @@ export interface ExtensionClient {
   selectComponentInstance(instanceId: string): void;
   selectComponentAction(action: string): void;
   componentScan(): void;
+  componentCoverage(): void;
+  openCoverageGaps(
+    path: string,
+    gaps: Array<{ from: number; to: number }>
+  ): void;
+  clearCoverageGaps(): void;
   componentPreview(args: ArgValues, requestId: number): void;
   componentApply(args: ArgValues, requestId: number): void;
   componentDryRun(hook: string, requestId: number): void;
@@ -262,6 +268,15 @@ export function createExtensionClient(deps: ExtensionClientDeps): ExtensionClien
     },
     componentScan() {
       post({ type: WEBVIEW_TO_EXTENSION.componentScan });
+    },
+    componentCoverage() {
+      post({ type: WEBVIEW_TO_EXTENSION.componentCoverage });
+    },
+    openCoverageGaps(path: string, gaps: Array<{ from: number; to: number }>) {
+      post({ type: WEBVIEW_TO_EXTENSION.openCoverageGaps, path, gaps });
+    },
+    clearCoverageGaps() {
+      post({ type: WEBVIEW_TO_EXTENSION.clearCoverageGaps });
     },
     componentPreview(args: ArgValues, requestId: number) {
       post({ type: WEBVIEW_TO_EXTENSION.componentPreview, args, requestId });

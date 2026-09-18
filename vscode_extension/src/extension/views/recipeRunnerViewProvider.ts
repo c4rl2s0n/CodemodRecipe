@@ -18,6 +18,7 @@ import {
   type RecipeRunnerHandlerHost,
 } from './recipeRunnerHandlers';
 import type { RecipeRepository } from '../recipes/recipeRepository';
+import { CoverageDecorations } from '../coverage/coverageDecorations';
 
 export class RecipeRunnerViewProvider
   implements vscode.WebviewViewProvider, RecipeRunnerHandlerHost
@@ -31,6 +32,7 @@ export class RecipeRunnerViewProvider
   /** Serialize webview messages so preview/pick cannot overlap silently. */
   private messageChain: Promise<void> = Promise.resolve();
   readonly state = new RecipeRunnerState();
+  private readonly coverageDecorations = new CoverageDecorations();
   private _scaffoldHandler: (() => Promise<void>) | undefined;
   private _recipeRepository: RecipeRepository | undefined;
   private _runtimeDiagnostics: ((diagnostics: readonly RecipeDiagnostic[]) => void) | undefined;
@@ -172,6 +174,8 @@ export class RecipeRunnerViewProvider
 
   clearComponentScan(): void {
     this.state.setComponentScan([], [], undefined);
+    this.state.setComponentCoverage(undefined);
+    this.coverageDecorations.clear();
     this.postState();
   }
 
@@ -184,11 +188,14 @@ export class RecipeRunnerViewProvider
           [],
           response.error ?? 'component scan failed'
         );
+        this.state.setComponentCoverage(undefined);
       } else {
         this.state.setComponentScan(
           response.instances ?? [],
           response.findings ?? []
         );
+        await this.refreshComponentCoverage();
+        return;
       }
     } catch (err) {
       this.state.setComponentScan(
@@ -196,6 +203,7 @@ export class RecipeRunnerViewProvider
         [],
         err instanceof Error ? err.message : String(err)
       );
+      this.state.setComponentCoverage(undefined);
     }
     this.postState();
   }
@@ -217,12 +225,42 @@ export class RecipeRunnerViewProvider
           response.instances ?? [],
           response.findings ?? []
         );
+        await this.refreshComponentCoverage();
+        return;
       }
     } catch (err) {
       this.state.componentScanError =
         err instanceof Error ? err.message : String(err);
     }
     this.postState();
+  }
+
+  async refreshComponentCoverage(): Promise<void> {
+    try {
+      const coverage = await this.bridge.componentCoverage();
+      this.state.setComponentCoverage(coverage);
+    } catch (err) {
+      this.state.setComponentCoverage({
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+    this.postState();
+  }
+
+  async openCoverageGaps(
+    relativePath: string,
+    gaps: ReadonlyArray<{ from: number; to: number }>
+  ): Promise<void> {
+    await this.coverageDecorations.openWithGaps(
+      this.workspaceRoot,
+      relativePath,
+      gaps
+    );
+  }
+
+  clearCoverageGaps(): void {
+    this.coverageDecorations.clear();
   }
 
   setRecipesRefreshing(inFlight: boolean): void {

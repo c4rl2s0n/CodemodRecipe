@@ -54,6 +54,12 @@ export interface RecipeRunnerHandlerHost {
   /** Publish runtime diagnostics (Problems panel). */
   publishRuntimeDiagnostics?(diagnostics: readonly import('../../shared').RecipeDiagnostic[]): void;
   scanComponents?(): Promise<void>;
+  refreshComponentCoverage?(): Promise<void>;
+  openCoverageGaps?(
+    relativePath: string,
+    gaps: ReadonlyArray<{ from: number; to: number }>
+  ): Promise<void>;
+  clearCoverageGaps?(): void;
 }
 
 export async function handleWebviewMessage(
@@ -128,6 +134,19 @@ export async function handleWebviewMessage(
       if (host.scanComponents) {
         await host.scanComponents();
       }
+      break;
+    case WEBVIEW_TO_EXTENSION.componentCoverage:
+      if (host.refreshComponentCoverage) {
+        await host.refreshComponentCoverage();
+      }
+      break;
+    case WEBVIEW_TO_EXTENSION.openCoverageGaps:
+      if (host.openCoverageGaps) {
+        await host.openCoverageGaps(message.path, message.gaps);
+      }
+      break;
+    case WEBVIEW_TO_EXTENSION.clearCoverageGaps:
+      host.clearCoverageGaps?.();
       break;
     case WEBVIEW_TO_EXTENSION.componentPreview:
       void handleComponentPreview(host, message.args, message.requestId, true);

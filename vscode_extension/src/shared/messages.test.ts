@@ -51,6 +51,23 @@ describe('isWebviewToExtensionMessage', () => {
         recipeId: 'r1',
       })
     ).toBe(true);
+    expect(
+      isWebviewToExtensionMessage({
+        type: WEBVIEW_TO_EXTENSION.componentCoverage,
+      })
+    ).toBe(true);
+    expect(
+      isWebviewToExtensionMessage({
+        type: WEBVIEW_TO_EXTENSION.clearCoverageGaps,
+      })
+    ).toBe(true);
+    expect(
+      isWebviewToExtensionMessage({
+        type: WEBVIEW_TO_EXTENSION.openCoverageGaps,
+        path: 'lib/a.dart',
+        gaps: [{ from: 0, to: 4 }],
+      })
+    ).toBe(true);
   });
 
   it('rejects openDiff without path and preview without requestId', () => {
@@ -73,6 +90,13 @@ describe('isWebviewToExtensionMessage', () => {
       isWebviewToExtensionMessage({
         type: WEBVIEW_TO_EXTENSION.pickFile,
         arg: 'path',
+      })
+    ).toBe(false);
+    expect(
+      isWebviewToExtensionMessage({
+        type: WEBVIEW_TO_EXTENSION.openCoverageGaps,
+        path: 'lib/a.dart',
+        gaps: [{ from: 'x', to: 1 }],
       })
     ).toBe(false);
   });

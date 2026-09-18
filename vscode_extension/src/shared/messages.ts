@@ -25,6 +25,9 @@ export const WEBVIEW_TO_EXTENSION = {
   selectComponentInstance: 'selectComponentInstance',
   selectComponentAction: 'selectComponentAction',
   componentScan: 'componentScan',
+  componentCoverage: 'componentCoverage',
+  openCoverageGaps: 'openCoverageGaps',
+  clearCoverageGaps: 'clearCoverageGaps',
   componentPreview: 'componentPreview',
   componentApply: 'componentApply',
   componentDryRun: 'componentDryRun',
@@ -88,6 +91,13 @@ export type WebviewToExtensionMessage =
       action: string;
     }
   | { type: typeof WEBVIEW_TO_EXTENSION.componentScan }
+  | { type: typeof WEBVIEW_TO_EXTENSION.componentCoverage }
+  | {
+      type: typeof WEBVIEW_TO_EXTENSION.openCoverageGaps;
+      path: string;
+      gaps: Array<{ from: number; to: number }>;
+    }
+  | { type: typeof WEBVIEW_TO_EXTENSION.clearCoverageGaps }
   | {
       type: typeof WEBVIEW_TO_EXTENSION.componentPreview;
       args: ArgValues;
@@ -229,7 +239,20 @@ export function isWebviewToExtensionMessage(
     case WEBVIEW_TO_EXTENSION.selectComponentAction:
       return typeof value.action === 'string';
     case WEBVIEW_TO_EXTENSION.componentScan:
+    case WEBVIEW_TO_EXTENSION.componentCoverage:
+    case WEBVIEW_TO_EXTENSION.clearCoverageGaps:
       return true;
+    case WEBVIEW_TO_EXTENSION.openCoverageGaps:
+      return (
+        typeof value.path === 'string' &&
+        Array.isArray(value.gaps) &&
+        value.gaps.every(
+          (g) =>
+            isRecord(g) &&
+            typeof g.from === 'number' &&
+            typeof g.to === 'number'
+        )
+      );
     case WEBVIEW_TO_EXTENSION.componentPreview:
     case WEBVIEW_TO_EXTENSION.componentApply:
       return isArgRecord(value.args) && typeof value.requestId === 'number';

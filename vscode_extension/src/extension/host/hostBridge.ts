@@ -35,6 +35,7 @@ import type {
   DeriveArgsResponse,
   FilterExplorerRecipesResponse,
   ComponentScanResponse,
+  ComponentCoverageResponse,
   ComponentInvokeResponse,
   DescribeComponentResponse,
   ComponentDetailSchema,
@@ -320,6 +321,10 @@ export class HostBridge {
 
   async componentScan(): Promise<ComponentScanResponse> {
     return this.send<ComponentScanResponse>({ command: 'componentScan' });
+  }
+
+  async componentCoverage(): Promise<ComponentCoverageResponse> {
+    return this.send<ComponentCoverageResponse>({ command: 'componentCoverage' });
   }
 
   async componentIncrementalScan(opts: {

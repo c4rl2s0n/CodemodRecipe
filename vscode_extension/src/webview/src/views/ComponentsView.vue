@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import type {
   ArgValues,
+  ComponentCoverageResponse,
   ComponentDetailSchema,
   ComponentFinding,
   ComponentInstance,
@@ -12,9 +13,14 @@ import type {
 } from '../shared';
 import RecipeArgForm from '../components/RecipeArgForm.vue';
 import ReviewPanel from '../components/ReviewPanel.vue';
+import CoverageTree from '../components/CoverageTree.vue';
 import { useExtensionClient } from '../composables/useExtensionClient';
 import type { FileCardSelection } from '../lib/selection';
 import { defaultFileSelections } from '../lib/selection';
+import {
+  buildCoverageTree,
+  type CoverageTreeNode,
+} from '../lib/coverageTree';
 
 const props = defineProps<{
   components: readonly ComponentSchema[];
@@ -32,6 +38,7 @@ const props = defineProps<{
   opError?: string;
   dryRunResult?: unknown;
   dryRunHook?: string;
+  coverage?: ComponentCoverageResponse;
 }>();
 
 const emit = defineEmits<{
@@ -43,6 +50,7 @@ const expanded = ref<Record<string, boolean>>({});
 const fileSelections = ref<FileCardSelection[]>([]);
 const activeChangeIndex = ref(0);
 const status = ref('');
+const showCoverageView = ref(false);
 const contextMenu = ref<{
   x: number;
   y: number;
@@ -114,6 +122,67 @@ const dryRunResultText = computed(() => {
   }
   return pretty(props.dryRunResult);
 });
+
+const coverageEnabled = computed(
+  () =>
+    !!props.coverage &&
+    props.coverage.ok &&
+    !props.coverage.skipped &&
+    !!props.coverage.aggregate
+);
+
+const coverageChipLabel = computed(() => {
+  if (!props.coverage) {
+    return 'Coverage…';
+  }
+  if (props.coverage.skipped) {
+    return 'Coverage off';
+  }
+  if (!props.coverage.ok) {
+    return 'Coverage error';
+  }
+  const ratio = props.coverage.aggregate?.ratio;
+  if (ratio === undefined) {
+    return 'Coverage';
+  }
+  return `Coverage ${Math.round(ratio * 100)}%`;
+});
+
+const coverageChipTitle = computed(() => {
+  if (props.coverage?.skipped) {
+    return props.coverage.warning ?? 'Add stack.codebase to enable coverage';
+  }
+  if (props.coverage?.error) {
+    return props.coverage.error;
+  }
+  return 'Open coverage file tree';
+});
+
+const coverageTree = computed(() =>
+  buildCoverageTree(props.coverage?.files ?? [])
+);
+
+function openCoverageView(): void {
+  if (props.coverage?.skipped || !props.coverage?.ok) {
+    if (!props.coverage) {
+      client.componentCoverage();
+    }
+    return;
+  }
+  showCoverageView.value = true;
+}
+
+function closeCoverageView(): void {
+  showCoverageView.value = false;
+  client.clearCoverageGaps();
+}
+
+function onCoverageOpenFile(node: CoverageTreeNode): void {
+  if (node.kind !== 'file') {
+    return;
+  }
+  client.openCoverageGaps(node.path, node.gaps ?? []);
+}
 
 function instancesFor(componentId: string): ComponentInstance[] {
   return props.instances.filter((i) => i.componentId === componentId);
@@ -259,12 +328,63 @@ function runApply(): void {
 
 <template>
   <div class="components-layout" @click="closeContextMenu">
+    <template v-if="showCoverageView && coverageEnabled">
+      <div class="coverage-panel">
+        <div class="tree-header">
+          <button type="button" class="secondary" @click="closeCoverageView">
+            ← Components
+          </button>
+          <h2>Coverage</h2>
+          <button
+            type="button"
+            class="secondary"
+            @click="client.componentCoverage()"
+          >
+            Refresh
+          </button>
+        </div>
+        <p v-if="coverage?.aggregate" class="desc">
+          Aggregate
+          {{ Math.round(coverage.aggregate.ratio * 100) }}%
+          ({{ coverage.aggregate.coveredNonblank }} /
+          {{
+            coverage.aggregate.coveredNonblank + coverage.aggregate.gapNonblank
+          }}
+          nonblank)
+        </p>
+        <CoverageTree
+          v-if="coverageTree.length"
+          :nodes="coverageTree"
+          @open-file="onCoverageOpenFile"
+        />
+        <p v-else class="desc">No files in stack.codebase universe.</p>
+      </div>
+    </template>
+    <template v-else>
     <div class="components-tree">
       <div class="tree-header">
         <h2>Components</h2>
-        <button type="button" class="secondary" @click="rescan">Rescan</button>
+        <div class="header-actions">
+          <button
+            type="button"
+            class="coverage-chip"
+            :class="{
+              enabled: coverageEnabled,
+              skipped: coverage?.skipped,
+              error: coverage && !coverage.ok && !coverage.skipped,
+            }"
+            :title="coverageChipTitle"
+            @click="openCoverageView"
+          >
+            {{ coverageChipLabel }}
+          </button>
+          <button type="button" class="secondary" @click="rescan">Rescan</button>
+        </div>
       </div>
       <p v-if="stack" class="desc">Stack: {{ stack.id }}</p>
+      <p v-if="coverage?.skipped" class="desc cov-warn">
+        {{ coverage.warning }}
+      </p>
       <p v-if="scanError" class="error">{{ scanError }}</p>
       <p v-if="!components.length" class="desc">
         No components loaded. Add <code>.codemod/stack.luau</code> and component modules.
@@ -473,6 +593,7 @@ function runApply(): void {
       </template>
       <p v-else class="desc">Select a component or instance.</p>
     </div>
+    </template>
 
     <div
       v-if="contextMenu"
@@ -528,6 +649,40 @@ function runApply(): void {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.coverage-chip {
+  font-size: 11px;
+  padding: 3px 8px;
+  border-radius: 4px;
+  border: 1px solid var(--vscode-button-secondaryBorder, transparent);
+  background: var(--vscode-button-secondaryBackground, transparent);
+  color: var(--vscode-button-secondaryForeground, inherit);
+  cursor: pointer;
+  opacity: 0.85;
+}
+.coverage-chip.enabled {
+  opacity: 1;
+  border-color: var(--cov-green, #3d9a5f);
+}
+.coverage-chip.skipped {
+  opacity: 0.65;
+}
+.coverage-chip.error {
+  border-color: var(--cov-red, #c44b4b);
+}
+.cov-warn {
+  color: var(--vscode-editorWarning-foreground, #c4a035);
+}
+.coverage-panel {
+  grid-column: 1 / -1;
+  --cov-green: #3d9a5f;
+  --cov-yellow: #c4a035;
+  --cov-red: #c44b4b;
 }
 .kind-list,
 .instance-list,

@@ -52,6 +52,7 @@ const {
   componentOpError,
   componentDryRunResult,
   componentDryRunHook,
+  componentCoverage,
 } = useHostState(inbound);
 
 const activeTab = ref<RunnerTab>(RUNNER_TABS.recipes);
@@ -212,6 +213,7 @@ onUnmounted(() => {
         :op-error="componentOpError"
         :dry-run-result="componentDryRunResult"
         :dry-run-hook="componentDryRunHook"
+        :coverage="componentCoverage"
         @update:args="localComponentArgs = $event"
       />
     </div>

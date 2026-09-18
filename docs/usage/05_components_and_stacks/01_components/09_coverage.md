@@ -60,10 +60,16 @@ Skipped:
 }
 ```
 
+## VS Code extension
+
+On the **Components** tab:
+
+1. **Coverage chip** — aggregate % after scan (or “Coverage off” when `codebase` is missing). Click opens the coverage subview when enabled.
+2. **Coverage subview** — file tree for the `stack.codebase` universe only (`files[]` from the host). Colors:
+   - File: 100% green, 0% red, otherwise yellow
+   - Directory: all-green children → green; all-red → red; otherwise yellow
+3. **Click a file** — opens it in the editor and highlights gap ranges. Back / leaving the subview clears decorations.
+
 ## Authoring
 
 Attach spans from query hits on the pieces you model. Prefer leaf spans (fields, args, methods); a large parent span is only useful when there are no spanned children. See [Parse tree](03_parse_tree.md).
-
-## VS Code UI
-
-A Components-tab coverage badge and file-tree subview are a **follow-up** (not shipped in this host release). Agents and MCP clients already receive per-file data and full gap ranges.

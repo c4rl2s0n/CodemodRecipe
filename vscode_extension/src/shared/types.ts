@@ -216,6 +216,34 @@ export interface ComponentScanResponse {
   diagnostics?: RecipeDiagnostic[];
 }
 
+export interface CoverageGap {
+  from: number;
+  to: number;
+}
+
+export interface CoverageTotals {
+  ratio: number;
+  coveredNonblank: number;
+  gapNonblank: number;
+}
+
+export interface FileCoverage {
+  path: string;
+  ratio: number;
+  coveredNonblank: number;
+  gapNonblank: number;
+  gaps?: CoverageGap[];
+}
+
+export interface ComponentCoverageResponse {
+  ok: boolean;
+  error?: string;
+  skipped?: boolean;
+  warning?: string;
+  aggregate?: CoverageTotals;
+  files?: FileCoverage[];
+}
+
 export interface BootstrapResponse {
   ok: boolean;
   error?: string;
@@ -374,6 +402,7 @@ export type HostCommand =
       queryId?: string;
     }
   | { command: 'componentScan' }
+  | { command: 'componentCoverage' }
   | {
       command: 'componentIncrementalScan';
       dirtyPaths?: string[];
@@ -553,6 +582,8 @@ export interface RecipeViewState {
   /** JSON result from the last component hook dry-run. */
   componentDryRunResult?: unknown;
   componentDryRunHook?: string;
+  /** Latest componentCoverage result (undefined until first fetch). */
+  componentCoverage?: ComponentCoverageResponse;
 }
 
 export interface PersistedWebviewState {
