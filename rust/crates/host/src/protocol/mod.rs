@@ -148,6 +148,8 @@ pub enum HostCommand {
     },
     #[serde(rename = "componentListInstances")]
     ComponentListInstances,
+    #[serde(rename = "componentCoverage")]
+    ComponentCoverage,
     #[serde(rename = "componentInvokeOperation")]
     ComponentInvokeOperation {
         #[serde(rename = "instanceId")]
@@ -360,6 +362,8 @@ pub struct StackSchema {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     pub components: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub codebase: Vec<String>,
 }
 
 #[derive(Debug, Serialize, Clone)]

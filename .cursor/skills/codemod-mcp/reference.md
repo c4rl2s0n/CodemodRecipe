@@ -158,6 +158,7 @@ Set `language` when the path is ambiguous. See skill `codemod-luau-recipes`.
 | Tool | Notes |
 |------|-------|
 | `component_scan` / `list_component_instances` | Full root scan |
+| `component_coverage` | Span coverage vs `stack.codebase` (skips with warning if missing) |
 | `component_incremental_scan` | `dirtyPaths` / `detectChanges` / `force` |
 | `describe_component` | `{ "componentId": "…" }` |
 | `component_dry_run_hook` | Preview only — authoring/debug |

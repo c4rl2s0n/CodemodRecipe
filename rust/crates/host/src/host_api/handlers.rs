@@ -300,6 +300,7 @@ pub(crate) fn do_query(
     let recipe_path = inner.recipe_path.clone();
     let codemod = inner.codemod_root.clone();
     let source = inner.current_content(&spec.path)?;
+    let cached = inner.cached_tree(&spec.path, &source, spec.language.as_deref())?;
     let qctx = QueryContext {
         recipe_file: recipe_path.as_deref(),
         codemod_root: &codemod,
@@ -309,16 +310,16 @@ pub(crate) fn do_query(
         .get(&lang_id)
         .map_err(|e| e.to_string())?;
     let spans = engine
-        .query_capture_spans(&qctx, &source, &query, capture)
+        .query_capture_spans_on_tree(&qctx, &cached.source, &cached.tree, &query, capture)
         .map_err(|e| e.to_string())?;
     let out = lua.create_table().map_err(|e| e.to_string())?;
     for (i, span) in spans.iter().enumerate() {
-        let row = hit_table(lua, &source, span)?;
+        let row = hit_table(lua, &cached.source, span)?;
         out.set(i + 1, row).map_err(|e| e.to_string())?;
     }
     let first_snippet = spans
         .first()
-        .map(|span| trunc_text(&source[span.start..span.end]));
+        .map(|span| trunc_text(&cached.source[span.start..span.end]));
     inner.transcript.push(TranscriptEvent::with_payload(
         "query",
         format!("{}#{} n={}", spec.path, capture, spans.len()),
@@ -327,6 +328,7 @@ pub(crate) fn do_query(
             "capture": capture,
             "matchCount": spans.len(),
             "firstMatch": first_snippet,
+            "cacheHit": cached.cache_hit,
         }),
     ));
     Ok(Value::Table(out))
@@ -352,6 +354,7 @@ pub(crate) fn do_query_matches(
     let recipe_path = inner.recipe_path.clone();
     let codemod = inner.codemod_root.clone();
     let source = inner.current_content(&spec.path)?;
+    let cached = inner.cached_tree(&spec.path, &source, spec.language.as_deref())?;
     let qctx = QueryContext {
         recipe_file: recipe_path.as_deref(),
         codemod_root: &codemod,
@@ -361,7 +364,7 @@ pub(crate) fn do_query_matches(
         .get(&lang_id)
         .map_err(|e| e.to_string())?;
     let rows = engine
-        .query_match_captures(&qctx, &source, &query)
+        .query_match_captures_on_tree(&qctx, &cached.source, &cached.tree, &query)
         .map_err(|e| e.to_string())?;
     let out = lua.create_table().map_err(|e| e.to_string())?;
     for (i, row) in rows.iter().enumerate() {
@@ -369,11 +372,11 @@ pub(crate) fn do_query_matches(
         for (name, spans) in row {
             let value = match spans.as_slice() {
                 [] => Value::Nil,
-                [one] => Value::Table(hit_table(lua, &source, one)?),
+                [one] => Value::Table(hit_table(lua, &cached.source, one)?),
                 many => {
                     let arr = lua.create_table().map_err(|e| e.to_string())?;
                     for (j, span) in many.iter().enumerate() {
-                        arr.set(j + 1, hit_table(lua, &source, span)?)
+                        arr.set(j + 1, hit_table(lua, &cached.source, span)?)
                             .map_err(|e| e.to_string())?;
                     }
                     Value::Table(arr)
@@ -389,6 +392,7 @@ pub(crate) fn do_query_matches(
         json!({
             "path": spec.path,
             "matchCount": rows.len(),
+            "cacheHit": cached.cache_hit,
         }),
     ));
     Ok(Value::Table(out))
@@ -929,6 +933,7 @@ fn query_count(host: &SharedHost, spec: &QueryTableSpec) -> Result<usize, String
     let recipe_path = inner.recipe_path.clone();
     let codemod = inner.codemod_root.clone();
     let source = inner.current_content(&spec.path)?;
+    let cached = inner.cached_tree(&spec.path, &source, spec.language.as_deref())?;
     let qctx = QueryContext {
         recipe_file: recipe_path.as_deref(),
         codemod_root: &codemod,
@@ -938,7 +943,13 @@ fn query_count(host: &SharedHost, spec: &QueryTableSpec) -> Result<usize, String
         .get(&lang_id)
         .map_err(|e| e.to_string())?;
     engine
-        .query_match_count(&qctx, &source, &query, spec.capture.as_deref())
+        .query_match_count_on_tree(
+            &qctx,
+            &cached.source,
+            &cached.tree,
+            &query,
+            spec.capture.as_deref(),
+        )
         .map_err(|e| e.to_string())
 }
 

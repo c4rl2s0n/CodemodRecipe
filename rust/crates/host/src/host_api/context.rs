@@ -70,6 +70,7 @@ pub(crate) struct HostInner {
     pub(crate) transcript: Vec<TranscriptEvent>,
     pub(crate) saw_post_exec: bool,
     pub(crate) op_count: usize,
+    pub(crate) ast_cache: crate::query::ast_cache::AstParseCache,
 }
 
 impl HostInner {
@@ -77,10 +78,32 @@ impl HostInner {
         self.tree.current_content(&self.sandbox, path)
     }
 
+    /// Parse (or reuse) a tree-sitter AST for `path` / `source`.
+    pub(crate) fn cached_tree(
+        &mut self,
+        path: &str,
+        source: &str,
+        language: Option<&str>,
+    ) -> Result<crate::query::ast_cache::CachedTree, String> {
+        let lang_id = self
+            .language_registry
+            .resolve_language_id(language, path)
+            .map_err(|e| e.to_string())?;
+        let lang = {
+            let engine = self
+                .language_registry
+                .get(&lang_id)
+                .map_err(|e| e.to_string())?;
+            engine.language()
+        };
+        self.ast_cache.get_or_parse(path, source, &lang)
+    }
+
     pub(crate) fn apply_edit<F>(&mut self, path: &str, transform: F) -> Result<(), String>
     where
         F: FnOnce(&str) -> Result<String, String>,
     {
+        self.ast_cache.invalidate(path);
         self.tree.apply_edit(&self.sandbox, path, transform)
     }
 
@@ -90,6 +113,7 @@ impl HostInner {
         content: String,
         if_exists: codemod_recipe_core::apply::file_change::IfExists,
     ) -> Result<(), String> {
+        self.ast_cache.invalidate(path);
         self.tree.create(&self.sandbox, path, content, if_exists)
     }
 
@@ -98,6 +122,7 @@ impl HostInner {
         path: &str,
         if_missing: codemod_recipe_core::apply::file_change::IfMissing,
     ) -> Result<(), String> {
+        self.ast_cache.invalidate(path);
         self.tree.delete(&self.sandbox, path, if_missing)
     }
 

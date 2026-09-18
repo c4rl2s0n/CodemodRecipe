@@ -100,6 +100,7 @@
     - [Host commands](05_components_and_stacks/01_components/06_host_commands.md)
     - [Layout](05_components_and_stacks/01_components/07_layout.md)
     - [Reference fixtures](05_components_and_stacks/01_components/08_reference_fixtures.md)
+    - [Component span coverage](05_components_and_stacks/01_components/09_coverage.md)
   - [Stacks (`stack.luau`)](05_components_and_stacks/02_stacks/00_index.md)
     - [Required manifest](05_components_and_stacks/02_stacks/01_required_manifest.md)
     - [Root scan vs child-only](05_components_and_stacks/02_stacks/02_root_scan_vs_child_only.md)

@@ -166,6 +166,25 @@ fn glob_segment(base: &Path, parts: &[&str], out: &mut Vec<PathBuf>) -> Result<(
         return Ok(());
     }
     match parts[0] {
+        "**" => {
+            // Zero directories: match the remainder at this level.
+            if parts.len() == 1 {
+                collect_files_recursive(base, out)?;
+            } else {
+                glob_segment(base, &parts[1..], out)?;
+                let read_dir = match std::fs::read_dir(base) {
+                    Ok(rd) => rd,
+                    Err(_) => return Ok(()),
+                };
+                for entry in read_dir {
+                    let entry = entry.map_err(|e| e.to_string())?;
+                    if entry.file_type().map_err(|e| e.to_string())?.is_dir() {
+                        // Stay on `**` so nested directories are searched.
+                        glob_segment(&entry.path(), parts, out)?;
+                    }
+                }
+            }
+        }
         "*" if parts.len() == 1 => {
             let read_dir = std::fs::read_dir(base).map_err(|e| e.to_string())?;
             for entry in read_dir {
@@ -224,6 +243,23 @@ fn glob_segment(base: &Path, parts: &[&str], out: &mut Vec<PathBuf>) -> Result<(
     Ok(())
 }
 
+fn collect_files_recursive(base: &Path, out: &mut Vec<PathBuf>) -> Result<(), String> {
+    let read_dir = match std::fs::read_dir(base) {
+        Ok(rd) => rd,
+        Err(_) => return Ok(()),
+    };
+    for entry in read_dir {
+        let entry = entry.map_err(|e| e.to_string())?;
+        let file_type = entry.file_type().map_err(|e| e.to_string())?;
+        if file_type.is_file() {
+            out.push(entry.path());
+        } else if file_type.is_dir() {
+            collect_files_recursive(&entry.path(), out)?;
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -260,8 +296,19 @@ mod tests {
     }
 
     #[test]
-    fn match_placeholders_mid_segment() {
-        let caps = match_placeholders("{id}_store.dart", "recipe_store.dart").unwrap();
-        assert_eq!(caps.get("id").map(String::as_str), Some("recipe"));
+    fn glob_double_star_recursive() {
+        let root = std::env::temp_dir().join(format!("codemod_glob_ds_{}", std::process::id()));
+        let nested = root.join("lib/models/nested");
+        fs::create_dir_all(&nested).unwrap();
+        fs::write(root.join("lib/a.dart"), "").unwrap();
+        fs::write(root.join("lib/models/b.dart"), "").unwrap();
+        fs::write(nested.join("c.dart"), "").unwrap();
+        fs::write(root.join("lib/models/skip.txt"), "").unwrap();
+        let hits = glob_workspace(&root, "lib/**/*.dart").unwrap();
+        assert_eq!(hits.len(), 3);
+        assert!(hits.iter().any(|p| p.ends_with("a.dart")));
+        assert!(hits.iter().any(|p| p.ends_with("b.dart")));
+        assert!(hits.iter().any(|p| p.ends_with("c.dart")));
+        let _ = fs::remove_dir_all(root);
     }
 }

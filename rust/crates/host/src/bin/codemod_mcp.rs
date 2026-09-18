@@ -249,6 +249,11 @@ fn handle_request(
                   "inputSchema": { "type": "object" }
                 },
                 {
+                  "name": "component_coverage",
+                  "description": "Post-scan span coverage against stack.codebase globs. Unions explicit source.span ranges; whitespace excluded. Missing codebase skips with a warning. Runs scan first if cache empty. Returns per-file + aggregate ratios and gaps.",
+                  "inputSchema": { "type": "object" }
+                },
+                {
                   "name": "describe_component",
                   "description": "Component metadata: hooks present (hasIdentify/hasToSummary/hasScaffold), scaffold args, and operations.",
                   "inputSchema": {
@@ -483,6 +488,7 @@ fn handle_request(
                 "list_component_instances" => {
                     handle_command(registry, HostCommand::ComponentListInstances)
                 }
+                "component_coverage" => handle_command(registry, HostCommand::ComponentCoverage),
                 "describe_component" => {
                     let component_id = arguments
                         .get("componentId")

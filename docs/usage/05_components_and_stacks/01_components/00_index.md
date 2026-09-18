@@ -12,4 +12,5 @@ Components are Luau modules under `.codemod/components/` that **identify**, **pa
 | [Host commands](06_host_commands.md) | |
 | [Layout](07_layout.md) | |
 | [Reference fixtures](08_reference_fixtures.md) | |
+| [Span coverage](09_coverage.md) | |
 

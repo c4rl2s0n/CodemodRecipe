@@ -19,6 +19,7 @@ Full tool reference: [codemod-mcp.md](../docs/06_mcp_and_clients/01_codemod_mcp/
 | `preview_recipe` / `apply_recipe` | Dry-run then apply (`previewToken`) |
 | `dump_ast` / `debug_query` / `generate_query` | Query Tools |
 | `component_scan` / `component_incremental_scan` | Stack instances |
+| `component_coverage` | Span coverage vs `stack.codebase` (skips if missing) |
 | `describe_component` | Hooks / ops |
 | `component_dry_run_hook` / `component_apply_hook` | Component dry-run / apply |
 

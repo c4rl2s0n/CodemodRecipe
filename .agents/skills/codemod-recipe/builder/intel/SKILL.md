@@ -14,8 +14,9 @@ Gather structure **before** editing. Prefer summaries over raw `node` payloads.
 1. **Locate** — if [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) is configured, find symbols/files first; otherwise use recipes/components you already know
 2. **Stack present?** (`.codemod/stack.luau`) → `component_scan` / `list_component_instances`
 3. After known edits → `component_incremental_scan` with `dirtyPaths` (or `detectChanges: true`)
-4. **Recipes** → `list_recipes` / `describe_recipe` for args and descriptions
-5. **Query stuck?** → `dump_ast` / `debug_query` / `generate_query` ([tree-sitter-queries.md](../../docs/03_queries_and_languages/01_tree_sitter_queries/00_index.md))
+4. **Coverage blind spots?** → `component_coverage` (needs `stack.codebase`; span-only — see [coverage](../../docs/05_components_and_stacks/01_components/09_coverage.md))
+5. **Recipes** → `list_recipes` / `describe_recipe` for args and descriptions
+6. **Query stuck?** → `dump_ast` / `debug_query` / `generate_query` ([tree-sitter-queries.md](../../docs/03_queries_and_languages/01_tree_sitter_queries/00_index.md))
 
 ## Reasoning tips
 

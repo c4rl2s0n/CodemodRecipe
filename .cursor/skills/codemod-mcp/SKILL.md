@@ -38,6 +38,7 @@ description: Use when applying deterministic codemod edits via the Rust codemod-
 | `preview_recipe` | Dry-run; returns `previewToken` |
 | `apply_recipe` | Write changes; requires `previewToken` |
 | `component_scan` / `list_component_instances` | Scan stack roots |
+| `component_coverage` | Span coverage vs `stack.codebase` |
 | `component_incremental_scan` | Rescan after edits |
 | `describe_component` | Component hooks / args |
 | `component_dry_run_hook` | Dry-run one hook; `result` + `transcript` (`c:log`) |

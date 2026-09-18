@@ -16,13 +16,16 @@ All tools return a JSON string. Parse it, then check `ok`.
 | `resolve_static_path` | Jinja-render a path with empty args (static paths only) |
 | `component_scan` | Scan stack root components (instances, findings, summaries); populates cache |
 | `list_component_instances` | Alias of `component_scan` |
+| `component_coverage` | Span coverage vs `stack.codebase` (per-file + aggregate); skips with warning if `codebase` missing |
 | `component_incremental_scan` | Rescan after edits: `dirtyPaths`, `detectChanges`, or `force` |
 | `describe_component` | Metadata: hooks present, scaffold args, operations |
 | `component_dry_run_hook` | Dry-run one hook (Preview; no disk writes); returns `result` + `transcript` |
 | `component_apply_hook` | Apply one hook (flushes WorkingTree); same args as dry-run |
 
 When `.codemod/stack.luau` and components exist: `component_scan` first, then
-`component_incremental_scan` after file edits. To author/debug hooks, use
+`component_incremental_scan` after file edits. Optional: `component_coverage` to audit
+blind spots (requires `codebase` on the stack — see [coverage](../../05_components_and_stacks/01_components/09_coverage.md)).
+To author/debug hooks, use
 `describe_component` and `component_dry_run_hook` (inspect `c:log` in `transcript`).
 Authoring agents should be allowlisted for dry-run + scan/describe — withhold
 `component_apply_hook` when agents must not write the workspace. Experiment fixture:

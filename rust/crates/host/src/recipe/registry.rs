@@ -129,6 +129,7 @@ impl RecipeRegistry {
             id: s.id.clone(),
             description: s.description.clone(),
             components: s.components.clone(),
+            codebase: s.codebase.clone(),
         })
     }
 

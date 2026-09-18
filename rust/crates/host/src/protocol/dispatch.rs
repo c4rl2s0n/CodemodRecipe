@@ -2,8 +2,8 @@ use codemod_recipe_core::apply::atomic_apply::apply_operations_atomically;
 use std::collections::BTreeMap;
 
 use crate::component::{
-    component_incremental_scan, component_scan, invoke_hook, invoke_operation, invoke_scaffold,
-    ComponentHookRequest, ComponentIncrementalScanRequest, ComponentInvokeRequest,
+    component_coverage, component_incremental_scan, component_scan, invoke_hook, invoke_operation,
+    invoke_scaffold, ComponentHookRequest, ComponentIncrementalScanRequest, ComponentInvokeRequest,
     ComponentScaffoldRequest,
 };
 use crate::engine::runner::{collect_recipe_changes, planned_snapshot_paths, resolve_recipe};
@@ -344,6 +344,7 @@ pub fn handle_command(registry: &mut RecipeRegistry, cmd: HostCommand) -> serde_
                 "diagnostics": scan.diagnostics,
             }))
         }
+        HostCommand::ComponentCoverage => to_value(component_coverage(registry)),
         HostCommand::ComponentInvokeOperation {
             instance_id,
             operation,

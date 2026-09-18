@@ -362,10 +362,12 @@ pub fn load_stack_from_table(table: &Table, source: &str) -> Result<StackDef, Lo
             "stack components must list at least one component id".to_string(),
         ));
     }
+    let codebase = optional_string_list(table, "codebase")?;
     Ok(StackDef {
         id,
         description,
         components,
+        codebase,
         source: source.to_string(),
         path: None,
     })
@@ -1104,5 +1106,24 @@ return {
             loaded,
             LoadResult::Asset(Asset::Component(c)) if c.id == "a.b"
         ));
+    }
+
+    #[test]
+    fn load_asset_stack_with_codebase() {
+        let stack = r#"return {
+  id = "stack",
+  components = { "a.b" },
+  codebase = { "lib/**/*.dart", "src/*.rs" },
+}"#;
+        match load_asset(stack, "stack.luau").unwrap() {
+            LoadResult::Asset(Asset::Stack(s)) => {
+                assert_eq!(s.id, "stack");
+                assert_eq!(
+                    s.codebase,
+                    vec!["lib/**/*.dart".to_string(), "src/*.rs".to_string()]
+                );
+            }
+            other => panic!("expected stack, got {other:?}"),
+        }
     }
 }

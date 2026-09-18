@@ -45,6 +45,7 @@ pub fn run_recipe(
         transcript: Vec::new(),
         saw_post_exec: false,
         op_count: 0,
+        ast_cache: crate::query::ast_cache::AstParseCache::default(),
     }));
     let ctx =
         build_ctx(&lua, Rc::clone(&inner)).map_err(|message| take_apply_error(&inner, message))?;

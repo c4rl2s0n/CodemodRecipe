@@ -9,6 +9,52 @@ use super::{
 };
 
 impl Engine {
+    /// Collect all spans for `capture_name` (for editor derive / Lua query results).
+    pub fn query_capture_spans(
+        &mut self,
+        ctx: &QueryContext<'_>,
+        source: &str,
+        query_spec: &QuerySpec,
+        capture_name: &str,
+    ) -> Result<Vec<CaptureSpan>, EngineError> {
+        let tree = self.parse_tree(source)?;
+        self.query_capture_spans_on_tree(ctx, source, &tree, query_spec, capture_name)
+    }
+
+    /// Like [`Self::query_capture_spans`] but reuses an already-parsed tree.
+    pub fn query_capture_spans_on_tree(
+        &mut self,
+        ctx: &QueryContext<'_>,
+        source: &str,
+        tree: &Tree,
+        query_spec: &QuerySpec,
+        capture_name: &str,
+    ) -> Result<Vec<CaptureSpan>, EngineError> {
+        self.collect_all_capture_spans(ctx, source, tree, query_spec, capture_name)
+    }
+
+    /// One row per tree-sitter match; map of capture name → spans in that match.
+    pub fn query_match_captures(
+        &mut self,
+        ctx: &QueryContext<'_>,
+        source: &str,
+        query_spec: &QuerySpec,
+    ) -> Result<Vec<std::collections::BTreeMap<String, Vec<CaptureSpan>>>, EngineError> {
+        let tree = self.parse_tree(source)?;
+        self.query_match_captures_on_tree(ctx, source, &tree, query_spec)
+    }
+
+    /// Like [`Self::query_match_captures`] but reuses an already-parsed tree.
+    pub fn query_match_captures_on_tree(
+        &mut self,
+        ctx: &QueryContext<'_>,
+        source: &str,
+        tree: &Tree,
+        query_spec: &QuerySpec,
+    ) -> Result<Vec<std::collections::BTreeMap<String, Vec<CaptureSpan>>>, EngineError> {
+        self.collect_match_capture_rows(ctx, source, tree, query_spec)
+    }
+
     /// True when the query chain produces at least one match on `source`.
     pub fn query_has_match(
         &mut self,
@@ -17,7 +63,17 @@ impl Engine {
         query_spec: &QuerySpec,
     ) -> Result<bool, EngineError> {
         let tree = self.parse_tree(source)?;
-        let count = self.count_query_matches(ctx, source, &tree, query_spec, None)?;
+        self.query_has_match_on_tree(ctx, source, &tree, query_spec)
+    }
+
+    pub fn query_has_match_on_tree(
+        &mut self,
+        ctx: &QueryContext<'_>,
+        source: &str,
+        tree: &Tree,
+        query_spec: &QuerySpec,
+    ) -> Result<bool, EngineError> {
+        let count = self.count_query_matches(ctx, source, tree, query_spec, None)?;
         Ok(count > 0)
     }
 
@@ -30,30 +86,18 @@ impl Engine {
         capture_name: Option<&str>,
     ) -> Result<usize, EngineError> {
         let tree = self.parse_tree(source)?;
-        self.count_query_matches(ctx, source, &tree, query_spec, capture_name)
+        self.query_match_count_on_tree(ctx, source, &tree, query_spec, capture_name)
     }
 
-    /// Collect all spans for `capture_name` (for editor derive / Lua query results).
-    pub fn query_capture_spans(
+    pub fn query_match_count_on_tree(
         &mut self,
         ctx: &QueryContext<'_>,
         source: &str,
+        tree: &Tree,
         query_spec: &QuerySpec,
-        capture_name: &str,
-    ) -> Result<Vec<CaptureSpan>, EngineError> {
-        let tree = self.parse_tree(source)?;
-        self.collect_all_capture_spans(ctx, source, &tree, query_spec, capture_name)
-    }
-
-    /// One row per tree-sitter match; map of capture name → spans in that match.
-    pub fn query_match_captures(
-        &mut self,
-        ctx: &QueryContext<'_>,
-        source: &str,
-        query_spec: &QuerySpec,
-    ) -> Result<Vec<std::collections::BTreeMap<String, Vec<CaptureSpan>>>, EngineError> {
-        let tree = self.parse_tree(source)?;
-        self.collect_match_capture_rows(ctx, source, &tree, query_spec)
+        capture_name: Option<&str>,
+    ) -> Result<usize, EngineError> {
+        self.count_query_matches(ctx, source, tree, query_spec, capture_name)
     }
 
     fn count_query_matches(

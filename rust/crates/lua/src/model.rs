@@ -120,6 +120,9 @@ pub struct StackDef {
     pub description: Option<String>,
     /// Component ids to run at workspace root scan.
     pub components: Vec<String>,
+    /// Workspace-relative globs defining the coverage universe (e.g. `lib/**/*.dart`).
+    /// Empty when omitted — component coverage is skipped until set.
+    pub codebase: Vec<String>,
     #[schemars(skip)]
     pub source: String,
     #[schemars(skip)]

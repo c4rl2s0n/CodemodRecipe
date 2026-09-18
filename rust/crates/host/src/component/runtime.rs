@@ -143,6 +143,7 @@ pub(crate) fn make_host(
         transcript: Vec::new(),
         saw_post_exec: false,
         op_count: 0,
+        ast_cache: crate::query::ast_cache::AstParseCache::default(),
     })))
 }
 

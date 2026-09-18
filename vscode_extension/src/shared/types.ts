@@ -165,6 +165,7 @@ export interface StackSchema {
   id: string;
   description?: string;
   components: string[];
+  codebase?: string[];
 }
 
 export interface ComponentOperationSchema {
