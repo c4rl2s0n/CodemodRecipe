@@ -1,6 +1,6 @@
 # Codemod Recipe — VS Code Extension
 
-New here? Start with [Getting Started](../docs/getting-started.md) for the full product walkthrough.
+New here? Start with [Getting Started](../docs/usage/01_getting_started/00_index.md) for the full product walkthrough.
 
 A GUI for the [`codemod_recipe`](../README.md) toolkit. Browse recipes, fill in
 placeholder values through a form, preview changes as a native diff, and choose
@@ -89,7 +89,7 @@ settings or use **Codemod Recipe: Set Codemod Root Directory**.
 
 Bind recipes to chords via **slots** (`codemodRecipe.slots`) or
 `codemodRecipe.invoke`. Args can auto-fill from the editor with recipe `from:` /
-`contextKey`. Full guide: [docs/recipe-shortcuts.md](../docs/recipe-shortcuts.md).
+`contextKey`. Full guide: [docs/recipe-shortcuts.md](../docs/usage/04_templates_and_patterns/03_recipe_shortcuts.md).
 
 Explorer: right-click a file/folder → **Codemod Recipe ▸ Run Recipe Here…**
 (auto-apply when args complete) or **Open in Recipe Runner…** for recipes that
@@ -120,7 +120,7 @@ Under `codemodRecipe.codemodRoot` (default `.codemod`) Luau/Lua recipe files get
 
 Install **[Luau Language Server](https://marketplace.visualstudio.com/items?itemName=JohnnyMorganz.luau-lsp)** for typed `CodemodContext` via `.codemod/stubs/codemod-context.d.luau` (generated from annotated Rust handlers via `scripts/generate-host-api-surface.sh`, installed by Scaffold / bootstrap). The Codemod completion provider does **not** depend on that stub; luau-lsp does. Soft **Scaffold Project** skips existing files — use **Codemod Recipe: Update Project Scaffold** (confirm → bootstrap with `force: true`) after upgrading so the stub and other scaffold assets refresh. **Refresh Recipes** reloads the recipe catalog only.
 
-Recipe authoring reference: [docs/writing-recipes.md](../docs/writing-recipes.md) and skill `codemod-luau-recipes`.
+Recipe authoring reference: [docs/writing-recipes.md](../docs/usage/02_writing_recipes/01_workflow.md) and [host-api.md](../docs/usage/02_writing_recipes/02_host_api.md).
 
 You can also run **Codemod Recipe: Run From Cursor Context** (`Cmd+Alt+R` on
 macOS, `Ctrl+Alt+R` elsewhere). Context keys include `file`, `selection`, `word`,

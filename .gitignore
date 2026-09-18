@@ -34,5 +34,11 @@ Thumbs.db
 # Rust
 rust/target/
 
+# mdBook: generated HTML + Mermaid assets from `mdbook-mermaid install`
+docs/book/
+docs/usage/book/
+docs/**/mermaid.min.js
+docs/**/mermaid-init.js
+
 # Local temp (cargo/npm when /tmp is full)
 .tmp/

@@ -1,37 +1,30 @@
 ---
 name: codemod-recipe-human-docs
-description: Use when editing or updating human product docs (docs/getting-started.md, docs/README.md), finishing a change that affects day-1 concepts, or asking how human documentation is organized and maintained.
-disable-model-invocation: true
+description: >-
+  Use when editing product docs (docs/usage/), docs/README.md, finishing a change
+  that affects day-1 concepts, or asking how documentation is organized.
+  Read docs/develop/01_documentation_system/00_index.md first.
 ---
 
 # Codemod Recipe Human Docs
 
 ## When to use
 
-Use this skill when you are:
-
-- Editing [docs/getting-started.md](../../../docs/getting-started.md), [docs/writing-recipes.md](../../../docs/writing-recipes.md), or [docs/README.md](../../../docs/README.md)
-- Finishing a change that alters concepts a new user learns on day 1 (setup, Luau recipe surface, templates/Jinja, maps/vars, languages, extension UX, MCP tools/workflow, design-pattern taxonomy, docs layout)
-- Asked how human documentation is structured or how to keep it in sync
+- Editing anything under [`docs/usage/`](../../../docs/usage/) or [`docs/README.md`](../../../docs/README.md)
+- Finishing a change that alters day-1 concepts
+- Asked how documentation / bootstrap packaging is structured
 
 ## Hard rule
 
-If the change alters something Getting Started teaches, **update the guide in the same change**. If you add a new topic page humans should find from the map, also update `docs/README.md`.
+**Read [docs/develop/01_documentation_system/00_index.md](../../../docs/develop/01_documentation_system/00_index.md)** and follow it.
 
-Topic depth still belongs in existing `docs/*.md` and agent skills — Getting Started stays a **thin narrative with deep links**. Authoring depth lives in `docs/writing-recipes.md`. Do not invent new API; copy from tests, `rust/crates/host/src/host_api/handlers.rs`, or shipped `.luau` recipes.
-
-## Where to look
-
-| File | Role |
-|------|------|
-| `docs/getting-started.md` | Canonical human onboarding walkthrough |
-| `docs/writing-recipes.md` | Human Luau recipe authoring guide |
-| `docs/README.md` | Documentation map / index |
-| `.agents/skills/codemod-recipe/codemod-luau-recipes/reference.md` | Host API reference for agents |
-| `.cursor/skills/codemod-recipe-human-docs/reference.md` | Section map + edit playbook |
+- API/behavior → `docs/usage/` chapters only
+- Skills → `.agents/skills/codemod-recipe/**/SKILL.md` (no `export/.agents/`)
+- After chapter renames: `python3 scripts/generate_mdbook_summary.py` and `python3 scripts/check_doc_links.py`
+- Never reintroduce fat skill `reference.md` or `export/.agents/` duplicates
 
 ## Instructions
 
-1. Read [reference.md](reference.md) in this directory.
-2. Apply the edit rules there (when to touch Getting Started vs topic docs only).
-3. Keep examples accurate (Luau recipes; MiniJinja via `c:template`).
+1. Read [docs/develop/01_documentation_system/00_index.md](../../../docs/develop/01_documentation_system/00_index.md)
+2. Apply the checklist there
+3. Keep examples accurate (tests, host handlers, or shipped `.luau`)

@@ -1,0 +1,26 @@
+[book]
+title = "Codemod Recipe"
+description = "Usage documentation for codemod-recipe"
+authors = ["codemod-recipe"]
+language = "en"
+src = "."
+
+[build]
+build-dir = "book"
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+
+[output]
+
+[output.html]
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
+
+# After `mdbook-mermaid install .`, this file also gains:
+#   [output.html]
+#   additional-js = ["mermaid.min.js", "mermaid-init.js"]
+# Those JS files are local/gitignored — run install before `mdbook serve`.
+
+[output.html.fold]
+enable = true
+level = 0

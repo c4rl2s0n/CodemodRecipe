@@ -235,6 +235,12 @@ fn stdio_subprocess_bootstraps_project() {
     assert!(workspace
         .join(".agents/skills/codemod-recipe/codemod-overview/SKILL.md")
         .is_file());
+    assert!(workspace
+        .join(".agents/skills/codemod-recipe/docs/01_getting_started/00_index.md")
+        .is_file());
+    assert!(workspace
+        .join(".agents/skills/codemod-recipe/architect/SKILL.md")
+        .is_file());
     assert!(workspace.join(".cursor/rules/codemod-recipe.mdc").is_file());
     assert!(!workspace.join(".cursor/rules/codebase-memory.mdc").exists());
     assert!(workspace.join(".codemod/recipes").is_dir());

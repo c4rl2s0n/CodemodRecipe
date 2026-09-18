@@ -56,7 +56,7 @@ return {
 - **Transcript** records every host call for review/debug.
 - **MiniJinja** remains for `c:template`.
 
-See skill `codemod-luau-recipes` and `docs/writing-recipes.md`.
+See [docs/usage/02_writing_recipes/01_workflow.md](docs/usage/02_writing_recipes/01_workflow.md) and [docs/usage/02_writing_recipes/02_host_api.md](docs/usage/02_writing_recipes/02_host_api.md).
 
 ## Assets
 
@@ -89,4 +89,4 @@ preview skipped postExec, apply may diverge — surfaced as `applyMayDiverge`.
 
 Recipes are sandboxed Luau modules (`rust/crates/lua`, `rust/crates/host/src/host_api/`).
 Mutations happen only in `apply(c, args)`. MiniJinja is used via `c:template` /
-`c:template`. Host API detail: skill `codemod-luau-recipes`.
+`c:template`. Host API detail: [docs/usage/02_writing_recipes/02_host_api.md](docs/usage/02_writing_recipes/02_host_api.md).

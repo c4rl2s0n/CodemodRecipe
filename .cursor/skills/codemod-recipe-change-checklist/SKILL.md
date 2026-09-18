@@ -25,8 +25,9 @@ If your change affects behavior, conventions, configuration, or how developers s
    - Extension: `vscode_extension/README.md`
 
 2. **Human product docs**
-   - `docs/getting-started.md` and `docs/README.md` when the end-user mental model or day-1 workflows change (setup, YAML surface, templates/Jinja, maps/vars, languages, extension UX, MCP workflow, design-pattern taxonomy, docs layout)
-   - How to edit: skill `codemod-recipe-human-docs` (read its `reference.md`)
+   - `docs/usage/01_getting_started/00_index.md` and `docs/README.md` when the end-user mental model or day-1 workflows change
+   - How to edit: follow `docs/develop/01_documentation_system/00_index.md` (skill `codemod-recipe-human-docs`)
+   - Sync thin skills under `export/.agents/skills/`; never add fat `reference.md` encyclopedias
    - Deep reference still belongs in topic `docs/*.md`; Getting Started stays a thin narrative with deep links
 
 3. **Modular skills library**

@@ -44,3 +44,7 @@ tree-sitter-language-pack = "1"
 
 [lints]
 workspace = true
+
+[build-dependencies]
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"

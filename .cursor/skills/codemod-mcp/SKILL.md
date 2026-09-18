@@ -20,10 +20,10 @@ description: Use when applying deterministic codemod edits via the Rust codemod-
 
 ## Instructions
 
-1. **Read and follow** [reference.md](reference.md) in this directory (canonical tool playbook).
+1. **Read** [docs/usage/06_mcp_and_clients/01_codemod_mcp/00_index.md](../../../docs/usage/06_mcp_and_clients/01_codemod_mcp/00_index.md) and Builder apply skill (`.agents/skills/codemod-recipe/builder/apply/`).
 2. Use Rust MCP server **`codemod-mcp`**:
    - `cargo run -q --manifest-path rust/Cargo.toml -p codemod_recipe_host --bin codemod_mcp -- --workspace-root . --codemod-root .codemod`
-3. Pair with **codebase-memory** for locate → impact → edit workflows (see playbook § Agent workflow).
+3. Pair with **codebase-memory** for locate → impact → edit workflows.
 4. Always **preview before apply**; pass `previewToken` from preview to `apply_recipe`.
 5. For inline edits, pass `inlineRecipe` as a Luau source string that `return`s a table with `apply`.
 
@@ -43,5 +43,5 @@ description: Use when applying deterministic codemod edits via the Rust codemod-
 | `component_dry_run_hook` | Dry-run one hook; `result` + `transcript` (`c:log`) |
 | `component_apply_hook` | Apply one hook (flush); withhold from authoring-only agents |
 
-Human-oriented setup and examples: [docs/codemod-mcp.md](../../../docs/codemod-mcp.md).
-Full playbook: [reference.md](reference.md) and `.agents/skills/codemod-recipe/codemod-mcp-playbook/`.
+Human-oriented setup and examples: [docs/usage/06_mcp_and_clients/01_codemod_mcp/00_index.md](../../../docs/usage/06_mcp_and_clients/01_codemod_mcp/00_index.md).
+Full playbook: Builder apply skill and `.agents/skills/codemod-recipe/codemod-mcp-playbook/`.

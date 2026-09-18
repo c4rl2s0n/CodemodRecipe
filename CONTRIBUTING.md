@@ -53,17 +53,22 @@ Scaffold integration (optional):
 
 ## Pull requests
 
-1. Keep changes focused; update README, skills under `export/.agents/skills/codemod-recipe/`, and
-   `.cursor/rules/` when behavior or agent workflows change.
+1. Keep changes focused; update README, skills under `.agents/skills/codemod-recipe/`,
+   and `export/rulesets/` when behavior or agent workflows change. See
+   [docs/develop/documentation.md](docs/develop/documentation.md).
 2. Add or extend Rust tests for engine/host behavior.
 3. Ensure `cargo test --all` passes.
 
 ## Agent skills and bootstrap
 
-Bootstrap copies files from `export/` into consumer projects. When editing skills or
-rules, update both `.agents/skills/codemod-recipe/` (workspace copy) and
-`export/.agents/skills/codemod-recipe/` (source of truth for bootstrap).
+Skills SSOT: **`.agents/skills/codemod-recipe/`** (Architect / Builder). There is no
+`export/.agents/` copy.
 
-Human product docs (`docs/getting-started.md`, `docs/writing-recipes.md`,
-`docs/README.md`) are **in-repo only** and are not copied by bootstrap. Keep them
-in sync when user-facing concepts change; see skill `codemod-recipe-human-docs`.
+[`export/bootstrap.toml`](export/bootstrap.toml) tells the host build which trees to
+embed (skills, `docs/usage/`, rulesets, scaffold). Usage docs land in consumers at
+`.agents/skills/codemod-recipe/docs/`.
+
+When editing product docs, edit **`docs/usage/`** only. In this repo,
+`.agents/skills/codemod-recipe/docs` is a symlink to `docs/usage`.
+
+Framework-contributor docs live under `docs/develop/` and are **not** bootstrapped.

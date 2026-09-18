@@ -7,16 +7,19 @@ alwaysApply: true
 
 # Codemod Recipe
 
-Use **codemod-recipe** for structural, scaffolding, multi-file, and AST-boundary changes. Recipes are **Luau modules** (`.codemod/recipes/*.luau`); `apply(c, args)` is the only mutation entrypoint. Dart is the default language; set `language` on edit ops for non-Dart files.
-
-Layout: `.codemod/recipes/`, `.codemod/maps/`, `.codemod/types/`, `.codemod/templates/`, `.codemod/queries/`.
+Use **codemod-recipe** for structural, scaffolding, multi-file, and AST-boundary changes. Recipes are **Luau modules**; `apply(c, args)` is the only mutation entrypoint. Dart is the default language; set `language` on edit ops for non-Dart files.
 
 ## Edit policy
 
-1. **Default:** apply changes via recipes — `list_recipes` / `describe_recipe` → `preview_recipe` → `apply_recipe` (always preview first; pass `previewToken`).
+1. **Default:** apply via recipes/components — preview/dry-run first (`previewToken` / `component_dry_run_hook`).
 2. **Direct edit allowed only** for local logic inside an existing function/method/body where a recipe would not help.
-3. **New template or recipe needed:** propose what would fit (`create_*` / `add_*` / `scaffold_*` / `remove_*`), then ask whether to implement as a one-off or design a reusable recipe/template.
+3. **New template or recipe needed:** propose `create_*` / `add_*` / `scaffold_*` / `remove_*`, then ask whether to implement as a one-off or reusable asset ([Architect](.agents/skills/codemod-recipe/architect/SKILL.md)).
 
-## Skills
+## Modes
 
-Read under `.agents/skills/codemod-recipe/` as needed: `codemod-recipe` (top-level router), `codemod-recipe/codemod-overview`, `codemod-recipe/codemod-luau-recipes` (`reference.md` for host API), `codemod-recipe/codemod-recipe-design-patterns`, `codemod-recipe/codemod-mcp-playbook`, `codemod-recipe/codemod-languages`, `codemod-recipe/codemod-tree-sitter-queries`, `codemod-recipe/codemod-recipe-authoring`, `codemod-recipe/recipe-generation`.
+| Mode | Skill |
+|------|-------|
+| **Architect** — author `.codemod` assets | `.agents/skills/codemod-recipe/architect/` |
+| **Builder** — understand / apply | `.agents/skills/codemod-recipe/builder/` |
+
+Usage docs SSOT: `.agents/skills/codemod-recipe/docs/` (bootstrapped from framework `docs/usage/`).

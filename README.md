@@ -33,7 +33,7 @@ cargo run -q --manifest-path rust/Cargo.toml -p codemod_recipe_host --bin codemo
   --workspace-root . --codemod-root .codemod
 ```
 
-See [docs/codemod-mcp.md](docs/codemod-mcp.md) for Cursor MCP setup.
+See [docs/usage/06_mcp_and_clients/01_codemod_mcp.md](docs/usage/06_mcp_and_clients/01_codemod_mcp.md) for Cursor MCP setup.
 
 ## Project layout
 
@@ -93,8 +93,8 @@ return {
 
 `capture` selects which `@name` from the query to edit; `anchor` (`start` \| `end`)
 places an insert before or after that span. Full walkthrough:
-[docs/writing-recipes.md](docs/writing-recipes.md). Day-1 guide:
-[docs/getting-started.md](docs/getting-started.md).
+[docs/usage/02_writing_recipes/01_workflow.md](docs/usage/02_writing_recipes/01_workflow.md). Day-1 guide:
+[docs/usage/01_getting_started/00_index.md](docs/usage/01_getting_started/00_index.md).
 
 ### Host API
 
@@ -115,7 +115,7 @@ Set `language = "dart"` (etc.) on edit specs for non-Dart or ambiguous paths.
 ### Template syntax (MiniJinja)
 
 Templates are rendered via `c:template({ inline = ... })` or `c:template({ path = ... })` — not YAML steps.
-See [docs/recipe-templates.md](docs/recipe-templates.md).
+See [docs/usage/04_templates_and_patterns/01_recipe_templates.md](docs/usage/04_templates_and_patterns/01_recipe_templates.md).
 
 ### Preview vs apply
 
@@ -166,15 +166,15 @@ cd rust && cargo test --all && cargo clippy --all-targets -- -D warnings
 
 ## Documentation
 
-- [docs/getting-started.md](docs/getting-started.md) — **start here** (human walkthrough)
+- [docs/usage/01_getting_started/00_index.md](docs/usage/01_getting_started/00_index.md) — **start here** (human walkthrough)
 - [docs/README.md](docs/README.md) — documentation map / index
 - [ARCHITECTURE.md](ARCHITECTURE.md) — design overview
-- [docs/writing-recipes.md](docs/writing-recipes.md) — Luau recipe authoring
-- [docs/new-project-rust-mcp.md](docs/new-project-rust-mcp.md) — Rust MCP quickstart
-- [docs/tree-sitter-queries.md](docs/tree-sitter-queries.md) — tree-sitter queries
-- [docs/language-support.md](docs/language-support.md) — multi-language support
-- [docs/recipe-templates.md](docs/recipe-templates.md) — MiniJinja templates
-- [docs/codemod-mcp.md](docs/codemod-mcp.md) — MCP tools and agent workflow
+- [docs/usage/02_writing_recipes/01_workflow.md](docs/usage/02_writing_recipes/01_workflow.md) — Luau recipe authoring
+- [docs/usage/06_mcp_and_clients/02_new_project_rust_mcp.md](docs/usage/06_mcp_and_clients/02_new_project_rust_mcp.md) — Rust MCP quickstart
+- [docs/usage/03_queries_and_languages/01_tree_sitter_queries.md](docs/usage/03_queries_and_languages/01_tree_sitter_queries.md) — tree-sitter queries
+- [docs/usage/03_queries_and_languages/02_language_support.md](docs/usage/03_queries_and_languages/02_language_support.md) — multi-language support
+- [docs/usage/04_templates_and_patterns/01_recipe_templates.md](docs/usage/04_templates_and_patterns/01_recipe_templates.md) — MiniJinja templates
+- [docs/usage/06_mcp_and_clients/01_codemod_mcp.md](docs/usage/06_mcp_and_clients/01_codemod_mcp.md) — MCP tools and agent workflow
 
 ## License
 

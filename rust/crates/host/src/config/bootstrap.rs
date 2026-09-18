@@ -163,11 +163,36 @@ mod tests {
     }
 
     #[test]
-    fn manifest_includes_export_files() {
+    fn manifest_includes_skills_and_usage_docs() {
         assert!(
             exported_file_count() >= 6,
             "expected at least 6 exported files, got {}",
             exported_file_count()
+        );
+        let paths: Vec<&str> = EXPORTED_FILES.iter().map(|f| f.path).collect();
+        assert!(
+            paths
+                .iter()
+                .any(|p| p.ends_with(".agents/skills/codemod-recipe/architect/SKILL.md")
+                    || *p == ".agents/skills/codemod-recipe/architect/SKILL.md"),
+            "missing architect skill in embed: {paths:?}"
+        );
+        assert!(
+            paths.iter().any(|p| p.contains(".agents/skills/codemod-recipe/docs/")),
+            "missing usage docs embed: {paths:?}"
+        );
+        assert!(
+            paths.iter().any(|p| *p == ".agents/skills/codemod-recipe/docs/book.toml"),
+            "missing usage book.toml embed: {paths:?}"
+        );
+        assert!(
+            !paths.iter().any(|p| p.ends_with(".js")),
+            "JS assets must not be embedded: {paths:?}"
+        );
+        // Skills come from .agents SSOT only — no second copy under export/.agents.
+        assert!(
+            !paths.iter().any(|p| p.contains("export/.agents")),
+            "unexpected export/.agents path in embed"
         );
     }
 
@@ -281,6 +306,12 @@ mod tests {
             .join(".agents/skills/codemod-recipe/codemod-overview/SKILL.md")
             .is_file());
         assert!(ws.join(".cursor/rules/codemod-recipe.mdc").is_file());
+        assert!(ws
+            .join(".agents/skills/codemod-recipe/docs/01_getting_started/00_index.md")
+            .is_file());
+        assert!(ws
+            .join(".agents/skills/codemod-recipe/docs/02_writing_recipes/02_host_api.md")
+            .is_file());
 
         let second = bootstrap_project(&ws, false, EditPolicy::Recommend, &[]);
         assert_eq!(second["ok"], true);
