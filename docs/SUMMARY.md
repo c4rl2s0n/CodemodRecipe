@@ -154,6 +154,11 @@
     - [Multi-language edits](usage/06_mcp_and_clients/02_new_project_rust_mcp/09_multi_language_edits.md)
     - [Validation checklist](usage/06_mcp_and_clients/02_new_project_rust_mcp/10_validation_checklist.md)
 
+- [Testing](usage/07_testing/00_index.md)
+  - [Test suites](usage/07_testing/01_test_suites.md)
+  - [Fixture workspaces](usage/07_testing/02_fixture_workspaces.md)
+  - [Running tests](usage/07_testing/03_running_tests.md)
+
 # Develop
 
 - [Develop](develop/00_index.md)
@@ -180,3 +185,4 @@
   - [Relations (design spike)](develop/03_relations/00_index.md)
     - [Relations semantics](develop/03_relations/01_semantics.md)
     - [Semantic delta in preview (spike)](develop/03_relations/02_semantic_delta_spike.md)
+  - [Testing (design record)](develop/04_testing/00_index.md)

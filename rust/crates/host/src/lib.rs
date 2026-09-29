@@ -11,6 +11,7 @@ pub mod query;
 pub mod recipe;
 pub mod sandbox;
 pub mod template;
+pub mod testing;
 
 pub const RESULT_BEGIN: &str = "__CODEMOD_RESULT_BEGIN__";
 pub const RESULT_END: &str = "__CODEMOD_RESULT_END__";

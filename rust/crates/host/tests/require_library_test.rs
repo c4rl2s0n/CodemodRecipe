@@ -33,7 +33,11 @@ fn library_modules_are_not_catalogued() {
 
     let mut registry = RecipeRegistry::new(workspace.clone(), codemod);
     registry.reload();
-    assert!(registry.diagnostics().is_empty(), "{:?}", registry.diagnostics());
+    assert!(
+        registry.diagnostics().is_empty(),
+        "{:?}",
+        registry.diagnostics()
+    );
     let list = dispatch::handle_command(&mut registry, HostCommand::List);
     let recipes = list["recipes"].as_array().unwrap();
     assert_eq!(recipes.len(), 1);
@@ -132,7 +136,11 @@ return {
 
     let mut registry = RecipeRegistry::new(workspace.clone(), codemod);
     registry.reload();
-    assert!(registry.diagnostics().is_empty(), "{:?}", registry.diagnostics());
+    assert!(
+        registry.diagnostics().is_empty(),
+        "{:?}",
+        registry.diagnostics()
+    );
 
     let response = dispatch::handle_command(
         &mut registry,

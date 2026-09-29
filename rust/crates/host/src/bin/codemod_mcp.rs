@@ -305,6 +305,16 @@ fn handle_request(
                     },
                     "required": ["componentId", "hook"]
                   }
+                },
+                {
+                  "name": "run_tests",
+                  "description": "Run *.test.luau suites (fixture-based regression tests for recipes, components, and relations). Read-only for the real workspace: mutations apply to temp fixture dirs only. Optional filter matches suite id, suite target, 'suite/test', or a test name substring. Returns per-test pass/fail with error line numbers.",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "filter": { "type": "string" }
+                    }
+                  }
                 }
               ]
             })),
@@ -516,6 +526,15 @@ fn handle_request(
                 }
                 "component_dry_run_hook" => mcp_component_invoke_hook(registry, &arguments, true),
                 "component_apply_hook" => mcp_component_invoke_hook(registry, &arguments, false),
+                "run_tests" => handle_command(
+                    registry,
+                    HostCommand::RunTests {
+                        filter: arguments
+                            .get("filter")
+                            .and_then(|v| v.as_str())
+                            .map(str::to_string),
+                    },
+                ),
                 _ => error_json(format!("Unknown tool: {tool}")),
             };
 

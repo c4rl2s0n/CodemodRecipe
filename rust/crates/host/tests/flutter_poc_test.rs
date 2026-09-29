@@ -133,3 +133,20 @@ fn flutter_poc_verify_detects_store_drift() {
         "both models have stores, got {codes:?}"
     );
 }
+
+/// Dogfood: the fixture's own `*.test.luau` suites (component + stack level)
+/// must all pass via the testing layer.
+#[test]
+fn flutter_poc_test_suites_pass() {
+    let root = fixture_root();
+    let mut registry = RecipeRegistry::new(root.join("workspace"), root.join(".codemod"));
+    registry.reload();
+
+    let report = dispatch::handle_command(&mut registry, HostCommand::RunTests { filter: None });
+    assert_eq!(report["ok"], true, "test suites failed: {report}");
+    assert_eq!(report["totals"]["failed"], 0);
+    assert!(
+        report["totals"]["passed"].as_u64().unwrap() >= 5,
+        "expected component + stack suites to run: {report}"
+    );
+}

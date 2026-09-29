@@ -5,7 +5,9 @@ use std::io::Result as IoResult;
 use std::path::{Component, Path, PathBuf};
 use std::result::Result as StdResult;
 
-use mlua::{Error, Function, Lua, NavigateError, Require, Result as LuaResult, TextRequirer, Value};
+use mlua::{
+    Error, Function, Lua, NavigateError, Require, Result as LuaResult, TextRequirer, Value,
+};
 
 use crate::load::{assert_library_module, is_declaration_file_name, LoadError};
 
@@ -78,7 +80,10 @@ impl CodemodRequire {
     }
 
     fn path_under_root(&self, path: &Path) -> bool {
-        let root = self.root.canonicalize().unwrap_or_else(|_| self.root.clone());
+        let root = self
+            .root
+            .canonicalize()
+            .unwrap_or_else(|_| self.root.clone());
         let abs = if path.is_absolute() {
             path.to_path_buf()
         } else {
@@ -230,10 +235,8 @@ mod tests {
 
     fn temp_codemod(name: &str) -> PathBuf {
         let n = N.fetch_add(1, Ordering::SeqCst);
-        let root = std::env::temp_dir().join(format!(
-            "codemod_require_{name}_{}_{n}",
-            std::process::id()
-        ));
+        let root =
+            std::env::temp_dir().join(format!("codemod_require_{name}_{}_{n}", std::process::id()));
         let _ = std::fs::remove_dir_all(&root);
         std::fs::create_dir_all(root.join("recipes")).unwrap();
         root
@@ -271,7 +274,9 @@ return {
         let source = std::fs::read_to_string(&recipe_path).unwrap();
         let table = eval_return_table(&lua, &source, &require_chunk_name(&recipe_path)).unwrap();
         let apply: mlua::Function = table.get("apply").unwrap();
-        apply.call::<()>((mlua::Value::Nil, mlua::Value::Nil)).unwrap();
+        apply
+            .call::<()>((mlua::Value::Nil, mlua::Value::Nil))
+            .unwrap();
 
         let _ = std::fs::remove_dir_all(root);
     }

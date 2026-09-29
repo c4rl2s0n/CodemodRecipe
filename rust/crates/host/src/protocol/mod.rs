@@ -200,6 +200,14 @@ pub enum HostCommand {
         #[serde(rename = "componentId")]
         component_id: String,
     },
+    /// Run `*.test.luau` suites (fixture-based; never touches the real
+    /// workspace). `filter` matches suite id, suite `target`, `suite/test`,
+    /// or a bare test name substring.
+    #[serde(rename = "runTests")]
+    RunTests {
+        #[serde(default)]
+        filter: Option<String>,
+    },
 }
 
 fn default_true() -> bool {

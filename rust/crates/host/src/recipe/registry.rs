@@ -2,10 +2,10 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use codemod_recipe_lua::load::{load_asset_with_root, Asset, LoadError, LoadResult};
-use codemod_recipe_lua::require_chunk_name;
 use codemod_recipe_lua::model::{
-    Arg, ArgFrom, ComponentDef, ExplorerMenuEntry, Recipe, StackDef, TypeDef,
+    Arg, ArgFrom, ComponentDef, ExplorerMenuEntry, Recipe, StackDef, TestSuiteDef, TypeDef,
 };
+use codemod_recipe_lua::require_chunk_name;
 use codemod_recipe_lua::InputKind;
 
 use crate::diagnostics::diag_source::source_file_only;
@@ -26,6 +26,7 @@ pub struct RecipeRegistry {
     recipes: BTreeMap<String, Recipe>,
     stack: Option<StackDef>,
     components: BTreeMap<String, ComponentDef>,
+    test_suites: BTreeMap<String, TestSuiteDef>,
     component_scan_cache: Option<crate::component::cache::ComponentScanCache>,
     diagnostics: Vec<RecipeDiagnostic>,
 }
@@ -44,6 +45,7 @@ impl RecipeRegistry {
             recipes: BTreeMap::new(),
             stack: None,
             components: BTreeMap::new(),
+            test_suites: BTreeMap::new(),
             component_scan_cache: None,
             diagnostics: Vec::new(),
         }
@@ -112,6 +114,14 @@ impl RecipeRegistry {
         self.components.get(id)
     }
 
+    pub fn test_suites(&self) -> &BTreeMap<String, TestSuiteDef> {
+        &self.test_suites
+    }
+
+    pub fn get_test_suite(&self, id: &str) -> Option<&TestSuiteDef> {
+        self.test_suites.get(id)
+    }
+
     pub fn component_schemas(&self) -> Vec<ComponentSchema> {
         let root_ids: std::collections::BTreeSet<&str> = self
             .stack
@@ -169,6 +179,7 @@ impl RecipeRegistry {
         self.recipes.clear();
         self.stack = None;
         self.components.clear();
+        self.test_suites.clear();
         self.component_scan_cache = None;
         self.diagnostics.clear();
         self.ast_cache.clear();
@@ -181,7 +192,7 @@ impl RecipeRegistry {
             let relative = relative_path(&self.workspace_root, &path);
             let name = require_chunk_name(&path);
             match load_asset_with_root(&text, &name, Some(&self.codemod_root)) {
-                Ok(LoadResult::Asset(asset)) => self.register_asset(asset, &path, &relative),
+                Ok(LoadResult::Asset(asset)) => self.register_asset(*asset, &path, &relative),
                 Ok(LoadResult::Library) => {}
                 Err(err) => self.push_load_error(&relative, err),
             }
@@ -291,6 +302,19 @@ impl RecipeRegistry {
                 } else {
                     component.path = Some(path.to_path_buf());
                     self.components.insert(component.id.clone(), component);
+                }
+            }
+            Asset::TestSuite(mut suite) => {
+                if self.test_suites.contains_key(&suite.id) {
+                    self.diagnostics.push(RecipeDiagnostic::simple(
+                        "error",
+                        "E_DUP_ID",
+                        format!("Duplicate test suite id {}", suite.id),
+                        vec![source_file_only(relative)],
+                    ));
+                } else {
+                    suite.path = Some(path.to_path_buf());
+                    self.test_suites.insert(suite.id.clone(), suite);
                 }
             }
         }
@@ -492,6 +516,10 @@ fn collect_lua_files(root: &Path) -> Vec<PathBuf> {
     let mut out = Vec::new();
     visit(root, &mut out);
     out.sort();
+    // `.codemod/tests/fixtures/` holds workspace fixtures for test suites —
+    // never load them as assets (a fixture may itself contain a .codemod tree).
+    let fixtures_root = root.join("tests").join("fixtures");
+    out.retain(|p| !p.starts_with(&fixtures_root));
     out
 }
 

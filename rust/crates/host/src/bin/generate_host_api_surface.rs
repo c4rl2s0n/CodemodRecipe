@@ -118,6 +118,55 @@ fn generate_dluau() -> String {
     out.push_str("\treadSource: (self: ComponentDelegate, locator: any) -> any,\n");
     out.push_str("}\n\n");
 
+    // Test layer (`*.test.luau` suites, `run_tests` MCP tool). Hand-written:
+    // these types describe the test runner's `t`/`ws` contexts, not host API
+    // methods on `c`.
+    out.push_str("export type TestWorkspaceSpec = {\n");
+    out.push_str("\tbase: string?,\n");
+    out.push_str("\tfiles: { [string]: string }?,\n");
+    out.push_str("}\n\n");
+
+    out.push_str("export type TestApplyRecipeResult = {\n");
+    out.push_str("\tfiles: { any },\n");
+    out.push_str("\tapplied: { string },\n");
+    out.push_str("\ttranscript: { any },\n");
+    out.push_str("\tsawPostExec: boolean,\n");
+    out.push_str("}\n\n");
+
+    out.push_str("export type TestWorkspace = {\n");
+    out.push_str("\tscan: (self: TestWorkspace) -> any,\n");
+    out.push_str("\tidentify: (self: TestWorkspace, componentId: string) -> any,\n");
+    out.push_str("\tparse: (self: TestWorkspace, componentId: string, locator: any) -> any,\n");
+    out.push_str("\tverify: (self: TestWorkspace, componentId: string, instance: any) -> any,\n");
+    out.push_str("\trelate: (self: TestWorkspace, componentId: string, instance: any) -> any,\n");
+    out.push_str(
+        "\tapply: (self: TestWorkspace, componentId: string, operation: string, args: { [string]: any }, instanceId: string) -> any,\n",
+    );
+    out.push_str(
+        "\tscaffold: (self: TestWorkspace, componentId: string, args: { [string]: any }) -> any,\n",
+    );
+    out.push_str(
+        "\tapplyRecipe: (self: TestWorkspace, recipeId: string, args: { [string]: any }) -> TestApplyRecipeResult,\n",
+    );
+    out.push_str("\treadFile: (self: TestWorkspace, path: string) -> string?,\n");
+    out.push_str("}\n\n");
+
+    out.push_str("export type TestContext = {\n");
+    out.push_str(
+        "\tworkspace: (self: TestContext, spec: string | TestWorkspaceSpec) -> TestWorkspace,\n",
+    );
+    out.push_str("\tassert: (self: TestContext, v: any, msg: string?) -> any,\n");
+    out.push_str("\tassertEq: (self: TestContext, got: any, want: any, msg: string?) -> any,\n");
+    out.push_str("\tfail: (self: TestContext, msg: string?) -> never,\n");
+    out.push_str("}\n\n");
+
+    out.push_str("export type TestSuiteModule = {\n");
+    out.push_str("\tid: string,\n");
+    out.push_str("\tdescription: string?,\n");
+    out.push_str("\ttarget: string?,\n");
+    out.push_str("\ttests: { [string]: (t: TestContext) -> () },\n");
+    out.push_str("}\n\n");
+
     out.push_str("export type CodemodContext = {\n");
 
     for method in sorted_methods() {

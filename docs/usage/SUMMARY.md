@@ -149,3 +149,8 @@
     - [Inline recipe support](06_mcp_and_clients/02_new_project_rust_mcp/08_inline_recipe_support.md)
     - [Multi-language edits](06_mcp_and_clients/02_new_project_rust_mcp/09_multi_language_edits.md)
     - [Validation checklist](06_mcp_and_clients/02_new_project_rust_mcp/10_validation_checklist.md)
+
+- [Testing](07_testing/00_index.md)
+  - [Test suites](07_testing/01_test_suites.md)
+  - [Fixture workspaces](07_testing/02_fixture_workspaces.md)
+  - [Running tests](07_testing/03_running_tests.md)

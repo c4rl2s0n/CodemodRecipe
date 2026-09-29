@@ -97,6 +97,44 @@ export type ComponentDelegate = {
 	readSource: (self: ComponentDelegate, locator: any) -> any,
 }
 
+export type TestWorkspaceSpec = {
+	base: string?,
+	files: { [string]: string }?,
+}
+
+export type TestApplyRecipeResult = {
+	files: { any },
+	applied: { string },
+	transcript: { any },
+	sawPostExec: boolean,
+}
+
+export type TestWorkspace = {
+	scan: (self: TestWorkspace) -> any,
+	identify: (self: TestWorkspace, componentId: string) -> any,
+	parse: (self: TestWorkspace, componentId: string, locator: any) -> any,
+	verify: (self: TestWorkspace, componentId: string, instance: any) -> any,
+	relate: (self: TestWorkspace, componentId: string, instance: any) -> any,
+	apply: (self: TestWorkspace, componentId: string, operation: string, args: { [string]: any }, instanceId: string) -> any,
+	scaffold: (self: TestWorkspace, componentId: string, args: { [string]: any }) -> any,
+	applyRecipe: (self: TestWorkspace, recipeId: string, args: { [string]: any }) -> TestApplyRecipeResult,
+	readFile: (self: TestWorkspace, path: string) -> string?,
+}
+
+export type TestContext = {
+	workspace: (self: TestContext, spec: string | TestWorkspaceSpec) -> TestWorkspace,
+	assert: (self: TestContext, v: any, msg: string?) -> any,
+	assertEq: (self: TestContext, got: any, want: any, msg: string?) -> any,
+	fail: (self: TestContext, msg: string?) -> never,
+}
+
+export type TestSuiteModule = {
+	id: string,
+	description: string?,
+	target: string?,
+	tests: { [string]: (t: TestContext) -> () },
+}
+
 export type CodemodContext = {
 	assert: (self: CodemodContext, cond: boolean, msg: string?) -> (),
 	component: (self: CodemodContext, id: string) -> ComponentDelegate,

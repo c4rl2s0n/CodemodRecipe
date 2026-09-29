@@ -29,11 +29,7 @@ fn write_stack(codemod: &std::path::Path, codebase: Option<&str>) {
 }
 
 fn setup_coverage_workspace(name: &str, with_codebase: bool) -> PathBuf {
-    let root = std::env::temp_dir().join(format!(
-        "codemod_cov_{}_{}",
-        name,
-        std::process::id()
-    ));
+    let root = std::env::temp_dir().join(format!("codemod_cov_{}_{}", name, std::process::id()));
     let _ = fs::remove_dir_all(&root);
     let workspace = root.join("workspace");
     let codemod = root.join(".codemod");
@@ -83,10 +79,7 @@ return {
 #[test]
 fn coverage_skipped_without_codebase() {
     let fixture = flutter_poc();
-    let mut registry = RecipeRegistry::new(
-        fixture.join("workspace"),
-        fixture.join(".codemod"),
-    );
+    let mut registry = RecipeRegistry::new(fixture.join("workspace"), fixture.join(".codemod"));
     registry.reload();
 
     let response = dispatch::handle_command(&mut registry, HostCommand::ComponentCoverage);

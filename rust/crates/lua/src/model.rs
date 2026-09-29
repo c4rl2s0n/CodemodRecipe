@@ -160,6 +160,23 @@ pub struct OperationDef {
     pub args: Vec<Arg>,
 }
 
+/// Test suite module (`*.test.luau`): `id` + `tests` table of functions.
+/// Suites are fixture-based regression tests for recipes, components, and
+/// stack-level relations; they run against temp workspaces, never the real one.
+#[derive(Debug, Clone, PartialEq, Eq, JsonSchema)]
+pub struct TestSuiteDef {
+    pub id: String,
+    pub description: Option<String>,
+    /// Optional asset id this suite targets (grouping/filtering only).
+    pub target: Option<String>,
+    /// Sorted names of the functions in the `tests` table.
+    pub test_names: Vec<String>,
+    #[schemars(skip)]
+    pub source: String,
+    #[schemars(skip)]
+    pub path: Option<PathBuf>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, PartialEq, Eq)]
 #[serde(rename_all = "camelCase")]
 pub struct TranscriptStats {

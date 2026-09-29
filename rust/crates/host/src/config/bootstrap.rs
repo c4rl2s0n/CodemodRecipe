@@ -171,18 +171,20 @@ mod tests {
         );
         let paths: Vec<&str> = EXPORTED_FILES.iter().map(|f| f.path).collect();
         assert!(
-            paths
-                .iter()
-                .any(|p| p.ends_with(".agents/skills/codemod-recipe/architect/SKILL.md")
-                    || *p == ".agents/skills/codemod-recipe/architect/SKILL.md"),
+            paths.iter().any(
+                |p| p.ends_with(".agents/skills/codemod-recipe/architect/SKILL.md")
+                    || *p == ".agents/skills/codemod-recipe/architect/SKILL.md"
+            ),
             "missing architect skill in embed: {paths:?}"
         );
         assert!(
-            paths.iter().any(|p| p.contains(".agents/skills/codemod-recipe/docs/")),
+            paths
+                .iter()
+                .any(|p| p.contains(".agents/skills/codemod-recipe/docs/")),
             "missing usage docs embed: {paths:?}"
         );
         assert!(
-            paths.iter().any(|p| *p == ".agents/skills/codemod-recipe/docs/book.toml"),
+            paths.contains(&".agents/skills/codemod-recipe/docs/book.toml"),
             "missing usage book.toml embed: {paths:?}"
         );
         assert!(

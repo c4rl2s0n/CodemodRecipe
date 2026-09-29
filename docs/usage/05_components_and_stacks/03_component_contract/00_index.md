@@ -15,3 +15,5 @@ v1.4: scan phases `identify → parse → relate → verify`; `verify` optional;
 | [Findings](07_findings.md) | |
 | [Reference](08_reference.md) | |
 
+Regression-test hook logic with fixture-based suites: [Testing](../../07_testing/00_index.md).
+

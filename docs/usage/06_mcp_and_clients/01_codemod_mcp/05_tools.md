@@ -22,6 +22,7 @@ All tools return a JSON string. Parse it, then check `ok`.
 | `describe_component` | Metadata: hooks present, scaffold args, operations |
 | `component_dry_run_hook` | Dry-run one hook (Preview; no disk writes); returns `result` + `transcript` |
 | `component_apply_hook` | Apply one hook (flushes WorkingTree); same args as dry-run |
+| `run_tests` | Run `*.test.luau` suites against temp fixture workspaces; optional `filter` (suite id, `target`, `suite/test`, or test name). Read-only for the real workspace — see [Testing](../../07_testing/00_index.md) |
 
 When `.codemod/stack.luau` and components exist: `component_scan` first, then
 `component_incremental_scan` after file edits. Optional: `component_coverage` to audit

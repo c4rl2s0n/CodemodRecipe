@@ -31,6 +31,7 @@ Author **`.codemod` assets**. Do not invent API — read the linked usage docs.
 | Non-Dart file | Set `language` on ops | [language-support.md](../docs/03_queries_and_languages/02_language_support/00_index.md) |
 | MiniJinja text | `c:template` | [recipe-templates.md](../docs/04_templates_and_patterns/01_recipe_templates/00_index.md) |
 | Typed authoring | Luau stubs | [luau-lsp.md](../docs/05_components_and_stacks/04_luau_lsp/00_index.md) |
+| Regression-test an asset | `*.test.luau` suite + `run_tests` | [testing.md](../docs/07_testing/00_index.md) |
 
 ## Authoring checklist
 

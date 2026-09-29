@@ -36,6 +36,7 @@ You need **both** `mdbook` and `mdbook-mermaid` (preprocessor). The install step
 4. [Templates and patterns](04_templates_and_patterns/00_index.md)
 5. [Components and stacks](05_components_and_stacks/00_index.md)
 6. [MCP and clients](06_mcp_and_clients/00_index.md)
+7. [Testing](07_testing/00_index.md)
 
 ## Chapters
 
@@ -47,3 +48,4 @@ You need **both** `mdbook` and `mdbook-mermaid` (preprocessor). The install step
 | [04_templates_and_patterns](04_templates_and_patterns/00_index.md) | MiniJinja, taxonomy, shortcuts |
 | [05_components_and_stacks](05_components_and_stacks/00_index.md) | Platform components |
 | [06_mcp_and_clients](06_mcp_and_clients/00_index.md) | MCP tools and new-project quickstart |
+| [07_testing](07_testing/00_index.md) | Fixture-based test suites for recipes, components, relations |

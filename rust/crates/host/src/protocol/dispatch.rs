@@ -468,6 +468,10 @@ pub fn handle_command(registry: &mut RecipeRegistry, cmd: HostCommand) -> serde_
                 }),
             }
         }
+        HostCommand::RunTests { filter } => to_value(crate::testing::run_tests(
+            registry,
+            filter.as_deref(),
+        )),
     }
 }
 

@@ -348,6 +348,11 @@ pub fn normalize_raw_edges(
     let items = match raw {
         serde_json::Value::Null => return (Vec::new(), Vec::new()),
         serde_json::Value::Array(arr) => arr,
+        // Empty Luau table `{}` converts to a JSON object, not an array —
+        // an empty relate result means no edges, not one empty edge.
+        serde_json::Value::Object(ref map) if map.is_empty() => {
+            return (Vec::new(), Vec::new());
+        }
         obj @ serde_json::Value::Object(_) => vec![obj],
         _ => {
             return (

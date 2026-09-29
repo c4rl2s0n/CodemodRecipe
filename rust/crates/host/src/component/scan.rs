@@ -431,6 +431,9 @@ fn collect_identify_locators(
     Ok(match locators {
         serde_json::Value::Array(items) => items,
         serde_json::Value::Null => Vec::new(),
+        // Empty Luau table `{}` converts to a JSON object, not an array —
+        // an empty identify result means zero locators, not one empty locator.
+        serde_json::Value::Object(map) if map.is_empty() => Vec::new(),
         other => vec![other],
     })
 }

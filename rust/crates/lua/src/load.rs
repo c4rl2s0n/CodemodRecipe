@@ -1,14 +1,14 @@
 use mlua::{Lua, Table, Value};
 use std::collections::BTreeMap;
 use std::path::Path;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::Arc;
 use thiserror::Error;
 
 use crate::input_kind::InputKind;
 use crate::model::{
     Arg, ArgFrom, ArgFromSpec, ComponentDef, ExplorerMenuEntry, ExplorerMenuKind, MapAsset,
-    OperationDef, QueryLibAsset, Recipe, StackDef, TypeDef, VariablesAsset,
+    OperationDef, QueryLibAsset, Recipe, StackDef, TestSuiteDef, TypeDef, VariablesAsset,
 };
 
 #[derive(Debug, Error)]
@@ -51,6 +51,7 @@ pub enum AssetKind {
     Type,
     Stack,
     Component,
+    TestSuite,
     /// Helper module (no top-level `id`); not catalogued, loadable via `require`.
     Library,
     Unknown,
@@ -65,12 +66,15 @@ pub enum Asset {
     Type(TypeDef),
     Stack(StackDef),
     Component(ComponentDef),
+    TestSuite(TestSuiteDef),
 }
 
 /// Outcome of loading a `.codemod` Luau module for the catalog.
 #[derive(Debug)]
 pub enum LoadResult {
-    Asset(Asset),
+    /// Boxed: `Asset` is ~260 bytes (Recipe carries maps/types/queries tables),
+    /// and `LoadResult` is moved around per loaded file.
+    Asset(Box<Asset>),
     /// Helper module — not registered as a catalog asset.
     Library,
 }
@@ -202,6 +206,13 @@ pub fn classify_table(table: &Table) -> Result<AssetKind, LoadError> {
     {
         return Ok(AssetKind::Type);
     }
+    if table
+        .get::<Option<Table>>("tests")
+        .map_err(|e| LoadError::Message(e.to_string()))?
+        .is_some()
+    {
+        return Ok(AssetKind::TestSuite);
+    }
     Ok(AssetKind::Unknown)
 }
 
@@ -222,27 +233,32 @@ pub fn load_asset_with_root(
     let table = eval_return_table(&lua, source, chunk_name)?;
     match classify_table(&table)? {
         AssetKind::Library => Ok(LoadResult::Library),
-        AssetKind::Recipe => Ok(LoadResult::Asset(Asset::Recipe(load_recipe_from_table(
-            &table, source,
-        )?))),
-        AssetKind::Map => Ok(LoadResult::Asset(Asset::Map(load_map_from_table(&table)?))),
-        AssetKind::Variables => Ok(LoadResult::Asset(Asset::Variables(
+        AssetKind::Recipe => Ok(LoadResult::Asset(Box::new(Asset::Recipe(
+            load_recipe_from_table(&table, source)?,
+        )))),
+        AssetKind::Map => Ok(LoadResult::Asset(Box::new(Asset::Map(
+            load_map_from_table(&table)?,
+        )))),
+        AssetKind::Variables => Ok(LoadResult::Asset(Box::new(Asset::Variables(
             load_variables_from_table(&table)?,
-        ))),
-        AssetKind::QueryLib => Ok(LoadResult::Asset(Asset::QueryLib(
+        )))),
+        AssetKind::QueryLib => Ok(LoadResult::Asset(Box::new(Asset::QueryLib(
             load_query_lib_from_table(&table)?,
-        ))),
-        AssetKind::Type => Ok(LoadResult::Asset(Asset::Type(load_type_from_table(
-            &table,
-        )?))),
-        AssetKind::Stack => Ok(LoadResult::Asset(Asset::Stack(load_stack_from_table(
-            &table, source,
-        )?))),
-        AssetKind::Component => Ok(LoadResult::Asset(Asset::Component(
+        )))),
+        AssetKind::Type => Ok(LoadResult::Asset(Box::new(Asset::Type(
+            load_type_from_table(&table)?,
+        )))),
+        AssetKind::Stack => Ok(LoadResult::Asset(Box::new(Asset::Stack(
+            load_stack_from_table(&table, source)?,
+        )))),
+        AssetKind::Component => Ok(LoadResult::Asset(Box::new(Asset::Component(
             load_component_from_table(&table, source)?,
-        ))),
+        )))),
+        AssetKind::TestSuite => Ok(LoadResult::Asset(Box::new(Asset::TestSuite(
+            load_test_suite_from_table(&table, source)?,
+        )))),
         AssetKind::Unknown => Err(LoadError::Message(
-            "unknown asset shape: expected apply, parse (component), components (stack), map, values, queries, or fields".to_string(),
+            "unknown asset shape: expected apply, parse (component), components (stack), map, values, queries, fields, or tests".to_string(),
         )),
     }
 }
@@ -387,6 +403,52 @@ pub fn load_component_from_table(table: &Table, source: &str) -> Result<Componen
         has_to_summary,
         has_scaffold,
         scaffold_args,
+        source: source.to_string(),
+        path: None,
+    })
+}
+
+pub fn load_test_suite_from_table(table: &Table, source: &str) -> Result<TestSuiteDef, LoadError> {
+    let id = required_string(table, "id")?;
+    if id.trim().is_empty() {
+        return Err(LoadError::Message("test suite id is required".to_string()));
+    }
+    let description = optional_string(table, "description")?;
+    let target = optional_string(table, "target")?;
+    let tests_tbl: Table = table.get("tests").map_err(|_| {
+        LoadError::Message("test suite requires tests = { name = function }".to_string())
+    })?;
+    let mut test_names = Vec::new();
+    for pair in tests_tbl.pairs::<Value, Value>() {
+        let (key, value) = pair.map_err(|e| LoadError::Message(e.to_string()))?;
+        let name = match key {
+            Value::String(s) => s.to_str()?.to_string(),
+            other => {
+                return Err(LoadError::Message(format!(
+                    "test name must be a string, got {}",
+                    other.type_name()
+                )));
+            }
+        };
+        if !matches!(value, Value::Function(_)) {
+            return Err(LoadError::Message(format!(
+                "test {name} must be a function, got {}",
+                value.type_name()
+            )));
+        }
+        test_names.push(name);
+    }
+    if test_names.is_empty() {
+        return Err(LoadError::Message(
+            "test suite requires at least one test".to_string(),
+        ));
+    }
+    test_names.sort();
+    Ok(TestSuiteDef {
+        id,
+        description,
+        target,
+        test_names,
         source: source.to_string(),
         path: None,
     })
@@ -1002,6 +1064,14 @@ return {
         assert!(classify_table(&table).is_err());
     }
 
+    /// Unwrap a `LoadResult` into its boxed `Asset` (derefed for matching).
+    fn loaded_asset(result: LoadResult) -> Asset {
+        match result {
+            LoadResult::Asset(asset) => *asset,
+            other => panic!("expected asset, got {other:?}"),
+        }
+    }
+
     #[test]
     fn load_asset_recipe() {
         let src = r#"
@@ -1011,7 +1081,7 @@ return {
 }
 "#;
         let asset = load_asset(src, "demo.luau").unwrap();
-        assert!(matches!(asset, LoadResult::Asset(Asset::Recipe(r)) if r.id == "demo.insert"));
+        assert!(matches!(loaded_asset(asset), Asset::Recipe(r) if r.id == "demo.insert"));
     }
 
     #[test]
@@ -1019,8 +1089,8 @@ return {
         let src = r#"return { id = "m", map = { a = "b" } }"#;
         let asset = load_asset(src, "m.luau").unwrap();
         assert!(matches!(
-            asset,
-            LoadResult::Asset(Asset::Map(m)) if m.id == "m" && m.map["a"] == "b"
+            loaded_asset(asset),
+            Asset::Map(m) if m.id == "m" && m.map["a"] == "b"
         ));
     }
 
@@ -1093,8 +1163,8 @@ return {
         let lua = new_sandbox().unwrap();
         let table = eval_return_table(&lua, src, "entity.luau").unwrap();
         assert_eq!(classify_table(&table).unwrap(), AssetKind::Component);
-        match load_asset(src, "entity.luau").unwrap() {
-            LoadResult::Asset(Asset::Component(c)) => {
+        match loaded_asset(load_asset(src, "entity.luau").unwrap()) {
+            Asset::Component(c) => {
                 assert_eq!(c.id, "example.entity");
                 assert!(c.has_identify);
                 assert!(!c.has_verify);
@@ -1113,8 +1183,8 @@ return {
   relate = function(c, i, index) return nil end,
 }
 "#;
-        match load_asset(src, "store.luau").unwrap() {
-            LoadResult::Asset(Asset::Component(c)) => {
+        match loaded_asset(load_asset(src, "store.luau").unwrap()) {
+            Asset::Component(c) => {
                 assert!(c.has_relate);
                 assert!(!c.has_verify);
                 assert!(!c.has_identify);
@@ -1135,14 +1205,56 @@ return {
 }
 "#;
         assert!(matches!(
-            load_asset(stack, "stack.luau").unwrap(),
-            LoadResult::Asset(Asset::Stack(s)) if s.id == "stack"
+            loaded_asset(load_asset(stack, "stack.luau").unwrap()),
+            Asset::Stack(s) if s.id == "stack"
         ));
         let loaded = load_asset(component, "a.b.luau").unwrap();
         assert!(matches!(
-            loaded,
-            LoadResult::Asset(Asset::Component(c)) if c.id == "a.b"
+            loaded_asset(loaded),
+            Asset::Component(c) if c.id == "a.b"
         ));
+    }
+
+    #[test]
+    fn classify_table_test_suite() {
+        let src = r#"
+return {
+  id = "flutter.model.tests",
+  target = "flutter.model",
+  tests = {
+    parses_fields = function(t) end,
+    relates_stores = function(t) end,
+  },
+}
+"#;
+        let lua = new_sandbox().unwrap();
+        let table = eval_return_table(&lua, src, "flutter.model.test.luau").unwrap();
+        assert_eq!(classify_table(&table).unwrap(), AssetKind::TestSuite);
+        match loaded_asset(load_asset(src, "flutter.model.test.luau").unwrap()) {
+            Asset::TestSuite(suite) => {
+                assert_eq!(suite.id, "flutter.model.tests");
+                assert_eq!(suite.target.as_deref(), Some("flutter.model"));
+                assert_eq!(
+                    suite.test_names,
+                    vec!["parses_fields".to_string(), "relates_stores".to_string()]
+                );
+            }
+            other => panic!("expected test suite, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn test_suite_rejects_non_function_test() {
+        let src = r#"return { id = "x.tests", tests = { broken = "nope" } }"#;
+        let err = load_asset(src, "x.test.luau").unwrap_err().to_string();
+        assert!(err.contains("must be a function"), "got: {err}");
+    }
+
+    #[test]
+    fn test_suite_rejects_empty_tests() {
+        let src = r#"return { id = "x.tests", tests = {} }"#;
+        let err = load_asset(src, "x.test.luau").unwrap_err().to_string();
+        assert!(err.contains("at least one test"), "got: {err}");
     }
 
     #[test]
@@ -1152,8 +1264,8 @@ return {
   components = { "a.b" },
   codebase = { "lib/**/*.dart", "src/*.rs" },
 }"#;
-        match load_asset(stack, "stack.luau").unwrap() {
-            LoadResult::Asset(Asset::Stack(s)) => {
+        match loaded_asset(load_asset(stack, "stack.luau").unwrap()) {
+            Asset::Stack(s) => {
                 assert_eq!(s.id, "stack");
                 assert_eq!(
                     s.codebase,
