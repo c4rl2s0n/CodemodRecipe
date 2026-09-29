@@ -26,7 +26,7 @@ fn component_scan_finds_root_instances_and_child_properties() {
         .find(|i| i["componentId"] == "example.entity")
         .expect("entity instance");
     assert_eq!(entity["id"], "example.entity/recipe");
-    let fields = entity["node"]["fields"].as_array().expect("fields");
+    let fields = entity["ast"]["fields"].as_array().expect("fields");
     assert_eq!(fields.len(), 1);
     assert_eq!(fields[0]["name"], "title");
 
@@ -35,6 +35,36 @@ fn component_scan_finds_root_instances_and_child_properties() {
         .find(|i| i["componentId"] == "example.store")
         .expect("store instance");
     assert_eq!(store["id"], "example.store/recipe");
+
+    // example.store relates to example.entity via a `stores` edge.
+    let edges = response["edges"].as_array().expect("edges array");
+    assert_eq!(edges.len(), 1);
+    assert_eq!(edges[0]["from"], "example.store/recipe");
+    assert_eq!(edges[0]["kind"], "stores");
+    assert_eq!(edges[0]["to"], "example.entity/recipe");
+
+    let relations = store["ast"]["relations"]["stores"]
+        .as_array()
+        .expect("store node relations");
+    assert_eq!(relations[0]["to"], "example.entity/recipe");
+
+    let kind_graph = response["kindGraph"].as_array().expect("kindGraph array");
+    assert_eq!(kind_graph.len(), 1);
+    assert_eq!(kind_graph[0]["from"], "example.store");
+    assert_eq!(kind_graph[0]["to"], "example.entity");
+    assert_eq!(kind_graph[0]["count"], 1);
+
+    // Graph-aware verify: the entity has a store, so no entity.missing_store finding.
+    let codes: Vec<&str> = response["findings"]
+        .as_array()
+        .expect("findings array")
+        .iter()
+        .filter_map(|f| f["code"].as_str())
+        .collect();
+    assert!(
+        !codes.contains(&"entity.missing_store"),
+        "entity has a store, got {codes:?}"
+    );
 }
 
 #[test]
@@ -80,7 +110,7 @@ fn component_invoke_operation_preview_and_apply() {
         applied_src.contains("final String subtitle"),
         "expected new field in source"
     );
-    let rescanned = apply["instance"]["node"]["fields"]
+    let rescanned = apply["instance"]["ast"]["fields"]
         .as_array()
         .expect("rescanned fields");
     assert_eq!(rescanned.len(), 2);

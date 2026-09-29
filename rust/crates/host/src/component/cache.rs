@@ -1,6 +1,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::path::Path;
 
+use crate::component::relations::{ComponentEdge, KindEdge};
 use crate::component::types::{context_path, ComponentFinding, ComponentInstance};
 use crate::recipe::registry::RecipeRegistry;
 
@@ -41,7 +42,12 @@ pub struct DetectResult {
 #[derive(Debug, Clone)]
 pub struct ComponentScanCache {
     pub instances: Vec<ComponentInstance>,
-    pub findings: Vec<ComponentFinding>,
+    /// Parse-time findings (soft validation) — merged per-instance on incremental scans.
+    pub parse_findings: Vec<ComponentFinding>,
+    /// Relation + verify findings — recomputed wholesale over the merged forest.
+    pub judgment_findings: Vec<ComponentFinding>,
+    pub edges: Vec<ComponentEdge>,
+    pub kind_graph: Vec<KindEdge>,
     /// workspace-relative path -> root instance ids that depend on that file
     pub path_index: BTreeMap<String, BTreeSet<String>>,
     pub path_fingerprints: BTreeMap<String, FileFingerprint>,
@@ -50,14 +56,13 @@ pub struct ComponentScanCache {
 }
 
 impl ComponentScanCache {
-    pub fn from_scan(
-        registry: &RecipeRegistry,
-        instances: Vec<ComponentInstance>,
-        findings: Vec<ComponentFinding>,
-    ) -> Self {
+    pub fn from_scan(registry: &RecipeRegistry, data: crate::component::scan::ScanData) -> Self {
         let mut cache = Self {
-            instances,
-            findings,
+            instances: data.instances,
+            parse_findings: data.parse_findings,
+            judgment_findings: data.judgment_findings,
+            edges: data.edges,
+            kind_graph: data.kind_graph,
             path_index: BTreeMap::new(),
             path_fingerprints: BTreeMap::new(),
             known_root_paths: BTreeMap::new(),
@@ -65,6 +70,12 @@ impl ComponentScanCache {
         };
         cache.rebuild_indexes(registry.workspace_root());
         cache
+    }
+
+    pub fn all_findings(&self) -> Vec<ComponentFinding> {
+        let mut findings = self.parse_findings.clone();
+        findings.extend(self.judgment_findings.clone());
+        findings
     }
 
     pub fn rebuild_indexes(&mut self, workspace_root: &Path) {
@@ -100,7 +111,7 @@ impl ComponentScanCache {
                     },
                 );
             }
-            index_node_paths(&instance.node, &instance.id, &mut self.path_index);
+            index_node_paths(&instance.ast, &instance.id, &mut self.path_index);
             if let Some(path) = root_path {
                 self.path_index
                     .entry(path)
@@ -163,7 +174,7 @@ impl ComponentScanCache {
         registry: &RecipeRegistry,
         removed_roots: &[RootKey],
         updated_instances: Vec<ComponentInstance>,
-        updated_findings: Vec<ComponentFinding>,
+        updated_parse_findings: Vec<ComponentFinding>,
     ) {
         let removed_ids: BTreeSet<String> = removed_roots
             .iter()
@@ -180,7 +191,7 @@ impl ComponentScanCache {
 
         self.instances
             .retain(|i| !removed_ids.contains(&i.id) && !updated_ids.contains(&i.id));
-        self.findings.retain(|f| {
+        self.parse_findings.retain(|f| {
             f.instance_id
                 .as_ref()
                 .map(|id| !removed_ids.contains(id) && !updated_ids.contains(id))
@@ -188,7 +199,7 @@ impl ComponentScanCache {
         });
 
         self.instances.extend(updated_instances);
-        self.findings.extend(updated_findings);
+        self.parse_findings.extend(updated_parse_findings);
         self.rebuild_indexes(registry.workspace_root());
     }
 
@@ -223,7 +234,7 @@ fn root_path_for_instance(instance: &ComponentInstance) -> Option<String> {
         .map(str::to_string)
         .or_else(|| {
             instance
-                .node
+                .ast
                 .get("source")
                 .and_then(|s| s.get("path"))
                 .and_then(|v| v.as_str())
@@ -231,7 +242,7 @@ fn root_path_for_instance(instance: &ComponentInstance) -> Option<String> {
         })
         .or_else(|| {
             instance
-                .node
+                .ast
                 .get("path")
                 .and_then(|v| v.as_str())
                 .map(str::to_string)

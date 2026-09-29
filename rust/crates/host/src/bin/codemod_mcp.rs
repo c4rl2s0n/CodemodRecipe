@@ -240,7 +240,7 @@ fn handle_request(
                 },
                 {
                   "name": "component_scan",
-                  "description": "Scan stack root components: identify → parse → verify, and optional toSummary for each instance.",
+                  "description": "Scan stack root components: identify → parse → relate → verify, and optional toSummary for each instance. Returns instances, findings, relation edges, and the kindGraph roll-up.",
                   "inputSchema": { "type": "object" }
                 },
                 {
@@ -252,6 +252,16 @@ fn handle_request(
                   "name": "component_coverage",
                   "description": "Post-scan span coverage against stack.codebase globs. Unions explicit source.span ranges; whitespace excluded. Missing codebase skips with a warning. Runs scan first if cache empty. Returns per-file + aggregate ratios and gaps.",
                   "inputSchema": { "type": "object" }
+                },
+                {
+                  "name": "component_graph",
+                  "description": "Render the component relations graph as mermaid text. level: 'kinds' (default; component-level roll-up with edge counts) or 'instances' (every flat node, symbol targets as external leaves). Runs scan first if cache empty.",
+                  "inputSchema": {
+                    "type": "object",
+                    "properties": {
+                      "level": { "type": "string", "enum": ["kinds", "instances"] }
+                    }
+                  }
                 },
                 {
                   "name": "describe_component",
@@ -489,6 +499,13 @@ fn handle_request(
                     handle_command(registry, HostCommand::ComponentListInstances)
                 }
                 "component_coverage" => handle_command(registry, HostCommand::ComponentCoverage),
+                "component_graph" => {
+                    let level = arguments
+                        .get("level")
+                        .and_then(|v| v.as_str())
+                        .map(String::from);
+                    handle_command(registry, HostCommand::ComponentGraph { level })
+                }
                 "describe_component" => {
                     let component_id = arguments
                         .get("componentId")

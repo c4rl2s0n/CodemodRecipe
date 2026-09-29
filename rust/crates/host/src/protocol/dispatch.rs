@@ -13,9 +13,9 @@ use crate::preview::patch_selector::{apply_changes_with_selection, parse_selecti
 use crate::preview::preview_token::{compute_preview_token, validate_preview_token};
 use crate::protocol::keys as protocol_keys;
 use crate::protocol::{
-    ApplyResponse, AstPathResult, DescribeComponentResponse, DescribeResponse, DiagnosticSource,
-    DiffResponse, HostCommand, PreviewResponse, QueryCapturesResponse, RecipeCatalogResponse,
-    RecipeDiagnostic,
+    ApplyResponse, AstPathResult, ComponentGraphResponse, DescribeComponentResponse,
+    DescribeResponse, DiagnosticSource, DiffResponse, HostCommand, PreviewResponse,
+    QueryCapturesResponse, RecipeCatalogResponse, RecipeDiagnostic,
 };
 use crate::recipe::registry::RecipeRegistry;
 use crate::recipe::validate::{validate_recipe, validate_workspace};
@@ -273,9 +273,11 @@ pub fn handle_command(registry: &mut RecipeRegistry, cmd: HostCommand) -> serde_
         HostCommand::ResolveStaticPath { template } => to_value(
             crate::query::query_tools::handle_resolve_static_path(&template),
         ),
-        HostCommand::QueryCaptures { query, query_id } => {
-            to_value(query_captures_response(registry, query.as_deref(), query_id.as_deref()))
-        },
+        HostCommand::QueryCaptures { query, query_id } => to_value(query_captures_response(
+            registry,
+            query.as_deref(),
+            query_id.as_deref(),
+        )),
         HostCommand::Preview {
             recipe,
             inline_recipe,
@@ -345,6 +347,55 @@ pub fn handle_command(registry: &mut RecipeRegistry, cmd: HostCommand) -> serde_
             }))
         }
         HostCommand::ComponentCoverage => to_value(component_coverage(registry)),
+        HostCommand::ComponentGraph { level } => {
+            let level = level.as_deref().unwrap_or("kinds");
+            if level != "kinds" && level != "instances" {
+                to_value(ComponentGraphResponse {
+                    ok: false,
+                    error: Some(format!(
+                        "unknown componentGraph level '{level}' (expected 'kinds' or 'instances')"
+                    )),
+                    mermaid: None,
+                    kind_graph: None,
+                    edges: None,
+                })
+            } else {
+                // Scan-on-demand: component_scan populates the cache when empty.
+                let scan = component_scan(registry);
+                if !scan.ok {
+                    to_value(ComponentGraphResponse {
+                        ok: false,
+                        error: Some(
+                            scan.error
+                                .unwrap_or_else(|| "component scan failed".to_string()),
+                        ),
+                        mermaid: None,
+                        kind_graph: None,
+                        edges: None,
+                    })
+                } else {
+                    let kind_graph = scan.kind_graph.clone().unwrap_or_default();
+                    let edges = scan.edges.clone().unwrap_or_default();
+                    let (mermaid, out_edges) = if level == "instances" {
+                        let instances = scan.instances.unwrap_or_default();
+                        let flat = crate::component::relations::flatten_instances(&instances);
+                        (
+                            crate::component::render_instance_graph_mermaid(&edges, &flat),
+                            Some(edges),
+                        )
+                    } else {
+                        (crate::component::render_kind_graph_mermaid(&kind_graph), None)
+                    };
+                    to_value(ComponentGraphResponse {
+                        ok: true,
+                        error: None,
+                        mermaid: Some(mermaid),
+                        kind_graph: Some(kind_graph),
+                        edges: out_edges,
+                    })
+                }
+            }
+        }
         HostCommand::ComponentInvokeOperation {
             instance_id,
             operation,

@@ -8,12 +8,12 @@ test/fixtures/flutter_poc/
     lib/stores/recipe_store.dart  # missing subtitle (intentional drift)
     lib/stores/user_store.dart
   .codemod/
-    stack.luau                  # globs for flutter.model
+    stack.luau                  # roots: flutter.model + flutter.state
     lib/platform.luau           # reference helpers (authoring)
     queries/flutter.luau
     components/
-      flutter.model.luau      # root scan
-      flutter.state.luau      # child (nested under model)
-      flutter.property.luau   # child
-      flutter.method.luau     # child
+      flutter.model.luau      # root scan; graph-aware verify
+      flutter.state.luau      # root scan; relate emits `stores` edge → flutter.model
+      flutter.property.luau   # child (nested under model)
+      flutter.method.luau     # child (nested under model)
 ```

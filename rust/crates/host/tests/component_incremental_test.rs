@@ -76,19 +76,13 @@ fn incremental_dirty_paths_updates_store_drift() {
         "expected subtitle drift cleared, got {codes:?}"
     );
 
-    let recipe = updated["instances"]
+    let store = updated["instances"]
         .as_array()
         .unwrap()
         .iter()
-        .find(|i| i["id"] == "flutter.model/recipe")
-        .expect("recipe instance");
-    let store_child = recipe["node"]["children"]
-        .as_array()
-        .unwrap()
-        .iter()
-        .find(|c| c["componentId"] == "flutter.state")
-        .expect("store child");
-    assert_eq!(store_child["fields"].as_array().unwrap().len(), 2);
+        .find(|i| i["id"] == "flutter.state/recipe")
+        .expect("recipe store root");
+    assert_eq!(store["ast"]["fields"].as_array().unwrap().len(), 2);
 }
 
 #[test]
@@ -128,7 +122,7 @@ fn incremental_detect_changes_adds_new_model_file() {
 
     let mut registry = registry_for(&workspace);
     let initial = scan(&mut registry);
-    assert_eq!(initial["instances"].as_array().unwrap().len(), 2);
+    assert_eq!(initial["instances"].as_array().unwrap().len(), 4);
 
     fs::write(
         &model_path,
@@ -139,12 +133,23 @@ fn incremental_detect_changes_adds_new_model_file() {
 
     let updated = incremental(&mut registry, vec![], true);
     assert_eq!(updated["ok"], true, "detect new file failed: {updated}");
-    assert_eq!(updated["instances"].as_array().unwrap().len(), 3);
+    assert_eq!(updated["instances"].as_array().unwrap().len(), 6);
     assert!(updated["instances"]
         .as_array()
         .unwrap()
         .iter()
         .any(|i| i["id"] == "flutter.model/order"));
+    assert!(updated["instances"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|i| i["id"] == "flutter.state/order"));
+    // The new store root must have emitted its relation edge over the merged forest.
+    assert!(updated["edges"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .any(|e| e["from"] == "flutter.state/order" && e["to"] == "flutter.model/order"));
 }
 
 #[test]

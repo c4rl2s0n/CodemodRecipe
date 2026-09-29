@@ -7,7 +7,7 @@ description: >-
 
 # Builder — Intel
 
-Gather structure **before** editing. Prefer summaries over raw `node` payloads.
+Gather structure **before** editing. Prefer summaries over raw `ast` payloads.
 
 ## Workflow
 
@@ -21,7 +21,7 @@ Gather structure **before** editing. Prefer summaries over raw `node` payloads.
 ## Reasoning tips
 
 - Use instance **`summary`** / shallow fields for planning
-- Use **`node`** / `source` spans only when you need exact edit sites
+- Use **`ast`** / `source` spans only when you need exact edit sites
 - Empty scan → check stack roots and `identify` (Architect may need to fix the component)
 
 ## Docs

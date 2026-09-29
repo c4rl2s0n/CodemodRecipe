@@ -16,7 +16,11 @@ return {
 			path = locator.path,
 		}
 	end,
-	verify = function(_c, _instance)
-		return {}
+	relate = function(_c, instance, _index)
+		return {
+			kind = "stores",
+			to = { componentId = "example.entity", key = instance.ast.id },
+			source = { path = instance.ast.path },
+		}
 	end,
 }

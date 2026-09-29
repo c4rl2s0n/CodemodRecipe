@@ -24,13 +24,21 @@ return {
 			fields = fields,
 		}
 	end,
-	verify = function(_c, instance)
+	verify = function(_c, instance, graph)
 		local findings = {}
-		if #instance.node.fields == 0 then
+		if #instance.ast.fields == 0 then
 			findings[#findings + 1] = {
 				severity = "warning",
 				code = "entity.no_fields",
 				message = "entity has no String fields",
+				instanceId = instance.id,
+			}
+		end
+		if #graph:incoming(instance.id, "stores") == 0 then
+			findings[#findings + 1] = {
+				severity = "warning",
+				code = "entity.missing_store",
+				message = "entity has no store",
 				instanceId = instance.id,
 			}
 		end
@@ -47,7 +55,7 @@ return {
 					error("addField requires args.name")
 				end
 				c:insert({
-					path = target.node.path,
+					path = target.ast.path,
 					language = "dart",
 					query = "(class_definition) @class",
 					capture = "class",

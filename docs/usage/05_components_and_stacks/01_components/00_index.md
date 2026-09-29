@@ -1,6 +1,6 @@
 # Components (platform layer)
 
-Components are Luau modules under `.codemod/components/` that **identify**, **parse**, **verify**, **scaffold**, and **mutate** abstract instances of code structures in your workspace. They complement recipes: recipes and component `scaffold` create or edit unbound; `operations` mutate an existing scanned target. Both use the same host sandbox `c` (no `c.args` — args are an explicit parameter).
+Components are Luau modules under `.codemod/components/` that **identify**, **parse**, **relate**, **verify**, **scaffold**, and **mutate** abstract instances of code structures in your workspace. They complement recipes: recipes and component `scaffold` create or edit unbound; `operations` mutate an existing scanned target. Both use the same host sandbox `c` (no `c.args` — args are an explicit parameter).
 
 | Page | |
 |------|---|
@@ -13,4 +13,5 @@ Components are Luau modules under `.codemod/components/` that **identify**, **pa
 | [Layout](07_layout.md) | |
 | [Reference fixtures](08_reference_fixtures.md) | |
 | [Span coverage](09_coverage.md) | |
+| [Relations](10_relations.md) | |
 

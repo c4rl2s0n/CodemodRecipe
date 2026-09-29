@@ -27,7 +27,7 @@ Mutate the workspace via MCP. Full tool table: [codemod-mcp.md](../../docs/06_mc
 
 ## Authoring hooks (dry-run only)
 
-When debugging component Luau: `identify` → `parse` → `verify` / `toSummary` via `component_dry_run_hook` before any apply. See [Architect](../../architect/SKILL.md).
+When debugging component Luau: `identify` → `parse` → `relate` / `verify` / `toSummary` via `component_dry_run_hook` before any apply. See [Architect](../../architect/SKILL.md).
 
 ## Troubleshooting
 

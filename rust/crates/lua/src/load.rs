@@ -1,8 +1,8 @@
 use mlua::{Lua, Table, Value};
 use std::collections::BTreeMap;
 use std::path::Path;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use thiserror::Error;
 
 use crate::input_kind::InputKind;
@@ -164,17 +164,8 @@ pub fn classify_table(table: &Table) -> Result<AssetKind, LoadError> {
     if has_apply {
         return Ok(AssetKind::Recipe);
     }
-    let has_verify = table
-        .get::<Option<mlua::Function>>("verify")
-        .map_err(|e| LoadError::Message(e.to_string()))?
-        .is_some();
     if has_parse {
-        if has_verify {
-            return Ok(AssetKind::Component);
-        }
-        return Err(LoadError::Message(
-            "component requires verify when parse is present".to_string(),
-        ));
+        return Ok(AssetKind::Component);
     }
     if table
         .get::<Option<Table>>("components")
@@ -251,7 +242,7 @@ pub fn load_asset_with_root(
             load_component_from_table(&table, source)?,
         ))),
         AssetKind::Unknown => Err(LoadError::Message(
-            "unknown asset shape: expected apply, parse+verify (component), components (stack), map, values, queries, or fields".to_string(),
+            "unknown asset shape: expected apply, parse (component), components (stack), map, values, queries, or fields".to_string(),
         )),
     }
 }
@@ -380,8 +371,9 @@ pub fn load_component_from_table(table: &Table, source: &str) -> Result<Componen
     }
     let description = optional_string(table, "description")?;
     require_function(table, "parse")?;
-    require_function(table, "verify")?;
     let has_identify = has_function(table, "identify");
+    let has_verify = has_function(table, "verify");
+    let has_relate = has_function(table, "relate");
     let has_to_summary = has_function(table, "toSummary");
     let operations = parse_operations(table)?;
     let (has_scaffold, scaffold_args) = parse_scaffold(table)?;
@@ -390,6 +382,8 @@ pub fn load_component_from_table(table: &Table, source: &str) -> Result<Componen
         description,
         operations,
         has_identify,
+        has_verify,
+        has_relate,
         has_to_summary,
         has_scaffold,
         scaffold_args,
@@ -1084,6 +1078,49 @@ return {
         let lua = new_sandbox().unwrap();
         let table = eval_return_table(&lua, src, "entity.luau").unwrap();
         assert_eq!(classify_table(&table).unwrap(), AssetKind::Component);
+    }
+
+    #[test]
+    fn component_without_verify_classifies_as_component() {
+        // v1.4: verify is optional — id + parse classify a component.
+        let src = r#"
+return {
+  id = "example.entity",
+  identify = function(c) return {} end,
+  parse = function(c, l) return {} end,
+}
+"#;
+        let lua = new_sandbox().unwrap();
+        let table = eval_return_table(&lua, src, "entity.luau").unwrap();
+        assert_eq!(classify_table(&table).unwrap(), AssetKind::Component);
+        match load_asset(src, "entity.luau").unwrap() {
+            LoadResult::Asset(Asset::Component(c)) => {
+                assert_eq!(c.id, "example.entity");
+                assert!(c.has_identify);
+                assert!(!c.has_verify);
+                assert!(!c.has_relate);
+            }
+            other => panic!("expected component, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn component_relate_detected_as_optional_hook() {
+        let src = r#"
+return {
+  id = "example.store",
+  parse = function(c, l) return {} end,
+  relate = function(c, i, index) return nil end,
+}
+"#;
+        match load_asset(src, "store.luau").unwrap() {
+            LoadResult::Asset(Asset::Component(c)) => {
+                assert!(c.has_relate);
+                assert!(!c.has_verify);
+                assert!(!c.has_identify);
+            }
+            other => panic!("expected component, got {other:?}"),
+        }
     }
 
     #[test]

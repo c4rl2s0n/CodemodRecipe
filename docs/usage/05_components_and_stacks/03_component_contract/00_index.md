@@ -1,6 +1,8 @@
-# Component data contract (v1.3)
+# Component data contract (v1.4)
 
-Parse trees, locators, apply signatures, and hook conventions for the platform layer.
+Parse trees, locators, apply signatures, hook conventions, and relations for the platform layer.
+
+v1.4: scan phases `identify → parse → relate → verify`; `verify` optional; `relate` hook + edge model; `graph` facade for `verify`/operations; scan responses gain `edges` + `kindGraph`.
 
 | Page | |
 |------|---|

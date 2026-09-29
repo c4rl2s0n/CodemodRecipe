@@ -1,6 +1,6 @@
 # Operation: `addStoreField`
 
-On `flutter.model`, `operations.addStoreField` inserts a store field for a model property that is missing from the nested `flutter.state` child:
+On `flutter.model`, `operations.addStoreField` inserts a store field for a model property that is missing from the related `flutter.state` instance (resolved via `graph:incoming(target.id, "stores")`):
 
 ```json
 {
@@ -10,4 +10,4 @@ On `flutter.model`, `operations.addStoreField` inserts a store field for a model
 }
 ```
 
-Preview/apply via `componentInvokeOperation` (host dispatch). Signature: `apply(c, args, identity)`. After apply, incremental rescan clears `model.field_missing_in_store` when the store now tracks the field.
+Preview/apply via `componentInvokeOperation` (host dispatch). Signature: `apply(c, args, target, graph)`. After apply, incremental rescan clears `model.field_missing_in_store` when the store now tracks the field.

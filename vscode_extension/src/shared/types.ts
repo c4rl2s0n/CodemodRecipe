@@ -178,6 +178,8 @@ export interface ComponentDetailSchema {
   id: string;
   description?: string;
   hasIdentify: boolean;
+  hasVerify?: boolean;
+  hasRelate?: boolean;
   hasToSummary: boolean;
   hasScaffold: boolean;
   isRoot: boolean;
@@ -196,7 +198,8 @@ export interface ComponentInstance {
   id: string;
   componentId: string;
   locator: unknown;
-  node: unknown;
+  /** Parse-hook payload (AST projection). */
+  ast: unknown;
   summary?: unknown;
 }
 
@@ -208,11 +211,37 @@ export interface ComponentFinding {
   locator?: unknown;
 }
 
+/** A resolved relation between two flat instances (or an external symbol).
+ * Duplicates by (from, kind, target) merge into one canonical edge; `sources`
+ * lists every distinct derivation (multiplicity = sources.length). */
+export interface ComponentEdge {
+  from: string;
+  kind: string;
+  to?: string;
+  symbol?: string;
+  sources: unknown[];
+  /** Extra component-provided fields pass through (e.g. cardinality). */
+  [extra: string]: unknown;
+}
+
+/** Kind-level aggregation entry: (fromComponentId, kind, toComponentId) + count. */
+export interface KindEdge {
+  from: string;
+  kind: string;
+  to: string;
+  count: number;
+  external?: boolean;
+}
+
 export interface ComponentScanResponse {
   ok: boolean;
   error?: string;
   instances?: ComponentInstance[];
   findings?: ComponentFinding[];
+  /** Resolved relation edges over the scanned forest (relate phase). */
+  edges?: ComponentEdge[];
+  /** Kind-level aggregation of edges with counts. */
+  kindGraph?: KindEdge[];
   diagnostics?: RecipeDiagnostic[];
 }
 

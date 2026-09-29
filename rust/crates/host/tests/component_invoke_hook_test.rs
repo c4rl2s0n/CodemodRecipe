@@ -100,7 +100,7 @@ fn parse_verify_dry_run_with_selected_locator_and_instance() {
         "id": "example.entity/recipe",
         "componentId": "example.entity",
         "locator": locator,
-        "node": parsed["result"],
+        "ast": parsed["result"],
     });
     let verified = invoke_hook(
         &mut registry,

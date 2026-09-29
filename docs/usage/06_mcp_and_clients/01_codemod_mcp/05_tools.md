@@ -14,9 +14,10 @@ All tools return a JSON string. Parse it, then check `ok`.
 | `debug_query` | Run a query; return match roots and captures |
 | `generate_query` | Starter query from byte `start`/`end` in a file |
 | `resolve_static_path` | Jinja-render a path with empty args (static paths only) |
-| `component_scan` | Scan stack root components (instances, findings, summaries); populates cache |
+| `component_scan` | Scan stack root components (instances, findings, summaries, relation `edges`, `kindGraph`); populates cache |
 | `list_component_instances` | Alias of `component_scan` |
 | `component_coverage` | Span coverage vs `stack.codebase` (per-file + aggregate); skips with warning if `codebase` missing |
+| `component_graph` | Render the relations graph as mermaid text; `level`: `kinds` (default) or `instances` |
 | `component_incremental_scan` | Rescan after edits: `dirtyPaths`, `detectChanges`, or `force` |
 | `describe_component` | Metadata: hooks present, scaffold args, operations |
 | `component_dry_run_hook` | Dry-run one hook (Preview; no disk writes); returns `result` + `transcript` |
@@ -45,5 +46,13 @@ Authoring agents should be allowlisted for dry-run + scan/describe — withhold
 }
 ```
 
-`hook` is one of: `identify`, `parse`, `verify`, `toSummary`, `scaffold`, `operation`
-(for `operation`, also pass `operation` name + `instance` with `id`).
+`hook` is one of: `identify`, `parse`, `relate`, `verify`, `toSummary`, `scaffold`, `operation`
+(for `operation`, also pass `operation` name + `instance` with `id`; for `relate`/`verify`,
+pass `instance` with `id` — the facade is built from the cached scan, and when no cache
+exists the dry-run triggers a full scan first, populating the cache).
+
+Scan phase order is `identify → parse → relate → verify`; scan responses include the
+resolved relation `edges` and the aggregated `kindGraph` — see
+[relations](../../05_components_and_stacks/01_components/10_relations.md). Render that
+graph as mermaid via `component_graph` (`level`: `kinds` default, `instances` for the
+full node set).

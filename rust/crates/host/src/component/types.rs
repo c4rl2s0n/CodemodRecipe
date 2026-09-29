@@ -8,7 +8,9 @@ pub struct ComponentInstance {
     pub id: String,
     pub component_id: String,
     pub locator: serde_json::Value,
-    pub node: serde_json::Value,
+    /// Parse-hook payload (the AST projection). Named `ast` so "node" only ever
+    /// means a graph/tree vertex.
+    pub ast: serde_json::Value,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub summary: Option<serde_json::Value>,
 }
@@ -35,6 +37,12 @@ pub struct ComponentScanResponse {
     pub instances: Option<Vec<ComponentInstance>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub findings: Option<Vec<ComponentFinding>>,
+    /// Resolved relation edges over the scanned forest (relate phase).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub edges: Option<Vec<crate::component::relations::ComponentEdge>>,
+    /// Kind-level aggregation of edges: `(fromComponentId, kind, toComponentId)` + count.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kind_graph: Option<Vec<crate::component::relations::KindEdge>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub diagnostics: Option<Vec<RecipeDiagnostic>>,
 }

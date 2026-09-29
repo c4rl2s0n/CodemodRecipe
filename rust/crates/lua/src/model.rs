@@ -129,7 +129,7 @@ pub struct StackDef {
     pub path: Option<PathBuf>,
 }
 
-/// Component kind module (`identify` / `parse` / `verify` hooks).
+/// Component kind module (`identify` / `parse` / `relate` / `verify` hooks).
 #[derive(Debug, Clone, PartialEq, Eq, JsonSchema)]
 pub struct ComponentDef {
     pub id: String,
@@ -137,6 +137,10 @@ pub struct ComponentDef {
     pub operations: Vec<OperationDef>,
     /// True when the module defines a top-level `identify` function.
     pub has_identify: bool,
+    /// True when the module defines a top-level `verify` function (optional).
+    pub has_verify: bool,
+    /// True when the module defines a top-level `relate` function (optional).
+    pub has_relate: bool,
     /// True when the module defines a top-level `toSummary` function.
     pub has_to_summary: bool,
     /// True when the module defines a top-level `scaffold` table with `apply`.

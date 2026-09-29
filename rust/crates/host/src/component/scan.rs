@@ -4,8 +4,13 @@ use std::rc::Rc;
 use codemod_recipe_lua::model::ComponentDef;
 
 use crate::component::cache::{locator_key, ComponentScanCache, NewRoot, RootKey};
+use crate::component::relations::{
+    attach_relations, build_graph_facade, build_index_facade, flatten_instances, kind_graph,
+    normalize_raw_edges, resolve_edges, ComponentEdge, FlatInstance, KindEdge, RawEdge,
+};
 use crate::component::runtime::{
-    hook_to_json, invoke_component_hook, make_host, try_invoke_component_hook, ComponentRunContext,
+    hook_to_json, invoke_component_hook, invoke_component_hook_with_facade, make_host,
+    try_invoke_component_hook, ComponentRunContext,
 };
 use crate::component::types::{
     expand_parse_results, instance_id, normalize_findings, normalize_parse_context,
@@ -22,14 +27,46 @@ pub struct ComponentIncrementalScanRequest {
     pub force: bool,
 }
 
+/// Everything a scan produces, split by origin so incremental merges stay precise.
+#[derive(Debug, Clone, Default)]
+pub struct ScanData {
+    pub instances: Vec<ComponentInstance>,
+    /// Parse-time findings (soft validation) — merged per-instance on incremental scans.
+    pub parse_findings: Vec<ComponentFinding>,
+    /// Relation + verify findings — recomputed wholesale over the merged forest.
+    pub judgment_findings: Vec<ComponentFinding>,
+    pub edges: Vec<ComponentEdge>,
+    pub kind_graph: Vec<KindEdge>,
+}
+
+impl ScanData {
+    pub fn all_findings(&self) -> Vec<ComponentFinding> {
+        let mut findings = self.parse_findings.clone();
+        findings.extend(self.judgment_findings.clone());
+        findings
+    }
+}
+
 pub fn component_scan(registry: &mut RecipeRegistry) -> ComponentScanResponse {
     match run_full_scan(registry) {
-        Ok((response, instances, findings)) => {
+        Ok(data) => {
+            let response = scan_response(registry, &data);
             *registry.component_scan_cache_mut() =
-                Some(ComponentScanCache::from_scan(registry, instances, findings));
+                Some(ComponentScanCache::from_scan(registry, data));
             response
         }
-        Err(response) => response,
+        Err(message) => scan_error_with_diagnostics(registry, &message),
+    }
+}
+
+fn scan_error_with_diagnostics(registry: &RecipeRegistry, message: &str) -> ComponentScanResponse {
+    ComponentScanResponse {
+        diagnostics: if registry.diagnostics().is_empty() {
+            None
+        } else {
+            Some(registry.diagnostics().to_vec())
+        },
+        ..scan_error(message)
     }
 }
 
@@ -69,7 +106,7 @@ pub fn component_incremental_scan(
 
     let ctx = ComponentRunContext::from_registry(registry, RunKind::Preview);
     let mut updated_instances = Vec::new();
-    let mut updated_findings = Vec::new();
+    let mut updated_parse_findings = Vec::new();
 
     for instance_id in &roots_to_reparse {
         let Some(entry) = cache.entry_for_instance(instance_id) else {
@@ -81,7 +118,7 @@ pub fn component_incremental_scan(
         match rescan_root_context(&ctx, component, entry.locator.clone()) {
             Ok((mut instances, mut findings)) => {
                 updated_instances.append(&mut instances);
-                updated_findings.append(&mut findings);
+                updated_parse_findings.append(&mut findings);
             }
             Err(message) => return scan_error(&message),
         }
@@ -94,7 +131,7 @@ pub fn component_incremental_scan(
         match rescan_root_context(&ctx, component, root.locator.clone()) {
             Ok((mut instances, mut findings)) => {
                 updated_instances.append(&mut instances);
-                updated_findings.append(&mut findings);
+                updated_parse_findings.append(&mut findings);
             }
             Err(message) => return scan_error(&message),
         }
@@ -105,11 +142,43 @@ pub fn component_incremental_scan(
         registry,
         &removed_roots,
         updated_instances,
-        updated_findings,
+        updated_parse_findings,
     );
+
+    // Relations + judgment always re-run over the merged forest: a dirty file can
+    // change edges between otherwise unchanged instances.
+    let mut data = ScanData {
+        instances: cache.instances.clone(),
+        parse_findings: cache.parse_findings.clone(),
+        ..Default::default()
+    };
+    if let Err(message) = run_graph_phases(&ctx, &mut data) {
+        return scan_error(&message);
+    }
+    cache.edges = data.edges.clone();
+    cache.kind_graph = data.kind_graph.clone();
+    cache.judgment_findings = data.judgment_findings.clone();
+    cache.instances = data.instances.clone();
+
     let response = cached_response(registry, &cache);
     *registry.component_scan_cache_mut() = Some(cache);
     response
+}
+
+fn scan_response(registry: &RecipeRegistry, data: &ScanData) -> ComponentScanResponse {
+    ComponentScanResponse {
+        ok: true,
+        error: None,
+        instances: Some(data.instances.clone()),
+        findings: Some(data.all_findings()),
+        edges: Some(data.edges.clone()),
+        kind_graph: Some(data.kind_graph.clone()),
+        diagnostics: if registry.diagnostics().is_empty() {
+            None
+        } else {
+            Some(registry.diagnostics().to_vec())
+        },
+    }
 }
 
 fn cached_response(registry: &RecipeRegistry, cache: &ComponentScanCache) -> ComponentScanResponse {
@@ -117,7 +186,9 @@ fn cached_response(registry: &RecipeRegistry, cache: &ComponentScanCache) -> Com
         ok: true,
         error: None,
         instances: Some(cache.instances.clone()),
-        findings: Some(cache.findings.clone()),
+        findings: Some(cache.all_findings()),
+        edges: Some(cache.edges.clone()),
+        kind_graph: Some(cache.kind_graph.clone()),
         diagnostics: if registry.diagnostics().is_empty() {
             None
         } else {
@@ -132,80 +203,127 @@ fn scan_error(message: &str) -> ComponentScanResponse {
         error: Some(message.to_string()),
         instances: None,
         findings: None,
+        edges: None,
+        kind_graph: None,
         diagnostics: None,
     }
 }
 
-fn run_full_scan(
-    registry: &RecipeRegistry,
-) -> Result<
-    (
-        ComponentScanResponse,
-        Vec<ComponentInstance>,
-        Vec<ComponentFinding>,
-    ),
-    ComponentScanResponse,
-> {
+fn run_full_scan(registry: &RecipeRegistry) -> Result<ScanData, String> {
     if registry.components().is_empty() {
-        return Ok((
-            ComponentScanResponse {
-                ok: true,
-                error: None,
-                instances: Some(Vec::new()),
-                findings: Some(Vec::new()),
-                diagnostics: None,
-            },
-            Vec::new(),
-            Vec::new(),
-        ));
+        return Ok(ScanData::default());
     }
     let Some(stack) = registry.stack() else {
-        return Err(ComponentScanResponse {
-            ok: false,
-            error: Some("stack manifest is required when components are loaded".to_string()),
-            instances: None,
-            findings: None,
-            diagnostics: Some(registry.diagnostics().to_vec()),
-        });
+        return Err("stack manifest is required when components are loaded".to_string());
     };
     let ctx = ComponentRunContext::from_registry(registry, RunKind::Preview);
-    let mut instances = Vec::new();
-    let mut findings = Vec::new();
+    let mut data = ScanData::default();
     for component_id in &stack.components {
         let Some(component) = registry.get_component(component_id) else {
             continue;
         };
-        match scan_component(&ctx, component) {
-            Ok((mut found, mut component_findings)) => {
-                instances.append(&mut found);
-                findings.append(&mut component_findings);
+        let (mut found, mut component_findings) = scan_component(&ctx, component)?;
+        data.instances.append(&mut found);
+        data.parse_findings.append(&mut component_findings);
+    }
+    run_graph_phases(&ctx, &mut data)?;
+    Ok(data)
+}
+
+/// Post-scan phases over the full forest: `relate` (derive edges) then `verify`
+/// (judge with the graph). Mutates `data` in place: attaches `node.relations`,
+/// fills edges / kind_graph / judgment findings.
+fn run_graph_phases(ctx: &ComponentRunContext, data: &mut ScanData) -> Result<(), String> {
+    let flat = flatten_instances(&data.instances);
+    let mut raw_edges: Vec<RawEdge> = Vec::new();
+    let mut findings: Vec<ComponentFinding> = Vec::new();
+
+    // Phase 1: relate — index = the forest before edges.
+    for component in ctx.components.values() {
+        if !component.has_relate {
+            continue;
+        }
+        let targets: Vec<&FlatInstance> = flat
+            .iter()
+            .filter(|f| f.component_id == component.id)
+            .collect();
+        if targets.is_empty() {
+            continue;
+        }
+        let host = make_host(ctx, BTreeMap::new())?;
+        let lua = codemod_recipe_lua::new_sandbox_with_require(&ctx.codemod_root)
+            .map_err(|e| e.to_string())?;
+        let index = build_index_facade(&lua, &flat)?;
+        for target in targets {
+            let Some(value) = invoke_component_hook_with_facade(
+                &lua,
+                component,
+                "relate",
+                Rc::clone(&host),
+                target.to_json(),
+                &index,
+            )?
+            else {
+                continue;
+            };
+            let (mut edges, mut edge_findings) =
+                normalize_raw_edges(hook_to_json(&value)?, &target.id);
+            raw_edges.append(&mut edges);
+            findings.append(&mut edge_findings);
+        }
+    }
+
+    let (edges, mut unresolved) = resolve_edges(raw_edges, &flat);
+    findings.append(&mut unresolved);
+    attach_relations(&mut data.instances, &edges);
+    data.kind_graph = kind_graph(&edges, &flat);
+
+    // Phase 2: verify — graph = the forest plus resolved edges.
+    let flat = flatten_instances(&data.instances);
+    let graph_ready = ctx.components.values().any(|c| c.has_verify)
+        && flat.iter().any(|f| {
+            ctx.components
+                .get(&f.component_id)
+                .is_some_and(|c| c.has_verify)
+        });
+    if graph_ready {
+        for component in ctx.components.values() {
+            if !component.has_verify {
+                continue;
             }
-            Err(message) => {
-                return Err(ComponentScanResponse {
-                    ok: false,
-                    error: Some(message),
-                    instances: None,
-                    findings: None,
-                    diagnostics: Some(registry.diagnostics().to_vec()),
-                });
+            let targets: Vec<&FlatInstance> = flat
+                .iter()
+                .filter(|f| f.component_id == component.id)
+                .collect();
+            if targets.is_empty() {
+                continue;
+            }
+            let host = make_host(ctx, BTreeMap::new())?;
+            let lua = codemod_recipe_lua::new_sandbox_with_require(&ctx.codemod_root)
+                .map_err(|e| e.to_string())?;
+            let graph = build_graph_facade(&lua, &flat, &edges)?;
+            for target in targets {
+                let Some(value) = invoke_component_hook_with_facade(
+                    &lua,
+                    component,
+                    "verify",
+                    Rc::clone(&host),
+                    target.to_json(),
+                    &graph,
+                )?
+                else {
+                    continue;
+                };
+                let mut component_findings =
+                    normalize_findings(hook_to_json(&value)?, &target.id, &target.locator);
+                findings.append(&mut component_findings);
             }
         }
     }
-    Ok((
-        ComponentScanResponse {
-            ok: true,
-            error: None,
-            instances: Some(instances.clone()),
-            findings: Some(findings.clone()),
-            diagnostics: if registry.diagnostics().is_empty() {
-                None
-            } else {
-                Some(registry.diagnostics().to_vec())
-            },
-        },
-        instances,
-        findings,
-    ))
+
+    data.edges = edges;
+    data.judgment_findings = findings;
+    Ok(())
 }
 
 pub(crate) fn scan_component(
@@ -268,19 +386,8 @@ fn scan_component_contexts(
                 "id": id,
                 "componentId": component.id,
                 "locator": locator_value,
-                "node": node,
+                "ast": node,
             });
-            let verify_raw = invoke_component_hook(
-                lua,
-                ctx,
-                component,
-                "verify",
-                Rc::clone(&host),
-                Some(instance_json.clone()),
-            )?;
-            let verify_json = hook_to_json(&verify_raw)?;
-            let mut component_findings = normalize_findings(verify_json, &id, &locator_value);
-            findings.append(&mut component_findings);
             let summary = try_invoke_component_hook(
                 lua,
                 ctx,
@@ -295,7 +402,7 @@ fn scan_component_contexts(
                 id,
                 component_id: component.id.clone(),
                 locator: locator_value.clone(),
-                node,
+                ast: node,
                 summary,
             });
         }

@@ -150,6 +150,13 @@ pub enum HostCommand {
     ComponentListInstances,
     #[serde(rename = "componentCoverage")]
     ComponentCoverage,
+    /// Render the relations graph as mermaid text (`level`: `kinds` default, or
+    /// `instances`). Scan-on-demand when no scan cache exists.
+    #[serde(rename = "componentGraph")]
+    ComponentGraph {
+        #[serde(default)]
+        level: Option<String>,
+    },
     #[serde(rename = "componentInvokeOperation")]
     ComponentInvokeOperation {
         #[serde(rename = "instanceId")]
@@ -378,11 +385,28 @@ pub struct DescribeComponentResponse {
 
 #[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct ComponentGraphResponse {
+    pub ok: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub mermaid: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub kind_graph: Option<Vec<crate::component::KindEdge>>,
+    /// Resolved instance-level edges (only for `level = "instances"`).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub edges: Option<Vec<crate::component::ComponentEdge>>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ComponentDetailSchema {
     pub id: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
     pub has_identify: bool,
+    pub has_verify: bool,
+    pub has_relate: bool,
     pub has_to_summary: bool,
     pub has_scaffold: bool,
     pub is_root: bool,

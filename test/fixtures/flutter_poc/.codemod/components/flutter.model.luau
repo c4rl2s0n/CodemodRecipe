@@ -35,15 +35,6 @@ local function childParse(c, componentId, context)
 	return node
 end
 
-local function findChild(node, componentId, role)
-	for _, child in ipairs(node.children or {}) do
-		if child.componentId == componentId and (not role or child.role == role) then
-			return child
-		end
-	end
-	return nil
-end
-
 return {
 	id = "flutter.model",
 	description = "Immutable model classes under lib/models",
@@ -112,16 +103,6 @@ return {
 			end
 		end
 
-		local storePath = c:resolve("lib/stores/{id}_store.dart", { id = modelId })
-		local storeChild = childParse(c, "flutter.state", parseContext({
-			source = source(storePath),
-			parent = identity,
-			role = "store",
-		}))
-		if storeChild then
-			children[#children + 1] = storeChild
-		end
-
 		return {
 			id = modelId,
 			name = className,
@@ -130,11 +111,11 @@ return {
 			children = children,
 		}
 	end,
-	verify = function(_c, instance)
+	verify = function(_c, instance, graph)
 		local findings = {}
-		local node = instance.node
+		local ast = instance.ast
 		local properties = {}
-		for _, child in ipairs(node.children or {}) do
+		for _, child in ipairs(ast.children or {}) do
 			if child.componentId == "flutter.property" then
 				properties[#properties + 1] = child
 			end
@@ -148,19 +129,23 @@ return {
 			}
 		end
 
-		local store = findChild(node, "flutter.state", "store")
-		if not store then
+		local storeEdges = graph:incoming(instance.id, "stores")
+		if #storeEdges == 0 then
 			findings[#findings + 1] = {
 				severity = "warning",
 				code = "model.missing_store",
-				message = "model has no parsed store child",
+				message = "model has no store",
 				instanceId = instance.id,
 			}
 			return findings
 		end
 
+		local store = graph:resolveFrom(storeEdges[1])
+		local storeAst = store and store.ast or {}
+		local storePath = storeAst.source and storeAst.source.path or "unknown"
+
 		local storeFields = {}
-		for _, field in ipairs(store.fields or {}) do
+		for _, field in ipairs(storeAst.fields or {}) do
 			storeFields[field.name] = true
 		end
 		for _, field in ipairs(properties) do
@@ -168,10 +153,7 @@ return {
 				findings[#findings + 1] = {
 					severity = "warning",
 					code = "model.field_missing_in_store",
-					message = "field "
-						.. field.name
-						.. " is not present in store "
-						.. (store.source and store.source.path or "unknown"),
+					message = "field " .. field.name .. " is not present in store " .. storePath,
 					instanceId = instance.id,
 				}
 			end
@@ -181,15 +163,12 @@ return {
 		for _, field in ipairs(properties) do
 			modelFields[field.name] = true
 		end
-		for _, field in ipairs(store.fields or {}) do
+		for _, field in ipairs(storeAst.fields or {}) do
 			if not modelFields[field.name] then
 				findings[#findings + 1] = {
 					severity = "warning",
 					code = "state.field_missing_for_model",
-					message = "model field "
-						.. field.name
-						.. " is not tracked in store "
-						.. (store.source and store.source.path or "unknown"),
+					message = "model field " .. field.name .. " is not tracked in store " .. storePath,
 					instanceId = instance.id,
 				}
 			end
@@ -197,31 +176,25 @@ return {
 		return findings
 	end,
 	toSummary = function(_c, instance)
-		local node = instance.node
+		local ast = instance.ast
 		local fieldNames = {}
 		local methodCount = 0
-		local hasStore = false
-		for _, child in ipairs(node.children or {}) do
+		for _, child in ipairs(ast.children or {}) do
 			if child.componentId == "flutter.property" then
 				fieldNames[#fieldNames + 1] = child.name
 			elseif child.componentId == "flutter.method" then
 				methodCount += 1
-			elseif child.componentId == "flutter.state" then
-				hasStore = true
 			end
 		end
 		local facts = {
 			#fieldNames .. " properties",
 			methodCount .. " methods",
 		}
-		if hasStore then
-			facts[#facts + 1] = "store: ok"
-		end
 		return {
 			kind = "model",
-			title = node.name,
-			id = node.id,
-			path = node.source and node.source.path or nil,
+			title = ast.name,
+			id = ast.id,
+			path = ast.source and ast.source.path or nil,
 			facts = facts,
 			fields = fieldNames,
 		}
@@ -263,16 +236,17 @@ return {
 			args = {
 				{ name = "fieldName", required = true },
 			},
-			apply = function(c, args, target)
+			apply = function(c, args, target, graph)
 				local fieldName = args.fieldName or args.name
 				if not fieldName or fieldName == "" then
 					error("addStoreField requires args.fieldName")
 				end
-				local store = findChild(target.node, "flutter.state", "store")
-				if not store or not store.source or not store.source.path then
-					error("model instance has no store child with source.path")
+				local storeEdges = graph:incoming(target.id, "stores")
+				local store = storeEdges[1] and graph:resolveFrom(storeEdges[1]) or nil
+				local storePath = store and store.ast.source and store.ast.source.path or nil
+				if not storePath then
+					error("model instance has no store relation with source.path")
 				end
-				local storePath = store.source.path
 				c:insert({
 					path = storePath,
 					language = "dart",

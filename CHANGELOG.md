@@ -8,6 +8,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- First-class component relations (component contract v1.4): optional post-scan `relate(c, instance, index)` hook derives edges between instances; host resolves `{ componentId, key }` refs (unresolved → `relation.unresolved` findings), supports external `{ symbol }` targets, and attaches `ast.relations`.
+- Graph-aware `verify(c, instance, graph)` and operation `apply(c, args, target, graph)`: `index`/`graph` Luau facades (`byId`, `byComponent`, `nodes`, `outgoing`, `incoming`, `resolve`, `resolveFrom`, `reachable`, `edges`) over the full instance forest including nested children.
+- Node-centric traversal on graph nodes (including the hook's own `instance`): `node:outgoing(kind?)`, `node:incoming(kind?)`, `node:follow(edge)`, `node:neighbors(kind?)`.
+- `scaffold.apply(c, args, graph)` receives the pre-scaffold graph as 3rd arg (same snapshot semantics as operations).
+- `component_graph` host command + MCP tool: renders the relations graph as mermaid text (`level`: `kinds` default roll-up with `×count` labels, or `instances` with symbol leaf nodes); scans on demand when the cache is empty.
+- Scan responses gain `edges` (resolved relations) and `kindGraph` (kind-level aggregation with counts); `describe_component` reports `hasVerify` / `hasRelate`.
 - YAML recipe front-end: AST path DSL, YAML compiler/registry, generic `bin/codemod_host.dart`, VS Code extension YAML host wiring.
 - YAML steps: `addConstructorParam`; post-execution `buildRunner`.
 - Example YAML recipes under `.codemod/recipes/`.
@@ -15,6 +21,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `dart run` executables for all examples.
 - Extended test suite with edge-case tests for template rendering.
 - Enhanced documentation with inline code examples in docstrings.
+
+### Changed
+- **Breaking (contract v1.4):** the instance parse-payload field is renamed `node` → `ast` everywhere (scan responses, hook args, operation `target`), so "node" only ever means a graph/tree vertex (`instance.ast.name`, never `node.node.name`).
+- **Breaking (contract v1.4):** duplicate relation edges now **merge** by `(from, kind, target)` into one canonical edge that always carries `sources` (list of distinct derivations; multiplicity = `#sources`, no stored `count`) instead of silent first-wins dedupe; identical-provenance duplicates yield a `relation.duplicate` info finding.
+- Facade method `all()` renamed to `nodes()` on both `index` and `graph` (graph vocabulary: instances are nodes).
+- Component scan phase order is now `identify → parse (all roots) → relate → verify (all instances)`; `verify` runs post-scan with the graph facade instead of immediately after each instance's `parse`, and post-scan phases walk nested children too.
+- `verify` is optional (omission ≡ no findings); components classify by `id` + `parse`. Stack roots still require `identify`.
+- Incremental scans re-run `relate`/`verify` over the merged forest; judgment findings are recomputed wholesale while parse findings keep per-instance merging.
+- `flutter_poc` fixture: `flutter.model` ↔ `flutter.state` are now separate stack roots linked by a `stores` relation instead of parent-child nesting.
 
 ### Fixed
 - `FieldConstructorArgs.style` is nullable so `CodemodPreferences.emptyConstructorStyle` applies when no per-field override is set.

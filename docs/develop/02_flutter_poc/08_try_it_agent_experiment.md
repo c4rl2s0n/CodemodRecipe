@@ -10,8 +10,9 @@
 
    (Or set those paths in `.cursor/mcp.json`.)
 
-2. Call `component_scan` (or `list_component_instances`). Expect **2** instances
-   (`flutter.model/recipe`, `flutter.model/user`) and finding
+2. Call `component_scan` (or `list_component_instances`). Expect **4** instances
+   (`flutter.model/recipe`, `flutter.model/user`, `flutter.state/recipe`,
+   `flutter.state/user`), two `stores` edges in `edges` (plus `kindGraph`), and finding
    `model.field_missing_in_store` for recipe `subtitle`.
 
 3. Edit `lib/stores/recipe_store.dart` (add `String subtitle = '';`), then either:

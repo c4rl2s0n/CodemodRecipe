@@ -280,12 +280,12 @@ function pathHint(instance: ComponentInstance): string {
   if (loc?.source?.path) {
     return loc.source.path;
   }
-  const node = instance.node as { path?: string; source?: { path?: string } } | null;
-  if (node?.path) {
-    return node.path;
+  const ast = instance.ast as { path?: string; source?: { path?: string } } | null;
+  if (ast?.path) {
+    return ast.path;
   }
-  if (node?.source?.path) {
-    return node.source.path;
+  if (ast?.source?.path) {
+    return ast.source.path;
   }
   return instance.id;
 }
@@ -447,7 +447,7 @@ function runApply(): void {
           </details>
           <details>
             <summary>Node</summary>
-            <pre>{{ pretty(selectedInstance.node) }}</pre>
+            <pre>{{ pretty(selectedInstance.ast) }}</pre>
           </details>
           <details v-if="selectedInstance.summary">
             <summary>Summary</summary>

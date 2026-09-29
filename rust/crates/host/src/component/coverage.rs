@@ -10,8 +10,7 @@ use crate::component::types::ComponentInstance;
 use crate::recipe::registry::RecipeRegistry;
 use crate::sandbox::workspace_glob::glob_workspace;
 
-const CODEBASE_REQUIRED_WARNING: &str =
-    "stack.codebase is required to enable component coverage; add codebase = { \"…\" } globs to .codemod/stack.luau";
+const CODEBASE_REQUIRED_WARNING: &str = "stack.codebase is required to enable component coverage; add codebase = { \"…\" } globs to .codemod/stack.luau";
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -102,7 +101,9 @@ pub fn component_coverage(registry: &mut RecipeRegistry) -> ComponentCoverageRes
     }
 
     let Some(stack) = registry.stack() else {
-        return ComponentCoverageResponse::fail("stack manifest is required for component coverage");
+        return ComponentCoverageResponse::fail(
+            "stack manifest is required for component coverage",
+        );
     };
 
     let codebase = stack.codebase.clone();
@@ -136,7 +137,7 @@ pub fn collect_spans_from_instances(
 ) -> BTreeMap<String, Vec<SpanInterval>> {
     let mut out: BTreeMap<String, Vec<SpanInterval>> = BTreeMap::new();
     for instance in instances {
-        collect_spans_from_value(&instance.node, &mut out);
+        collect_spans_from_value(&instance.ast, &mut out);
     }
     out
 }
@@ -235,16 +236,15 @@ pub fn compute_file_coverage(source: &str, intervals: &[SpanInterval]) -> FileCo
     let mut first_nonblank: Option<usize> = None;
     let mut last_nonblank: Option<usize> = None;
 
-    let close_uncovered_run = |gaps: &mut Vec<CoverageGap>,
-                               first: &mut Option<usize>,
-                               last: &mut Option<usize>| {
-        if let (Some(from), Some(last_i)) = (first.take(), last.take()) {
-            gaps.push(CoverageGap {
-                from,
-                to: last_i + 1,
-            });
-        }
-    };
+    let close_uncovered_run =
+        |gaps: &mut Vec<CoverageGap>, first: &mut Option<usize>, last: &mut Option<usize>| {
+            if let (Some(from), Some(last_i)) = (first.take(), last.take()) {
+                gaps.push(CoverageGap {
+                    from,
+                    to: last_i + 1,
+                });
+            }
+        };
 
     let mut covered_idx = 0usize;
     let mut i = 0usize;

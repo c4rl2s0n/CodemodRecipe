@@ -10,7 +10,7 @@ use codemod_recipe_lua::{eval_return_table, new_sandbox_with_require, require_ch
 use mlua::{Function, Lua, Table, Value};
 
 use crate::component::scan::{
-    component_incremental_scan, component_scan, scan_component, ComponentIncrementalScanRequest,
+    component_incremental_scan, component_scan, ComponentIncrementalScanRequest,
 };
 use crate::component::types::{ComponentFinding, ComponentInstance, ComponentInvokeResponse};
 use crate::engine::working_tree::WorkingTree;
@@ -101,6 +101,51 @@ pub(crate) fn invoke_component_hook(
     }
 }
 
+/// Calls an optional component hook as `hook(c, instance, facade)`; returns `None`
+/// when the hook is absent. Used by the post-scan phases (`relate` / `verify`)
+/// and by facade-aware dry-runs.
+///
+/// When the facade already holds a node table for `instance.id`, that table is
+/// passed as the instance arg instead of a fresh conversion — node identity is
+/// unified, so node-centric traversal (`inst:outgoing` etc., graph facade only)
+/// works on the hook's own instance.
+pub(crate) fn invoke_component_hook_with_facade(
+    lua: &Lua,
+    component: &ComponentDef,
+    hook: &str,
+    host: SharedHost,
+    instance: serde_json::Value,
+    facade: &Table,
+) -> Result<Option<Value>, String> {
+    let name = component_chunk_name(component);
+    let module = eval_return_table(lua, &component.source, &name).map_err(|e| e.to_string())?;
+    let Some(func) = module
+        .get::<Option<Function>>(hook)
+        .map_err(|e| e.to_string())?
+    else {
+        return Ok(None);
+    };
+    let ctx_table = build_ctx(lua, host)?;
+    let instance_lua = match facade_node(facade, &instance) {
+        Some(table) => Value::Table(table),
+        None => json_to_lua(lua, &instance)?,
+    };
+    func.call::<Value>((ctx_table, instance_lua, facade.clone()))
+        .map(Some)
+        .map_err(|e| format!("component {hook} failed: {e}"))
+}
+
+/// Look up the facade's own node table for the instance's `id` (`byId` returns the
+/// shared, traversal-wrapped node). `None` when the id is absent or not a table.
+fn facade_node(facade: &Table, instance: &serde_json::Value) -> Option<Table> {
+    let id = instance.get("id").and_then(|v| v.as_str())?;
+    let by_id: Function = facade.get("byId").ok()?;
+    match by_id.call::<Value>((facade.clone(), id.to_string())).ok()? {
+        Value::Table(table) => Some(table),
+        _ => None,
+    }
+}
+
 /// Calls an optional component hook; returns `None` when the hook is absent.
 pub(crate) fn try_invoke_component_hook(
     lua: &Lua,
@@ -165,6 +210,7 @@ pub fn invoke_operation(
         );
     }
     let instances = scan.instances.unwrap_or_default();
+    let edges = scan.edges.clone().unwrap_or_default();
     let Some(target) = instances.iter().find(|i| i.id == request.instance_id) else {
         return ComponentInvokeResponse::fail(format!(
             "instance not found: {}",
@@ -196,7 +242,8 @@ pub fn invoke_operation(
     let result = (|| -> Result<ComponentInvokeResponse, String> {
         let ctx_table = build_ctx(&lua, Rc::clone(&host))?;
         let name = component_chunk_name(&component);
-        let module = eval_return_table(&lua, &component.source, &name).map_err(|e| e.to_string())?;
+        let module =
+            eval_return_table(&lua, &component.source, &name).map_err(|e| e.to_string())?;
         let ops: Table = module
             .get("operations")
             .map_err(|e| format!("operations table missing: {e}"))?;
@@ -206,18 +253,23 @@ pub fn invoke_operation(
         let apply: Function = op_tbl
             .get("apply")
             .map_err(|e| format!("operation apply missing: {e}"))?;
-        let instance_tbl = json_to_lua(
-            &lua,
-            &serde_json::json!({
-                "id": target.id,
-                "componentId": target.component_id,
-                "locator": target.locator,
-                "node": target.node,
-            }),
-        )?;
         let args_tbl = args_table_from_map(&lua, &request.args)?;
+        // Operations receive the pre-operation graph as 4th arg (guards, navigation).
+        let flat = crate::component::relations::flatten_instances(&instances);
+        let graph = crate::component::relations::build_graph_facade(&lua, &flat, &edges)?;
+        let instance_json = serde_json::json!({
+            "id": target.id,
+            "componentId": target.component_id,
+            "locator": target.locator,
+            "ast": target.ast,
+        });
+        // Pass the facade's own node table so `target:outgoing(...)` etc. work.
+        let instance_tbl = match facade_node(&graph, &instance_json) {
+            Some(table) => Value::Table(table),
+            None => json_to_lua(&lua, &instance_json)?,
+        };
         apply
-            .call::<()>((ctx_table, args_tbl, instance_tbl))
+            .call::<()>((ctx_table, args_tbl, instance_tbl, graph))
             .map_err(|e| format!("operation apply failed: {e}"))?;
 
         let mut inner = host.lock().map_err(|e| e.to_string())?;
@@ -287,8 +339,11 @@ pub fn invoke_scaffold(
         ));
     }
 
-    // Ensure cache exists so post-scaffold detectChanges can glob-diff new roots.
-    let _ = component_scan(registry);
+    // Ensure cache exists so post-scaffold detectChanges can glob-diff new roots,
+    // and so scaffold.apply receives the pre-scaffold graph as 3rd arg.
+    let scan = component_scan(registry);
+    let scan_instances = scan.instances.unwrap_or_default();
+    let scan_edges = scan.edges.unwrap_or_default();
 
     let ctx = ComponentRunContext::from_registry(registry, request.kind);
     let host = match make_host(&ctx, request.args.clone()) {
@@ -302,7 +357,8 @@ pub fn invoke_scaffold(
     let result = (|| -> Result<ComponentInvokeResponse, String> {
         let ctx_table = build_ctx(&lua, Rc::clone(&host))?;
         let name = component_chunk_name(&component);
-        let module = eval_return_table(&lua, &component.source, &name).map_err(|e| e.to_string())?;
+        let module =
+            eval_return_table(&lua, &component.source, &name).map_err(|e| e.to_string())?;
         let scaffold: Table = module
             .get("scaffold")
             .map_err(|e| format!("scaffold table missing: {e}"))?;
@@ -310,8 +366,12 @@ pub fn invoke_scaffold(
             .get("apply")
             .map_err(|e| format!("scaffold apply missing: {e}"))?;
         let args_tbl = args_table_from_map(&lua, &request.args)?;
+        // scaffold.apply(c, args, graph): the graph is the pre-scaffold snapshot —
+        // same semantics as operations (judges the request, not mid-apply edits).
+        let flat = crate::component::relations::flatten_instances(&scan_instances);
+        let graph = crate::component::relations::build_graph_facade(&lua, &flat, &scan_edges)?;
         apply
-            .call::<()>((ctx_table, args_tbl))
+            .call::<()>((ctx_table, args_tbl, graph))
             .map_err(|e| format!("scaffold apply failed: {e}"))?;
 
         let mut inner = host.lock().map_err(|e| e.to_string())?;
@@ -408,9 +468,7 @@ pub fn invoke_hook(
                 );
             };
             let Some(operation) = request.operation else {
-                return ComponentInvokeResponse::fail(
-                    "hook=operation requires operation name",
-                );
+                return ComponentInvokeResponse::fail("hook=operation requires operation name");
             };
             invoke_operation(
                 registry,
@@ -422,11 +480,11 @@ pub fn invoke_hook(
                 },
             )
         }
-        "identify" | "parse" | "verify" | "toSummary" => {
+        "identify" | "parse" | "verify" | "toSummary" | "relate" => {
             invoke_read_hook(registry, request)
         }
         other => ComponentInvokeResponse::fail(format!(
-            "unknown component hook {other:?}; expected identify|parse|verify|toSummary|scaffold|operation"
+            "unknown component hook {other:?}; expected identify|parse|relate|verify|toSummary|scaffold|operation"
         )),
     }
 }
@@ -453,6 +511,25 @@ fn invoke_read_hook(
             request.component_id
         ));
     }
+    if request.hook == "relate" && !component.has_relate {
+        return ComponentInvokeResponse::fail(format!(
+            "component {} has no relate hook",
+            request.component_id
+        ));
+    }
+    // verify is optional: omission ≡ no judgment.
+    if request.hook == "verify" && !component.has_verify {
+        return ComponentInvokeResponse {
+            ok: true,
+            error: None,
+            result: Some(serde_json::json!([])),
+            instance: None,
+            findings: None,
+            files: None,
+            transcript: None,
+            applied: None,
+        };
+    }
 
     let arg = match request.hook.as_str() {
         "identify" => None,
@@ -462,7 +539,7 @@ fn invoke_read_hook(
             };
             Some(locator)
         }
-        "verify" | "toSummary" => {
+        "verify" | "toSummary" | "relate" => {
             let Some(instance) = request.instance else {
                 return ComponentInvokeResponse::fail(format!(
                     "hook={} requires instance",
@@ -484,7 +561,51 @@ fn invoke_read_hook(
         Err(e) => return ComponentInvokeResponse::fail(e.to_string()),
     };
 
-    let call = if request.hook == "toSummary" {
+    // Facade-aware hooks (relate/verify) run against the cached scan forest;
+    // with no cache yet, dry-run triggers a full scan first.
+    let facade = if matches!(request.hook.as_str(), "verify" | "relate") {
+        if registry.component_scan_cache().is_none() {
+            let scan = component_scan(registry);
+            if !scan.ok {
+                return ComponentInvokeResponse::fail(
+                    scan.error
+                        .unwrap_or_else(|| "component scan failed".to_string()),
+                );
+            }
+        }
+        let Some(cache) = registry.component_scan_cache().cloned() else {
+            return ComponentInvokeResponse::fail("component scan cache unavailable");
+        };
+        let flat = crate::component::relations::flatten_instances(&cache.instances);
+        let facade = if request.hook == "relate" {
+            crate::component::relations::build_index_facade(&lua, &flat)
+        } else {
+            crate::component::relations::build_graph_facade(&lua, &flat, &cache.edges)
+        };
+        match facade {
+            Ok(f) => Some(f),
+            Err(message) => {
+                let mut resp = ComponentInvokeResponse::fail(message);
+                resp.transcript = take_transcript(&host);
+                return resp;
+            }
+        }
+    } else {
+        None
+    };
+
+    let call = if let Some(facade) = facade {
+        let instance = arg.expect("facade hooks require instance");
+        invoke_component_hook_with_facade(
+            &lua,
+            &component,
+            &request.hook,
+            Rc::clone(&host),
+            instance,
+            &facade,
+        )
+        .and_then(|opt| opt.ok_or_else(|| format!("component {} hook missing", request.hook)))
+    } else if request.hook == "toSummary" {
         try_invoke_component_hook(&lua, &ctx, &component, "toSummary", Rc::clone(&host), arg)
             .and_then(|opt| {
                 opt.ok_or_else(|| {
@@ -618,11 +739,4 @@ fn component_scan_after_operation(
 
 pub fn hook_to_json(value: &Value) -> Result<serde_json::Value, String> {
     lua_to_json(value)
-}
-
-pub fn scan_single_component(
-    ctx: &ComponentRunContext,
-    component: &ComponentDef,
-) -> Result<(Vec<ComponentInstance>, Vec<ComponentFinding>), String> {
-    scan_component(ctx, component)
 }

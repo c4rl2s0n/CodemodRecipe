@@ -397,6 +397,8 @@ impl RecipeRegistry {
             id: component.id.clone(),
             description: component.description.clone(),
             has_identify: component.has_identify,
+            has_verify: component.has_verify,
+            has_relate: component.has_relate,
             has_to_summary: component.has_to_summary,
             has_scaffold: component.has_scaffold,
             is_root,

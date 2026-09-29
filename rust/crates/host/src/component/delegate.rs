@@ -4,7 +4,9 @@ use codemod_recipe_lua::{eval_return_table, require_chunk_name};
 use mlua::{Function, Lua, Table, Value};
 
 use crate::host_api::context::SharedHost;
-use crate::host_api::registry::{rt, set_fn, HostMethodSignature, HostMethodSurface, HostReturnType};
+use crate::host_api::registry::{
+    rt, set_fn, HostMethodSignature, HostMethodSurface, HostReturnType,
+};
 use crate::lua_runtime::build_ctx;
 
 /// Surface metadata only; runtime binding is [`register_component_delegate`].

@@ -402,7 +402,7 @@ async function handleComponentDryRun(
       id: selected.id,
       componentId: selected.componentId,
       locator: selected.locator,
-      node: selected.node,
+      ast: selected.ast,
     };
   } else if (hook === 'scaffold') {
     args = host.state.componentArgs;
@@ -435,7 +435,7 @@ async function handleComponentDryRun(
       id: selected.id,
       componentId: selected.componentId,
       locator: selected.locator,
-      node: selected.node,
+      ast: selected.ast,
     };
     args = host.state.componentArgs;
   }
