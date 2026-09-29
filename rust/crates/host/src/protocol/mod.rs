@@ -424,6 +424,23 @@ pub struct ComponentDetailSchema {
     pub operations: Vec<ComponentOperationSchema>,
 }
 
+/// Catalog view of a `*.test.luau` suite (discovery for test UIs; run via
+/// [`HostCommand::RunTests`]).
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct TestSuiteSchema {
+    pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub target: Option<String>,
+    /// Workspace-relative path to the suite module.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
+    /// Sorted test function names.
+    pub test_names: Vec<String>,
+}
+
 #[derive(Debug, Serialize, Clone)]
 pub struct RecipeCatalogResponse {
     pub ok: bool,
@@ -453,6 +470,8 @@ pub struct RecipeCatalogResponse {
     pub components: Option<Vec<ComponentSchema>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub stack: Option<StackSchema>,
+    #[serde(skip_serializing_if = "Option::is_none", rename = "testSuites")]
+    pub test_suites: Option<Vec<TestSuiteSchema>>,
 }
 
 #[derive(Debug, Serialize, Clone)]

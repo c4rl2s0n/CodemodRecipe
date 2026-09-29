@@ -6,7 +6,10 @@ A GUI for the [`codemod_recipe`](../README.md) toolkit. Browse recipes, fill in
 placeholder values through a form, preview changes as a native diff, and choose
 exactly which edits to keep before applying. **Query Tools** (same sidebar)
 lets you browse the AST, generate starter tree-sitter queries, and highlight
-query matches before writing recipes.
+query matches before writing recipes. `*.test.luau` suites show up in the
+native **Testing** view — grouped by suite id, runnable per test/suite/group,
+with failures jumping to the failing line (see
+[docs/testing](../docs/usage/07_testing/00_index.md)).
 
 Supports **multi-language** recipes (Dart, Rust, Java, Kotlin, SQL, TypeScript,
 JavaScript, Python, and 300+ tree-sitter grammars via the Rust host).
@@ -161,7 +164,13 @@ Commands accepted by the host (one JSON object per line on stdin):
 { "command": "generateQuery", "path": "lib/foo.dart", "start": 10, "end": 20 }
 
 { "command": "resolveStaticPath", "pathTemplate": "lib/{{ file }}.dart" }
+
+{ "command": "runTests", "filter": "flutter.model.tests/parses_fields" }
 ```
+
+`list`/`reload` responses include `testSuites` (`id`, `target`, `path`,
+`testNames`) for test discovery; `runTests` returns the per-test report
+(`filter` is optional — omit to run everything).
 
 Omitting a file from `selection.files` keeps it. Setting `include: false` drops the file.
 

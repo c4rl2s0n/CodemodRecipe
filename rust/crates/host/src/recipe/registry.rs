@@ -11,7 +11,7 @@ use codemod_recipe_lua::InputKind;
 use crate::diagnostics::diag_source::source_file_only;
 use crate::protocol::{
     ComponentDetailSchema, ComponentOperationSchema, ComponentSchema, ExplorerMenuEntrySchema,
-    RecipeArg, RecipeDiagnostic, RecipeSchema, StackSchema, TypeSchema,
+    RecipeArg, RecipeDiagnostic, RecipeSchema, StackSchema, TestSuiteSchema, TypeSchema,
 };
 
 pub struct RecipeRegistry {
@@ -141,6 +141,23 @@ impl RecipeRegistry {
             components: s.components.clone(),
             codebase: s.codebase.clone(),
         })
+    }
+
+    /// Catalog view of registered test suites (discovery for test UIs).
+    pub fn test_suite_schemas(&self) -> Vec<TestSuiteSchema> {
+        self.test_suites
+            .values()
+            .map(|suite| TestSuiteSchema {
+                id: suite.id.clone(),
+                description: suite.description.clone(),
+                target: suite.target.clone(),
+                path: suite
+                    .path
+                    .as_ref()
+                    .map(|p| relative_path(&self.workspace_root, p)),
+                test_names: suite.test_names.clone(),
+            })
+            .collect()
     }
 
     pub fn describe_component(&self, id: &str) -> Option<ComponentDetailSchema> {

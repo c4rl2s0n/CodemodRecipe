@@ -12,6 +12,7 @@ import type {
   GenerateQueryResponse,
   ResolveStaticPathResponse,
   QueryCapturesResponse,
+  TestRunReport,
 } from '../../shared';
 
 export type {
@@ -27,6 +28,7 @@ export type {
   GenerateQueryResponse,
   ResolveStaticPathResponse,
   QueryCapturesResponse,
+  TestRunReport,
 };
 
 export function extractHostResult(output: string): string | undefined {

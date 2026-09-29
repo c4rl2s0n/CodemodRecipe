@@ -49,3 +49,20 @@ suites registered at all.
 1. Write/extend the `*.test.luau` suite next to the asset under test.
 2. `validate_recipes` — the suite must load and classify.
 3. `run_tests` with a narrow `filter` while iterating; full run before handing off.
+
+## VS Code extension
+
+The extension surfaces suites in the native **Testing** view (beaker icon) via a
+`TestController` — no extra views are added to the Codemod Recipe container.
+
+- **Discovery** rides the catalog reload (the `.codemod` watcher): suites appear
+  grouped by their dot-separated id (`flutter.model.tests` → `flutter ▸ model ▸
+  tests`), with test functions as leaves.
+- **Run scopes**: every tree level has a run button — individual test, suite,
+  group, or all (toolbar / `Codemod Recipe: Run Tests`). Gutter run buttons appear
+  inside `*.test.luau` files.
+- **Results** are color-coded per test; failures carry the raised message with a
+  `file:line` location (editor peek + Test Results output), so clicking a red test
+  jumps to the failing line.
+- Suite files with load errors do not appear in the tree — they surface through
+  the usual diagnostics (Problems panel / `validate_recipes`).

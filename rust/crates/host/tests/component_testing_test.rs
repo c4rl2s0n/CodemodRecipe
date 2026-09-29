@@ -245,6 +245,42 @@ fn suites_register_in_catalog() {
 }
 
 #[test]
+fn list_catalog_carries_test_suites() {
+    let root = setup_testing_workspace("testing_catalog_list");
+    let mut registry = registry_for(&root);
+    let catalog = dispatch::handle_command(&mut registry, HostCommand::List);
+    let suites = catalog["testSuites"].as_array().expect("testSuites");
+    assert_eq!(suites.len(), 2, "{catalog}");
+
+    let model = suites
+        .iter()
+        .find(|s| s["id"] == "t.model.tests")
+        .expect("t.model.tests");
+    assert_eq!(model["target"], "t.model");
+    // The fixture keeps `.codemod` as a sibling of `workspace/`, so the path
+    // does not strip to a relative one here; in consumer layouts (`.codemod`
+    // inside the workspace root) it is workspace-relative.
+    assert!(
+        model["path"]
+            .as_str()
+            .expect("path")
+            .ends_with(".codemod/components/t.model.test.luau"),
+        "{catalog}"
+    );
+    // Sorted names, matching loader ordering.
+    let names: Vec<&str> = model["testNames"]
+        .as_array()
+        .expect("testNames")
+        .iter()
+        .map(|n| n.as_str().unwrap())
+        .collect();
+    let mut sorted = names.clone();
+    sorted.sort();
+    assert_eq!(names, sorted);
+    assert_eq!(names.len(), 7);
+}
+
+#[test]
 fn passing_tests_cover_parse_identify_scan_apply_recipe_scaffold() {
     let root = setup_testing_workspace("testing_pass");
     let mut registry = registry_for(&root);

@@ -5,6 +5,7 @@ import type {
   RecipeDiagnostic,
   RecipeSchema,
   StackSchema,
+  TestSuiteSchema,
   TypeSchema,
 } from '../../shared';
 
@@ -21,6 +22,7 @@ export type RecipeLoadResult = {
   queries?: Record<string, string>;
   components?: ComponentSchema[];
   stack?: StackSchema;
+  testSuites?: TestSuiteSchema[];
 };
 
 export class RecipeRepository {
@@ -35,6 +37,7 @@ export class RecipeRepository {
   private queries: Record<string, string> = {};
   private components: ComponentSchema[] = [];
   private stack: StackSchema | undefined;
+  private testSuites: TestSuiteSchema[] = [];
   private describeCache = new Map<string, RecipeSchema>();
   private componentDescribeCache = new Map<string, ComponentDetailSchema>();
   private lastError: string | undefined;
@@ -83,6 +86,10 @@ export class RecipeRepository {
 
   getStack(): StackSchema | undefined {
     return this.stack;
+  }
+
+  getTestSuites(): readonly TestSuiteSchema[] {
+    return this.testSuites;
   }
 
   findType(id: string): TypeSchema | undefined {
@@ -161,6 +168,7 @@ export class RecipeRepository {
     this.queries = result.queries ?? {};
     this.components = result.components ?? [];
     this.stack = result.stack;
+    this.testSuites = result.testSuites ?? [];
     this.describeCache.clear();
     this.componentDescribeCache.clear();
   }

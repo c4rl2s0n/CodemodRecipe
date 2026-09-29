@@ -28,6 +28,7 @@ import { RecipeRepository } from './recipes/recipeRepository';
 import type { RecipeSchema } from '../shared';
 import { RecipeRunnerViewProvider } from './views/recipeRunnerViewProvider';
 import { QueryToolsController } from './queryTools/queryToolsController';
+import { CodemodTestController } from './testing/codemodTestController';
 
 export function activate(context: vscode.ExtensionContext): void {
   const config = new ExtensionConfig();
@@ -48,6 +49,7 @@ export function activate(context: vscode.ExtensionContext): void {
   });
   const queryTools = new QueryToolsController(bridge, config);
   queryTools.register(context);
+  const testController = new CodemodTestController(bridge);
 
   let languageSession: LanguageSession | undefined;
   const recreateLanguageSession = (): void => {
@@ -94,6 +96,10 @@ export function activate(context: vscode.ExtensionContext): void {
     );
     diagnostics.publish(repository.getDiagnostics(), config.workspaceRoot);
     refreshContextMatches({ repository, config, runner });
+    await testController.syncFromCatalog(
+      repository.getTestSuites(),
+      config.workspaceRoot
+    );
     if (repository.getComponents().length > 0 && repository.getStack()) {
       await runner.scanComponents();
     } else {
@@ -293,6 +299,7 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     { dispose: () => bridge.dispose() },
     { dispose: () => disposeCodemodWatcher() },
+    { dispose: () => testController.dispose() },
     diagnostics.disposable,
     registerContextMatchUpdates({ repository, config, runner }),
     vscode.workspace.onDidSaveTextDocument((document) => {
@@ -365,6 +372,17 @@ export function activate(context: vscode.ExtensionContext): void {
         const message = err instanceof Error ? err.message : String(err);
         vscode.window.showErrorMessage(
           formatHostError(`Codemod Recipe validate failed: ${message}`)
+        );
+      }
+    }),
+    vscode.commands.registerCommand(COMMANDS.runTests, async () => {
+      try {
+        await bridge.ensureHost();
+        await testController.runAll();
+      } catch (err) {
+        const message = err instanceof Error ? err.message : String(err);
+        vscode.window.showErrorMessage(
+          formatHostError(`Codemod Recipe run tests failed: ${message}`)
         );
       }
     }),

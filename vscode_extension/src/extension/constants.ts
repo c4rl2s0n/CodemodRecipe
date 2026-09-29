@@ -18,6 +18,7 @@ export const COMMANDS = {
   copySlotKeybinding: 'codemodRecipe.copySlotKeybinding',
   configureCodemodRoot: 'codemodRecipe.configureHost',
   validateRecipes: 'codemodRecipe.validateRecipes',
+  runTests: 'codemodRecipe.runTests',
   openInRecipeRunner: 'codemodRecipe.openInRecipeRunner',
   testQueryOnFile: 'codemodRecipe.testQueryOnFile',
   queryToolsRun: 'codemodRecipe.queryTools.run',

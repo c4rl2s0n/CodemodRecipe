@@ -150,6 +150,7 @@ export interface RecipeCatalogResponse {
   queries?: Record<string, string>;
   components?: ComponentSchema[];
   stack?: StackSchema;
+  testSuites?: TestSuiteSchema[];
 }
 
 export interface ComponentSchema {
@@ -159,6 +160,38 @@ export interface ComponentSchema {
   hasScaffold: boolean;
   isRoot: boolean;
   sourceFile?: string;
+}
+
+/** Catalog view of a `*.test.luau` suite (discovery for the Testing view). */
+export interface TestSuiteSchema {
+  id: string;
+  description?: string;
+  target?: string;
+  /** Workspace-relative path to the suite module. */
+  path?: string;
+  /** Sorted test function names. */
+  testNames: string[];
+}
+
+export interface TestCaseResult {
+  name: string;
+  ok: boolean;
+  error?: string;
+  /** 1-based line in the suite file (failures only). */
+  line?: number;
+}
+
+export interface TestSuiteResult {
+  id: string;
+  path?: string;
+  tests: TestCaseResult[];
+}
+
+export interface TestRunReport {
+  ok: boolean;
+  error?: string;
+  suites: TestSuiteResult[];
+  totals: { passed: number; failed: number };
 }
 
 export interface StackSchema {
@@ -465,6 +498,10 @@ export type HostCommand =
   | {
       command: 'describeComponent';
       componentId: string;
+    }
+  | {
+      command: 'runTests';
+      filter?: string;
     };
 
 export interface QueryCapturesResponse {

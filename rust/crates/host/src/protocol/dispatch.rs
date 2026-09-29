@@ -81,6 +81,7 @@ fn catalog_response(registry: &RecipeRegistry) -> serde_json::Value {
         queries: Some(registry.queries_by_id().clone()),
         components: Some(registry.component_schemas()),
         stack: registry.stack_schema(),
+        test_suites: Some(registry.test_suite_schemas()),
     })
 }
 

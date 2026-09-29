@@ -39,6 +39,7 @@ import type {
   ComponentInvokeResponse,
   DescribeComponentResponse,
   ComponentDetailSchema,
+  TestRunReport,
 } from '../../shared';
 import type { RecipeLoadResult } from '../recipes/recipeRepository';
 import { shouldRetryOneShotAfterPersistentFailure } from './hostBridgeRetryPolicy';
@@ -321,6 +322,17 @@ export class HostBridge {
 
   async componentScan(): Promise<ComponentScanResponse> {
     return this.send<ComponentScanResponse>({ command: 'componentScan' });
+  }
+
+  /**
+   * Run `*.test.luau` suites. `filter` matches a suite id, suite target,
+   * `suiteId/testName`, or a bare test name (substring); omitted runs all.
+   */
+  async runTests(filter?: string): Promise<TestRunReport> {
+    return this.send<TestRunReport>({
+      command: 'runTests',
+      ...(filter ? { filter } : {}),
+    });
   }
 
   async componentCoverage(): Promise<ComponentCoverageResponse> {
