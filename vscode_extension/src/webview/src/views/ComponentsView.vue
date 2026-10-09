@@ -31,6 +31,7 @@ const props = defineProps<{
   selectedInstanceId?: string;
   detail?: ComponentDetailSchema;
   action?: string;
+  stackAction?: string;
   args: ArgValues;
   files: readonly FilePreview[];
   transcript: readonly TranscriptEvent[];
@@ -85,6 +86,12 @@ const selectedInstance = computed(() =>
 );
 
 const actionArgs = computed(() => {
+  if (props.stackAction && props.stack?.operations) {
+    return (
+      props.stack.operations.find((o) => o.name === props.stackAction)?.args ??
+      []
+    );
+  }
   if (!props.detail || !props.action) {
     return [];
   }
@@ -107,7 +114,12 @@ const canRunOperation = computed(
     !!props.selectedInstanceId
 );
 
-const canPreview = computed(() => canRunScaffold.value || canRunOperation.value);
+const canRunStackOperation = computed(() => !!props.stackAction);
+
+const canPreview = computed(
+  () =>
+    canRunScaffold.value || canRunOperation.value || canRunStackOperation.value
+);
 
 const showReview = computed(
   () =>
@@ -210,6 +222,10 @@ function selectAction(action: string): void {
   client.selectComponentAction(action);
 }
 
+function selectStackOp(operation: string): void {
+  client.selectStackOperation(operation);
+}
+
 function rescan(): void {
   client.componentScan();
 }
@@ -252,6 +268,14 @@ function closeContextMenu(): void {
 }
 
 const actionRecipe = computed(() => {
+  if (props.stackAction && props.stack) {
+    return {
+      id: props.stack.id,
+      name: props.stackAction,
+      description: '',
+      args: actionArgs.value,
+    };
+  }
   if (!props.detail || !props.action) {
     return undefined;
   }
@@ -262,6 +286,30 @@ const actionRecipe = computed(() => {
     args: actionArgs.value,
   };
 });
+
+function runPreview(): void {
+  if (!canPreview.value) {
+    return;
+  }
+  status.value = 'Previewing…';
+  if (props.stackAction) {
+    client.stackPreview(props.args, client.nextRequestId());
+  } else {
+    client.componentPreview(props.args, client.nextRequestId());
+  }
+}
+
+function runApply(): void {
+  if (!canPreview.value) {
+    return;
+  }
+  status.value = 'Applying…';
+  if (props.stackAction) {
+    client.stackApply(props.args, client.nextRequestId());
+  } else {
+    client.componentApply(props.args, client.nextRequestId());
+  }
+}
 
 const localArgs = computed({
   get: () => props.args,
@@ -307,22 +355,6 @@ function pretty(value: unknown): string {
   } catch {
     return String(value);
   }
-}
-
-function runPreview(): void {
-  if (!canPreview.value) {
-    return;
-  }
-  status.value = 'Previewing…';
-  client.componentPreview(props.args, client.nextRequestId());
-}
-
-function runApply(): void {
-  if (!canPreview.value) {
-    return;
-  }
-  status.value = 'Applying…';
-  client.componentApply(props.args, client.nextRequestId());
 }
 </script>
 
@@ -382,6 +414,57 @@ function runApply(): void {
         </div>
       </div>
       <p v-if="stack" class="desc">Stack: {{ stack.id }}</p>
+      <div v-if="stack?.operations?.length" class="stack-ops">
+        <h3>Stack operations</h3>
+        <p class="desc">Instance-less fan-out across layers (dry-run → diff → apply).</p>
+        <div class="actions">
+          <button
+            v-for="op in stack.operations"
+            :key="op.name"
+            type="button"
+            class="secondary"
+            :class="{ active: stackAction === op.name }"
+            @click="selectStackOp(op.name)"
+          >
+            {{ op.name }}
+          </button>
+        </div>
+        <template v-if="stackAction">
+          <h3>{{ stackAction }}</h3>
+          <RecipeArgForm
+            v-if="actionRecipe"
+            v-model:arg-values="localArgs"
+            :recipe="actionRecipe"
+            @args-changed="onArgsChanged"
+          />
+          <div class="run-row">
+            <button type="button" :disabled="!canPreview" @click="runPreview">
+              Preview
+            </button>
+            <button
+              type="button"
+              class="secondary"
+              :disabled="!canPreview"
+              @click="runApply"
+            >
+              Apply
+            </button>
+            <span v-if="status" class="status">{{ status }}</span>
+          </div>
+          <p v-if="opError" class="error">{{ opError }}</p>
+          <ReviewPanel
+            v-if="showReview && stackAction"
+            :files="[...files]"
+            :transcript="[...transcript]"
+            :apply-may-diverge="false"
+            :file-selections="fileSelections"
+            :active-change-index="activeChangeIndex"
+            :can-apply="false"
+            @update:file-selections="fileSelections = $event"
+            @update:active-change-index="activeChangeIndex = $event"
+          />
+        </template>
+      </div>
       <p v-if="coverage?.skipped" class="desc cov-warn">
         {{ coverage.warning }}
       </p>

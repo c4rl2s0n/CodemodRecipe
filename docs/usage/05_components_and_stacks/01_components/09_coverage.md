@@ -73,3 +73,16 @@ On the **Components** tab:
 ## Authoring
 
 Attach spans from query hits on the pieces you model. Prefer leaf spans (fields, args, methods); a large parent span is only useful when there are no spanned children. See [Parse tree](03_parse_tree.md).
+
+## Span coverage vs snapshot relation metrics
+
+Two different scores live next to each other in `.cache/scan-snapshot.json`:
+
+| Block | Measures |
+|-------|----------|
+| `coverage` | Leaf `source.span` vs `stack.codebase` (compact: no `gaps`) |
+| `relations` | Instance connectivity (membership vs architecture); see [relations](10_relations.md) |
+
+`stack.zoneRoles.ignoreCoverage` applies **only** to snapshot compact `coverage`
+(members under those zones do not paint covered bytes). Live `component_coverage`
+ignores zone flags in v1. `ignoreRelations` affects `relations` metrics only.

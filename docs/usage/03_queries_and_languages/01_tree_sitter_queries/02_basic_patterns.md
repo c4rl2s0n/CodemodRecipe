@@ -37,22 +37,30 @@ Require that a field is **absent**:
 
 ## Anonymous nodes
 
-Literal tokens use double quotes:
+Literal tokens (keywords, operators, punctuation) use **double quotes**:
 
 ```scheme
 (binary_expression operator: "!=" right: (null))
+"required"
+"final"
 ```
+
+These do **not** appear in `dump_ast` when `namedOnly: true` (the default in some UIs). Pass **`namedOnly: false`** (MCP `dump_ast`) to see keywords and punctuation before writing patterns that match them.
+
+Anonymous siblings (e.g. a keyword next to a parameter node) are matched in the query with `"…"`, not by peeking source text around a span.
 
 ## Wildcards
 
-| Pattern | Matches |
-|---------|---------|
-| `(_)` | any named node |
-| `_` | any named or anonymous node |
+| Pattern | Matches | Capturable? |
+|---------|---------|-------------|
+| `(_)` | any **named** node | Yes — `(_) @x` |
+| `_` | any named **or anonymous** node | No — do not write `_ @x` |
 
 ```scheme
 (call_expression function: (_) @callee)
 ```
+
+If you need the text of an anonymous token, match it with a string literal (`"required"`) or capture a nearby named node and use `hit.text` / `c:spanText`.
 
 ## Special nodes
 

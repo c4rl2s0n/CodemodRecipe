@@ -1,0 +1,221 @@
+local MOD_RS = "rust/crates/host/src/protocol/mod.rs"
+local DISPATCH_RS = "rust/crates/host/src/protocol/dispatch/mod.rs"
+local TYPES_TS = "vscode_extension/src/shared/types.ts"
+local BRIDGE_TS = "vscode_extension/src/extension/host/hostBridge.ts"
+
+--- Minimal bridge modeling a surface: one method sending 'list'.
+local function bridgeTsSendingList()
+	return [[
+export class HostBridge {
+  async listRecipes(): Promise<void> {
+    await this.send<void>({ command: 'list' });
+  }
+}
+]]
+end
+
+local function modRs()
+	return [[
+#[derive(Debug, Deserialize)]
+#[serde(tag = "command")]
+pub enum HostCommand {
+    #[serde(rename = "list")]
+    List,
+    #[serde(rename = "validate")]
+    Validate { recipe: Option<String> },
+}
+]]
+end
+
+local function dispatchRs()
+	return [[
+pub fn handle_command(cmd: HostCommand) {
+    match cmd {
+        HostCommand::List => list(),
+        HostCommand::Validate { recipe } => validate(recipe),
+    }
+}
+]]
+end
+
+local function typesTs()
+	return [[
+export type HostCommand =
+  | { command: 'list' }
+  | { command: 'validate'; recipe?: string };
+]]
+end
+
+local function codes(findings)
+	local out = {}
+	for _, f in ipairs(findings) do
+		out[#out + 1] = f.code .. "@" .. tostring(f.instanceId)
+	end
+	table.sort(out)
+	return out
+end
+
+local function protocolRoot(scan)
+	for _, inst in ipairs(scan.instances or {}) do
+		if inst.componentId == "repo.host_protocol" then
+			return inst
+		end
+	end
+	return nil
+end
+
+local function commandChildren(root)
+	local out = {}
+	for _, child in ipairs(root.ast.children or {}) do
+		if child.componentId == "repo.host_command" then
+			out[#out + 1] = child
+		end
+	end
+	return out
+end
+
+--- Dogfood stack has many roots; only assert protocol-family findings.
+local function protocolFindings(findings)
+	local out = {}
+	for _, f in ipairs(findings or {}) do
+		local code = f.code or ""
+		if code:find("^host_command%.", 1) or code:find("^host_protocol%.", 1) then
+			out[#out + 1] = f
+		end
+	end
+	return out
+end
+
+return {
+	id = "repo.host_protocol.tests",
+	target = "repo.host_protocol",
+	tests = {
+		consistent_protocol_has_no_findings = function(t)
+			local ws = t:workspace({
+				files = {
+					[MOD_RS] = modRs(),
+					[DISPATCH_RS] = dispatchRs(),
+					[TYPES_TS] = typesTs(),
+				},
+			})
+			local scan = ws:scan()
+			local root = protocolRoot(scan)
+			t:assert(root ~= nil)
+			t:assertEq(root.componentId, "repo.host_protocol")
+			local cmds = commandChildren(root)
+			t:assertEq(#cmds, 2)
+			t:assertEq(cmds[1].rename, "list")
+			t:assertEq(cmds[2].variant, "Validate")
+			t:assertEq(#protocolFindings(scan.findings), 0)
+		end,
+
+		verify_flags_missing_ts_mirror = function(t)
+			local ws = t:workspace({
+				files = {
+					[MOD_RS] = modRs(),
+					[DISPATCH_RS] = dispatchRs(),
+					[TYPES_TS] = "export type HostCommand =\n  | { command: 'list' };\n",
+				},
+			})
+			local scan = ws:scan()
+			t:assertEq(
+				codes(protocolFindings(scan.findings)),
+				{ "host_command.missing_ts_mirror@repo.host_command/validate" }
+			)
+		end,
+
+		verify_flags_missing_dispatch_arm = function(t)
+			local ws = t:workspace({
+				files = {
+					[MOD_RS] = modRs(),
+					[DISPATCH_RS] = "pub fn handle_command(cmd: HostCommand) {\n    match cmd {\n        HostCommand::List => list(),\n    }\n}\n",
+					[TYPES_TS] = typesTs(),
+				},
+			})
+			local scan = ws:scan()
+			t:assertEq(
+				codes(protocolFindings(scan.findings)),
+				{ "host_command.missing_dispatch@repo.host_command/validate" }
+			)
+		end,
+
+		verify_flags_ts_orphan = function(t)
+			local ws = t:workspace({
+				files = {
+					[MOD_RS] = modRs(),
+					[DISPATCH_RS] = dispatchRs(),
+					[TYPES_TS] = typesTs() .. "\nexport type HostCommand2 =\n  | { command: 'bogus' };\n",
+				},
+			})
+			local scan = ws:scan()
+			-- 'bogus' is outside the HostCommand alias span: must NOT be flagged
+			t:assertEq(#protocolFindings(scan.findings), 0)
+		end,
+
+		verify_flags_real_ts_orphan = function(t)
+			local ws = t:workspace({
+				files = {
+					[MOD_RS] = modRs(),
+					[DISPATCH_RS] = dispatchRs(),
+					[TYPES_TS] = "export type HostCommand =\n  | { command: 'list' }\n  | { command: 'validate'; recipe?: string }\n  | { command: 'tsOnly' };\n",
+				},
+			})
+			local scan = ws:scan()
+			t:assertEq(
+				codes(protocolFindings(scan.findings)),
+				{ "host_protocol.ts_orphan@repo.host_protocol/host-protocol" }
+			)
+		end,
+
+		-- surfaces modeled (a sends edge exists) but 'validate' has none incoming
+		verify_warns_when_command_has_no_surface = function(t)
+			local ws = t:workspace({
+				files = {
+					[MOD_RS] = modRs(),
+					[DISPATCH_RS] = dispatchRs(),
+					[TYPES_TS] = typesTs(),
+					[BRIDGE_TS] = bridgeTsSendingList(),
+				},
+			})
+			local scan = ws:scan()
+			t:assertEq(
+				codes(protocolFindings(scan.findings)),
+				{ "host_command.no_surface@repo.host_command/validate" }
+			)
+		end,
+
+		-- allowlisted internal variants stay silent even with surfaces modeled
+		verify_skips_allowlisted_internal_commands = function(t)
+			local ws = t:workspace({
+				files = {
+					[MOD_RS] = [[
+#[derive(Debug, Deserialize)]
+#[serde(tag = "command")]
+pub enum HostCommand {
+    #[serde(rename = "list")]
+    List,
+    #[serde(rename = "generateAstPath")]
+    GenerateAstPath { symbol: String },
+}
+]],
+					[DISPATCH_RS] = [[
+pub fn handle_command(cmd: HostCommand) {
+    match cmd {
+        HostCommand::List => list(),
+        HostCommand::GenerateAstPath { symbol } => generate(symbol),
+    }
+}
+]],
+					[TYPES_TS] = [[
+export type HostCommand =
+  | { command: 'list' }
+  | { command: 'generateAstPath'; symbol: string };
+]],
+					[BRIDGE_TS] = bridgeTsSendingList(),
+				},
+			})
+			local scan = ws:scan()
+			t:assertEq(#protocolFindings(scan.findings), 0)
+		end,
+	},
+}

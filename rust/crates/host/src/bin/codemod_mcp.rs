@@ -89,234 +89,7 @@ fn handle_request(
             jsonrpc: "2.0",
             id,
             result: Some(json!({
-              "tools": [
-                {
-                  "name": "list_recipes",
-                  "description": "List registered recipes with schemas and diagnostics",
-                  "inputSchema": { "type": "object" }
-                },
-                {
-                  "name": "describe_recipe",
-                  "description": "Describe one registered recipe",
-                  "inputSchema": {
-                    "type": "object",
-                    "properties": { "recipe": { "type": "string" } },
-                    "required": ["recipe"]
-                  }
-                },
-                {
-                  "name": "validate_recipes",
-                  "description": "Reload and validate all recipes and maps (optionally one recipe by id)",
-                  "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                      "recipe": {
-                        "type": "string",
-                        "description": "Optional recipe id to validate without reloading others"
-                      }
-                    }
-                  }
-                },
-                {
-                  "name": "preview_recipe",
-                  "description": "Preview a registered or inline recipe",
-                  "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                      "recipe": { "type": "string" },
-                      "inlineRecipe": { "type": "object" },
-                      "args": { "type": "object" },
-                      "snippetLines": { "type": "number" }
-                    }
-                  }
-                },
-                {
-                  "name": "apply_recipe",
-                  "description": "Apply a previewed recipe atomically",
-                  "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                      "recipe": { "type": "string" },
-                      "inlineRecipe": { "type": "object" },
-                      "args": { "type": "object" },
-                      "previewToken": { "type": "string" },
-                      "selection": { "type": "object" }
-                    },
-                    "required": ["previewToken"]
-                  }
-                },
-                {
-                  "name": "bootstrap_project",
-                  "description": "Install codemod-recipe agent skills (.agents/skills/), rules (.cursor/rules/), and .codemod/ scaffolding into the workspace. Soft edit_policy recommend by default; opt into strict and/or companions.",
-                  "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                      "force": {
-                        "type": "boolean",
-                        "description": "Overwrite existing files (default false)"
-                      },
-                      "edit_policy": {
-                        "type": "string",
-                        "enum": ["recommend", "strict"],
-                        "description": "Rule pack: recommend (default, soft prefer+preview) or strict (recipe-first edit policy)"
-                      },
-                      "companions": {
-                        "type": "array",
-                        "items": { "type": "string", "enum": ["codebase-memory"] },
-                        "description": "Optional companion rule packs (default []). Use [\"codebase-memory\"] when that MCP is configured."
-                      }
-                    }
-                  }
-                },
-                {
-                  "name": "dump_ast",
-                  "description": "Dump the tree-sitter AST for a workspace file or inline source (Query Tools).",
-                  "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                      "path": { "type": "string" },
-                      "source": { "type": "string" },
-                      "language": { "type": "string" },
-                      "namedOnly": { "type": "boolean" }
-                    }
-                  }
-                },
-                {
-                  "name": "debug_query",
-                  "description": "Run a tree-sitter query and return match roots and captures (Query Tools).",
-                  "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                      "path": { "type": "string" },
-                      "source": { "type": "string" },
-                      "language": { "type": "string" },
-                      "query": { "type": "string" },
-                      "instrument": { "type": "boolean" },
-                      "includeSexp": { "type": "boolean" }
-                    },
-                    "required": ["query"]
-                  }
-                },
-                {
-                  "name": "generate_query",
-                  "description": "Generate a starter tree-sitter query from a byte range in a file (Query Tools).",
-                  "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                      "path": { "type": "string" },
-                      "source": { "type": "string" },
-                      "language": { "type": "string" },
-                      "start": { "type": "number" },
-                      "end": { "type": "number" },
-                      "includeTextPredicates": { "type": "boolean" },
-                      "captureLeaf": { "type": "string" },
-                      "maxDepth": { "type": "number" }
-                    },
-                    "required": ["start"]
-                  }
-                },
-                {
-                  "name": "resolve_static_path",
-                  "description": "Try to Jinja-render a path template with empty args; succeeds only when no parameters are required.",
-                  "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                      "template": { "type": "string" }
-                    },
-                    "required": ["template"]
-                  }
-                },
-                {
-                  "name": "component_incremental_scan",
-                  "description": "Incremental component scan: pass dirtyPaths and/or detectChanges to reparse affected roots without full workspace scan.",
-                  "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                      "dirtyPaths": { "type": "array", "items": { "type": "string" } },
-                      "detectChanges": { "type": "boolean" },
-                      "force": { "type": "boolean" }
-                    }
-                  }
-                },
-                {
-                  "name": "component_scan",
-                  "description": "Scan stack root components: identify → parse → relate → verify, and optional toSummary for each instance. Returns instances, findings, relation edges, and the kindGraph roll-up.",
-                  "inputSchema": { "type": "object" }
-                },
-                {
-                  "name": "list_component_instances",
-                  "description": "Alias of component_scan — returns instances, findings, and summaries.",
-                  "inputSchema": { "type": "object" }
-                },
-                {
-                  "name": "component_coverage",
-                  "description": "Post-scan span coverage against stack.codebase globs. Unions explicit source.span ranges; whitespace excluded. Missing codebase skips with a warning. Runs scan first if cache empty. Returns per-file + aggregate ratios and gaps.",
-                  "inputSchema": { "type": "object" }
-                },
-                {
-                  "name": "component_graph",
-                  "description": "Render the component relations graph as mermaid text. level: 'kinds' (default; component-level roll-up with edge counts) or 'instances' (every flat node, symbol targets as external leaves). Runs scan first if cache empty.",
-                  "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                      "level": { "type": "string", "enum": ["kinds", "instances"] }
-                    }
-                  }
-                },
-                {
-                  "name": "describe_component",
-                  "description": "Component metadata: hooks present (hasIdentify/hasToSummary/hasScaffold), scaffold args, and operations.",
-                  "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                      "componentId": { "type": "string" }
-                    },
-                    "required": ["componentId"]
-                  }
-                },
-                {
-                  "name": "component_dry_run_hook",
-                  "description": "Dry-run a component hook (Preview WorkingTree; never writes disk). Returns result JSON + transcript (c:log visible). hook: identify|parse|verify|toSummary|scaffold|operation. Authoring agents: prefer this over component_apply_hook.",
-                  "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                      "componentId": { "type": "string" },
-                      "hook": { "type": "string" },
-                      "locator": {},
-                      "instance": {},
-                      "operation": { "type": "string" },
-                      "args": { "type": "object" }
-                    },
-                    "required": ["componentId", "hook"]
-                  }
-                },
-                {
-                  "name": "component_apply_hook",
-                  "description": "Apply a component hook (flushes WorkingTree writes). Same args as component_dry_run_hook. Prefer dry-run first. Withhold this tool from authoring-only agent allowlists.",
-                  "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                      "componentId": { "type": "string" },
-                      "hook": { "type": "string" },
-                      "locator": {},
-                      "instance": {},
-                      "operation": { "type": "string" },
-                      "args": { "type": "object" }
-                    },
-                    "required": ["componentId", "hook"]
-                  }
-                },
-                {
-                  "name": "run_tests",
-                  "description": "Run *.test.luau suites (fixture-based regression tests for recipes, components, and relations). Read-only for the real workspace: mutations apply to temp fixture dirs only. Optional filter matches suite id, suite target, 'suite/test', or a test name substring. Returns per-test pass/fail with error line numbers.",
-                  "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                      "filter": { "type": "string" }
-                    }
-                  }
-                }
-              ]
+              "tools": codemod_recipe_host::protocol::mcp_inventory::tools_array(),
             })),
             error: None,
         },
@@ -514,7 +287,19 @@ fn handle_request(
                         .get("level")
                         .and_then(|v| v.as_str())
                         .map(String::from);
-                    handle_command(registry, HostCommand::ComponentGraph { level })
+                    let out = arguments
+                        .get("out")
+                        .and_then(|v| v.as_str())
+                        .map(String::from);
+                    handle_command(registry, HostCommand::ComponentGraph { level, out })
+                }
+                "component_snapshot" => {
+                    let path = arguments
+                        .get("path")
+                        .and_then(|v| v.as_str())
+                        .filter(|s| !s.is_empty())
+                        .map(String::from);
+                    handle_command(registry, HostCommand::ComponentSnapshot { path })
                 }
                 "describe_component" => {
                     let component_id = arguments
@@ -526,6 +311,8 @@ fn handle_request(
                 }
                 "component_dry_run_hook" => mcp_component_invoke_hook(registry, &arguments, true),
                 "component_apply_hook" => mcp_component_invoke_hook(registry, &arguments, false),
+                "stack_dry_run_operation" => mcp_stack_invoke_operation(registry, &arguments, true),
+                "stack_apply_operation" => mcp_stack_invoke_operation(registry, &arguments, false),
                 "run_tests" => handle_command(
                     registry,
                     HostCommand::RunTests {
@@ -601,6 +388,38 @@ fn mcp_component_invoke_hook(
                 .get("operation")
                 .and_then(|v| v.as_str())
                 .map(String::from),
+            args,
+        },
+    )
+}
+
+fn mcp_stack_invoke_operation(
+    registry: &mut RecipeRegistry,
+    arguments: &serde_json::Value,
+    preview: bool,
+) -> serde_json::Value {
+    let operation = arguments
+        .get("operation")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    if operation.is_empty() {
+        return error_json("Missing operation");
+    }
+    let args = arguments
+        .get("args")
+        .and_then(|v| v.as_object())
+        .map(|m| {
+            m.iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect::<BTreeMap<_, _>>()
+        })
+        .unwrap_or_default();
+    handle_command(
+        registry,
+        HostCommand::StackInvokeOperation {
+            operation,
+            preview,
             args,
         },
     )

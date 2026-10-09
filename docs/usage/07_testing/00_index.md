@@ -42,5 +42,6 @@ return {
 ```
 
 Run it with the [`run_tests`](../06_mcp_and_clients/01_codemod_mcp/05_tools.md) MCP
-tool (optional `filter` argument narrows to a suite or test). Everything executes
-against fresh temp directories — the real workspace is never touched.
+tool (optional `filter` argument narrows to a suite or test). Fixture workspaces are
+temp directories; session `.codemod` assets load for components under test, but fixture
+scans do not write the session `.cache/` snapshot/graphs.

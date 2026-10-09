@@ -67,6 +67,7 @@ export function useHostState(inbound: ExtensionInbound) {
     () => hostState.value.componentDryRunHook
   );
   const componentCoverage = computed(() => hostState.value.componentCoverage);
+  const stackAction = computed(() => hostState.value.stackAction);
 
   const showBootstrapOverlay = computed(
     () => bootstrapInFlight.value || bootstrapPhase.value === BOOTSTRAP_PHASES.error
@@ -131,6 +132,7 @@ export function useHostState(inbound: ExtensionInbound) {
     componentDryRunResult,
     componentDryRunHook,
     componentCoverage,
+    stackAction,
     showBootstrapOverlay,
     showReloadOverlay,
     showBlockingOverlay,

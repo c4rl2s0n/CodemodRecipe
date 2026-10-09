@@ -1,0 +1,126 @@
+# Target architecture (expected vs scan)
+
+Full-system **expected** architecture for this repository. Dogfood components
+should judge against this picture and emit findings when reality diverges —
+not greenwash today’s duplicates as “in sync.”
+
+Companion views:
+
+- [Architecture graph](04_architecture_graph.md) — command-triangle kind/instance
+  mermaid from a live scan
+- [ARCHITECTURE.md](../../../ARCHITECTURE.md) — product overview for all readers;
+  this page is the maintainer **policy** for expected layering and smells
+- [Decisions](03_decisions.md) — Phase 2 calls (stack ops, no junction)
+
+Codemod root means `--codemod-root` / VS Code `codemodRoot` (default
+`<workspace>/.codemod`), not a hardcoded folder name.
+
+## Crate DAG (intended)
+
+```mermaid
+flowchart BT
+  lua_macros["lua_macros"]
+  core["core patches FS"]
+  lua["lua load model specs"]
+  engine["engine tree-sitter edits"]
+  query_tools["query_tools AST debug"]
+  host["host integrator bins"]
+  lua --> lua_macros
+  engine --> core
+  query_tools --> engine
+  host --> core
+  host --> engine
+  host --> lua
+  host --> lua_macros
+  host --> query_tools
+```
+
+| Crate | Role (policy) |
+|-------|----------------|
+| `codemod_recipe_lua_macros` | Proc macros for `#[host_method]` / `LuaSpec` — keep runtime + stubs aligned |
+| `codemod_recipe_core` | Disk patches / atomic apply — no tree-sitter, no recipes |
+| `codemod_recipe_lua` | Load/validate Luau assets + Luau-facing specs — **must not** depend on `engine` |
+| `codemod_recipe_engine` | Grammars, queries, edit ops — **must not** know recipes/registry |
+| `codemod_recipe_query_tools` | AST dump / debug / generate — recipe-free; depends on `engine` only |
+| `codemod_recipe_host` | Sole integrator: protocol, registry, sandbox runtime, components/stacks, WorkingTree, bootstrap, bins |
+
+**Forbidden** (expected findings if violated): `lua → engine`, `engine → lua`,
+`engine → host`, `query_tools → host` / recipe coupling, new crates that bypass
+this DAG without an explicit decision.
+
+Enforced by: `repo.rust_crate` path-dep DAG check (Phase 3).
+
+## Runtime data flow (intended)
+
+```mermaid
+flowchart LR
+  clients["VSCode_or_MCP"] -->|JSON_stdio| protocol["HostCommand_dispatch"]
+  protocol --> registry["RecipeRegistry"]
+  registry --> sandbox["Luau_sandbox_apply"]
+  sandbox --> hostApi["host_api_handlers"]
+  hostApi --> engine["Engine"]
+  engine --> core["FileChange"]
+  protocol --> queryTools["query_tools"]
+  queryTools --> engine
+  protocol -->|preview_apply| fs["Workspace_FS"]
+```
+
+Principles: determinism; preview before apply; single mutation entry via
+`apply(c, args)` / component hooks; tree-sitter targeting.
+
+## Clients and command adapters
+
+```mermaid
+flowchart TB
+  hostCmd["HostCommand plus dispatch SSOT"]
+  hostApi["host_api Luau c: SSOT"]
+  mcp["MCP adapter derived from HostCommand"]
+  bridge["hostBridge send wrappers"]
+  vscode["VS Code COMMANDS UI"]
+  hostApi --> recipes["recipes components stack_ops"]
+  hostCmd --> mcp
+  hostCmd --> bridge
+  bridge --> vscode
+```
+
+- `HostCommand` and `host_api` are **two different cores** (RPC vs in-sandbox),
+  not mirrors of each other.
+- MCP / TS union / bridge are **adapters** of `HostCommand`.
+- Completeness = `exposes` / `sends` / `invokes` + stack `createCommand`
+  (no junction `repo.command` — see [Decisions](03_decisions.md)).
+- **Logical domain units** (`repo.engine_edit`, `repo.working_tree`,
+  `repo.recipe_registry`, `repo.domain_type`, `repo.webview_message`) model
+  runtime architecture at the same grain as `repo.host_command` — not Cargo
+  packages. `repo.rust_crate` remains packaging hygiene only.
+- Stack `relations` registry: `layout = "edge"` (arrows) vs `layout = "member"`
+  (`lives_in` → opaque-string subgraphs in instance mermaid; multi-parent/cycle
+  → `relation.multi_membership` / `relation.membership_cycle`).
+
+## Assets and packaging
+
+- `{codemod_root}/` — recipes, maps, variables, queries, types, components,
+  templates, stack, stubs, **`.cache/`**
+- Machine scan snapshot: `{codemod_root}/.cache/scan-snapshot.json` (committed
+  by default; teams may gitignore; meta envelope; rewrite only when non-meta
+  content changes). Top-level key order: `meta`, `coverage`, `relations`, then
+  instances/edges/…. Includes compact `coverage` when `stack.codebase` is set.
+  Companion mermaid (same refresh): `.cache/kind-graph.mmd` (architecture
+  roll-up), `.cache/instance-graph.mmd` (**complete** instance map). Written on
+  `component_scan` / `component_snapshot`. Placement: [D-020](03_decisions.md).
+- `docs/usage/` (product, bootstrapped) vs `docs/develop/` (maintainers)
+- `export/bootstrap.toml` + embedded bootstrap; VS Code bundles `codemod_host`
+
+## Known smells (expected → actual)
+
+| Smell | Expected | Actual / tracking | Enforced by |
+|-------|----------|-------------------|-------------|
+| D-004 MCP triple | One HostCommand-derived adapter | `protocol/mcp_inventory.rs` SSOT for tools/list; call arms in `codemod_mcp.rs` | `repo.mcp_tool` |
+| Protocol TS mirror | Generated or derived from Rust | Hand-maintained union | `repo.host_protocol` (sync guard until codegen) |
+| Dual domain types | Shared or single-owned `QuerySpec` / `IfExists` | Parallel types in `lua` + `engine` / `core` | `repo.domain_type` (`mirrors` + `dual_ownership` warnings) |
+| Host concentration | Thin integrator over clear modules | Phase F split dispatch + component pipeline; `lua/load.rs` remains | D-017 (partial) |
+| Placement / inventory | Architecture zones own modules | D-020: no inventory catch-all | `repo.zone` + relate |
+| Stub fan-out | One generated surface | Copies under `.codemod/stubs`, `export/`, `vscode_extension/stubs` | backlog (D-018) |
+| Crate DAG | Allowed path deps only | Must match table above | `repo.rust_crate` |
+
+Warm-from-disk of the snapshot into the in-memory scan cache remains deferred
+([D-013](01_issues.md)); the file exists for PR architectural delta.

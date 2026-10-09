@@ -1,9 +1,10 @@
 //! Mermaid rendering of the relations graph: kind-level (architecture roll-up) and
-//! instance-level (every flat node). Pure functions over scan data; output is
-//! deterministic given deterministic inputs (kind graph is BTreeMap-ordered).
+//! instance-level (connected nodes + membership subgraphs). Pure functions over scan
+//! data; output is deterministic given deterministic inputs.
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, BTreeSet};
 
+use crate::component::membership::{validate_membership_forest, MembershipForest};
 use crate::component::relations::{ComponentEdge, FlatInstance, KindEdge};
 
 /// Mermaid-safe node id: every non-alphanumeric becomes `_`.
@@ -20,7 +21,7 @@ fn mermaid_label(raw: &str) -> String {
 
 /// Kind-level architecture graph: one line per `(fromComponent, kind, toComponent)`
 /// roll-up, edge label `kind ×count` (the `×1` is omitted). External symbol targets
-/// get `(external)` in their label.
+/// get `(external)` in their label. Caller should omit member-layout kinds.
 pub fn render_kind_graph_mermaid(kind_graph: &[KindEdge]) -> String {
     let mut out = String::from("graph LR\n");
     for edge in kind_graph {
@@ -46,24 +47,149 @@ pub fn render_kind_graph_mermaid(kind_graph: &[KindEdge]) -> String {
     out
 }
 
-/// Instance-level graph: one node per flat instance (including isolated nodes), one
-/// line per resolved edge; external symbol targets become leaf nodes.
-pub fn render_instance_graph_mermaid(edges: &[ComponentEdge], flat: &[FlatInstance]) -> String {
-    let mut out = String::from("graph LR\n");
-    for inst in flat {
-        out.push_str(&format!(
-            "  {}[\"{}\"]\n",
-            mermaid_id(&inst.id),
-            mermaid_label(&inst.id),
-        ));
-    }
-    // Symbol leaves are declared once, after the instances.
-    let mut symbols: BTreeMap<&str, ()> = BTreeMap::new();
-    for edge in edges {
+/// Instance-level graph with optional membership subgraphs.
+///
+/// - Omits isolated nodes (no architecture edge and no membership).
+/// - Member-kind edges are layout only (not drawn as arrows).
+/// - `member_kinds` empty → flat graph (backward compatible).
+pub fn render_instance_graph_mermaid(
+    edges: &[ComponentEdge],
+    flat: &[FlatInstance],
+    member_kinds: &BTreeSet<String>,
+) -> String {
+    let (forest, _) = validate_membership_forest(edges, member_kinds);
+    render_instance_graph_mermaid_with_forest(edges, flat, member_kinds, &forest)
+}
+
+fn render_instance_graph_mermaid_with_forest(
+    edges: &[ComponentEdge],
+    flat: &[FlatInstance],
+    member_kinds: &BTreeSet<String>,
+    forest: &MembershipForest,
+) -> String {
+    let arch_edges: Vec<&ComponentEdge> = edges
+        .iter()
+        .filter(|e| !member_kinds.contains(&e.kind))
+        .collect();
+
+    let mut incident: BTreeSet<&str> = BTreeSet::new();
+    for edge in &arch_edges {
+        incident.insert(edge.from.as_str());
+        if let Some(to) = &edge.to {
+            incident.insert(to.as_str());
+        }
         if let Some(symbol) = &edge.symbol {
-            symbols.entry(symbol.as_str()).or_insert(());
+            incident.insert(symbol.as_str());
         }
     }
+    for child in forest.parent.keys() {
+        incident.insert(child.as_str());
+    }
+
+    let flat_ids: BTreeSet<&str> = flat.iter().map(|f| f.id.as_str()).collect();
+    let visible_instances: Vec<&FlatInstance> = flat
+        .iter()
+        .filter(|f| incident.contains(f.id.as_str()))
+        .collect();
+
+    // Symbol leaves from architecture edges only.
+    let mut symbols: BTreeMap<&str, ()> = BTreeMap::new();
+    for edge in &arch_edges {
+        if let Some(symbol) = &edge.symbol {
+            if !flat_ids.contains(symbol.as_str()) {
+                symbols.entry(symbol.as_str()).or_insert(());
+            }
+        }
+    }
+
+    let mut out = String::from("graph LR\n");
+
+    // Nested subgraphs: keys that are themselves member children nest under their parent.
+    let mut children_of: BTreeMap<&str, Vec<&str>> = BTreeMap::new();
+    let mut all_keys: BTreeSet<&str> = BTreeSet::new();
+    for (child, parent) in &forest.parent {
+        children_of.entry(parent.as_str()).or_default().push(child.as_str());
+        all_keys.insert(parent.as_str());
+    }
+    for kids in children_of.values_mut() {
+        kids.sort();
+    }
+
+    let mut root_keys: Vec<&str> = all_keys
+        .iter()
+        .copied()
+        .filter(|k| !forest.parent.contains_key(*k))
+        .collect();
+    root_keys.sort();
+
+    let mut emitted_nodes: BTreeSet<String> = BTreeSet::new();
+
+    fn emit_subgraph(
+        out: &mut String,
+        key: &str,
+        children_of: &BTreeMap<&str, Vec<&str>>,
+        flat_by_id: &BTreeMap<&str, &FlatInstance>,
+        emitted_nodes: &mut BTreeSet<String>,
+        indent: usize,
+    ) {
+        let pad = "  ".repeat(indent);
+        out.push_str(&format!(
+            "{pad}subgraph {} [\"{}\"]\n",
+            mermaid_id(key),
+            mermaid_label(key)
+        ));
+        if let Some(members) = children_of.get(key) {
+            for member in members {
+                if children_of.contains_key(member) {
+                    emit_subgraph(
+                        out,
+                        member,
+                        children_of,
+                        flat_by_id,
+                        emitted_nodes,
+                        indent + 1,
+                    );
+                }
+                if let Some(inst) = flat_by_id.get(member) {
+                    if emitted_nodes.insert(inst.id.clone()) {
+                        let ipad = "  ".repeat(indent + 1);
+                        out.push_str(&format!(
+                            "{ipad}{}[\"{}\"]\n",
+                            mermaid_id(&inst.id),
+                            mermaid_label(&inst.id),
+                        ));
+                    }
+                }
+            }
+        }
+        out.push_str(&format!("{pad}end\n"));
+    }
+
+    let flat_by_id: BTreeMap<&str, &FlatInstance> =
+        visible_instances.iter().map(|f| (f.id.as_str(), *f)).collect();
+
+    for key in &root_keys {
+        emit_subgraph(
+            &mut out,
+            key,
+            &children_of,
+            &flat_by_id,
+            &mut emitted_nodes,
+            1,
+        );
+    }
+
+    // Remaining visible instances (no membership) at top level.
+    for inst in &visible_instances {
+        if emitted_nodes.insert(inst.id.clone()) {
+            out.push_str(&format!(
+                "  {}[\"{}\"]\n",
+                mermaid_id(&inst.id),
+                mermaid_label(&inst.id),
+            ));
+        }
+    }
+
     for symbol in symbols.keys() {
         out.push_str(&format!(
             "  {}[\"{} (external)\"]\n",
@@ -71,7 +197,8 @@ pub fn render_instance_graph_mermaid(edges: &[ComponentEdge], flat: &[FlatInstan
             mermaid_label(symbol),
         ));
     }
-    for edge in edges {
+
+    for edge in arch_edges {
         let target = edge
             .to
             .as_deref()
@@ -87,6 +214,7 @@ pub fn render_instance_graph_mermaid(edges: &[ComponentEdge], flat: &[FlatInstan
             mermaid_id(target),
         ));
     }
+
     out
 }
 
@@ -151,7 +279,7 @@ mod tests {
                 extra: BTreeMap::new(),
             },
         ];
-        let (edges, findings) = resolve_edges(raw, &flat);
+        let (edges, findings) = resolve_edges(raw, &flat, &Default::default());
         assert!(findings.is_empty());
         (flat, edges)
     }
@@ -176,9 +304,9 @@ mod tests {
     }
 
     #[test]
-    fn instance_graph_mermaid_lists_nodes_edges_and_symbol_leaves() {
+    fn instance_graph_omits_isolated_and_draws_edges() {
         let (flat, edges) = sample_graph();
-        let mermaid = render_instance_graph_mermaid(&edges, &flat);
+        let mermaid = render_instance_graph_mermaid(&edges, &flat, &BTreeSet::new());
         assert!(
             mermaid.contains("app_model_recipe[\"app.model/recipe\"]"),
             "instance node: {mermaid}"
@@ -191,12 +319,75 @@ mod tests {
             mermaid.contains("dart_core_Store[\"dart:core/Store (external)\"]"),
             "symbol leaf: {mermaid}"
         );
-        assert!(
-            mermaid.contains("app_store_recipe -- \"extends\" --> dart_core_Store"),
-            "symbol edge: {mermaid}"
-        );
-        // Isolated node (app.store/user has an outgoing edge but app.model/recipe
-        // has none) — all instances appear regardless of connectivity.
+        // All sample nodes have edges — still present.
         assert!(mermaid.contains("app_store_user[\"app.store/user\"]"));
+    }
+
+    #[test]
+    fn instance_graph_omits_truly_isolated() {
+        let instances = vec![
+            instance("a/1", "a", serde_json::json!({ "id": "1" })),
+            instance("b/1", "b", serde_json::json!({ "id": "1" })),
+            instance("lonely/1", "lonely", serde_json::json!({ "id": "1" })),
+        ];
+        let flat = flatten_instances(&instances);
+        let raw = vec![RawEdge {
+            from: "a/1".to_string(),
+            kind: "uses".to_string(),
+            to: Some(serde_json::json!("b/1")),
+            symbol: None,
+            source: None,
+            extra: BTreeMap::new(),
+        }];
+        let (edges, _) = resolve_edges(raw, &flat, &Default::default());
+        let mermaid = render_instance_graph_mermaid(&edges, &flat, &BTreeSet::new());
+        assert!(!mermaid.contains("lonely"), "isolated omitted: {mermaid}");
+        assert!(mermaid.contains("a_1"));
+        assert!(mermaid.contains("b_1"));
+    }
+
+    #[test]
+    fn membership_subgraph_and_no_member_arrow() {
+        let instances = vec![
+            instance("a/1", "a", serde_json::json!({ "id": "1" })),
+            instance("b/1", "b", serde_json::json!({ "id": "1" })),
+        ];
+        let flat = flatten_instances(&instances);
+        let member_kinds = BTreeSet::from(["lives_in".to_string()]);
+        let raw = vec![
+            RawEdge {
+                from: "a/1".to_string(),
+                kind: "lives_in".to_string(),
+                to: Some(serde_json::json!("rust.runtime")),
+                symbol: None,
+                source: None,
+                extra: BTreeMap::new(),
+            },
+            RawEdge {
+                from: "a/1".to_string(),
+                kind: "uses".to_string(),
+                to: Some(serde_json::json!("b/1")),
+                symbol: None,
+                source: None,
+                extra: BTreeMap::new(),
+            },
+            RawEdge {
+                from: "b/1".to_string(),
+                kind: "lives_in".to_string(),
+                to: Some(serde_json::json!("rust.runtime")),
+                symbol: None,
+                source: None,
+                extra: BTreeMap::new(),
+            },
+        ];
+        let (edges, findings) = resolve_edges(raw, &flat, &member_kinds);
+        assert!(findings.is_empty(), "{findings:?}");
+        let mermaid = render_instance_graph_mermaid(&edges, &flat, &member_kinds);
+        assert!(
+            mermaid.contains("subgraph rust_runtime [\"rust.runtime\"]"),
+            "{mermaid}"
+        );
+        assert!(!mermaid.contains("-- \"lives_in\" -->"), "{mermaid}");
+        assert!(mermaid.contains("-- \"uses\" -->"), "{mermaid}");
     }
 }

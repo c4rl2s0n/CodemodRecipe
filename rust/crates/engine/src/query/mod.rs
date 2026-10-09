@@ -1,5 +1,7 @@
+pub mod compile;
 pub mod query_chain;
 
+pub use compile::{compile_query, format_query_compile_error, unbalanced_parens_message};
 pub use query_chain::{lowest_common_ancestor, match_root_node, node_contains};
 
 use std::path::Path;

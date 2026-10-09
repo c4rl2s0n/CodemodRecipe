@@ -113,6 +113,35 @@ pub struct QueryLibAsset {
     pub queries: BTreeMap<String, String>,
 }
 
+/// How a relation kind is laid out in mermaid (stack `relations` registry).
+#[derive(Debug, Clone, PartialEq, Eq, JsonSchema)]
+pub struct RelationKindDef {
+    /// `edge` (default arrow) or `member` (containment / subgraph key).
+    pub layout: String,
+}
+
+/// Metric flags for a zone `role` string (`stack.zoneRoles`).
+///
+/// Missing role key ⇒ both false (title-only zone). Omitted fields default false.
+#[derive(Debug, Clone, PartialEq, Eq, Default, JsonSchema)]
+pub struct ZoneRole {
+    /// Members skipped for architecture relation pressure
+    /// (not `architectureIsolated`; out of that ratio's denominator).
+    pub ignore_relations: bool,
+    /// Member leaf spans omitted from snapshot compact coverage totals.
+    pub ignore_coverage: bool,
+}
+
+/// One entry in `stack.zones` — catalogued as a `repo.zone` (or equivalent) instance.
+#[derive(Debug, Clone, PartialEq, Eq, JsonSchema)]
+pub struct ZoneDef {
+    pub id: String,
+    pub role: Option<String>,
+    pub title: Option<String>,
+    /// Optional parent zone id for nested membership (`lives_in` → parent zone).
+    pub parent_id: Option<String>,
+}
+
 /// Root-scan stack manifest (`.codemod/stack.luau`).
 #[derive(Debug, Clone, PartialEq, Eq, JsonSchema)]
 pub struct StackDef {
@@ -123,6 +152,15 @@ pub struct StackDef {
     /// Workspace-relative globs defining the coverage universe (e.g. `lib/**/*.dart`).
     /// Empty when omitted — component coverage is skipped until set.
     pub codebase: Vec<String>,
+    /// Optional system-level operations (thin fan-out to component ops). Empty when omitted.
+    pub operations: Vec<OperationDef>,
+    /// Optional relation-kind registry (`kind → { layout = "edge"|"member" }`).
+    /// Undeclared kinds default to `layout = "edge"`.
+    pub relations: BTreeMap<String, RelationKindDef>,
+    /// Optional zone catalog (identified by `repo.zone`). Empty when omitted.
+    pub zones: Vec<ZoneDef>,
+    /// Optional role → metric flags. Roles without an entry get no metric special-case.
+    pub zone_roles: BTreeMap<String, ZoneRole>,
     #[schemars(skip)]
     pub source: String,
     #[schemars(skip)]

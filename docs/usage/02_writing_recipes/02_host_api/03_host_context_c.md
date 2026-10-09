@@ -46,9 +46,15 @@ c:remove({ path = args.file, query = "...", capture = "member" })
 
 ## Read-only query helpers
 
+| Method | Use when |
+|--------|----------|
+| `c:query` + `capture` | Flat list of hits for **one** capture (most recipes/components) |
+| `c:queryMatches` | One row per match with **all** captures together (e.g. name + type + default) |
+
 ```lua
 local hits = c:query({ path = args.file, query = "...", capture = "body" })
 -- hits[i] = { span = { from = byte, to = byte }, text = "...", kind = "..." }
+-- Prefer hit.text — spans are 0-based bytes; do not source:sub(from+1, to) yourself.
 
 local rows = c:queryMatches({ path = args.file, query = "..." })
 -- rows[i].captureName = hit or { hit, hit, ... }
@@ -73,6 +79,9 @@ local name = c:filename("lib/models/recipe.dart")  -- "recipe"
 
 ```lua
 local source = c:read(args.file)  -- or c:read({ path = "..." })
+
+-- Arbitrary 0-based byte span (when you don't already have a query hit):
+local text = c:spanText({ path = args.file, span = { from = 10, to = 20 } })
 
 c:create({
   path = "lib/new.dart",
@@ -111,7 +120,7 @@ local fileBody = c:template({
 c:log("exports", args.exports)
 ```
 
-Appends a `log` event to the recipe transcript (visible in preview even when later ops fail).
+Appends a `log` event to the transcript. Visible on **`preview_recipe`** / **`component_dry_run_hook`** (and apply) as `transcript` plus top-level **`logs`** (string array of `c:log` details). **`component_scan` has no transcript/logs** — dry-run the hook to debug.
 
 MiniJinja has access to recipe args plus registered maps/variables (`c:map`, `c:var`).
 See [docs/recipe-templates.md](../../04_templates_and_patterns/01_recipe_templates/00_index.md).

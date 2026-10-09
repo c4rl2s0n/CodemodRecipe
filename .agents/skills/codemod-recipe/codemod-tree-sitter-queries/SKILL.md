@@ -9,7 +9,12 @@ description: >-
 
 Full guide: [tree-sitter-queries.md](../docs/03_queries_and_languages/01_tree_sitter_queries/00_index.md)
 
-Codemod-specific: op `capture` + insert `anchor` (`start`/`end`). Debug with `dump_ast` / `debug_query`.
+**Dump AST first** (`dump_ast`, `namedOnly: false` for keywords) — do not assume parent/child layout.
+
+- Captures: prefer `(type @cap …)` — [captures](../docs/03_queries_and_languages/01_tree_sitter_queries/03_captures.md)
+- Wildcards / anonymous tokens: [basic patterns](../docs/03_queries_and_languages/01_tree_sitter_queries/02_basic_patterns.md)
+- Workflow: [authoring](../docs/03_queries_and_languages/01_tree_sitter_queries/07_authoring_workflow.md)
+- Codemod-specific: op `capture` + insert `anchor` (`start`/`end`). Debug with `dump_ast` / `debug_query`.
 
 Languages: [language-support.md](../docs/03_queries_and_languages/02_language_support/00_index.md)
 

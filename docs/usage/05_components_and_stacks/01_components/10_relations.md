@@ -153,8 +153,8 @@ empty.
 
 | `level` | Output |
 |---------|--------|
-| `kinds` (default) | Kind-level roll-up from `kindGraph`: one line per `(fromComponent, kind, toComponent)` with `×count` labels; external symbols marked `(external)` |
-| `instances` | Every flat node (including isolated ones), one line per edge; symbol targets become leaf nodes. Response also includes the resolved `edges` payload |
+| `kinds` (default) | Kind-level roll-up from `kindGraph`: one line per `(fromComponent, kind, toComponent)` with `×count` labels; external symbols marked `(external)`. Stack `relations` kinds with `layout = "member"` are omitted from this roll-up. |
+| `instances` | Connected nodes only (omit isolates); architecture edges as arrows; `layout = "member"` kinds become nested mermaid subgraphs keyed by opaque string targets. Response also includes the resolved `edges` payload. |
 
 Kind-level output for the flutter_poc fixture (two stores linked to their models):
 
@@ -165,6 +165,33 @@ graph LR
 
 An external-symbol edge renders with an `(external)` target label, e.g.
 `rel_store["rel.store"] -- "extends ×2" --> dart_core_Store["dart:core/Store (external)"]`.
+
+## Membership parents and zones
+
+Kinds with `layout = "member"` (typically `lives_in`) build a **membership forest**:
+child instance → opaque string subgraph key. The key may be:
+
+| Parent form | Mermaid / metrics |
+|-------------|-------------------|
+| Another **instance id** (e.g. `repo.zone/rust.runtime`) | Nestable subgraph; metrics can resolve zone roles |
+| Free-string / `{ symbol = "…" }` with no matching instance | Label-only box (no zone node, no `ZoneRole` flags) |
+
+**Zones** (`stack.zones` + `repo.zone`) turn those labels into real instances so
+membership can nest and roles can drive snapshot metrics:
+
+- Catalog on the stack; `repo.zone` identifies one locator per entry
+- Others `lives_in` → `"repo.zone/<id>"` (exact instance id)
+- Optional `parentId` on a zone nests zone→zone
+- `role` is a free string; metric behavior only if that string appears in
+  `stack.zoneRoles` (see [stack manifest](../02_stacks/01_required_manifest.md))
+- Role **without** a `zoneRoles` entry = title/grouping only
+
+## Snapshot relation metrics
+
+`persist_scan_snapshot` always writes a `relations` block (even when `codebase` is
+empty): aggregate connectivity, `relationIgnored` (under `ignoreRelations` zones),
+`architectureIsolated`, ratios, plus `byComponent` / `byKind` roll-ups. Omit giant
+per-instance dumps — the edge list is already in the snapshot.
 
 ## Helper-library pattern
 

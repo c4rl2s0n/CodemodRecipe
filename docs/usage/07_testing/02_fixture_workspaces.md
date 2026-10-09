@@ -1,10 +1,12 @@
 # Fixture workspaces
 
 `t:workspace(spec)` materializes a **fresh temp directory** per call and binds a
-fixture-bound host (`ws`) to it. The fixture registry loads the workspace's real
-`.codemod/` assets (components, recipes, stack) but scans and writes only inside the
-temp dir — the real workspace is never touched, fixtures stay pristine, and tests can
-run in any order.
+fixture-bound host (`ws`) to it. The fixture registry loads **session** `.codemod/`
+assets (components, recipes, stack — whatever `run_tests` was started with) but
+scans and mutates only inside the temp workspace. Fixture scans update the
+in-memory forest (`instances` / `edges` / `kindGraph` / `findings`) and **do not**
+write `{codemod_root}/.cache/` (snapshot / mermaid), so dogfood architecture
+artifacts are not overwritten by minimal fixtures.
 
 ## Three forms
 
@@ -35,7 +37,11 @@ local ws = t:workspace({
 `t:workspace` only materializes and binds. `ws:scan()` is a separate call so
 unit-style `ws:parse` stays cheap and scan → apply → rescan sequences read clearly.
 Exception: `ws:verify` / `ws:relate` need the scan graph, so they trigger a scan on
-demand when none ran yet (same semantics as `component_dry_run_hook`).
+demand when none ran yet (same semantics as `component_dry_run_hook`). Those scans
+also skip `.cache/` writes.
+
+Luau suites assert on the in-memory scan payload — not mermaid / snapshot files
+(those are covered by Rust tests with an isolated codemod root).
 
 ## The `ws` surface
 

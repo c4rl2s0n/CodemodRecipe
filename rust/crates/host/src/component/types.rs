@@ -64,6 +64,10 @@ pub struct ComponentInvokeResponse {
     pub files: Option<Vec<crate::protocol::FilePreview>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transcript: Option<Vec<codemod_recipe_lua::TranscriptEvent>>,
+    /// `c:log` details — top-level for MCP agents (also in transcript as kind=log).
+    /// Absent on `component_scan` (scan has no transcript).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub logs: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub applied: Option<Vec<String>>,
 }
@@ -78,8 +82,19 @@ impl ComponentInvokeResponse {
             findings: None,
             files: None,
             transcript: None,
+            logs: None,
             applied: None,
         }
+    }
+
+    /// Attach transcript and derive top-level `logs` from `c:log` events.
+    pub fn with_transcript(
+        mut self,
+        transcript: Option<Vec<codemod_recipe_lua::TranscriptEvent>>,
+    ) -> Self {
+        self.logs = crate::protocol::logs_from_transcript(transcript.as_deref());
+        self.transcript = transcript;
+        self
     }
 }
 

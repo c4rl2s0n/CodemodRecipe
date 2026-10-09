@@ -53,6 +53,7 @@ const {
   componentDryRunResult,
   componentDryRunHook,
   componentCoverage,
+  stackAction,
 } = useHostState(inbound);
 
 const activeTab = ref<RunnerTab>(RUNNER_TABS.recipes);
@@ -206,6 +207,7 @@ onUnmounted(() => {
         :selected-instance-id="selectedInstanceId"
         :detail="componentDetail"
         :action="componentAction"
+        :stack-action="stackAction"
         :args="localComponentArgs"
         :files="componentFiles"
         :transcript="componentTranscript"

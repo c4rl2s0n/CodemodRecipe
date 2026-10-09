@@ -182,6 +182,11 @@ return {
         kinds.contains(&"log"),
         "expected log in transcript, got {kinds:?}"
     );
+    let logs = identify["logs"].as_array().expect("top-level logs[]");
+    assert!(
+        !logs.is_empty(),
+        "expected non-empty logs[] for MCP agents: {identify}"
+    );
 
     let parse = invoke_hook(
         &mut registry,

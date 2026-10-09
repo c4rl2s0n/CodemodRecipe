@@ -1,11 +1,35 @@
 # Captures
 
-Attach `@name` after a matched node:
+Attach `@name` to a matched node. Tree-sitter accepts two placements:
+
+## Preferred: after the node type
+
+```scheme
+(formal_parameter @param
+  (constructor_param (identifier) @paramName))
+```
+
+`@param` is clearly on `formal_parameter`. Prefer this form — it survives nested parens.
+
+## Also valid: after the closing paren
 
 ```scheme
 (identifier) @className
 (block) @body
 ```
+
+`@` binds to the node closed by the **nearest** `)`. Miscounting parens captures a child instead of the parent:
+
+```scheme
+; WRONG — @param closes on constructor_param (one paren too early in nesting)
+(formal_parameter (constructor_param (identifier) @paramName) @param)
+
+; RIGHT — @param after formal_parameter's type, or after its outer closing paren
+(formal_parameter @param (constructor_param (identifier) @paramName))
+(formal_parameter (constructor_param (identifier) @paramName)) @param
+```
+
+## Multi-capture patterns
 
 A single pattern may define **multiple captures**. Use extra captures for filtering (`#eq?`) and pick the edit target with the op’s `capture` field:
 

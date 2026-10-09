@@ -18,7 +18,7 @@ pub use load::{
 };
 pub use model::{
     Arg, ArgFrom, ArgFromSpec, ComponentDef, ExplorerMenuEntry, ExplorerMenuKind, MapAsset,
-    OperationDef, QueryLibAsset, Recipe, StackDef, TestSuiteDef, TranscriptEvent, TranscriptStats,
-    TypeDef, VariablesAsset,
+    OperationDef, QueryLibAsset, Recipe, RelationKindDef, StackDef, TestSuiteDef, TranscriptEvent,
+    TranscriptStats, TypeDef, VariablesAsset, ZoneDef, ZoneRole,
 };
 pub use require::{install_codemod_require, require_chunk_name};

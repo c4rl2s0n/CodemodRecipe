@@ -157,6 +157,16 @@ export async function handleWebviewMessage(
     case WEBVIEW_TO_EXTENSION.componentDryRun:
       await handleComponentDryRun(host, message.hook, message.requestId);
       break;
+    case WEBVIEW_TO_EXTENSION.selectStackOperation:
+      host.state.selectStackOperation(message.operation);
+      host.postState();
+      break;
+    case WEBVIEW_TO_EXTENSION.stackPreview:
+      void handleStackOperation(host, message.args, message.requestId, true);
+      break;
+    case WEBVIEW_TO_EXTENSION.stackApply:
+      await handleStackOperation(host, message.args, message.requestId, false);
+      break;
     default:
       assertNever(message);
   }
@@ -335,6 +345,55 @@ async function handleComponentPreview(
       const modifiedKey = diffModifiedKey(file.path);
       host.diffProvider.store(originalKey, file.original ?? '');
       host.diffProvider.store(modifiedKey, file.modified ?? '');
+    }
+    host.state.setComponentPreviewResult(files, response.transcript ?? []);
+    if (!preview && host.scanComponents) {
+      await host.scanComponents();
+    } else {
+      host.postState();
+    }
+  } catch (err) {
+    host.state.setComponentPreviewResult(
+      [],
+      [],
+      err instanceof Error ? err.message : String(err)
+    );
+    host.postState();
+  }
+}
+
+async function handleStackOperation(
+  host: RecipeRunnerHandlerHost,
+  args: ArgValues,
+  _requestId: number,
+  preview: boolean
+): Promise<void> {
+  const operation = host.state.stackAction;
+  if (!operation) {
+    host.state.setComponentPreviewResult([], [], 'Select a stack operation first');
+    host.postState();
+    return;
+  }
+  host.state.componentArgs = args;
+  try {
+    const response = await host.bridge.stackInvokeOperation({
+      operation,
+      args,
+      preview,
+    });
+    if (!response.ok) {
+      host.state.setComponentPreviewResult(
+        [],
+        response.transcript ?? [],
+        response.error ?? 'Stack operation failed'
+      );
+      host.postState();
+      return;
+    }
+    const files = response.files ?? [];
+    for (const file of files) {
+      host.diffProvider.store(diffOriginalKey(file.path), file.original ?? '');
+      host.diffProvider.store(diffModifiedKey(file.path), file.modified ?? '');
     }
     host.state.setComponentPreviewResult(files, response.transcript ?? []);
     if (!preview && host.scanComponents) {

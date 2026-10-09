@@ -71,6 +71,11 @@ pub(crate) struct HostInner {
     pub(crate) saw_post_exec: bool,
     pub(crate) op_count: usize,
     pub(crate) ast_cache: crate::query::ast_cache::AstParseCache,
+    /// Pre-operation graph snapshot (flat instance JSON array + edges JSON array).
+    /// Set by stack/component operation/scaffold invoke so `c:component():operation`
+    /// fan-out can rebuild the graph facade in the shared sandbox.
+    pub(crate) graph_flat_json: Option<serde_json::Value>,
+    pub(crate) graph_edges_json: Option<serde_json::Value>,
 }
 
 impl HostInner {

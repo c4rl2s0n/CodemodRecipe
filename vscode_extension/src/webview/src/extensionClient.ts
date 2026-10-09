@@ -48,6 +48,9 @@ export interface ExtensionClient {
   componentPreview(args: ArgValues, requestId: number): void;
   componentApply(args: ArgValues, requestId: number): void;
   componentDryRun(hook: string, requestId: number): void;
+  selectStackOperation(operation: string): void;
+  stackPreview(args: ArgValues, requestId: number): void;
+  stackApply(args: ArgValues, requestId: number): void;
   /** Allocate a monotonic request id for fire-and-forget correlated ops (preview). */
   nextRequestId(): number;
 }
@@ -286,6 +289,15 @@ export function createExtensionClient(deps: ExtensionClientDeps): ExtensionClien
     },
     componentDryRun(hook: string, requestId: number) {
       post({ type: WEBVIEW_TO_EXTENSION.componentDryRun, hook, requestId });
+    },
+    selectStackOperation(operation: string) {
+      post({ type: WEBVIEW_TO_EXTENSION.selectStackOperation, operation });
+    },
+    stackPreview(args: ArgValues, requestId: number) {
+      post({ type: WEBVIEW_TO_EXTENSION.stackPreview, args, requestId });
+    },
+    stackApply(args: ArgValues, requestId: number) {
+      post({ type: WEBVIEW_TO_EXTENSION.stackApply, args, requestId });
     },
   };
 }

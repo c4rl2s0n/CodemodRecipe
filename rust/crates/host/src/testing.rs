@@ -3,15 +3,16 @@
 //! Each test runs in a fresh Luau sandbox with a test context `t`:
 //! `t:workspace(spec)` materializes a fixture tree into a temp dir (optional
 //! `base` dir copied first, inline `files` written over it) and returns a
-//! fixture-bound host `ws` — a `RecipeRegistry` rooted at the temp dir with the
-//! real `.codemod` root, so all production machinery (scan, hooks, operations,
-//! recipe apply) runs unchanged against the fixture.
+//! fixture-bound host `ws` — a `RecipeRegistry` whose **workspace** is the temp
+//! dir and whose **codemod root** is the session's (components/recipes/stack load
+//! from there). Mutations flush to the temp workspace only.
+//!
+//! Fixture registries disable scan-snapshot persist so `ws:scan` / lazy
+//! verify·relate scans do not overwrite `{session_codemod}/.cache/`.
 //!
 //! Assertions are plain Luau (`assert` / `error`); the `t:assert*` helpers live
 //! in a Luau bootstrap chunk so failures carry the test's own line number via
 //! `error(msg, 2)` — the host parses the location out of the error message.
-//! Mutations (`ws:apply` / `ws:scaffold` / `ws:applyRecipe`) flush to the temp
-//! dir only; the real workspace is never touched.
 
 use std::cell::RefCell;
 use std::collections::BTreeMap;
@@ -28,8 +29,8 @@ use mlua::{Function, Lua, Table, Value};
 use serde::Serialize;
 
 use crate::component::{
-    component_scan, invoke_hook, invoke_operation, invoke_scaffold, ComponentHookRequest,
-    ComponentInvokeRequest, ComponentScaffoldRequest,
+    component_scan, invoke_hook, invoke_operation, invoke_scaffold, invoke_stack_operation,
+    ComponentHookRequest, ComponentInvokeRequest, ComponentScaffoldRequest, StackInvokeRequest,
 };
 use crate::engine::runner::{collect_recipe_changes, resolve_recipe};
 use crate::host_api::registry::{rt, set_fn};
@@ -326,6 +327,7 @@ fn build_test_context(
     set_fn(lua, &prims, "workspace", move |lua, spec: Value| {
         let root = materialize_workspace(&codemod_root, &spec).map_err(rt)?;
         let mut fixture_registry = RecipeRegistry::new(root.clone(), codemod_root.clone());
+        fixture_registry.disable_scan_snapshot_persist();
         fixture_registry.language_registry = LanguageRegistry::with_config(language_config.clone());
         fixture_registry.reload();
         let mut store_mut = store.borrow_mut();
@@ -591,6 +593,34 @@ fn build_ws(lua: &Lua, store: FixtureStore, idx: usize) -> Result<Table, mlua::E
                         return Err(rt(resp
                             .error
                             .unwrap_or_else(|| "scaffold failed".to_string())));
+                    }
+                    response_to_lua(lua, resp)
+                },
+            )?,
+        )?;
+    }
+
+    {
+        let store = Rc::clone(&store);
+        ws.set(
+            "stackOperation",
+            lua.create_function(
+                move |lua, (_this, operation, args): (Table, String, Table)| {
+                    let args = lua_args_to_map(&args).map_err(rt)?;
+                    let mut store = store.borrow_mut();
+                    let fixture = &mut store[idx];
+                    let resp = invoke_stack_operation(
+                        &mut fixture.registry,
+                        StackInvokeRequest {
+                            operation,
+                            args,
+                            kind: RunKind::Apply,
+                        },
+                    );
+                    if !resp.ok {
+                        return Err(rt(resp
+                            .error
+                            .unwrap_or_else(|| "stack operation failed".to_string())));
                     }
                     response_to_lua(lua, resp)
                 },

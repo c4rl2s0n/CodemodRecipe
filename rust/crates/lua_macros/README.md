@@ -54,7 +54,7 @@ VS Code editor surface in sync from a single source of truth:
 
    ```bash
    ./scripts/generate-host-api-surface.sh   # stubs + hostApiSurface.ts only
-   ./build.sh                              # surface + release host + VSIX
+   ./build.sh                              # surface + release host + MCP + VSIX
    ```
 
    The generate script updates both `vscode_extension/stubs/codemod-context.d.luau`

@@ -8,10 +8,10 @@ All tools return a JSON string. Parse it, then check `ok`.
 | `list_recipes` | Discover registered recipe ids and argument schemas |
 | `describe_recipe` | Show metadata/args for one recipe |
 | `validate_recipes` | Reload + validate Luau recipes/maps/variables/queries |
-| `preview_recipe` | Dry-run; returns `previewToken` + transcript |
+| `preview_recipe` | Dry-run; returns `previewToken`, `transcript`, top-level `logs[]` (`c:log`) |
 | `apply_recipe` | Apply atomically; requires `previewToken` |
-| `dump_ast` | Dump tree-sitter AST |
-| `debug_query` | Run a query; return match roots and captures |
+| `dump_ast` | Dump tree-sitter AST — **call this before writing queries**; `namedOnly: false` to see keywords |
+| `debug_query` | Run a query; return match roots and captures; `instrument` (default true) adds `@__layer_*` depth markers |
 | `generate_query` | Starter query from byte `start`/`end` in a file |
 | `resolve_static_path` | Jinja-render a path with empty args (static paths only) |
 | `component_scan` | Scan stack root components (instances, findings, summaries, relation `edges`, `kindGraph`); populates cache |
@@ -20,7 +20,7 @@ All tools return a JSON string. Parse it, then check `ok`.
 | `component_graph` | Render the relations graph as mermaid text; `level`: `kinds` (default) or `instances` |
 | `component_incremental_scan` | Rescan after edits: `dirtyPaths`, `detectChanges`, or `force` |
 | `describe_component` | Metadata: hooks present, scaffold args, operations |
-| `component_dry_run_hook` | Dry-run one hook (Preview; no disk writes); returns `result` + `transcript` |
+| `component_dry_run_hook` | Dry-run one hook; returns `result`, `transcript`, top-level `logs[]` — **scan has no logs** |
 | `component_apply_hook` | Apply one hook (flushes WorkingTree); same args as dry-run |
 | `run_tests` | Run `*.test.luau` suites against temp fixture workspaces; optional `filter` (suite id, `target`, `suite/test`, or test name). Read-only for the real workspace — see [Testing](../../07_testing/00_index.md) |
 
@@ -28,15 +28,36 @@ When `.codemod/stack.luau` and components exist: `component_scan` first, then
 `component_incremental_scan` after file edits. Optional: `component_coverage` to audit
 blind spots (requires `codebase` on the stack — see [coverage](../../05_components_and_stacks/01_components/09_coverage.md)).
 To author/debug hooks, use
-`describe_component` and `component_dry_run_hook` (inspect `c:log` in `transcript`).
+`describe_component` and `component_dry_run_hook` (read `logs` / `transcript` for `c:log`).
 Authoring agents should be allowlisted for dry-run + scan/describe — withhold
 `component_apply_hook` when agents must not write the workspace. Experiment fixture:
-[flutter-poc.md](../../../develop/02_flutter_poc/00_index.md). See Builder skill apply checklist..
+[flutter-poc.md](../../../develop/02_flutter_poc/00_index.md). See Builder skill apply checklist.
+
+## Query Tools (MCP)
+
+These replace the VS Code Query Tools panel for MCP-only agents:
+
+1. **`dump_ast`** — `{ "path": "lib/foo.dart", "namedOnly": false }` before writing any query. Confirm node types, siblings vs children, anonymous tokens.
+2. **`debug_query`** — `{ "path": "…", "query": "(…)", "instrument": true }`. Set `instrument: false` only if debugging instrumentation itself.
+3. **`generate_query`** — starter pattern from a byte range.
+
+Authoring workflow: [tree-sitter authoring](../../03_queries_and_languages/01_tree_sitter_queries/07_authoring_workflow.md).
 
 ## Component dry-run (debug)
 
 ```json
 { "componentId": "example.entity", "hook": "identify" }
+```
+
+Example success fragment (note top-level `logs`):
+
+```json
+{
+  "ok": true,
+  "result": [{ "path": "lib/x.dart", "name": "x" }],
+  "logs": ["identify-start"],
+  "transcript": [{ "kind": "log", "detail": "identify-start", "includedInPreview": true }]
+}
 ```
 
 ```json

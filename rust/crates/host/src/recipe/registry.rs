@@ -29,6 +29,9 @@ pub struct RecipeRegistry {
     test_suites: BTreeMap<String, TestSuiteDef>,
     component_scan_cache: Option<crate::component::cache::ComponentScanCache>,
     diagnostics: Vec<RecipeDiagnostic>,
+    /// When false, [`component_scan`](crate::component::component_scan) skips writing
+    /// `{codemod_root}/.cache/` (fixture Luau tests share the session codemod root).
+    persist_scan_snapshots: bool,
 }
 
 impl RecipeRegistry {
@@ -48,7 +51,18 @@ impl RecipeRegistry {
             test_suites: BTreeMap::new(),
             component_scan_cache: None,
             diagnostics: Vec::new(),
+            persist_scan_snapshots: true,
         }
+    }
+
+    /// Disable writing scan snapshots / mermaid under the shared session codemod root
+    /// (used by Luau `t:workspace` fixtures).
+    pub fn disable_scan_snapshot_persist(&mut self) {
+        self.persist_scan_snapshots = false;
+    }
+
+    pub fn persist_scan_snapshots(&self) -> bool {
+        self.persist_scan_snapshots
     }
 
     pub fn codemod_root(&self) -> &Path {
@@ -140,6 +154,54 @@ impl RecipeRegistry {
             description: s.description.clone(),
             components: s.components.clone(),
             codebase: s.codebase.clone(),
+            operations: s
+                .operations
+                .iter()
+                .map(|op| ComponentOperationSchema {
+                    name: op.name.clone(),
+                    description: op.description.clone(),
+                    args: op
+                        .args
+                        .iter()
+                        .map(|a| arg_schema(a, &self.maps_by_id, &self.types_by_id))
+                        .collect(),
+                })
+                .collect(),
+            relations: s
+                .relations
+                .iter()
+                .map(|(kind, def)| {
+                    (
+                        kind.clone(),
+                        crate::protocol::RelationKindSchema {
+                            layout: def.layout.clone(),
+                        },
+                    )
+                })
+                .collect(),
+            zones: s
+                .zones
+                .iter()
+                .map(|z| crate::protocol::ZoneSchema {
+                    id: z.id.clone(),
+                    role: z.role.clone(),
+                    title: z.title.clone(),
+                    parent_id: z.parent_id.clone(),
+                })
+                .collect(),
+            zone_roles: s
+                .zone_roles
+                .iter()
+                .map(|(name, role)| {
+                    (
+                        name.clone(),
+                        crate::protocol::ZoneRoleSchema {
+                            ignore_relations: role.ignore_relations,
+                            ignore_coverage: role.ignore_coverage,
+                        },
+                    )
+                })
+                .collect(),
         })
     }
 

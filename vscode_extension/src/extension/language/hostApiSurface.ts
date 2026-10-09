@@ -24,7 +24,7 @@ export const HOST_METHODS: readonly HostMethodSpec[] = [
   },
   {
     name: 'component',
-    description: 'Get a component delegate (`parse` / `verify` / `readSource`) by id.',
+    description: 'Get a component delegate (`parse` / `verify` / `readSource` / `operation` / `scaffold`) by id.',
     keys: [],
   },
   {
@@ -140,6 +140,11 @@ export const HOST_METHODS: readonly HostMethodSpec[] = [
     name: 'run',
     description: 'Run a nested recipe by id with optional arg overrides.',
     keys: [],
+  },
+  {
+    name: 'spanText',
+    description: 'Extract text for a 0-based byte span `{ path, span = { from, to } }`. Prefer hit.text from c:query when available.',
+    keys: ['path', 'span'],
   },
   {
     name: 'template',

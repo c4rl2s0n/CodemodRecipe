@@ -8,7 +8,8 @@ use codemod_recipe_engine::ops::{
 use codemod_recipe_lua::host_api::specs::{
     Anchor, CreateSpec, DeleteSpec, IfExists as LuaIfExists, IfMissing as LuaIfMissing, InsertSpec,
     MatchFileRow, PostExecSpec, QueryCaptureSpec, QueryHit, QueryMatchRow,
-    QuerySpec as RawQuerySpec, QueryTableSpec, ReadSpec, RemoveSpec, ReplaceSpec, TemplateSpec,
+    QuerySpec as RawQuerySpec, QueryTableSpec, ReadSpec, RemoveSpec, ReplaceSpec, SpanTextSpec,
+    TemplateSpec,
 };
 use codemod_recipe_lua::model::{TranscriptEvent, TranscriptStats};
 use codemod_recipe_lua_macros::host_method;
@@ -275,6 +276,45 @@ pub(crate) fn do_read(host: &SharedHost, lua: &Lua, spec: ReadSpec) -> Result<Va
         }),
     ));
     lua.create_string(&text)
+        .map(Value::String)
+        .map_err(|e| e.to_string())
+}
+
+#[host_method(
+    name = "spanText",
+    description = "Extract text for a 0-based byte span `{ path, span = { from, to } }`. Prefer hit.text from c:query when available.",
+    spec = SpanTextSpec,
+    return_type = String,
+)]
+pub(crate) fn do_span_text(
+    host: &SharedHost,
+    lua: &Lua,
+    spec: SpanTextSpec,
+) -> Result<Value, String> {
+    let mut inner = host.lock().map_err(|e| e.to_string())?;
+    let text = inner.current_content(&spec.path)?;
+    let from = spec.span.from as usize;
+    let to = spec.span.to as usize;
+    if from > to || to > text.len() {
+        return Err(format!(
+            "spanText: span [{from}, {to}) out of bounds for {} (len={})",
+            spec.path,
+            text.len()
+        ));
+    }
+    if !text.is_char_boundary(from) || !text.is_char_boundary(to) {
+        return Err(format!(
+            "spanText: span [{from}, {to}) is not on a UTF-8 char boundary in {}",
+            spec.path
+        ));
+    }
+    let slice = &text[from..to];
+    inner.transcript.push(TranscriptEvent::with_payload(
+        "spanText",
+        format!("{}[{from}..{to}]", spec.path),
+        json!({ "chars": slice.chars().count(), "bytes": slice.len() }),
+    ));
+    lua.create_string(slice)
         .map(Value::String)
         .map_err(|e| e.to_string())
 }

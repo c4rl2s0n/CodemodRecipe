@@ -8,7 +8,7 @@ preview/apply with selective patches.
 
 ### VS Code (recommended)
 
-1. Full product build (host API surface + Rust `codemod_host` + VSIX):
+1. Full product build (host API surface + Rust `codemod_host` + `codemod_mcp` + VSIX):
 
    ```bash
    ./build.sh
@@ -39,7 +39,7 @@ See [docs/usage/06_mcp_and_clients/01_codemod_mcp.md](docs/usage/06_mcp_and_clie
 
 | Path | Purpose |
 |------|---------|
-| `build.sh` | Full product build: host API surface + release `codemod_host` + VSIX |
+| `build.sh` | Full product build: host API surface + release `codemod_host` + `codemod_mcp` + VSIX |
 | `rust/` | Rust workspace: tree-sitter engine, Luau runtime, stdio host, MCP |
 | `.codemod/*.luau` / `.codemod/*.lua` | Luau modules under `.codemod/` identified by their returned table shape (see below) |
 | `vscode_extension/` | VS Code / Codium extension (`build.sh` packages VSIX; needs prebuilt `bin/codemod_host`) |

@@ -183,7 +183,7 @@ npm run compile          # build Vue webview + type-check extension to dist/
 npm run watch            # rebuild extension host on change
 npm run watch:webview    # rebuild webview UI (media/recipeView.js) on change
 npm run test:webview     # unit tests for webview arg/selection helpers
-../build.sh              # full product: surface gen + host + VSIX
+../build.sh              # full product: surface gen + host + MCP + VSIX
 ./build.sh               # package VSIX only (requires bin/codemod_host)
 ```
 

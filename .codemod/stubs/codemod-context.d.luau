@@ -70,6 +70,11 @@ export type ReplaceSpec = {
 	text: string,
 }
 
+export type SpanTextSpec = {
+	path: string,
+	span: ByteSpan,
+}
+
 export type TemplateSpec = {
 	env: Env?,
 	inline: string?,
@@ -95,6 +100,8 @@ export type ComponentDelegate = {
 	parse: (self: ComponentDelegate, locator: any) -> any,
 	verify: (self: ComponentDelegate, instance: any) -> any,
 	readSource: (self: ComponentDelegate, locator: any) -> any,
+	operation: (self: ComponentDelegate, name: string, args: any?) -> any,
+	scaffold: (self: ComponentDelegate, args: any?) -> any,
 }
 
 export type TestWorkspaceSpec = {
@@ -117,6 +124,7 @@ export type TestWorkspace = {
 	relate: (self: TestWorkspace, componentId: string, instance: any) -> any,
 	apply: (self: TestWorkspace, componentId: string, operation: string, args: { [string]: any }, instanceId: string) -> any,
 	scaffold: (self: TestWorkspace, componentId: string, args: { [string]: any }) -> any,
+	stackOperation: (self: TestWorkspace, operation: string, args: { [string]: any }) -> any,
 	applyRecipe: (self: TestWorkspace, recipeId: string, args: { [string]: any }) -> TestApplyRecipeResult,
 	readFile: (self: TestWorkspace, path: string) -> string?,
 }
@@ -159,6 +167,7 @@ export type CodemodContext = {
 	replace: (self: CodemodContext, spec: ReplaceSpec) -> (),
 	resolve: (self: CodemodContext, template: string, vars: { [string]: string }?) -> string,
 	run: (self: CodemodContext, id: string, args: { [string]: any }?) -> (),
+	spanText: (self: CodemodContext, spec: SpanTextSpec) -> string,
 	template: (self: CodemodContext, spec: TemplateSpec) -> string,
 	var: (self: CodemodContext, id: string) -> { [string]: string },
 }

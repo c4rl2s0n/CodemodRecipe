@@ -6,7 +6,7 @@ use crate::query::query_chain::match_root_node;
 use codemod_recipe_core::apply::patch::{apply_patches, SourcePatch};
 use thiserror::Error;
 use tree_sitter::StreamingIterator;
-use tree_sitter::{Node, Parser, Query, QueryCursor, Tree};
+use tree_sitter::{Node, Parser, QueryCursor, Tree};
 
 /// Paths used to resolve `query:` file references in recipes.
 #[derive(Debug, Clone, Copy)]
@@ -264,8 +264,8 @@ impl Engine {
         query_text: &str,
         scope_spans: &[(usize, usize)],
     ) -> Result<Vec<(usize, usize)>, EngineError> {
-        let query =
-            Query::new(language, query_text).map_err(|e| EngineError::Query(e.to_string()))?;
+        let query = crate::query::compile_query(language, query_text)
+            .map_err(EngineError::Query)?;
         let mut cursor = QueryCursor::new();
         let mut roots = Vec::new();
         for &(start, end) in scope_spans {
@@ -294,8 +294,8 @@ impl Engine {
         scope_spans: &[(usize, usize)],
         fail_on_multiple: bool,
     ) -> Result<Option<CaptureSpan>, EngineError> {
-        let query =
-            Query::new(language, query_text).map_err(|e| EngineError::Query(e.to_string()))?;
+        let query = crate::query::compile_query(language, query_text)
+            .map_err(EngineError::Query)?;
         let capture_index = query
             .capture_names()
             .iter()

@@ -23,6 +23,7 @@ export const COMMANDS = {
   testQueryOnFile: 'codemodRecipe.testQueryOnFile',
   queryToolsRun: 'codemodRecipe.queryTools.run',
   queryToolsGenerateFromCursor: 'codemodRecipe.queryTools.generateFromCursor',
+  queryToolsSelectAstNode: 'codemodRecipe.queryTools.selectAstNode',
   queryToolsRevealAst: 'codemodRecipe.queryTools.revealAst',
   queryToolsNextMatch: 'codemodRecipe.queryTools.nextMatch',
   queryToolsPrevMatch: 'codemodRecipe.queryTools.prevMatch',

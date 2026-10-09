@@ -2,7 +2,7 @@
 
 use crate::ops::QuerySpec;
 use tree_sitter::StreamingIterator;
-use tree_sitter::{Query, QueryCursor, Tree};
+use tree_sitter::{QueryCursor, Tree};
 
 use super::{
     node_for_byte_range, resolve_step_text, CaptureSpan, Engine, EngineError, QueryContext,
@@ -121,8 +121,8 @@ impl Engine {
         for (i, step_text) in steps.iter().enumerate() {
             let is_last = i == steps.len() - 1;
             if is_last {
-                let query = Query::new(&language, step_text)
-                    .map_err(|e| EngineError::Query(e.to_string()))?;
+                let query = crate::query::compile_query(&language, step_text)
+                    .map_err(EngineError::Query)?;
                 let mut cursor = QueryCursor::new();
                 let mut count = 0usize;
                 for &(start, end) in &scope_spans {
@@ -160,8 +160,8 @@ impl Engine {
         for (i, step_text) in steps.iter().enumerate() {
             let is_last = i == steps.len() - 1;
             if is_last {
-                let query = Query::new(&language, step_text)
-                    .map_err(|e| EngineError::Query(e.to_string()))?;
+                let query = crate::query::compile_query(&language, step_text)
+                    .map_err(EngineError::Query)?;
                 let capture_index = query
                     .capture_names()
                     .iter()
@@ -221,8 +221,8 @@ impl Engine {
         for (i, step_text) in steps.iter().enumerate() {
             let is_last = i == steps.len() - 1;
             if is_last {
-                let query = Query::new(&language, step_text)
-                    .map_err(|e| EngineError::Query(e.to_string()))?;
+                let query = crate::query::compile_query(&language, step_text)
+                    .map_err(EngineError::Query)?;
                 let names: Vec<String> = query
                     .capture_names()
                     .iter()

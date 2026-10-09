@@ -454,8 +454,13 @@ fn component_graph_renders_kind_and_instance_mermaid() {
     let mut registry = registry_for(&root);
 
     // Kind-level on an uncached registry: ComponentGraph must scan on demand.
-    let kinds =
-        dispatch::handle_command(&mut registry, HostCommand::ComponentGraph { level: None });
+    let kinds = dispatch::handle_command(
+        &mut registry,
+        HostCommand::ComponentGraph {
+            level: None,
+            out: None,
+        },
+    );
     assert_eq!(kinds["ok"], true, "kinds failed: {kinds}");
     let mermaid = kinds["mermaid"].as_str().expect("mermaid");
     assert!(mermaid.starts_with("graph LR\n"), "header: {mermaid}");
@@ -484,6 +489,7 @@ fn component_graph_renders_kind_and_instance_mermaid() {
         &mut registry,
         HostCommand::ComponentGraph {
             level: Some("instances".to_string()),
+            out: None,
         },
     );
     assert_eq!(instances["ok"], true, "instances failed: {instances}");
@@ -514,6 +520,7 @@ fn component_graph_renders_kind_and_instance_mermaid() {
         &mut registry,
         HostCommand::ComponentGraph {
             level: Some("bogus".to_string()),
+            out: None,
         },
     );
     assert_eq!(bad["ok"], false, "bogus level must fail: {bad}");

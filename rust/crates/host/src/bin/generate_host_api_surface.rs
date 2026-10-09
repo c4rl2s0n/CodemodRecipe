@@ -116,6 +116,8 @@ fn generate_dluau() -> String {
     out.push_str("\tparse: (self: ComponentDelegate, locator: any) -> any,\n");
     out.push_str("\tverify: (self: ComponentDelegate, instance: any) -> any,\n");
     out.push_str("\treadSource: (self: ComponentDelegate, locator: any) -> any,\n");
+    out.push_str("\toperation: (self: ComponentDelegate, name: string, args: any?) -> any,\n");
+    out.push_str("\tscaffold: (self: ComponentDelegate, args: any?) -> any,\n");
     out.push_str("}\n\n");
 
     // Test layer (`*.test.luau` suites, `run_tests` MCP tool). Hand-written:
@@ -144,6 +146,9 @@ fn generate_dluau() -> String {
     );
     out.push_str(
         "\tscaffold: (self: TestWorkspace, componentId: string, args: { [string]: any }) -> any,\n",
+    );
+    out.push_str(
+        "\tstackOperation: (self: TestWorkspace, operation: string, args: { [string]: any }) -> any,\n",
     );
     out.push_str(
         "\tapplyRecipe: (self: TestWorkspace, recipeId: string, args: { [string]: any }) -> TestApplyRecipeResult,\n",

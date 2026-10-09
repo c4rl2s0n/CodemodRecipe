@@ -55,6 +55,8 @@ export class RecipeRunnerState {
   componentDryRunResult: unknown | undefined;
   componentDryRunHook: string | undefined;
   componentCoverage: ComponentCoverageResponse | undefined = undefined;
+  /** Selected stack-level operation name (instance-less fan-out). */
+  stackAction: string | undefined;
 
   setRecipesRefreshing(inFlight: boolean): void {
     this.recipesRefreshing = inFlight;
@@ -102,6 +104,7 @@ export class RecipeRunnerState {
     this.selectedComponentId = componentId;
     this.selectedInstanceId = undefined;
     this.componentDetail = detail;
+    this.stackAction = undefined;
     this.componentAction = detail?.hasScaffold
       ? 'scaffold'
       : detail?.operations[0]?.name;
@@ -139,12 +142,28 @@ export class RecipeRunnerState {
 
   selectComponentAction(action: string): void {
     this.componentAction = action;
+    this.stackAction = undefined;
     this.componentArgs = {};
     this.componentFiles = [];
     this.componentTranscript = [];
     this.componentOpError = undefined;
     this.componentDryRunResult = undefined;
     this.componentDryRunHook = undefined;
+  }
+
+  selectStackOperation(operation: string): void {
+    this.stackAction = operation;
+    this.selectedComponentId = undefined;
+    this.selectedInstanceId = undefined;
+    this.componentDetail = undefined;
+    this.componentAction = undefined;
+    this.componentArgs = {};
+    this.componentFiles = [];
+    this.componentTranscript = [];
+    this.componentOpError = undefined;
+    this.componentDryRunResult = undefined;
+    this.componentDryRunHook = undefined;
+    this.activeTab = RUNNER_TABS.components;
   }
 
   setComponentPreviewResult(
@@ -295,6 +314,7 @@ export class RecipeRunnerState {
       componentDryRunResult: this.componentDryRunResult,
       componentDryRunHook: this.componentDryRunHook,
       componentCoverage: this.componentCoverage,
+      stackAction: this.stackAction,
     };
   }
 }

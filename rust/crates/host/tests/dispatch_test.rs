@@ -13,7 +13,7 @@ fn setup_workspace_with_insert_recipe(name: &str) -> PathBuf {
     let recipes_dir = workspace.join(".codemod/recipes");
     std::fs::create_dir_all(&recipes_dir).unwrap();
     std::fs::copy(
-        repo_root().join(".codemod/recipes/insert_log_line.luau"),
+        repo_root().join("test/fixtures/dart_demo/.codemod/recipes/insert_log_line.luau"),
         recipes_dir.join("insert_log_line.luau"),
     )
     .unwrap();
@@ -21,9 +21,9 @@ fn setup_workspace_with_insert_recipe(name: &str) -> PathBuf {
 }
 
 #[test]
-fn list_reports_loaded_maps_from_repo() {
-    let repo = repo_root();
-    let mut registry = RecipeRegistry::new(repo.clone(), repo.join(".codemod"));
+fn list_reports_loaded_maps_from_fixture() {
+    let fixture = repo_root().join("test/fixtures/dart_demo");
+    let mut registry = RecipeRegistry::new(fixture.clone(), fixture.join(".codemod"));
     registry.reload();
 
     let response = dispatch::handle_command(&mut registry, HostCommand::List);
@@ -646,7 +646,8 @@ fn diff_returns_full_file_data() {
 #[test]
 fn preview_add_log_line_with_class_and_method_args() {
     let repo = repo_root();
-    let mut registry = RecipeRegistry::new(repo.clone(), repo.join(".codemod"));
+    let mut registry =
+        RecipeRegistry::new(repo.clone(), repo.join("test/fixtures/dart_demo/.codemod"));
     registry.reload();
 
     let rel = "test/fixtures/ast_paths/settings.dart";

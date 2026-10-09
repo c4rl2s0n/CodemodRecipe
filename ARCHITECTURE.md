@@ -4,6 +4,9 @@ codemod_recipe applies deterministic file changes from **sandboxed Luau recipes*
 The runtime is implemented in Rust; agents and the VS Code extension talk to the same
 host protocol.
 
+Maintainer **expected layering**, crate DAG policy, and smell tracking (dogfood):
+[docs/develop/05_dogfood/05_target_architecture.md](docs/develop/05_dogfood/05_target_architecture.md).
+
 ## Components
 
 | Component | Location | Role |
@@ -77,10 +80,10 @@ See [docs/usage/02_writing_recipes/01_workflow.md](docs/usage/02_writing_recipes
 ## Extension
 
 The extension bundles `codemod_host` built by the repo-root `./build.sh` (which
-also regenerates the host API surface and calls `vscode_extension/build.sh` to
-package the VSIX). Message types are shared in
+also release-builds `codemod_mcp`, regenerates the host API surface, and calls
+`vscode_extension/build.sh` to package the VSIX). Message types are shared in
 `vscode_extension/src/shared/messages.ts`; the host protocol is implemented in
-`rust/crates/host/src/protocol/dispatch.rs`.
+`rust/crates/host/src/protocol/dispatch/` (thin `mod.rs` match + domain handlers).
 
 The review panel exposes **Files** (diffs) and **Transcript** (host call log). When
 preview skipped postExec, apply may diverge — surfaced as `applyMayDiverge`.

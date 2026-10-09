@@ -349,6 +349,44 @@ fn compute_coverage(
     Ok((aggregate, files))
 }
 
+/// Compact coverage for scan snapshots: aggregate + per-file ratios, **no** gaps.
+/// Returns `None` when `codebase` is empty.
+///
+/// `exclude_instance_ids`: root instances whose leaf spans are omitted (zone
+/// `ignoreCoverage` members). Live `component_coverage` does not use this filter.
+pub fn compact_coverage_for_snapshot(
+    workspace_root: &Path,
+    codebase: &[String],
+    instances: &[ComponentInstance],
+    exclude_instance_ids: &std::collections::BTreeSet<String>,
+) -> Result<Option<serde_json::Value>, String> {
+    if codebase.is_empty() {
+        return Ok(None);
+    }
+    let filtered: Vec<&ComponentInstance> = instances
+        .iter()
+        .filter(|i| !exclude_instance_ids.contains(&i.id))
+        .collect();
+    let owned: Vec<ComponentInstance> = filtered.into_iter().cloned().collect();
+    let spans = collect_spans_from_instances(&owned);
+    let (aggregate, files) = compute_coverage(workspace_root, codebase, &spans)?;
+    let files_compact: Vec<serde_json::Value> = files
+        .into_iter()
+        .map(|f| {
+            serde_json::json!({
+                "path": f.path,
+                "ratio": f.ratio,
+                "coveredNonblank": f.covered_nonblank,
+                "gapNonblank": f.gap_nonblank,
+            })
+        })
+        .collect();
+    Ok(Some(serde_json::json!({
+        "aggregate": aggregate,
+        "files": files_compact,
+    })))
+}
+
 /// Test helper: coverage from an existing cache without re-scan.
 #[cfg(test)]
 pub fn coverage_from_cache(
@@ -488,5 +526,52 @@ mod tests {
         let mut out = BTreeMap::new();
         collect_spans_from_value(&node, &mut out);
         assert_eq!(out["lib/a.dart"], vec![SpanInterval { from: 5, to: 15 }]);
+    }
+
+    #[test]
+    fn compact_snapshot_excludes_ignored_instance_spans() {
+        let root = std::env::temp_dir().join(format!(
+            "codemod_cov_exclude_{}",
+            std::process::id()
+        ));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        let src = "abcdefghij"; // 10 nonblank
+        std::fs::write(root.join("a.rs"), src).unwrap();
+        let keep = ComponentInstance {
+            id: "keep/a".to_string(),
+            component_id: "keep".to_string(),
+            locator: serde_json::json!({}),
+            ast: serde_json::json!({
+                "id": "a",
+                "source": { "path": "a.rs", "span": { "from": 0, "to": 5 } }
+            }),
+            summary: None,
+        };
+        let drop = ComponentInstance {
+            id: "drop/b".to_string(),
+            component_id: "drop".to_string(),
+            locator: serde_json::json!({}),
+            ast: serde_json::json!({
+                "id": "b",
+                "source": { "path": "a.rs", "span": { "from": 5, "to": 10 } }
+            }),
+            summary: None,
+        };
+        let all = vec![keep, drop];
+        let none: std::collections::BTreeSet<String> = std::collections::BTreeSet::new();
+        let full = compact_coverage_for_snapshot(&root, &["a.rs".into()], &all, &none)
+            .unwrap()
+            .unwrap();
+        assert_eq!(full["aggregate"]["coveredNonblank"], 10);
+
+        let mut exclude = std::collections::BTreeSet::new();
+        exclude.insert("drop/b".to_string());
+        let filtered = compact_coverage_for_snapshot(&root, &["a.rs".into()], &all, &exclude)
+            .unwrap()
+            .unwrap();
+        assert_eq!(filtered["aggregate"]["coveredNonblank"], 5);
+        assert_eq!(filtered["aggregate"]["gapNonblank"], 5);
+        let _ = std::fs::remove_dir_all(&root);
     }
 }

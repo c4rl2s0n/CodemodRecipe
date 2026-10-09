@@ -1,6 +1,7 @@
 pub mod debug;
 pub mod position;
 pub mod query;
+pub mod query_error;
 
 pub use debug::instrument::{instrument_query, InstrumentedQuery};
 pub use debug::match_debug::{

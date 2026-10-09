@@ -1,5 +1,6 @@
 pub mod dispatch;
 pub mod keys;
+pub mod mcp_inventory;
 
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -156,6 +157,9 @@ pub enum HostCommand {
     ComponentGraph {
         #[serde(default)]
         level: Option<String>,
+        /// Optional workspace-relative path to write the mermaid text.
+        #[serde(default)]
+        out: Option<String>,
     },
     #[serde(rename = "componentInvokeOperation")]
     ComponentInvokeOperation {
@@ -200,13 +204,31 @@ pub enum HostCommand {
         #[serde(rename = "componentId")]
         component_id: String,
     },
-    /// Run `*.test.luau` suites (fixture-based; never touches the real
-    /// workspace). `filter` matches suite id, suite `target`, `suite/test`,
-    /// or a bare test name substring.
+    /// Dry-run or apply a stack-level operation (`operations.<name>` on `stack.luau`).
+    /// Instance-less; MCP exposes dry-run vs apply as separate tools for allowlisting.
+    #[serde(rename = "stackInvokeOperation")]
+    StackInvokeOperation {
+        operation: String,
+        #[serde(default = "default_true")]
+        preview: bool,
+        #[serde(default)]
+        args: std::collections::BTreeMap<String, serde_json::Value>,
+    },
+    /// Run `*.test.luau` suites (fixture temp workspaces; session assets load
+    /// from the process codemod root, but fixture scans do not write `.cache/`).
+    /// `filter` matches suite id, suite `target`, `suite/test`, or a bare test
+    /// name substring.
     #[serde(rename = "runTests")]
     RunTests {
         #[serde(default)]
         filter: Option<String>,
+    },
+
+    #[serde(rename = "componentSnapshot")]
+    ComponentSnapshot {
+        /// Codemod-root-relative path. Empty / omitted → `.cache/scan-snapshot.json`.
+        #[serde(default)]
+        path: Option<String>,
     },
 }
 
@@ -379,6 +401,42 @@ pub struct StackSchema {
     pub components: Vec<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub codebase: Vec<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub operations: Vec<ComponentOperationSchema>,
+    /// Relation-kind registry from stack (`kind → { layout }`).
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub relations: BTreeMap<String, RelationKindSchema>,
+    /// Zone catalog from `stack.zones`.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub zones: Vec<ZoneSchema>,
+    /// Role → metric flags from `stack.zoneRoles`.
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub zone_roles: BTreeMap<String, ZoneRoleSchema>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ZoneSchema {
+    pub id: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub role: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub title: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub parent_id: Option<String>,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ZoneRoleSchema {
+    pub ignore_relations: bool,
+    pub ignore_coverage: bool,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct RelationKindSchema {
+    pub layout: String,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -404,6 +462,9 @@ pub struct ComponentGraphResponse {
     /// Resolved instance-level edges (only for `level = "instances"`).
     #[serde(skip_serializing_if = "Option::is_none")]
     pub edges: Option<Vec<crate::component::ComponentEdge>>,
+    /// Workspace-relative path written when `out` was requested.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub path: Option<String>,
 }
 
 #[derive(Debug, Serialize, Clone)]
@@ -498,6 +559,23 @@ pub struct FilePreview {
     pub snippet: Option<String>,
 }
 
+/// Extract `c:log` detail strings from a transcript for MCP-facing `logs` fields.
+pub fn logs_from_transcript(
+    transcript: Option<&[codemod_recipe_lua::TranscriptEvent]>,
+) -> Option<Vec<String>> {
+    let events = transcript?;
+    let logs: Vec<String> = events
+        .iter()
+        .filter(|e| e.kind == "log")
+        .map(|e| e.detail.clone())
+        .collect();
+    if logs.is_empty() {
+        None
+    } else {
+        Some(logs)
+    }
+}
+
 #[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct PreviewResponse {
@@ -512,6 +590,9 @@ pub struct PreviewResponse {
     pub files: Option<Vec<FilePreview>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transcript: Option<Vec<codemod_recipe_lua::TranscriptEvent>>,
+    /// `c:log` details — top-level for MCP agents (also present as transcript kind=log).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub logs: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub apply_may_diverge: Option<bool>,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -519,6 +600,7 @@ pub struct PreviewResponse {
 }
 
 #[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct ApplyResponse {
     pub ok: bool,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -529,6 +611,9 @@ pub struct ApplyResponse {
     pub applied: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transcript: Option<Vec<codemod_recipe_lua::TranscriptEvent>>,
+    /// `c:log` details — top-level for MCP agents.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub logs: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub diagnostics: Option<Vec<RecipeDiagnostic>>,
 }
@@ -640,6 +725,7 @@ mod tests {
             preview_token: Some("abc".to_string()),
             files: None,
             transcript: None,
+            logs: None,
             apply_may_diverge: None,
             diagnostics: None,
         };

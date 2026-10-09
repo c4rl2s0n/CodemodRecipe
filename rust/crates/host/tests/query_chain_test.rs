@@ -5,15 +5,35 @@ mod common;
 use codemod_recipe_host::engine::runner::{collect_recipe_changes, parse_inline_recipe};
 use codemod_recipe_host::lua_runtime::RunKind;
 use codemod_recipe_host::recipe::registry::RecipeRegistry;
-use common::repo_root;
+use common::{repo_root, temp_workspace};
 use std::collections::BTreeMap;
+use std::path::PathBuf;
+
+/// Temp workspace seeded with the dart_demo query library and a `lib/foo.dart`
+/// target file. Returns the workspace path and the reloaded registry.
+fn workspace_with_dart_queries(name: &str) -> (PathBuf, RecipeRegistry) {
+    let workspace = temp_workspace(name);
+    let queries_dir = workspace.join(".codemod/queries");
+    std::fs::create_dir_all(&queries_dir).unwrap();
+    std::fs::copy(
+        repo_root().join("test/fixtures/dart_demo/.codemod/queries/dart.luau"),
+        queries_dir.join("dart.luau"),
+    )
+    .unwrap();
+    std::fs::create_dir_all(workspace.join("lib")).unwrap();
+    std::fs::write(
+        workspace.join("lib/foo.dart"),
+        "class Settings {\n  void update() {}\n}\n",
+    )
+    .unwrap();
+    let mut registry = RecipeRegistry::new(workspace.clone(), workspace.join(".codemod"));
+    registry.reload();
+    (workspace, registry)
+}
 
 #[test]
 fn chained_query_inserts_into_method_body() {
-    let workspace = repo_root();
-    let codemod = workspace.join(".codemod");
-    let mut registry = RecipeRegistry::new(workspace.clone(), codemod);
-    registry.reload();
+    let (_workspace, registry) = workspace_with_dart_queries("chain_insert");
 
     assert!(registry
         .queries_by_id()
@@ -47,10 +67,6 @@ return {
         ("methodName".to_string(), serde_json::json!("update")),
     ]);
 
-    let source = "class Settings {\n  void update() {}\n}\n";
-    std::fs::create_dir_all(workspace.join("lib")).ok();
-    std::fs::write(workspace.join("lib/foo.dart"), source).unwrap();
-
     let collected =
         collect_recipe_changes(&registry, &recipe, None, &args, RunKind::Preview).unwrap();
     let modified = collected
@@ -60,16 +76,11 @@ return {
         .expect("patch");
 
     assert!(modified.contains("print('codemod')"));
-
-    let _ = std::fs::remove_file(workspace.join("lib/foo.dart"));
 }
 
 #[test]
 fn chained_query_mixed_library_ref_and_inline_step() {
-    let workspace = repo_root();
-    let codemod = workspace.join(".codemod");
-    let mut registry = RecipeRegistry::new(workspace.clone(), codemod);
-    registry.reload();
+    let (_workspace, registry) = workspace_with_dart_queries("chain_mixed");
 
     let inline = r#"
 return {
@@ -98,10 +109,6 @@ return {
         ("methodName".to_string(), serde_json::json!("update")),
     ]);
 
-    let source = "class Settings {\n  void update() {}\n}\n";
-    std::fs::create_dir_all(workspace.join("lib")).ok();
-    std::fs::write(workspace.join("lib/foo.dart"), source).unwrap();
-
     let collected =
         collect_recipe_changes(&registry, &recipe, None, &args, RunKind::Preview).unwrap();
     let modified = collected
@@ -111,6 +118,4 @@ return {
         .expect("patch");
 
     assert!(modified.contains("print('mixed')"));
-
-    let _ = std::fs::remove_file(workspace.join("lib/foo.dart"));
 }

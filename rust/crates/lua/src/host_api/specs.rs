@@ -332,6 +332,7 @@ pub struct QueryTableSpec {
 }
 
 /// Byte offset span returned by query hits (`from`/`to`; Lua reserves `end`).
+/// Offsets are **0-based bytes** into the file source (not Lua 1-based string indices).
 #[derive(Debug, Clone, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ByteSpan {
@@ -339,11 +340,35 @@ pub struct ByteSpan {
     pub to: u64,
 }
 
+impl FromLua for ByteSpan {
+    fn from_lua(value: Value, _: &Lua) -> mlua::Result<Self> {
+        match value {
+            Value::Table(t) => Ok(Self {
+                from: t.get("from")?,
+                to: t.get("to")?,
+            }),
+            other => Err(mlua::Error::FromLuaConversionError {
+                from: other.type_name(),
+                to: "ByteSpan".to_string(),
+                message: Some("expected { from, to }".to_string()),
+            }),
+        }
+    }
+}
+
 impl HostType for ByteSpan {
     const NAME: &'static str = "ByteSpan";
     fn schema() -> RootSchema {
         schema_for!(ByteSpan)
     }
+}
+
+/// `c:spanText({ path, span })` — slice file bytes by a 0-based [`ByteSpan`].
+#[derive(Debug, Clone, PartialEq, Eq, JsonSchema, LuaSpec)]
+#[serde(rename_all = "camelCase")]
+pub struct SpanTextSpec {
+    pub path: String,
+    pub span: ByteSpan,
 }
 
 /// One tree-sitter query hit: span + text + node kind.

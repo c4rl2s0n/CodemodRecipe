@@ -199,6 +199,12 @@ export interface StackSchema {
   description?: string;
   components: string[];
   codebase?: string[];
+  operations?: ComponentOperationSchema[];
+  relations?: Record<string, RelationKindSchema>;
+}
+
+export interface RelationKindSchema {
+  layout: string;
 }
 
 export interface ComponentOperationSchema {
@@ -342,6 +348,8 @@ export interface PreviewResponse {
   previewToken?: string;
   files?: FilePreview[];
   transcript?: TranscriptEvent[];
+  /** c:log details — top-level for MCP agents. */
+  logs?: string[];
   applyMayDiverge?: boolean;
   diagnostics?: RecipeDiagnostic[];
 }
@@ -361,6 +369,8 @@ export interface ComponentInvokeResponse {
   findings?: ComponentFinding[];
   files?: FilePreview[];
   transcript?: TranscriptEvent[];
+  /** c:log details — top-level for MCP agents (scan has no logs). */
+  logs?: string[];
   applied?: string[];
 }
 
@@ -370,6 +380,8 @@ export interface ApplyResponse {
   recipe?: string;
   applied?: string[];
   transcript?: TranscriptEvent[];
+  /** c:log details — top-level for MCP agents. */
+  logs?: string[];
   diagnostics?: RecipeDiagnostic[];
 }
 
@@ -443,6 +455,7 @@ export type HostCommand =
       instrument?: boolean;
       includeSexp?: boolean;
     }
+  | { command: 'generateAstPath'; path: string; offset: number }
   | {
       command: 'generateQuery';
       path?: string;
@@ -465,6 +478,8 @@ export type HostCommand =
     }
   | { command: 'componentScan' }
   | { command: 'componentCoverage' }
+  | { command: 'componentGraph'; level?: string; out?: string }
+  | { command: 'componentSnapshot'; path?: string }
   | {
       command: 'componentIncrementalScan';
       dirtyPaths?: string[];
@@ -498,6 +513,12 @@ export type HostCommand =
   | {
       command: 'describeComponent';
       componentId: string;
+    }
+  | {
+      command: 'stackInvokeOperation';
+      operation: string;
+      preview?: boolean;
+      args?: ArgValues;
     }
   | {
       command: 'runTests';
@@ -650,6 +671,8 @@ export interface RecipeViewState {
   componentDryRunHook?: string;
   /** Latest componentCoverage result (undefined until first fetch). */
   componentCoverage?: ComponentCoverageResponse;
+  /** Selected stack-level operation (mutually exclusive with componentAction). */
+  stackAction?: string;
 }
 
 export interface PersistedWebviewState {

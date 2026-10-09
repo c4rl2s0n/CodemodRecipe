@@ -4,8 +4,8 @@ Runnable recipes demonstrating each feature:
 
 | Recipe | Location | Demonstrates |
 |--------|----------|--------------|
-| `add_counter_field` | [`.codemod/recipes/add_counter_field.luau`](../../../../.codemod/recipes/add_counter_field.luau) | `c:template` + `{{ field \| camel_case }}` in insert text |
-| `conditional_create` | [`.codemod/recipes/conditional_create.luau`](../../../../.codemod/recipes/conditional_create.luau) | `c:template`, `{% if %}`, `defaultsTo` |
+| `add_counter_field` | [`test/fixtures/dart_demo/.../add_counter_field.luau`](../../../../test/fixtures/dart_demo/.codemod/recipes/add_counter_field.luau) | `c:template` + `{{ field \| camel_case }}` in insert text |
+| `conditional_create` | [`test/fixtures/dart_demo/.../conditional_create.luau`](../../../../test/fixtures/dart_demo/.codemod/recipes/conditional_create.luau) | `c:template`, `{% if %}`, `defaultsTo` |
 | `patch_counter` | [`test/fixtures/scaffold_project/.../patch_counter.luau`](../../../../test/fixtures/scaffold_project/.codemod/recipes/patch_counter.luau) | `\| map('field_kind')` + `\| camel_case` |
 | `create_repository` | [`test/fixtures/scaffold_project/.../create_repository.luau`](../../../../test/fixtures/scaffold_project/.codemod/recipes/create_repository.luau) | File template with casing filters |
 | `jinja.casing.showcase` | [`test/fixtures/jinja_examples/.../showcase_casing.luau`](../../../../test/fixtures/jinja_examples/.codemod/recipes/showcase_casing.luau) | All casing filters + both map syntaxes |

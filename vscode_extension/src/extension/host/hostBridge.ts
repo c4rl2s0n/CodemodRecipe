@@ -412,6 +412,19 @@ export class HostBridge {
     });
   }
 
+  async stackInvokeOperation(opts: {
+    operation: string;
+    args?: ArgValues;
+    preview?: boolean;
+  }): Promise<ComponentInvokeResponse> {
+    return this.send<ComponentInvokeResponse>({
+      command: 'stackInvokeOperation',
+      operation: opts.operation,
+      args: opts.args ?? {},
+      preview: opts.preview ?? true,
+    });
+  }
+
   dispose(): void {
     this.stopPersistentHost();
   }
