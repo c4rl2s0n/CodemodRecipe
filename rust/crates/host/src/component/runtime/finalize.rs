@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use crate::component::scan::{component_incremental_scan, ComponentIncrementalScanRequest};
 use crate::component::types::{ComponentFinding, ComponentInstance};
-use crate::engine::working_tree::WorkingTree;
+use crate::edit_session::working_tree::WorkingTree;
 use crate::host_api::context::{RunKind, SharedHost};
 use crate::preview::diff::build_file_preview_from_change;
 use crate::recipe::registry::RecipeRegistry;

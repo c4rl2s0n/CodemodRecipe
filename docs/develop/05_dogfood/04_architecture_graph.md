@@ -18,19 +18,30 @@ Component-level roll-up (edge counts). This is the architecture diagram:
 
 ```mermaid
 graph LR
+  repo_domain_type["repo.domain_type"] -- "mirrors ×2" --> repo_domain_type
+  repo_host_api_handlers["repo.host_api_handlers"] -- "drives ×6" --> repo_engine_edit["repo.engine_edit"]
+  repo_host_api_handlers -- "stages_via ×6" --> repo_working_tree["repo.working_tree"]
   repo_host_bridge_method["repo.host_bridge_method"] -- "sends ×24" --> repo_host_command["repo.host_command"]
-  repo_mcp_tool_entry["repo.mcp_tool_entry"] -- "exposes ×21" --> repo_host_command["repo.host_command"]
-  repo_vscode_command_entry["repo.vscode_command_entry"] -- "invokes ×15" --> repo_host_bridge_method["repo.host_bridge_method"]
+  repo_host_command -- "uses ×28" --> repo_engine_edit
+  repo_host_command -- "uses ×28" --> repo_recipe_registry["repo.recipe_registry"]
+  repo_host_dispatch_arm["repo.host_dispatch_arm"] -- "handles ×28" --> repo_host_command
+  repo_host_module["repo.host_module"] -- "drives / uses / stages_via / feeds" --> repo_engine_edit
+  repo_host_module -- "feeds" --> repo_recipe_registry
+  repo_lua_load_module["repo.lua_load_module"] -- "feeds" --> repo_recipe_registry
+  repo_lua_load_module -- "uses ×18" --> repo_lua_load_module
+  repo_mcp_tool_entry["repo.mcp_tool_entry"] -- "exposes ×21" --> repo_host_command
+  repo_vscode_command_entry["repo.vscode_command_entry"] -- "invokes ×14" --> repo_host_bridge_method
 ```
 
-Reading left-to-right:
+Reading the graph:
 
-- `repo.vscode_command_entry` **invokes** bridge methods (handler bodies calling `hostBridge`)
-- `repo.host_bridge_method` **sends** host protocol commands
-- `repo.mcp_tool_entry` **exposes** the same host commands over MCP
+- **Command triangle:** vscode **invokes** bridge → **sends** HostCommand; MCP **exposes** the same commands; dispatch **handles** them
+- **Domain internals (D-025):** `host_api_handlers` / `host_module` **drive** / **use** `engine_edit` and **stage_via** `working_tree`; `lua_load_module` **feeds** `recipe_registry`
 
 There is no junction `repo.command` node — the command concept lives in these
 edges plus stack `createCommand` fan-out (see [Decisions](03_decisions.md)).
+
+Machine SSOT for the full roll-up: [`.codemod/.cache/kind-graph.mmd`](../../../.codemod/.cache/kind-graph.mmd).
 
 ## Instance graph
 

@@ -165,6 +165,7 @@ dependencies = [
 name = "codemod_recipe_lua"
 version = "0.1.0"
 dependencies = [
+ "codemod_recipe_core",
  "codemod_recipe_lua_macros",
  "mlua",
  "schemars",

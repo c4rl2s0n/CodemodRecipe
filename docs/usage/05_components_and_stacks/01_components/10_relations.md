@@ -190,8 +190,12 @@ membership can nest and roles can drive snapshot metrics:
 
 `persist_scan_snapshot` always writes a `relations` block (even when `codebase` is
 empty): aggregate connectivity, `relationIgnored` (under `ignoreRelations` zones),
-`architectureIsolated`, ratios, plus `byComponent` / `byKind` roll-ups. Omit giant
-per-instance dumps — the edge list is already in the snapshot.
+`architectureEligible` / `architectureConnected` / `architectureIsolated`, ratios,
+plus `byComponent` / `byKind` roll-ups. Architecture ratio =
+`architectureConnected / architectureEligible`: membership-only children of
+non-zone parents are **not** eligible (they remain in the forest for structure and
+span). Nested instances that also have non-membership edges **are** eligible.
+Omit giant per-instance dumps — the edge list is already in the snapshot.
 
 ## Helper-library pattern
 

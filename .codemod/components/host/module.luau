@@ -1,5 +1,7 @@
 --- Host src module directory (sandbox, preview, …) with pub fn / type children.
 
+local zonesLib = require("../../lib/zones")
+
 local MODULES = {
 	{ id = "sandbox", path = "rust/crates/host/src/sandbox/mod.rs" },
 	{ id = "preview", path = "rust/crates/host/src/preview/mod.rs" },
@@ -11,7 +13,7 @@ local MODULES = {
 	{ id = "host_api", path = "rust/crates/host/src/host_api/mod.rs" },
 	{ id = "recipe", path = "rust/crates/host/src/recipe/mod.rs" },
 	{ id = "protocol", path = "rust/crates/host/src/protocol/mod.rs" },
-	{ id = "engine", path = "rust/crates/host/src/engine/mod.rs" },
+	{ id = "edit_session", path = "rust/crates/host/src/edit_session/mod.rs" },
 }
 
 return {
@@ -117,8 +119,39 @@ return {
 			children = children,
 		}
 	end,
-	relate = function(_c, _instance)
-		return { { kind = "lives_in", to = "repo.zone/rust.runtime" } }
+	relate = function(_c, instance, index)
+		local path = instance.ast and instance.ast.source and instance.ast.source.path
+		local zone = zonesLib.hostZoneForPath(path)
+		local edges = { { kind = "lives_in", to = "repo.zone/" .. zone } }
+		local id = instance.ast and instance.ast.id
+		-- Domain edges so host modules are architecture-connected, not membership-only.
+		if id == "edit_session" then
+			if index:byId("repo.engine_edit/engine-edit") then
+				edges[#edges + 1] = { kind = "uses", to = "repo.engine_edit/engine-edit" }
+			end
+			if index:byId("repo.working_tree/working-tree") then
+				edges[#edges + 1] = { kind = "stages_via", to = "repo.working_tree/working-tree" }
+			end
+		elseif id == "host_api" then
+			if index:byId("repo.engine_edit/engine-edit") then
+				edges[#edges + 1] = { kind = "drives", to = "repo.engine_edit/engine-edit" }
+			end
+			if index:byId("repo.working_tree/working-tree") then
+				edges[#edges + 1] = { kind = "stages_via", to = "repo.working_tree/working-tree" }
+			end
+			if index:byId("repo.host_api_handlers/edits") then
+				edges[#edges + 1] = { kind = "uses", to = "repo.host_api_handlers/edits" }
+			end
+		elseif id == "recipe" then
+			if index:byId("repo.recipe_registry/recipe-registry") then
+				edges[#edges + 1] = { kind = "feeds", to = "repo.recipe_registry/recipe-registry" }
+			end
+		elseif id == "query" then
+			if index:byId("repo.engine_edit/engine-edit") then
+				edges[#edges + 1] = { kind = "uses", to = "repo.engine_edit/engine-edit" }
+			end
+		end
+		return edges
 	end,
 	toSummary = function(_c, instance)
 		return {

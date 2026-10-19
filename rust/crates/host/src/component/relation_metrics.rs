@@ -2,6 +2,12 @@
 //!
 //! Counts membership vs architecture connectivity over the flattened instance
 //! forest, applying `stack.zoneRoles` flags (`ignoreRelations`).
+//!
+//! Architecture ratio eligibility (inferred, no component role field):
+//! - Zone-rooted / free-root instances are eligible.
+//! - Nested under a non-zone parent are eligible only if they participate in a
+//!   non-membership edge (`uses` / `feeds` / …). Membership-only children are
+//!   structural/span members — not architecture-isolated units.
 
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -18,6 +24,7 @@ use crate::component::types::ComponentInstance;
 #[serde(rename_all = "camelCase")]
 pub struct RelationRatios {
     pub connected: f64,
+    /// Connected among [`RelationAggregate::architecture_eligible`] only.
     pub architecture_connected: f64,
 }
 
@@ -30,6 +37,8 @@ pub struct RelationAggregate {
     pub membership_connected: usize,
     pub architecture_connected: usize,
     pub architecture_isolated: usize,
+    /// Instances in the architecture ratio denominator (see module docs).
+    pub architecture_eligible: usize,
     pub relation_ignored: usize,
     pub ratios: RelationRatios,
 }
@@ -41,6 +50,7 @@ pub struct RelationByComponent {
     pub instance_count: usize,
     pub architecture_connected: usize,
     pub architecture_isolated: usize,
+    pub architecture_eligible: usize,
     pub membership_only: usize,
     pub relation_ignored: usize,
 }
@@ -116,6 +126,7 @@ pub fn relation_metrics(
     let mut agg_membership = 0usize;
     let mut agg_arch = 0usize;
     let mut agg_arch_isolated = 0usize;
+    let mut agg_eligible = 0usize;
     let mut agg_ignored = 0usize;
 
     let mut by_comp: BTreeMap<String, RelationByComponent> = BTreeMap::new();
@@ -127,7 +138,10 @@ pub fn relation_metrics(
         let membership = member_deg.contains(&inst.id);
         let architecture = arch_deg.contains(&inst.id);
         let membership_only = connected && membership && !architecture;
-        let architecture_isolated = !architecture && !ignored;
+        let nested = nested_under_unit(&inst.id, &forest, &zone_inst);
+        let eligible = architecture_eligible(ignored, nested, architecture);
+        // Isolated only among architecture-eligible instances.
+        let architecture_isolated = eligible && !architecture;
 
         if !connected {
             agg_isolated += 1;
@@ -135,11 +149,14 @@ pub fn relation_metrics(
         if membership {
             agg_membership += 1;
         }
-        if architecture {
-            agg_arch += 1;
-        }
-        if architecture_isolated {
-            agg_arch_isolated += 1;
+        if eligible {
+            agg_eligible += 1;
+            if architecture {
+                agg_arch += 1;
+            }
+            if architecture_isolated {
+                agg_arch_isolated += 1;
+            }
         }
         if ignored {
             agg_ignored += 1;
@@ -152,15 +169,19 @@ pub fn relation_metrics(
                 instance_count: 0,
                 architecture_connected: 0,
                 architecture_isolated: 0,
+                architecture_eligible: 0,
                 membership_only: 0,
                 relation_ignored: 0,
             });
         entry.instance_count += 1;
-        if architecture {
-            entry.architecture_connected += 1;
-        }
-        if architecture_isolated {
-            entry.architecture_isolated += 1;
+        if eligible {
+            entry.architecture_eligible += 1;
+            if architecture {
+                entry.architecture_connected += 1;
+            }
+            if architecture_isolated {
+                entry.architecture_isolated += 1;
+            }
         }
         if membership_only {
             entry.membership_only += 1;
@@ -171,7 +192,6 @@ pub fn relation_metrics(
     }
 
     let n = flat.len();
-    let denom = n.saturating_sub(agg_ignored);
     let connected_count = n.saturating_sub(agg_isolated);
     let ratios = RelationRatios {
         connected: if n == 0 {
@@ -179,10 +199,10 @@ pub fn relation_metrics(
         } else {
             connected_count as f64 / n as f64
         },
-        architecture_connected: if denom == 0 {
+        architecture_connected: if agg_eligible == 0 {
             1.0
         } else {
-            agg_arch as f64 / denom as f64
+            agg_arch as f64 / agg_eligible as f64
         },
     };
 
@@ -197,12 +217,29 @@ pub fn relation_metrics(
             membership_connected: agg_membership,
             architecture_connected: agg_arch,
             architecture_isolated: agg_arch_isolated,
+            architecture_eligible: agg_eligible,
             relation_ignored: agg_ignored,
             ratios,
         },
         by_component,
         by_kind,
     }
+}
+
+/// Membership parent exists and is not a zone instance → nested under a model unit.
+fn nested_under_unit(
+    instance_id: &str,
+    forest: &MembershipForest,
+    zone_inst: &BTreeMap<String, String>,
+) -> bool {
+    match forest.parent.get(instance_id) {
+        Some(parent) => !zone_inst.contains_key(parent),
+        None => false,
+    }
+}
+
+fn architecture_eligible(ignored: bool, nested_under_unit: bool, has_arch_edge: bool) -> bool {
+    !ignored && (!nested_under_unit || has_arch_edge)
 }
 
 /// Map zone catalog id → flat instance id, and instance id → role string.
@@ -365,9 +402,10 @@ mod tests {
         assert_eq!(barrel.relation_ignored, 1);
         assert_eq!(barrel.architecture_isolated, 0);
         assert_eq!(barrel.membership_only, 1);
-        // architecture ratio denom excludes relationIgnored
-        let denom = m.aggregate.instance_count - m.aggregate.relation_ignored;
-        let expected = m.aggregate.architecture_connected as f64 / denom as f64;
+        // architecture ratio denom = eligible (zones + cmd + engine; barrel ignored)
+        assert_eq!(m.aggregate.architecture_eligible, 4, "{:?}", m.aggregate);
+        let expected = m.aggregate.architecture_connected as f64
+            / m.aggregate.architecture_eligible as f64;
         assert!((m.aggregate.ratios.architecture_connected - expected).abs() < 1e-9);
     }
 
@@ -392,8 +430,109 @@ mod tests {
         )];
         let m = relation_metrics(&instances, &edges, &relations(), &zones, &zone_roles);
         assert_eq!(m.aggregate.relation_ignored, 0);
-        // doc member is membership-only → architectureIsolated
+        // zone-rooted member is eligible; membership-only → architectureIsolated
+        assert_eq!(m.aggregate.architecture_eligible, 2);
         assert_eq!(m.aggregate.architecture_isolated, 2); // zone + member
+    }
+
+    #[test]
+    fn nested_membership_only_child_not_architecture_eligible() {
+        let zones = vec![ZoneDef {
+            id: "domain.recipe".to_string(),
+            role: Some("architecture".to_string()),
+            title: Some("Recipe".to_string()),
+            parent_id: None,
+        }];
+        let zone_roles = BTreeMap::new();
+        let instances = vec![
+            zone_inst("domain.recipe", "architecture"),
+            inst("repo.host_module/recipe", "repo.host_module"),
+            inst("repo.host_module_item/fn@1", "repo.host_module_item"),
+        ];
+        let edges = vec![
+            edge(
+                "repo.host_module/recipe",
+                "lives_in",
+                "repo.zone/domain.recipe",
+            ),
+            edge(
+                "repo.host_module_item/fn@1",
+                "lives_in",
+                "repo.host_module/recipe",
+            ),
+        ];
+        let m = relation_metrics(&instances, &edges, &relations(), &zones, &zone_roles);
+        let item = m
+            .by_component
+            .iter()
+            .find(|c| c.component_id == "repo.host_module_item")
+            .unwrap();
+        assert_eq!(item.membership_only, 1);
+        assert_eq!(item.architecture_eligible, 0);
+        assert_eq!(item.architecture_isolated, 0);
+        // zone + host_module eligible; item excluded
+        assert_eq!(m.aggregate.architecture_eligible, 2, "{:?}", m.aggregate);
+        assert_eq!(m.aggregate.architecture_isolated, 2);
+        assert_eq!(m.aggregate.architecture_connected, 0);
+        assert!((m.aggregate.ratios.architecture_connected - 0.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn nested_child_with_architecture_edge_is_eligible_and_connected() {
+        let zones = vec![ZoneDef {
+            id: "domain.host_api".to_string(),
+            role: Some("architecture".to_string()),
+            title: Some("Host API".to_string()),
+            parent_id: None,
+        }];
+        let zone_roles = BTreeMap::new();
+        let instances = vec![
+            zone_inst("domain.host_api", "architecture"),
+            inst("repo.host_module/host_api", "repo.host_module"),
+            inst("repo.host_module_item/do_query@1", "repo.host_module_item"),
+            inst("repo.engine_edit/engine-edit", "repo.engine_edit"),
+        ];
+        let edges = vec![
+            edge(
+                "repo.host_module/host_api",
+                "lives_in",
+                "repo.zone/domain.host_api",
+            ),
+            edge(
+                "repo.engine_edit/engine-edit",
+                "lives_in",
+                "repo.zone/domain.host_api",
+            ),
+            edge(
+                "repo.host_module_item/do_query@1",
+                "lives_in",
+                "repo.host_module/host_api",
+            ),
+            edge(
+                "repo.host_module_item/do_query@1",
+                "drives",
+                "repo.engine_edit/engine-edit",
+            ),
+        ];
+        let mut rel = relations();
+        rel.insert(
+            "drives".to_string(),
+            RelationKindDef {
+                layout: "edge".to_string(),
+            },
+        );
+        let m = relation_metrics(&instances, &edges, &rel, &zones, &zone_roles);
+        let item = m
+            .by_component
+            .iter()
+            .find(|c| c.component_id == "repo.host_module_item")
+            .unwrap();
+        assert_eq!(item.architecture_eligible, 1);
+        assert_eq!(item.architecture_connected, 1);
+        assert_eq!(item.architecture_isolated, 0);
+        // item + engine_edit connected; zone + host_module eligible isolated
+        assert_eq!(m.aggregate.architecture_connected, 2, "{:?}", m.aggregate);
+        assert_eq!(m.aggregate.architecture_eligible, 4);
     }
 
     #[test]

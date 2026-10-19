@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use codemod_recipe_core::apply::atomic_apply::apply_operations_atomically;
 
-use crate::engine::runner::{collect_recipe_changes, planned_snapshot_paths, resolve_recipe};
+use crate::edit_session::runner::{collect_recipe_changes, planned_snapshot_paths, resolve_recipe};
 use crate::lua_runtime::{RecipeApplyError, RunKind};
 use crate::preview::diff::build_file_preview_from_change;
 use crate::preview::patch_selector::{apply_changes_with_selection, parse_selection};
@@ -20,7 +20,7 @@ pub(super) fn collect(
     registry: &RecipeRegistry,
     request: RecipeRequest<'_>,
     kind: RunKind,
-) -> Result<crate::engine::runner::CollectedChanges, RecipeApplyError> {
+) -> Result<crate::edit_session::runner::CollectedChanges, RecipeApplyError> {
     let (recipe, recipe_path) = resolve_recipe(registry, request.recipe_id, request.inline_recipe)
         .map_err(|message| RecipeApplyError {
             message,

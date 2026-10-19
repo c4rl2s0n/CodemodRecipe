@@ -1,6 +1,6 @@
 --- Logical unit: host WorkingTree staged edits → FileChange finalize.
 
-local WORKING_TREE = "rust/crates/host/src/engine/working_tree.rs"
+local WORKING_TREE = "rust/crates/host/src/edit_session/working_tree.rs"
 
 return {
 	id = "repo.working_tree",
@@ -87,7 +87,7 @@ return {
 	end,
 	relate = function(_c, _instance, _index)
 		return {
-			{ kind = "lives_in", to = "repo.zone/rust.runtime" },
+			{ kind = "lives_in", to = "repo.zone/domain.edit_session" },
 			{
 				kind = "finalizes",
 				to = { symbol = "codemod_recipe_core::apply::file_change::FileChange" },

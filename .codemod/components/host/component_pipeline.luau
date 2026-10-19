@@ -128,8 +128,31 @@ return {
 			children = children,
 		}
 	end,
-	relate = function(_c, _instance)
-		return { { kind = "lives_in", to = "repo.zone/rust.runtime" } }
+	relate = function(_c, instance, index)
+		local edges = { { kind = "lives_in", to = "repo.zone/domain.components" } }
+		local id = instance.ast and instance.ast.id
+		-- Pipeline story: identify/scan → relate → metrics/coverage → snapshot; runtime consumes scan.
+		local feeds = {
+			scan = { "relations", "runtime" },
+			scan_full = { "scan" },
+			scan_identify = { "scan" },
+			relations = { "relation_metrics", "coverage" },
+			relations_resolve = { "relations" },
+			membership = { "relations" },
+			relation_metrics = { "snapshot" },
+			coverage = { "snapshot" },
+			runtime = { "runtime_finalize" },
+			runtime_hook = { "runtime" },
+			runtime_operations = { "runtime" },
+			runtime_stack_ops = { "runtime" },
+		}
+		for _, toStage in ipairs(feeds[id] or {}) do
+			local to = "repo.component_pipeline/" .. toStage
+			if index:byId(to) then
+				edges[#edges + 1] = { kind = "feeds", to = to }
+			end
+		end
+		return edges
 	end,
 	toSummary = function(_c, instance)
 		return {

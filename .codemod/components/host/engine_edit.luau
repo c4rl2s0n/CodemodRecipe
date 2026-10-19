@@ -98,7 +98,7 @@ return {
 	end,
 	relate = function(_c, _instance, _index)
 		return {
-			{ kind = "lives_in", to = "repo.zone/rust.runtime" },
+			{ kind = "lives_in", to = "repo.zone/platform.engine" },
 			{
 				kind = "produces",
 				to = { symbol = "codemod_recipe_core::apply::file_change::FileChange" },

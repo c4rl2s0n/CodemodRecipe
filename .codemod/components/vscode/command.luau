@@ -69,7 +69,8 @@ local function resolveSpanCalls(span, allCalls, methodsByName)
 			if contains(cur, call.span) then
 				anyCalls = true
 				local kind, name = classifyCallee(call.text)
-				if kind == "bridge" then
+				-- Lifecycle helpers (dispose) are not HostCommand send wrappers.
+				if kind == "bridge" and name ~= "dispose" then
 					if not seenBridge[name] then
 						seenBridge[name] = true
 						bridge[#bridge + 1] = name

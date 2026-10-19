@@ -82,7 +82,7 @@ return {
 	end,
 	relate = function(_c, instance, index)
 		local edges = {
-			{ kind = "lives_in", to = "repo.zone/rust.runtime" },
+			{ kind = "lives_in", to = "repo.zone/domain.recipe" },
 		}
 		local apis = index:byComponent("repo.host_api_method")
 		if apis and #apis > 0 then

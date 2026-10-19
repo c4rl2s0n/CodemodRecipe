@@ -12,7 +12,7 @@ use mlua::{Lua, Table, Value};
 use serde_json::json;
 
 use crate::component::delegate::register_component_delegate;
-use crate::engine::working_tree::WorkingTree;
+use crate::edit_session::working_tree::WorkingTree;
 use crate::host_api::context::{HostInner, SharedHost};
 pub use crate::host_api::context::{RecipeApplyError, RecipeRunRequest, RecipeRunResult, RunKind};
 use crate::host_api::handlers::{do_log, do_resolve, post_exec_cmd};

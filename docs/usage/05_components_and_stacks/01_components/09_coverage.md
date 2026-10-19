@@ -80,8 +80,17 @@ Two different scores live next to each other in `.cache/scan-snapshot.json`:
 
 | Block | Measures |
 |-------|----------|
-| `coverage` | Leaf `source.span` vs `stack.codebase` (compact: no `gaps`) |
-| `relations` | Instance connectivity (membership vs architecture); see [relations](10_relations.md) |
+| `coverage` | Leaf `source.span` vs `stack.codebase` (compact: no `gaps`) — “how much of the files do models claim?” |
+| `relations` | Instance connectivity — “how well are model units wired?”; see [relations](10_relations.md) |
+
+They do **not** feed each other: a spanned leaf with only `lives_in` still covers bytes; a path-only composer with rich `uses` covers none.
+
+**Architecture ratio** (`relations.aggregate.ratios.architectureConnected`) uses an
+**inferred eligibility** set (no component role flag):
+
+- Zone-rooted / free-root instances are eligible.
+- Nested under a non-zone parent are eligible only if they appear on a non-membership edge.
+- Membership-only children are out of the architecture denominator (still in the forest; still may paint span).
 
 `stack.zoneRoles.ignoreCoverage` applies **only** to snapshot compact `coverage`
 (members under those zones do not paint covered bytes). Live `component_coverage`

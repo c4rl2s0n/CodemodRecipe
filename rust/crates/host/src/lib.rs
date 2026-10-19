@@ -1,7 +1,7 @@
 pub mod component;
 pub mod config;
 pub mod diagnostics;
-pub mod engine;
+pub mod edit_session;
 pub mod explorer;
 pub mod host_api;
 pub mod lua_runtime;

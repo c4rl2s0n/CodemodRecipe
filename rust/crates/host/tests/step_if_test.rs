@@ -1,7 +1,7 @@
 //! Luau control-flow gates (replaces YAML step `if` / `ifNot`).
 
 use codemod_recipe_core::apply::file_change::FileChange;
-use codemod_recipe_host::engine::runner::{collect_recipe_changes, parse_inline_recipe};
+use codemod_recipe_host::edit_session::runner::{collect_recipe_changes, parse_inline_recipe};
 use codemod_recipe_host::lua_runtime::RunKind;
 use codemod_recipe_host::recipe::registry::RecipeRegistry;
 use std::collections::BTreeMap;

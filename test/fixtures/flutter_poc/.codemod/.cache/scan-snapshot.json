@@ -1,41 +1,61 @@
 {
-  "edges": [
-    {
-      "from": "flutter.state/recipe",
-      "kind": "stores",
-      "sources": [
-        {
-          "path": "lib/stores/recipe_store.dart"
-        }
-      ],
-      "to": "flutter.model/recipe"
-    },
-    {
-      "from": "flutter.state/user",
-      "kind": "stores",
-      "sources": [
-        {
-          "path": "lib/stores/user_store.dart"
-        }
-      ],
-      "to": "flutter.model/user"
-    }
-  ],
-  "findings": [
-    {
-      "code": "model.field_missing_in_store",
-      "instanceId": "flutter.model/recipe",
-      "locator": {
-        "name": "recipe",
-        "path": "lib/models/recipe.dart",
-        "source": {
-          "path": "lib/models/recipe.dart"
-        }
+  "meta": {
+    "version": 1,
+    "timestamp": 1792412257,
+    "stack": "flutter-poc-stack"
+  },
+  "relations": {
+    "aggregate": {
+      "architectureConnected": 4,
+      "architectureIsolated": 5,
+      "edgeCount": 2,
+      "instanceCount": 9,
+      "isolated": 5,
+      "membershipConnected": 0,
+      "ratios": {
+        "architectureConnected": 0.4444444444444444,
+        "connected": 0.4444444444444444
       },
-      "message": "field subtitle is not present in store lib/stores/recipe_store.dart",
-      "severity": "warning"
+      "relationIgnored": 0
+    },
+    "byComponent": [
+      {
+        "architectureConnected": 0,
+        "architectureIsolated": 1,
+        "componentId": "flutter.method",
+        "instanceCount": 1,
+        "membershipOnly": 0,
+        "relationIgnored": 0
+      },
+      {
+        "architectureConnected": 2,
+        "architectureIsolated": 0,
+        "componentId": "flutter.model",
+        "instanceCount": 2,
+        "membershipOnly": 0,
+        "relationIgnored": 0
+      },
+      {
+        "architectureConnected": 0,
+        "architectureIsolated": 4,
+        "componentId": "flutter.property",
+        "instanceCount": 4,
+        "membershipOnly": 0,
+        "relationIgnored": 0
+      },
+      {
+        "architectureConnected": 2,
+        "architectureIsolated": 0,
+        "componentId": "flutter.state",
+        "instanceCount": 2,
+        "membershipOnly": 0,
+        "relationIgnored": 0
+      }
+    ],
+    "byKind": {
+      "stores": 2
     }
-  ],
+  },
   "instances": [
     {
       "ast": {
@@ -365,6 +385,28 @@
       }
     }
   ],
+  "edges": [
+    {
+      "from": "flutter.state/recipe",
+      "kind": "stores",
+      "sources": [
+        {
+          "path": "lib/stores/recipe_store.dart"
+        }
+      ],
+      "to": "flutter.model/recipe"
+    },
+    {
+      "from": "flutter.state/user",
+      "kind": "stores",
+      "sources": [
+        {
+          "path": "lib/stores/user_store.dart"
+        }
+      ],
+      "to": "flutter.model/user"
+    }
+  ],
   "kindGraph": [
     {
       "count": 2,
@@ -373,9 +415,19 @@
       "to": "flutter.model"
     }
   ],
-  "meta": {
-    "stack": "flutter-poc-stack",
-    "timestamp": 1790766620,
-    "version": 1
-  }
+  "findings": [
+    {
+      "code": "model.field_missing_in_store",
+      "instanceId": "flutter.model/recipe",
+      "locator": {
+        "name": "recipe",
+        "path": "lib/models/recipe.dart",
+        "source": {
+          "path": "lib/models/recipe.dart"
+        }
+      },
+      "message": "field subtitle is not present in store lib/stores/recipe_store.dart",
+      "severity": "warning"
+    }
+  ]
 }

@@ -1,7 +1,7 @@
 --- Webview ↔ extension message protocol (consts, unions, handlers, client posts).
 
 local MESSAGES = "vscode_extension/src/shared/messages.ts"
-local HANDLERS = "vscode_extension/src/extension/views/recipeRunnerHandlers.ts"
+local HANDLERS = "vscode_extension/src/extension/views/recipeRunner/index.ts"
 local CLIENT = "vscode_extension/src/webview/src/extensionClient.ts"
 
 local function constKeys(c, path, constName)

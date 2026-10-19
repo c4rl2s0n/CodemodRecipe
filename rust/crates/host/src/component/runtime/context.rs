@@ -12,7 +12,7 @@ use codemod_recipe_lua::{eval_return_table, require_chunk_name};
 use mlua::{Function, Lua, Table, Value};
 
 use crate::component::types::ComponentInstance;
-use crate::engine::working_tree::WorkingTree;
+use crate::edit_session::working_tree::WorkingTree;
 use crate::host_api::context::{HostInner, RunKind, SharedHost};
 use crate::lua_runtime::build_ctx;
 use crate::recipe::registry::RecipeRegistry;

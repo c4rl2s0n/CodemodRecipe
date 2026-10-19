@@ -1,12 +1,15 @@
---- Lua crate load/model surfaces (Asset kinds + pub types). Flag: load.rs is oversized (split later).
+--- Lua crate load/model surfaces (Asset kinds + pub types). Load grain: repo.lua_load_module.
 
 return {
 	id = "repo.lua_surface",
-	description = "Lua crate src files: pub types/fns (load.rs mega-file is an architecture smell)",
+	description = "Lua crate src files: pub types/fns (load/ split tracked by repo.lua_load_module)",
 	identify = function(c)
 		local out = {}
 		for _, path in ipairs(c:listFiles("rust/crates/lua/src/**/*.rs")) do
-			out[#out + 1] = { path = path }
+			-- load/ is owned by repo.lua_load_module (avoid double-cover).
+			if not path:find("/load/", 1, true) then
+				out[#out + 1] = { path = path }
+			end
 		end
 		return out
 	end,
@@ -90,20 +93,9 @@ return {
 			componentId = "repo.lua_surface",
 			source = { path = path },
 			children = children,
-			oversized = path:find("load.rs", 1, true) ~= nil,
 		}
 	end,
-	verify = function(_c, instance)
-		if instance.ast.oversized then
-			return {
-				{
-					severity = "info",
-					code = "lua.load_oversized",
-					message = "lua/src/load.rs is a mega-file; split load/validate/register for cleaner components (coverage capture roadmap)",
-					instanceId = instance.id,
-				},
-			}
-		end
+	verify = function(_c, _instance)
 		return {}
 	end,
 	relate = function(_c, _instance)

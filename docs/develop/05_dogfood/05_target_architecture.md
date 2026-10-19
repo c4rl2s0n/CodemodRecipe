@@ -26,6 +26,7 @@ flowchart BT
   query_tools["query_tools AST debug"]
   host["host integrator bins"]
   lua --> lua_macros
+  lua --> core
   engine --> core
   query_tools --> engine
   host --> core
@@ -39,7 +40,7 @@ flowchart BT
 |-------|----------------|
 | `codemod_recipe_lua_macros` | Proc macros for `#[host_method]` / `LuaSpec` — keep runtime + stubs aligned |
 | `codemod_recipe_core` | Disk patches / atomic apply — no tree-sitter, no recipes |
-| `codemod_recipe_lua` | Load/validate Luau assets + Luau-facing specs — **must not** depend on `engine` |
+| `codemod_recipe_lua` | Load/validate Luau assets + Luau-facing specs — may depend on `core` (D-016 shared shapes); **must not** depend on `engine` |
 | `codemod_recipe_engine` | Grammars, queries, edit ops — **must not** know recipes/registry |
 | `codemod_recipe_query_tools` | AST dump / debug / generate — recipe-free; depends on `engine` only |
 | `codemod_recipe_host` | Sole integrator: protocol, registry, sandbox runtime, components/stacks, WorkingTree, bootstrap, bins |
@@ -49,6 +50,42 @@ flowchart BT
 this DAG without an explicit decision.
 
 Enforced by: `repo.rust_crate` path-dep DAG check (Phase 3).
+
+## Host domain modules (intended)
+
+Module-first grain inside `codemod_recipe_host` ([D-025](03_decisions.md)).
+Packaging stays one crate until extraction criteria are met
+([deferred](03_decisions.md#crate-extraction-deferred-d-025-f): `component/` still needs SharedHost).
+
+| Domain id | Path (target) | Owns | Does not own |
+|-----------|---------------|------|--------------|
+| `recipe` | `host/src/recipe/` | Registry, args, validate, derive | Asset parse (lua), disk apply |
+| `edit_session` | `host/src/edit_session/` (was `engine/`) | WorkingTree, preview/apply orchestration, postExec | tree-sitter Engine, FileChange impl |
+| `host_api` | `host/src/host_api/` | `c:*` methods, SharedHost, registry | Spec types in core/lua (D-016) |
+| `components` | `host/src/component/` | Scan, relations, coverage, snapshot, hooks, ops | Protocol adapters |
+| `query_intel` | `host/src/query/` | Host wrappers over query_tools + AST cache | Grammar / compile (engine) |
+| `protocol` | `host/src/protocol/` | HostCommand schemas, dispatch, mcp_inventory | Handler business logic beyond routing |
+| `sandbox` | `host/src/sandbox/` | PathSandbox, globs, path templates | |
+| `config` | `host/src/config/` | HostConfig, bootstrap | |
+| `template` | `host/src/template/` | MiniJinja for `c:template` | |
+
+### Lua load modules (intended)
+
+`lua/src/load.rs` splits by asset kind: `load/{mod,recipe,map,variables,query_lib,type_def,component,stack,test_suite,table_util}.rs`.
+Public API (`load_recipe`, `load_asset`, …) stays stable.
+
+### Architecture layers (vocabulary)
+
+```mermaid
+flowchart TB
+  adapters["Adapters: VS Code MCP CLI bins"]
+  application["Application: HostCommand dispatch + stack ops"]
+  domains["Domain modules: recipe edit_session host_api components query_intel"]
+  platform["Platform crates: lua engine core query_tools lua_macros"]
+  adapters --> application
+  application --> domains
+  domains --> platform
+```
 
 ## Runtime data flow (intended)
 
@@ -116,10 +153,10 @@ flowchart TB
 |-------|----------|-------------------|-------------|
 | D-004 MCP triple | One HostCommand-derived adapter | `protocol/mcp_inventory.rs` SSOT for tools/list; call arms in `codemod_mcp.rs` | `repo.mcp_tool` |
 | Protocol TS mirror | Generated or derived from Rust | Hand-maintained union | `repo.host_protocol` (sync guard until codegen) |
-| Dual domain types | Shared or single-owned `QuerySpec` / `IfExists` | Parallel types in `lua` + `engine` / `core` | `repo.domain_type` (`mirrors` + `dual_ownership` warnings) |
-| Host concentration | Thin integrator over clear modules | Phase F split dispatch + component pipeline; `lua/load.rs` remains | D-017 (partial) |
-| Placement / inventory | Architecture zones own modules | D-020: no inventory catch-all | `repo.zone` + relate |
-| Stub fan-out | One generated surface | Copies under `.codemod/stubs`, `export/`, `vscode_extension/stubs` | backlog (D-018) |
+| Dual domain types | Shared shapes in `core`; lua FromLua adapters + `From` | **Done** — `core::QuerySpec`; engine re-exports; lua adapters | `repo.domain_type` (owner vs lua_adapter) |
+| Host concentration | Thin integrator over clear **domain modules** | Domain table above; `edit_session` rename; mega-file splits | D-017 / D-025 |
+| Placement / inventory | Architecture zones own modules (incl. `domain.*`) | D-020 + D-025 zone split | `repo.zone` + relate |
+| Stub fan-out | One generated surface | Generate once; sync copies | fixed (D-018 / D-025 E) |
 | Crate DAG | Allowed path deps only | Must match table above | `repo.rust_crate` |
 
 Warm-from-disk of the snapshot into the in-memory scan cache remains deferred

@@ -7,7 +7,7 @@ use codemod_recipe_core::resource_path::resolve_under_root;
 use codemod_recipe_lua::model::{ExplorerMenuKind, Recipe};
 use codemod_recipe_lua::InputKind;
 
-use crate::engine::step_condition::{condition_expr_passes, eval_string_expr};
+use crate::edit_session::step_condition::{condition_expr_passes, eval_string_expr};
 use crate::protocol::{ExplorerRecipeMatch, FilterExplorerRecipesResponse};
 use crate::recipe::registry::RecipeRegistry;
 use crate::template::path_filters::{path_basename, path_parent, path_stem};

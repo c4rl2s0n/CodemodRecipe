@@ -32,7 +32,7 @@ use crate::component::{
     component_scan, invoke_hook, invoke_operation, invoke_scaffold, invoke_stack_operation,
     ComponentHookRequest, ComponentInvokeRequest, ComponentScaffoldRequest, StackInvokeRequest,
 };
-use crate::engine::runner::{collect_recipe_changes, resolve_recipe};
+use crate::edit_session::runner::{collect_recipe_changes, resolve_recipe};
 use crate::host_api::registry::{rt, set_fn};
 use crate::lua_runtime::RunKind;
 use crate::preview::diff::build_file_preview_from_change;

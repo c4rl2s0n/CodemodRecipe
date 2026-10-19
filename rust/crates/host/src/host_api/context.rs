@@ -6,7 +6,7 @@ use std::sync::Mutex;
 use codemod_recipe_engine::{LanguageRegistry, RegistryConfig};
 use codemod_recipe_lua::model::{ComponentDef, Recipe, TranscriptEvent};
 
-use crate::engine::working_tree::WorkingTree;
+use crate::edit_session::working_tree::WorkingTree;
 use crate::sandbox::path_sandbox::PathSandbox;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

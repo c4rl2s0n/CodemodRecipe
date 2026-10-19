@@ -42,6 +42,24 @@ impl QuerySpec {
     }
 }
 
+impl From<QuerySpec> for codemod_recipe_core::QuerySpec {
+    fn from(value: QuerySpec) -> Self {
+        match value {
+            QuerySpec::Single(s) => Self::Single(s),
+            QuerySpec::Chain(v) => Self::Chain(v),
+        }
+    }
+}
+
+impl From<&QuerySpec> for codemod_recipe_core::QuerySpec {
+    fn from(value: &QuerySpec) -> Self {
+        match value {
+            QuerySpec::Single(s) => Self::Single(s.clone()),
+            QuerySpec::Chain(v) => Self::Chain(v.clone()),
+        }
+    }
+}
+
 impl FromLua for QuerySpec {
     fn from_lua(value: Value, _: &Lua) -> mlua::Result<Self> {
         match value {
@@ -165,6 +183,24 @@ impl HostType for IfMissing {
     }
 }
 impl HostSpec for IfMissing {}
+
+impl From<IfExists> for codemod_recipe_core::apply::file_change::IfExists {
+    fn from(value: IfExists) -> Self {
+        match value {
+            IfExists::Fail => Self::Fail,
+            IfExists::Skip => Self::Skip,
+        }
+    }
+}
+
+impl From<IfMissing> for codemod_recipe_core::apply::file_change::IfMissing {
+    fn from(value: IfMissing) -> Self {
+        match value {
+            IfMissing::Fail => Self::Fail,
+            IfMissing::Skip => Self::Skip,
+        }
+    }
+}
 
 /// Environment table passed to template rendering. Keys are strings and values
 /// are arbitrary JSON-compatible Lua values.

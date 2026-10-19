@@ -5,7 +5,7 @@ return {
 		identifies_working_tree = function(t)
 			local ws = t:workspace({
 				files = {
-					["rust/crates/host/src/engine/working_tree.rs"] = [[
+					["rust/crates/host/src/edit_session/working_tree.rs"] = [[
 pub struct WorkingTree {}
 impl WorkingTree {
     pub fn finalize(&self) {}

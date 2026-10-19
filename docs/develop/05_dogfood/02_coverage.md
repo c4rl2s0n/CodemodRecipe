@@ -20,11 +20,11 @@ Layout: components live under `.codemod/components/{rust,host,vscode,engine,lua}
 | E | Relation policy (child `lives_in` + inventory zone) + adapter `handles` edges + deepen hot partials; friction→D-017 clarity | done |
 | F | Placement (D-020): drop inventory catch-all; zone modules by architecture; split component/dispatch mega-files; snapshot key order | done |
 
-Post Phase F snapshot: span **~42.9%**; `relationIgnored` **~443** (was ~1147 with inventory catch-all); architecture zones own host/TS/pipeline composers; honest `architectureIsolated` for composers with only `lives_in` until they gain architecture edges. `stage_oversized` / `dispatch_dual_model` cleared; `lua.load_oversized` remains.
+Latest snapshot (2026-10-19): span **~45.3%**; architecture-connected **~44.6%** (`152 / 341` eligible — [inferred eligibility](03_decisions.md#architecture-ratio-eligibility-inferred)). Pipeline `feeds`; webview handlers + `dispose` hygiene. Findings down to `relation.duplicate` ×5.
 
 **Metric:** snapshot `coverage.aggregate` + `relations.aggregate` after each scan. Aim for spanned architecture units and a trustworthy architecture ratio (not 100% private bodies).
 
-### Framework friction → clarity (D-017 grain)
+### Framework friction → clarity (D-017 / D-025 grain)
 
 Mega-files fight the framework: path-only composers + pub-fn leaves leave private/orchestration unscanned, and dual identities blur relate targets. **Deepening alone has diminishing returns** until grain improves.
 
@@ -32,15 +32,14 @@ Mega-files fight the framework: path-only composers + pub-fn leaves leave privat
 |------|--------|
 | `component/{relations,scan,runtime}` | **Split** (Phase F) into `relations/`, `scan/`, `runtime/` modules — `stage_oversized` cleared |
 | `protocol/dispatch` | **Split** (Phase F) into `dispatch/{catalog,query,recipe,components,common}.rs` + thin `mod.rs` — `dispatch_dual_model` cleared |
-| `lua/src/load.rs` | Still mega-file; `lua.load_oversized` remains |
+| `lua/src/load/` | **Split** (D-025 A1) by asset kind — `lua.load_oversized` cleared |
 
 ### Architecture adjustments (where modeling fights the tree)
 
 | Area | Issue | Suggested product change |
 |------|--------|--------------------------|
-| `lua/src/load.rs` | Mega-file; `repo.lua_surface` emits `lua.load_oversized` | Split load / validate / register (D-017) |
-| D-016 dual types | Spanned leaves exist; smell remains | Unify ownership |
-| D-018 stubs | Outside `codebase` | Single generated surface |
+| D-016 dual types | **Fixed** — core owns `QuerySpec`; lua adapters + `From` | — |
+| D-018 stubs | **Fixed** — generate once; sync copies | — |
 
 ## Components
 
@@ -61,7 +60,9 @@ Mega-files fight the framework: path-only composers + pub-fn leaves leave privat
 | `repo.host_module` / item | yes / child | host `src/*` modules | pub leaves; `rust.runtime` |
 | `repo.component_pipeline` | yes | component/* stages | pub fn/type leaves; post–Phase F module split |
 | `repo.engine_surface` | yes | engine/src | pub leaves |
-| `repo.lua_surface` | yes | lua/src | pub leaves; load.rs info |
+| `repo.lua_surface` | yes | lua/src | pub leaves (load split → `lua_load_module`) |
+| `repo.lua_load_module` | yes | `lua/src/load/*.rs` | asset-kind load stages |
+| `repo.host_api_handlers` | yes | `host_api/handlers/*` | capability groups |
 | `repo.webview_message` / entry | yes / child | messages.ts | membership under webview |
 | `repo.ts_module` / `ts_export` | yes / child | all extension TS/Vue | vscode.* zone by path + child `lives_in` |
 | `repo.vscode_controller` / `webview_view` | (files present, not stack roots) | specialized composers | avoid duplicate identify |
@@ -81,7 +82,7 @@ Catalog in `.codemod/lib/zones.luau` (wired from `stack.zones` / `zoneRoles`):
 | Zone id | Role | Notes |
 |---------|------|--------|
 | `structural.modules` | `structural` | `ignoreRelations` — Rust barrels / support surfaces |
-| `command.adapters` / `rust.runtime` / `domain.types` / `vscode.*` | `architecture` | Title + grouping (no metric flags) |
+| `command.adapters` / `domain.*` / `platform.engine` / `platform.lua` / `rust.runtime` / `vscode.*` | `architecture` | Title + grouping (no metric flags) |
 | `docs.surface` | `documentation` | Title-only |
 
 Coverage children (`host_module_item`, `ts_export`, `rust_mod_item`, `host_api_method_entry`) emit `lives_in` → parent so zone flags reach the leaf forest. Do **not** blanket-`ignoreRelations` on `command.adapters` / all `vscode.*` (that greenwashes the triangle).
@@ -95,10 +96,10 @@ Snapshot `relations.aggregate`: `relationIgnored`, `architectureIsolated`,
 |------|-----------|---------|-------|------------|
 | 2026-09-29 | `repo.host_protocol` | `generateAstPath` + `componentGraph` missing from TS union | D-003 | fixed |
 | 2026-09-29 | `repo.vscode_command` | selectAstNode bypass COMMANDS | D-011 | fixed |
-| 2026-09-30 | `repo.domain_type` | dual ownership | D-016 | open |
-| 2026-09-30 | `repo.lua_surface` | load.rs oversized info | capture roadmap | open (split) |
-| 2026-09-30 | `repo.host_protocol` | dispatch dual-model info | D-017 | open (split) |
-| 2026-09-30 | `repo.component_pipeline` | relations/scan/runtime oversized info | D-017 | open (split) |
+| 2026-09-30 | `repo.domain_type` | dual ownership | D-016 | fixed (D-025 C) |
+| 2026-09-30 | `repo.lua_surface` | load.rs oversized info | D-025 A1 | fixed (`lua/src/load/`) |
+| 2026-09-30 | `repo.host_protocol` | dispatch dual-model info | D-017 | fixed (dispatch split) |
+| 2026-09-30 | `repo.component_pipeline` | relations/scan/runtime oversized info | D-017 | fixed (module split) |
 
 ## Kind-graph shape (command triangle + runtime domain)
 
@@ -116,7 +117,24 @@ domain_type --mirrors--> domain_type
 ## Backlog
 
 1. Adapters codegen from HostCommand.
-2. D-016 unify; D-017 host/lua mega-file splits; D-018 stubs.
+2. Retire blanket `repo.engine_surface` once engine domain kinds deepen.
 3. `repo.rust_workspace` / docs / codemod_asset.
-4. CI goldens on snapshot (D-014).
-5. Promote `vscode_controller` / `webview_view` to roots with verify-only if needed (without re-identifying all of `ts_module`).
+4. Full mermaid CI goldens (D-014 partial: schema test only).
+5. Promote `vscode_controller` / `webview_view` to roots with verify-only if needed.
+6. Crate extraction when [criteria](03_decisions.md#crate-extraction-deferred-d-025-f) hold (deferred).
+7. Clear `webview_message.missing_handler` noise / `relation.unresolved` for configureHost (scan hygiene).
+
+### Restructure handoff log
+
+| Date | Slice | Notes |
+|------|-------|-------|
+| 2026-10-19 | D-025 Phase 0 | Docs: domain table, zones, extraction criteria |
+| 2026-10-19 | D-025 A1 | `lua/src/load/` split by asset kind; `lua.load_oversized` cleared |
+| 2026-10-19 | D-025 A2 | `host_api/handlers/` split by capability |
+| 2026-10-19 | D-025 B | `edit_session` rename; `domain.*` zones |
+| 2026-10-19 | D-025 C | `QuerySpec` in core; lua adapters; D-016 fixed |
+| 2026-10-19 | D-025 D | VS Code: recipeRunner/*, HostBridgeCore, useComponentsView |
+| 2026-10-19 | D-025 E | `repo.lua_load_module`, `repo.host_api_handlers`; stub sync SSOT; snapshot schema test |
+| 2026-10-19 | D-025 F | Crate extraction deferred (components still need SharedHost) |
+| 2026-10-19 | D-025 rescan | Snapshot refreshed; span ~45.4%; domain edges; `lua→core` DAG allow; D-010 |
+| 2026-10-19 | Arch eligibility | Inferred architecture ratio (exclude membership-only nested); pipeline `feeds`; ADR in decisions |

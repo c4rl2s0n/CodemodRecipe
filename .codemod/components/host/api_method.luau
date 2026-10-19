@@ -210,7 +210,7 @@ return {
 	end,
 	relate = function(_c, instance, index)
 		local edges = {
-			{ kind = "lives_in", to = "repo.zone/rust.runtime" },
+			{ kind = "lives_in", to = "repo.zone/domain.host_api" },
 		}
 		local engine = index:byComponent("repo.engine_edit")
 		if engine and #engine > 0 then

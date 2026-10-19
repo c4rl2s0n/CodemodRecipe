@@ -76,10 +76,86 @@ Every composer has an architecture or structural home — **no inventory catch-a
 | Kind / surface | Zone | Notes |
 |----------------|------|-------|
 | Commands, bridge, MCP, protocol, dispatch arms | `command.adapters` | Architecture |
-| Host modules, component pipeline, API/registry/engine/tree | `rust.runtime` | Architecture |
+| Host domain modules (recipe, edit_session, host_api, components, query_intel) | matching `domain.*` | Architecture ([D-025](#domain-restructure-d-025)); legacy `rust.runtime` retired when path map lands |
 | Domain dual types | `domain.types` | Architecture |
 | TS under `extension/` / `webview/` / `shared/` | matching `vscode.*` | Architecture (path → zone) |
 | Rust barrels / support / engine / lua surfaces | `structural.modules` | `ignoreRelations` (barrels only) |
 | Coverage children (`*_item`, `ts_export`, …) | `lives_in` → parent | Inherit; do not park parents in inventory |
 
 **Visualization:** kind graph = readable architecture story; instance graph = **complete** map (all membership + edges). Snapshot JSON top-level order: `meta`, `coverage`, `relations`, then instances/edges/…
+
+### Architecture ratio eligibility (inferred)
+
+Span coverage and architecture connectivity are **independent** (spans vs edges).
+Architecture % does **not** use a per-component `metricRole`. Eligibility is inferred:
+
+- **Eligible:** not `ignoreRelations`, and either zone-rooted / free root, **or** nested under a non-zone parent but present on a non-membership edge (`uses` / `feeds` / …).
+- **Not eligible:** membership-only children of another component instance (structural / span members). They stay in the forest and still paint span; they are not `architectureIsolated`.
+- Ratio: `architectureConnected / architectureEligible` (see `relations.aggregate` in the scan snapshot).
+
+Amends the spirit of D-020: nested `lives_in` → parent unit means “part of that model,” not “architecture-isolated orphan.”
+
+## Domain restructure (D-025)
+
+Module-first restructure so dogfood can model **domains**, not bags of functions.
+Companion policy: [Target architecture](05_target_architecture.md) domain table.
+
+### Vocabulary
+
+| Term | Meaning |
+|------|---------|
+| **Adapter** | Thin client of `HostCommand` (MCP, hostBridge, VS Code COMMANDS) |
+| **Application** | `protocol/dispatch/*`; stack `createCommand` — orchestration |
+| **Domain module** | Cohesive ownership inside host (or extracted crate): one public API, one zone |
+| **Platform crate** | Leaf libraries per crate DAG (`lua`, `engine`, `core`, …) |
+| **Surface** | Temporary pub-leaf composer; retire when domain kinds exist |
+
+`HostCommand` (RPC) and `host_api` / `c:*` (in-sandbox) remain **two different cores**.
+
+### Rename
+
+`host/src/engine/` → `host/src/edit_session/` so it does not collide with
+`codemod_recipe_engine`.
+
+### Zones (evolve from flat `rust.runtime`)
+
+| Zone id | Owns |
+|---------|------|
+| `command.adapters` | Protocol, MCP, bridge, VS Code commands (unchanged) |
+| `domain.recipe` | Registry, args, validate |
+| `domain.edit_session` | WorkingTree, preview/apply orchestration, postExec |
+| `domain.host_api` | Luau `c:*` handlers |
+| `domain.components` | Scan, relations, coverage, snapshot, hooks |
+| `domain.query_intel` | Host wrappers over query_tools |
+| `domain.types` | Shared / dual domain type sites |
+| `structural.modules` | Barrels / support surfaces (`ignoreRelations`) |
+| `vscode.*` | Path-mapped extension / webview / shared |
+
+### Crate extraction criteria
+
+Extract a **new crate** only if **all** hold:
+
+1. Clear DAG role (extends the crate table in target architecture).
+2. Independently testable without protocol/MCP/VS Code.
+3. ≥~2k LOC cohesive domain **or** blocking a forbidden dependency.
+4. Decision entry here + `repo.rust_crate` DAG update in the same change.
+
+Default: **split modules first**; open an extraction ADR only when criteria are met.
+Likely later candidates: `codemod_recipe_components`, `codemod_recipe_host_api`.
+
+### D-016 type ownership (resolved)
+
+- **`QuerySpec`:** owned in [`codemod_recipe_core::query_spec`](../../../rust/crates/core/src/query_spec.rs); `engine` re-exports; `lua` keeps a FromLua twin + `From` into core (orphan-rule adapters).
+- **`IfExists` / `IfMissing`:** owned in `core::apply::file_change`; lua FromLua twins + `From` into core at the host_api boundary.
+
+### D-018 stub distribution (resolved)
+
+Generate once into `vscode_extension/stubs/codemod-context.d.luau` (SSOT).
+`scripts/sync-luau-stubs.sh` copies into `export/.codemod/stubs/` and `.codemod/stubs/`
+for bootstrap/IDE. Copies are deploy artifacts — never hand-edit.
+
+### Crate extraction deferred (D-025 F)
+
+`host/src/component/` (~5.5k LOC) meets size, but **fails** independent testability
+without `SharedHost` / `WorkingTree` / protocol. Keep as `domain.components` modules
+inside host until a thin facade API exists. Revisit when criterion 2 holds.

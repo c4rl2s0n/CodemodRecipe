@@ -10,7 +10,8 @@ end
 local ALLOWED_PATH_DEPS = {
 	lua_macros = {},
 	core = {},
-	lua = { lua_macros = true },
+	-- D-016: shared QuerySpec/IfExists shapes live in core; lua FromLua adapters depend on core.
+	lua = { lua_macros = true, core = true },
 	engine = { core = true },
 	query_tools = { engine = true },
 	host = {

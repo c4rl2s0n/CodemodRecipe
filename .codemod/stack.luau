@@ -24,6 +24,8 @@ return {
 		-- other crates
 		"repo.engine_surface",
 		"repo.lua_surface",
+		"repo.lua_load_module",
+		"repo.host_api_handlers",
 		-- vscode
 		"repo.host_bridge",
 		"repo.vscode_command",

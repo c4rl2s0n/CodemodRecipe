@@ -23,7 +23,7 @@ Status: `open` / `in-progress` / `fixed` / `wontfix(decision documented)`.
 | ID | Severity | Area | Issue | Status |
 |----|----------|------|-------|--------|
 | D-009 | bug | mcp / query_tools | `debug_query` with default `instrument: true` breaks any query whose pattern ends with predicates: instrumentation appends `@__layer_1` *after* the trailing predicate → `Query error ... Invalid syntax`. Repro: any `repo_*` library query via `debug_query` without `instrument: false`. Workaround: pass `instrument: false`. | fixed (inject `(type @__layer_N …)` before predicates) |
-| D-010 | ux | host api docs | `listFiles` surface description says "a `*` glob (one `*` per segment)", but `**` recursive segments are implemented (`workspace_glob.rs` `**` arm + `glob_double_star_recursive` test). Description undersells the feature. | open |
+| D-010 | ux | host api docs | `listFiles` surface description says "a `*` glob (one `*` per segment)", but `**` recursive segments are implemented (`workspace_glob.rs` `**` arm + `glob_double_star_recursive` test). Description undersells the feature. | fixed (`**` noted on `#[host_method]`) |
 | D-011 | bug | extension | **Found by `repo.vscode_command` scan**: manifest command `codemodRecipe.queryTools.selectAstNode` has no `COMMANDS` entry and is registered by string literal (`queryToolsController.ts` L77, referenced in `astTreeProvider.ts` L85) — bypasses the COMMANDS SSOT. | fixed (Phase 3) |
 | D-012 | ux | query authoring | Unbalanced-paren mistakes in `[[...]]` query libraries surface as `Query error at L:C. Invalid syntax` pointing at the trailing predicate line, with no hint that parens are unbalanced. Cost one debug cycle per new query library. | fixed (paren pre-check + Invalid syntax Hint) |
 
@@ -41,18 +41,24 @@ Status: `open` / `in-progress` / `fixed` / `wontfix(decision documented)`.
 | ID | Severity | Area | Issue | Status |
 |----|----------|------|-------|--------|
 | D-013 | gap | host / scan | Scan-cache warm-from-disk: reloading a session still pays full identify cost; warming the forest from a committed snapshot was deferred (correctness does not need it). | open (deferred — see [03_decisions.md](03_decisions.md)) |
-| D-014 | gap | tests / CI | Test-layer golden assertions against `scan_snapshot.json` / mermaid artifacts deferred; committed artifacts are for humans and regen docs first. | open (deferred — see [03_decisions.md](03_decisions.md)) |
+| D-014 | gap | tests / CI | Snapshot key-shape guard added (`component_snapshot_schema_test`); full golden mermaid/CI still optional. | open (partial — schema test in D-025 E) |
 | D-015 | note | architecture | Junction `repo.command` component rejected; command concept = relation edges + stack `createCommand`. Graph-aware recipes deferred (stack ops cover the use case with guards). | wontfix-documented / deferred ([03_decisions.md](03_decisions.md)) |
 
 ## 2026-09-30 — Phase 3 (architecture-first)
 
 | ID | Severity | Area | Issue | Status |
 |----|----------|------|-------|--------|
-| D-016 | gap | architecture | Dual domain types: `QuerySpec` / `IfExists` exist in both `lua` specs and `engine`/`core`; host bridges by hand. Expected: single ownership. **Enforced** by `repo.domain_type` (`domain_type.dual_ownership` warnings + `mirrors`). | open (architecture-first — [05_target_architecture.md](05_target_architecture.md)) |
-| D-017 | gap | architecture | Host crate concentration: protocol, registry mega-state, WorkingTree, components, bootstrap all in `codemod_recipe_host`. Expected: thinner integrator. **Phase F**: split `component/{relations,scan,runtime}` into modules + `protocol/dispatch/` per-domain handlers (cleared `stage_oversized` / `dispatch_dual_model`). Remaining: `lua/src/load.rs` mega-file. | open (partial — [02_coverage.md](02_coverage.md)) |
-| D-018 | gap | architecture | Generated stub fan-out under `.codemod/stubs`, `export/.codemod/stubs`, `vscode_extension/stubs`. Expected: one generated surface. | open (backlog) |
+| D-016 | gap | architecture | Dual domain types: `QuerySpec` / `IfExists`. **Resolved (D-025 C):** `QuerySpec` owned in `core`; engine re-exports; lua keeps FromLua adapters + `From` into core; `IfExists`/`IfMissing` convert via `From`. `repo.domain_type` tracks owner vs `lua_adapter` (no dual_ownership warnings). | fixed (D-025 C) |
+| D-017 | gap | architecture | Host crate concentration. Mega-file splits done (`component/*`, `dispatch/`, `load/`, `handlers/`, `edit_session`). Domain zones + modules in place; **crate extraction deferred** (SharedHost coupling — [D-025 F](03_decisions.md#crate-extraction-deferred-d-025-f)). Remains open until a thin facade enables extraction. | open (partial — modules done, extract deferred) |
+| D-018 | gap | architecture | Stub fan-out. **Policy:** generate once into `vscode_extension/stubs/` (SSOT); `scripts/sync-luau-stubs.sh` copies to export + `.codemod`. Copies are deploy artifacts, not alternate sources. | fixed (sync SSOT — D-025 E) |
 | D-019 | note | host / scan | Machine snapshot path is `{codemod_root}/.cache/scan-snapshot.json` (not docs/). Docs JSON dump removed; mermaid remains under `05_dogfood/`. | fixed (Phase 3) |
 | D-020 | decision | architecture | Placement policy: no inventory catch-all. Module composers live in architecture zones (`rust.runtime`, `vscode.*` by path, `command.adapters`); structural barrels keep `ignoreRelations`; coverage leaves nest under parents. Snapshot keys ordered `meta` → `coverage` → `relations` → rest. Full instance graph retained for completeness. | fixed (Phase F) |
+
+## 2026-10-19 — Domain restructure
+
+| ID | Severity | Area | Issue | Status |
+|----|----------|------|-------|--------|
+| D-025 | decision | architecture | Module-first domain restructure: vocabulary, `edit_session` rename, `domain.*` zones, mega-file splits, D-016/D-018, VS Code grain. Extraction deferred. See [03_decisions.md](03_decisions.md#domain-restructure-d-025). | fixed |
 
 ## Template for new entries
 

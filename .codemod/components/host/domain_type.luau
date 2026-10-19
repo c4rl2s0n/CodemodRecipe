@@ -1,42 +1,49 @@
---- Dual-owned domain types (QuerySpec / IfExists) — architecture smell D-016.
+--- Domain types: shared shapes live in core; Luau keeps FromLua adapters (D-016).
 
 local SITES = {
 	{
-		id = "QuerySpec.engine",
+		id = "QuerySpec.core",
 		name = "QuerySpec",
-		path = "rust/crates/engine/src/ops.rs",
-		pair = "QuerySpec.lua",
+		path = "rust/crates/core/src/query_spec.rs",
+		role = "owner",
 	},
 	{
 		id = "QuerySpec.lua",
 		name = "QuerySpec",
 		path = "rust/crates/lua/src/host_api/specs.rs",
-		pair = "QuerySpec.engine",
+		role = "lua_adapter",
+		pair = "QuerySpec.core",
 	},
 	{
 		id = "IfExists.core",
 		name = "IfExists",
 		path = "rust/crates/core/src/apply/file_change.rs",
-		pair = "IfExists.lua",
+		role = "owner",
 	},
 	{
 		id = "IfExists.lua",
 		name = "IfExists",
 		path = "rust/crates/lua/src/host_api/specs.rs",
+		role = "lua_adapter",
 		pair = "IfExists.core",
 	},
 }
 
 return {
 	id = "repo.domain_type",
-	description = "Domain types with dual definitions (QuerySpec, IfExists) — D-016",
+	description = "Domain types: core ownership + Luau FromLua adapters (D-016)",
 	identify = function(c)
 		local out = {}
 		for _, site in ipairs(SITES) do
 			for _, path in ipairs(c:listFiles(site.path)) do
 				out[#out + 1] = {
 					path = path,
-					hints = { siteId = site.id, typeName = site.name, pair = site.pair },
+					hints = {
+						siteId = site.id,
+						typeName = site.name,
+						pair = site.pair,
+						role = site.role,
+					},
 				}
 			end
 		end
@@ -83,6 +90,7 @@ return {
 			source = source,
 			typeName = typeName,
 			pair = hints.pair,
+			role = hints.role or "owner",
 			defined = found,
 		}
 	end,
@@ -111,14 +119,10 @@ return {
 				instanceId = instance.id,
 			}
 		end
-		-- Architecture-first: dual ownership is intentional debt until unified.
-		findings[#findings + 1] = {
-			severity = "warning",
-			code = "domain_type.dual_ownership",
-			message = instance.ast.typeName
-				.. " is defined in multiple crates (D-016); unify or keep explicit bridge",
-			instanceId = instance.id,
-		}
+		-- Luau adapters are expected (FromLua); only warn on unexpected dual owners.
+		if instance.ast.role == "lua_adapter" then
+			return findings
+		end
 		return findings
 	end,
 	toSummary = function(_c, instance)

@@ -2,7 +2,7 @@
 
 mod common;
 
-use codemod_recipe_host::engine::runner::{collect_recipe_changes, parse_inline_recipe};
+use codemod_recipe_host::edit_session::runner::{collect_recipe_changes, parse_inline_recipe};
 use codemod_recipe_host::lua_runtime::RunKind;
 use codemod_recipe_host::recipe::registry::RecipeRegistry;
 use common::{repo_root, temp_workspace};
