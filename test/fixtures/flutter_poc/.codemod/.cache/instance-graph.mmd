@@ -1,0 +1,7 @@
+graph LR
+  flutter_model_recipe["flutter.model/recipe"]
+  flutter_model_user["flutter.model/user"]
+  flutter_state_recipe["flutter.state/recipe"]
+  flutter_state_user["flutter.state/user"]
+  flutter_state_recipe -- "stores" --> flutter_model_recipe
+  flutter_state_user -- "stores" --> flutter_model_user
