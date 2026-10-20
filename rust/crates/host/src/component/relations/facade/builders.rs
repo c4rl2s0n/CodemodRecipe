@@ -7,7 +7,7 @@ use codemod_recipe_lua::json_lua::json_to_lua;
 
 use crate::component::relations::types::{ComponentEdge, FlatInstance};
 
-use super::script::GRAPH_FACADE_LUA;
+const GRAPH_FACADE_LUA: &str = include_str!("graph_facade.luau");
 
 pub fn build_index_facade(lua: &Lua, flat: &[FlatInstance]) -> Result<Table, String> {
     let module =

@@ -81,7 +81,9 @@ pub fn relation_metrics(
 
     for inst in &flat {
         let flags = flags_for_member(&inst.id, &forest, &zone_inst, zone_roles);
-        let ignored = flags.ignore_relations;
+        // Zone catalog nodes are membership hubs (lives_in targets), not arch units.
+        let is_zone = zone_inst.contains_key(&inst.id);
+        let ignored = flags.ignore_relations || is_zone;
         let connected = any_deg.contains(&inst.id);
         let membership = member_deg.contains(&inst.id);
         let architecture = arch_deg.contains(&inst.id);
@@ -339,7 +341,8 @@ mod tests {
 
         let m = relation_metrics(&instances, &edges, &relations(), &zones, &zone_roles);
         assert_eq!(m.aggregate.instance_count, 5);
-        assert_eq!(m.aggregate.relation_ignored, 1, "{:?}", m.aggregate);
+        // barrel (structural) + 2 zone catalog nodes
+        assert_eq!(m.aggregate.relation_ignored, 3, "{:?}", m.aggregate);
         assert_eq!(m.aggregate.architecture_connected, 2); // cmd + engine
         // barrel is membership-only + ignored → not architectureIsolated
         let barrel = m
@@ -350,8 +353,8 @@ mod tests {
         assert_eq!(barrel.relation_ignored, 1);
         assert_eq!(barrel.architecture_isolated, 0);
         assert_eq!(barrel.membership_only, 1);
-        // architecture ratio denom = eligible (zones + cmd + engine; barrel ignored)
-        assert_eq!(m.aggregate.architecture_eligible, 4, "{:?}", m.aggregate);
+        // architecture ratio denom = eligible (cmd + engine; zones + barrel ignored)
+        assert_eq!(m.aggregate.architecture_eligible, 2, "{:?}", m.aggregate);
         let expected = m.aggregate.architecture_connected as f64
             / m.aggregate.architecture_eligible as f64;
         assert!((m.aggregate.ratios.architecture_connected - expected).abs() < 1e-9);
@@ -377,10 +380,10 @@ mod tests {
             "repo.zone/docs.surface",
         )];
         let m = relation_metrics(&instances, &edges, &relations(), &zones, &zone_roles);
-        assert_eq!(m.aggregate.relation_ignored, 0);
-        // zone-rooted member is eligible; membership-only → architectureIsolated
-        assert_eq!(m.aggregate.architecture_eligible, 2);
-        assert_eq!(m.aggregate.architecture_isolated, 2); // zone + member
+        // Zone catalog node is always relation-ignored; member remains eligible/isolated.
+        assert_eq!(m.aggregate.relation_ignored, 1);
+        assert_eq!(m.aggregate.architecture_eligible, 1);
+        assert_eq!(m.aggregate.architecture_isolated, 1); // member only
     }
 
     #[test]
@@ -418,9 +421,9 @@ mod tests {
         assert_eq!(item.membership_only, 1);
         assert_eq!(item.architecture_eligible, 0);
         assert_eq!(item.architecture_isolated, 0);
-        // zone + host_module eligible; item excluded
-        assert_eq!(m.aggregate.architecture_eligible, 2, "{:?}", m.aggregate);
-        assert_eq!(m.aggregate.architecture_isolated, 2);
+        // host_module eligible/isolated; zone catalog ignored; item nested membership-only
+        assert_eq!(m.aggregate.architecture_eligible, 1, "{:?}", m.aggregate);
+        assert_eq!(m.aggregate.architecture_isolated, 1);
         assert_eq!(m.aggregate.architecture_connected, 0);
         assert!((m.aggregate.ratios.architecture_connected - 0.0).abs() < 1e-9);
     }
@@ -478,9 +481,9 @@ mod tests {
         assert_eq!(item.architecture_eligible, 1);
         assert_eq!(item.architecture_connected, 1);
         assert_eq!(item.architecture_isolated, 0);
-        // item + engine_edit connected; zone + host_module eligible isolated
+        // item + engine_edit connected; host_module eligible isolated; zone catalog ignored
         assert_eq!(m.aggregate.architecture_connected, 2, "{:?}", m.aggregate);
-        assert_eq!(m.aggregate.architecture_eligible, 4);
+        assert_eq!(m.aggregate.architecture_eligible, 3);
     }
 
     #[test]

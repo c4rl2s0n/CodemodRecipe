@@ -1,11 +1,10 @@
 import * as vscode from 'vscode';
 import type { ExtensionConfig } from '../config/extensionConfig';
 import type { RecipeRepository } from './recipeRepository';
-import {
-  formatSlotKeybindingJson,
-  type InvokeMode,
-} from './recipeInvoke';
+import type { InvokeMode } from './recipeInvoke';
+import { formatSlotKeybindingJson } from './recipeKeybindings';
 import type { SlotConfig } from './recipeSlots';
+
 
 export async function createShortcutForRecipe(
   deps: {

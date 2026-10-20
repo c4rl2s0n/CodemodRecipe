@@ -142,6 +142,17 @@ return {
 
 		return findings
 	end,
+	relate = function(_c, instance, index)
+		local edges = {}
+		local deps = instance.ast and instance.ast.pathDeps or {}
+		for dep in pairs(deps) do
+			local to = "repo.rust_crate/" .. dep
+			if index:byId(to) then
+				edges[#edges + 1] = { kind = "uses", to = to }
+			end
+		end
+		return edges
+	end,
 	toSummary = function(_c, instance)
 		local ast = instance.ast
 		return {

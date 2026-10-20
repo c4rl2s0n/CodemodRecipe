@@ -28,7 +28,7 @@ architecture graph. This doc is the design record; usage docs live under
   carries `sources[]` (multiplicity derived as `#sources` — no stored `count`);
   `relation.duplicate` info finding only for identical-provenance redundancy
   (updated 2026-09-28 — was silent first-wins).
-- Facade surface: plain JSON data + an embedded Luau facade chunk (no mlua closure
+- Facade surface: plain JSON data + sibling `graph_facade.luau` via `include_str!` (no mlua closure
   plumbing); richer algorithms live in require-able helper libraries. Plus
   node-centric traversal on `byId`/`resolve*` results; graph vocabulary
   (`nodes()`/`edges()` — instances are the graph nodes) (2026-09-28).

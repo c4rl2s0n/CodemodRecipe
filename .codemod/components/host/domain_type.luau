@@ -10,7 +10,7 @@ local SITES = {
 	{
 		id = "QuerySpec.lua",
 		name = "QuerySpec",
-		path = "rust/crates/lua/src/host_api/specs.rs",
+		path = "rust/crates/lua/src/host_api/specs/query.rs",
 		role = "lua_adapter",
 		pair = "QuerySpec.core",
 	},
@@ -23,7 +23,7 @@ local SITES = {
 	{
 		id = "IfExists.lua",
 		name = "IfExists",
-		path = "rust/crates/lua/src/host_api/specs.rs",
+		path = "rust/crates/lua/src/host_api/specs/common.rs",
 		role = "lua_adapter",
 		pair = "IfExists.core",
 	},

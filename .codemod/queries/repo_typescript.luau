@@ -131,6 +131,10 @@ return {
   source: (string
     (string_fragment) @importPath))
 ]],
+		-- Whole import statements (span leaves — mirrors Rust use_declarations).
+		import_statements = [[
+(import_statement) @import
+]],
 		-- Top-level export statements (whole statement span).
 		export_statements = [[
 (export_statement) @export

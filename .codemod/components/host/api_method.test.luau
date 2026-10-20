@@ -1,10 +1,14 @@
-local HANDLERS = "rust/crates/host/src/host_api/handlers.rs"
+local HANDLERS_MOD = "rust/crates/host/src/host_api/handlers/mod.rs"
+local HANDLERS_EDITS = "rust/crates/host/src/host_api/handlers/edits.rs"
 local STUB = ".codemod/stubs/codemod-context.d.luau"
 local SURFACE = "vscode_extension/src/extension/language/hostApiSurface.ts"
 
 local function baseFiles(overrides)
 	local files = {
-		[HANDLERS] = [[
+		[HANDLERS_MOD] = [[
+//! Host API handlers (test fixture root).
+]],
+		[HANDLERS_EDITS] = [[
 #[host_method(
     name = "insert",
     description = "Insert text",
@@ -23,7 +27,7 @@ pub(crate) fn do_log() {}
 		["rust/crates/host/src/lua_runtime.rs"] = [[
 // no host methods
 ]],
-		["rust/crates/host/src/component/delegate.rs"] = [[
+		["rust/crates/host/src/component/delegate/mod.rs"] = [[
 static SURFACE: HostMethodSurface = HostMethodSurface {
     name: "component",
     description: "Delegate",

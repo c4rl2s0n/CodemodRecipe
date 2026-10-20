@@ -19,7 +19,6 @@ local STAGES = {
 	{ id = "relations_attach", path = "rust/crates/host/src/component/relations/attach.rs" },
 	{ id = "relations_facade", path = "rust/crates/host/src/component/relations/facade/mod.rs" },
 	{ id = "relations_facade_builders", path = "rust/crates/host/src/component/relations/facade/builders.rs" },
-	{ id = "relations_facade_script", path = "rust/crates/host/src/component/relations/facade/script.rs" },
 	{ id = "relations_types", path = "rust/crates/host/src/component/relations/types.rs" },
 	-- runtime/
 	{ id = "runtime", path = "rust/crates/host/src/component/runtime/mod.rs" },
@@ -77,7 +76,8 @@ return {
 			id = stageId,
 			path = path,
 		}
-		local ok = pcall(function()
+		-- Per-family pcall so one bad query cannot erase successful leaves.
+		pcall(function()
 			local fnNames = c:query({
 				path = path,
 				language = "rust",
@@ -109,17 +109,19 @@ return {
 					children[#children + 1] = child
 				end
 			end
+		end)
+		pcall(function()
 			local typeNames = c:query({
 				path = path,
 				language = "rust",
-				query = "repo_rust.pub_types",
+				query = "repo_rust.type_items",
 				capture = "typeName",
 			})
 			local types = c:query({
 				path = path,
 				language = "rust",
-				query = "repo_rust.pub_types",
-				capture = "type",
+				query = "repo_rust.type_items",
+				capture = "typeItem",
 			})
 			table.sort(typeNames, function(a, b)
 				return a.span.from < b.span.from
@@ -141,9 +143,60 @@ return {
 				end
 			end
 		end)
-		if not ok then
-			children = {}
-		end
+		pcall(function()
+			local constNames = c:query({
+				path = path,
+				language = "rust",
+				query = "repo_rust.pub_str_consts",
+				capture = "constName",
+			})
+			local consts = c:query({
+				path = path,
+				language = "rust",
+				query = "repo_rust.pub_str_consts",
+				capture = "constItem",
+			})
+			table.sort(constNames, function(a, b)
+				return a.span.from < b.span.from
+			end)
+			table.sort(consts, function(a, b)
+				return a.span.from < b.span.from
+			end)
+			for i = 1, math.min(#constNames, #consts) do
+				local child = c:component("repo.host_module_item"):parse({
+					source = { path = path, span = consts[i].span },
+					parent = identity,
+					role = "const",
+					hints = { name = constNames[i].text, kind = "const" },
+				})
+				if child then
+					child.componentId = "repo.host_module_item"
+					child.role = "const"
+					children[#children + 1] = child
+				end
+			end
+		end)
+		pcall(function()
+			local attrs = c:query({
+				path = path,
+				language = "rust",
+				query = "repo_rust.attribute_items",
+				capture = "attr",
+			})
+			for i, hit in ipairs(attrs) do
+				local child = c:component("repo.host_module_item"):parse({
+					source = { path = path, span = hit.span },
+					parent = identity,
+					role = "attr",
+					hints = { name = "attr#" .. i, kind = "attr" },
+				})
+				if child then
+					child.componentId = "repo.host_module_item"
+					child.role = "attr"
+					children[#children + 1] = child
+				end
+			end
+		end)
 		return {
 			id = stageId,
 			componentId = "repo.component_pipeline",
@@ -172,7 +225,6 @@ return {
 			relations_attach = { "relations" },
 			relations_facade = { "relations" },
 			relations_facade_builders = { "relations_facade" },
-			relations_facade_script = { "relations_facade" },
 			relations_types = { "relations" },
 			membership = { "relations" },
 			delegate = { "runtime" },

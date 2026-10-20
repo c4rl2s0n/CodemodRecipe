@@ -21,6 +21,8 @@ local M = {
 		{ id = "vscode.shared", role = "architecture", title = "VS Code shared" },
 		{ id = "docs.surface", role = "documentation", title = "Docs surface" },
 	},
+	-- structural: barrels under the zone are membership-only for arch ratio.
+	-- Zone *catalog instances* themselves are excluded in relation_metrics (not here).
 	zoneRoles = {
 		structural = { ignoreRelations = true, ignoreCoverage = false },
 	},

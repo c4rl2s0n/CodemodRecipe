@@ -21,7 +21,7 @@ return {
 			path = path,
 		}
 		local children = {}
-		local ok = pcall(function()
+		pcall(function()
 			local typeNames = c:query({
 				path = path,
 				language = "rust",
@@ -53,16 +53,18 @@ return {
 					children[#children + 1] = child
 				end
 			end
+		end)
+		pcall(function()
 			local fnNames = c:query({
 				path = path,
 				language = "rust",
-				query = "repo_rust.pub_functions",
+				query = "repo_rust.all_functions",
 				capture = "fnName",
 			})
 			local fns = c:query({
 				path = path,
 				language = "rust",
-				query = "repo_rust.pub_functions",
+				query = "repo_rust.all_functions",
 				capture = "fn",
 			})
 			table.sort(fnNames, function(a, b)
@@ -85,9 +87,6 @@ return {
 				end
 			end
 		end)
-		if not ok then
-			children = {}
-		end
 		return {
 			id = path,
 			componentId = "repo.engine_surface",

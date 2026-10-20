@@ -37,8 +37,14 @@ return {
 			source = { path = path, span = span },
 		}
 	end,
-	relate = function(_c, _instance)
-		return { { kind = "lives_in", to = "repo.zone/vscode.webview" } }
+	relate = function(_c, _instance, index)
+		local edges = { { kind = "lives_in", to = "repo.zone/vscode.webview" } }
+		-- Webview mounts App.vue (honest product peer, not a fake inventory child).
+		local app = "repo.vue_sfc/vscode_extension/src/webview/src/App.vue"
+		if index:byId(app) then
+			edges[#edges + 1] = { kind = "uses", to = app }
+		end
+		return edges
 	end,
 	toSummary = function(_c, instance)
 		return {

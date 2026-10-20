@@ -77,10 +77,17 @@ Normalized host-side:
 - Extra fields (`cardinality`, …) pass through onto the edge JSON (first-wins on
   conflict within a duplicate group).
 
-## Facades (embedded Luau chunk)
+## Facades (sibling `.luau` via `include_str!`)
 
-Plain data in, queryable tables out. The host evaluates an embedded chunk per sandbox
-and calls `build_index(flat)` / `build_graph(flat, edges)`.
+Plain data in, queryable tables out. The host evaluates a compiled-in Luau chunk per
+sandbox and calls `build_index(flat)` / `build_graph(flat, edges)`.
+
+Source of truth:
+[`graph_facade.luau`](../../../rust/crates/host/src/component/relations/facade/graph_facade.luau)
+beside
+[`builders.rs`](../../../rust/crates/host/src/component/relations/facade/builders.rs),
+loaded with `include_str!("graph_facade.luau")`. Do not embed multi-line Luau in Rust
+raw strings (dogfood decision: Host-shipped Luau).
 
 Terminology: **instances are the graph nodes** — the facade uses `nodes()`/`edges()`
 vocabulary. The word "node" had three senses (tree-sitter node, component instance,

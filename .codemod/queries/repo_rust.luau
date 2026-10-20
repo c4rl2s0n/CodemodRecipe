@@ -111,6 +111,10 @@ return {
 		use_declarations = [[
 (use_declaration) @useItem
 ]],
+		-- Outer attributes (#[…]) — host_method / cfg / derive between items.
+		attribute_items = [[
+(attribute_item) @attr
+]],
 		-- Named type definitions (struct / enum / type alias) with whole-item span.
 		type_items = [[
 (struct_item
@@ -162,13 +166,18 @@ return {
     name: (identifier) @fnName) @fn
 )
 ]],
-		-- Pub string consts: pub const NAME: &str = "…";
+		-- Pub string consts: pub const NAME: &str = "…" / r#"…"# (incl. pub(super)).
 		pub_str_consts = [[
 (const_item
   (visibility_modifier)
   name: (identifier) @constName
   value: (string_literal
     (string_content) @constValue)) @constItem
+
+(const_item
+  (visibility_modifier)
+  name: (identifier) @constName
+  value: (raw_string_literal) @constValue) @constItem
 ]],
 		-- Impl blocks with type name.
 		impl_items = [[

@@ -6,11 +6,12 @@ return {
 	identify = function(c)
 		local out = {}
 		for _, path in ipairs(c:listFiles("rust/crates/lua/src/**/*.rs")) do
-			-- load/ is owned by repo.lua_load_module (avoid double-cover).
-			if not path:find("/load/", 1, true) then
+			-- load/ owned by repo.lua_load_module; specs/ by repo.lua_host_api_specs.
+			if not path:find("/load/", 1, true) and not path:find("/host_api/specs/", 1, true) then
 				out[#out + 1] = { path = path }
 			end
 		end
+
 		return out
 	end,
 	parse = function(c, locator)
@@ -84,6 +85,25 @@ return {
 				if child then
 					child.componentId = "repo.host_module_item"
 					child.role = "fn"
+					children[#children + 1] = child
+				end
+			end
+			local attrs = c:query({
+				path = path,
+				language = "rust",
+				query = "repo_rust.attribute_items",
+				capture = "attr",
+			})
+			for i, hit in ipairs(attrs) do
+				local child = c:component("repo.host_module_item"):parse({
+					source = { path = path, span = hit.span },
+					parent = identity,
+					role = "attr",
+					hints = { name = "attr#" .. i, kind = "attr" },
+				})
+				if child then
+					child.componentId = "repo.host_module_item"
+					child.role = "attr"
 					children[#children + 1] = child
 				end
 			end

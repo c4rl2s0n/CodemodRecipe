@@ -1,16 +1,32 @@
 --- Host Luau `c:` API surface: #[host_method] declarations ↔ generated stubs.
 
-local HANDLERS = {
-	"rust/crates/host/src/host_api/handlers.rs",
+-- Globs / leaf files after handlers + delegate grain splits (Phase P/Q).
+local HANDLER_GLOBS = {
+	"rust/crates/host/src/host_api/handlers/**/*.rs",
 	"rust/crates/host/src/lua_runtime.rs",
-	"rust/crates/host/src/component/delegate.rs",
+	"rust/crates/host/src/component/delegate/**/*.rs",
 }
+local IDENTIFY_ROOT = "rust/crates/host/src/host_api/handlers/mod.rs"
 local STUB_LUAU = ".codemod/stubs/codemod-context.d.luau"
 local SURFACE_TS = "vscode_extension/src/extension/language/hostApiSurface.ts"
 
+local function handlerPaths(c)
+	local seen, out = {}, {}
+	for _, glob in ipairs(HANDLER_GLOBS) do
+		for _, path in ipairs(c:listFiles(glob)) do
+			if not seen[path] then
+				seen[path] = true
+				out[#out + 1] = path
+			end
+		end
+	end
+	table.sort(out)
+	return out
+end
+
 local function collectMethodNames(c)
 	local names, order = {}, {}
-	for _, path in ipairs(HANDLERS) do
+	for _, path in ipairs(handlerPaths(c)) do
 		local ok, src = pcall(function()
 			return c:read(path)
 		end)
@@ -60,9 +76,9 @@ return {
 	id = "repo.host_api_method",
 	description = "Luau c: host methods: #[host_method] ↔ codemod-context stub ↔ hostApiSurface.ts",
 	identify = function(c)
-		-- Singleton root keyed off handlers.rs (primary #[host_method] site).
+		-- Singleton root keyed off handlers/mod.rs (primary #[host_method] tree).
 		local out = {}
-		for _, path in ipairs(c:listFiles(HANDLERS[1])) do
+		for _, path in ipairs(c:listFiles(IDENTIFY_ROOT)) do
 			out[#out + 1] = { path = path }
 		end
 		return out
@@ -80,7 +96,7 @@ return {
 		}
 		-- Span map: function name → whole fn span across handler files.
 		local spanByName = {}
-		for _, hpath in ipairs(HANDLERS) do
+		for _, hpath in ipairs(handlerPaths(c)) do
 			local ok = pcall(function()
 				local names = c:query({
 					path = hpath,

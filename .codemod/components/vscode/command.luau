@@ -400,8 +400,17 @@ return {
 			end,
 		},
 	},
-	relate = function(_c, _instance)
-		return { { kind = "lives_in", to = "repo.zone/command.adapters" } }
+	relate = function(_c, instance, index)
+		local edges = { { kind = "lives_in", to = "repo.zone/command.adapters" } }
+		for _, child in ipairs(instance.ast.children or {}) do
+			if child.componentId == "repo.vscode_command_entry" and child.id then
+				local to = "repo.vscode_command_entry/" .. child.id
+				if index:byId(to) then
+					edges[#edges + 1] = { kind = "defines", to = to }
+				end
+			end
+		end
+		return edges
 	end,
 	toSummary = function(_c, instance)
 		local ast = instance.ast

@@ -23,6 +23,9 @@ return {
 	relate = function(_c, instance, index)
 		local ast = instance.ast
 		local edges = {}
+		if instance.parentId then
+			edges[#edges + 1] = { kind = "lives_in", to = instance.parentId }
+		end
 		for _, hc in ipairs(index:byComponent("repo.host_command")) do
 			for _, variant in ipairs(ast.variants or {}) do
 				if hc.ast.variant == variant then
@@ -33,9 +36,6 @@ return {
 					}
 				end
 			end
-		end
-		if #edges == 0 then
-			return nil
 		end
 		return edges
 	end,

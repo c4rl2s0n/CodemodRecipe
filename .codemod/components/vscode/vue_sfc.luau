@@ -109,6 +109,13 @@ local function resolveImport(fromPath, spec)
 			parts[#parts + 1] = seg
 		end
 	end
+	if #parts == 0 then
+		return {}
+	end
+	-- Specs often include extensions (./Foo.vue, ./bar.js); strip before probing.
+	local last = parts[#parts]
+	last = last:gsub("%.vue$", ""):gsub("%.tsx?$", ""):gsub("%.jsx?$", "")
+	parts[#parts] = last
 	local base = table.concat(parts, "/")
 	return {
 		base .. ".vue",
@@ -117,6 +124,7 @@ local function resolveImport(fromPath, spec)
 		base .. "/index.ts",
 	}
 end
+
 
 return {
 	id = "repo.vue_sfc",
@@ -167,15 +175,20 @@ return {
 		local path = instance.ast and instance.ast.source and instance.ast.source.path
 		local zone = zonesLib.vscodeZoneForPath(path)
 		local edges = { { kind = "lives_in", to = "repo.zone/" .. zone } }
+		local seenTo = {}
 		for _, spec in ipairs(instance.ast.importSpecs or {}) do
 			for _, cand in ipairs(resolveImport(path, spec)) do
 				local toVue = "repo.vue_sfc/" .. cand
 				local toTs = "repo.ts_module/" .. cand
+				local to = nil
 				if index:byId(toVue) then
-					edges[#edges + 1] = { kind = "imports", to = toVue }
-					break
+					to = toVue
 				elseif index:byId(toTs) then
-					edges[#edges + 1] = { kind = "imports", to = toTs }
+					to = toTs
+				end
+				if to and not seenTo[to] then
+					seenTo[to] = true
+					edges[#edges + 1] = { kind = "imports", to = to }
 					break
 				end
 			end

@@ -60,6 +60,21 @@ Sketch preserved for later: lazy scan, empty-forest without stack, reuse
 | Cross-layer mutation | Stack operation → layer operations |
 | Single-file / single-purpose transform | Recipe (no graph required) |
 
+## Host-shipped Luau (`include_str!`)
+
+**Host-shipped Luau that Rust evaluates stays as a real `.luau` file beside the
+consumer `.rs`, loaded with `include_str!`.** Do not embed multi-line Luau in Rust
+raw strings.
+
+- Applies under `rust/crates/host/src/**` (example:
+  [`graph_facade.luau`](../../../rust/crates/host/src/component/relations/facade/graph_facade.luau)
+  next to `builders.rs`).
+- Does **not** apply to workspace assets under `.codemod/**` (already files).
+- Does **not** mean modeling those sibling `.luau` files in the dogfood component
+  graph (same anti-recursion stance as `.codemod/components`).
+
+Semantics: [Facades](../03_relations/01_semantics.md#facades-sibling-luau-via-include_str).
+
 ## Deferred (logged, not built)
 
 | Item | Why deferred | Tracking |
@@ -91,6 +106,12 @@ Architecture % does **not** use a per-component `metricRole`. Eligibility is inf
 
 - **Eligible:** not `ignoreRelations`, and either zone-rooted / free root, **or** nested under a non-zone parent but present on a non-membership edge (`uses` / `feeds` / …).
 - **Not eligible:** membership-only children of another component instance (structural / span members). They stay in the forest and still paint span; they are not `architectureIsolated`.
+- **Zone catalog nodes** (`repo.zone/*`): always relation-ignored (membership hubs / labels). Do **not** set `ignoreRelations` on architecture `zoneRoles` — that would exempt every member under those zones.
+- **Crate DAG:** `repo.rust_crate` emits `uses` from Cargo.toml `path = "../dep"` (`pathDeps`) to other crate instances.
+- **Adapter inventory roots:** `repo.vscode_command` / `vscode_manifest` / `webview_message` / `mcp_tool` emit `defines` → each entry child so the surface root is architecture-connected (entries already carry triangle edges). Direct MCP tools still `lives_in` the parent even without `exposes`.
+- **`repo.host_api_method` source globs:** after handlers/delegate grain splits, method discovery uses
+  `host_api/handlers/**/*.rs`, `lua_runtime.rs`, and `component/delegate/**/*.rs`, with identify keyed
+  on `handlers/mod.rs` (not the deleted flat `handlers.rs` / `delegate.rs`).
 - Ratio: `architectureConnected / architectureEligible` (see `relations.aggregate` in the scan snapshot).
 
 Amends the spirit of D-020: nested `lives_in` → parent unit means “part of that model,” not “architecture-isolated orphan.”

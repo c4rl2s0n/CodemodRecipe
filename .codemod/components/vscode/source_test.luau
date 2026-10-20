@@ -8,6 +8,51 @@ local function productionPathFromTest(path)
 	return { base .. ".ts", base .. ".vue" }
 end
 
+local function parentDir(path)
+	return path:match("^(.*)/[^/]+$") or ""
+end
+
+local function resolveRelativeImport(fromPath, spec)
+	if not spec or spec:sub(1, 1) ~= "." then
+		return nil
+	end
+	local parts = {}
+	for seg in (parentDir(fromPath) .. "/" .. spec):gmatch("[^/]+") do
+		if seg == ".." then
+			if #parts > 0 then
+				table.remove(parts)
+			end
+		elseif seg ~= "." and seg ~= "" then
+			parts[#parts + 1] = seg
+		end
+	end
+	local base = table.concat(parts, "/")
+	return { base .. ".ts", base .. ".vue", base .. "/index.ts" }
+end
+
+local function importProductionCandidates(c, path)
+	local out = {}
+	local ok, src = pcall(function()
+		return c:read(path)
+	end)
+	if not ok or type(src) ~= "string" then
+		return out
+	end
+	local seen = {}
+	for spec in src:gmatch("from%s*[\"'](%.[^\"']+)[\"']") do
+		local cands = resolveRelativeImport(path, spec)
+		if cands then
+			for _, cand in ipairs(cands) do
+				if not seen[cand] then
+					seen[cand] = true
+					out[#out + 1] = cand
+				end
+			end
+		end
+	end
+	return out
+end
+
 local function parseChildren(c, path, parent)
 	local children = {}
 	local ok = pcall(function()
@@ -109,12 +154,16 @@ return {
 		if ok and type(src) == "string" then
 			span = { from = 0, to = #src }
 		end
+		local candidates = productionPathFromTest(path) or {}
+		for _, cand in ipairs(importProductionCandidates(c, path)) do
+			candidates[#candidates + 1] = cand
+		end
 		return {
 			id = path,
 			componentId = "repo.ts_test",
 			source = { path = path, span = span },
 			children = parseChildren(c, path, identity),
-			productionCandidates = productionPathFromTest(path),
+			productionCandidates = candidates,
 		}
 	end,
 	relate = function(_c, instance, index)
@@ -123,8 +172,15 @@ return {
 		local zone = zones.vscodeZoneForPath(path)
 		local edges = { { kind = "lives_in", to = "repo.zone/" .. zone } }
 		for _, cand in ipairs(instance.ast.productionCandidates or {}) do
-			local to = "repo.ts_module/" .. cand
-			if index:byId(to) then
+			local toTs = "repo.ts_module/" .. cand
+			local toCtx = "repo.vscode_language_context/" .. cand
+			local to = nil
+			if index:byId(toTs) then
+				to = toTs
+			elseif index:byId(toCtx) then
+				to = toCtx
+			end
+			if to then
 				edges[#edges + 1] = { kind = "tests", to = to }
 				break
 			end

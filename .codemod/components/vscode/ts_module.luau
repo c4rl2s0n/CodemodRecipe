@@ -20,6 +20,12 @@ local function resolveImport(fromPath, spec)
 			parts[#parts + 1] = seg
 		end
 	end
+	if #parts == 0 then
+		return nil
+	end
+	local last = parts[#parts]
+	last = last:gsub("%.vue$", ""):gsub("%.tsx?$", ""):gsub("%.jsx?$", "")
+	parts[#parts] = last
 	local base = table.concat(parts, "/")
 	return {
 		base .. ".ts",
@@ -28,6 +34,7 @@ local function resolveImport(fromPath, spec)
 		base .. "/index.vue",
 	}
 end
+
 
 return {
 	id = "repo.ts_module",
@@ -40,7 +47,21 @@ return {
 			if path:match("%.test%.ts$") or path:match("%.spec%.ts$") or path:match("%.vue$") then
 				return
 			end
+			-- Mirror stack.codebase ! excludes (listFiles does not inherit codebase).
+			if path:match("%.d%.ts$") or path:match("%.config%.ts$") then
+				return
+			end
 			if path == "vscode_extension/src/webview/src/main.ts" then
+				return
+			end
+			-- Domain composers own these paths (avoid double-identify).
+			if path:match("/extension/language/context/") then
+				return
+			end
+			if path:match("/extension/bootstrap/") then
+				return
+			end
+			if path:match("/recipes/recipeInvoke%.ts$") or path:match("/recipes/recipeKeybindings%.ts$") then
 				return
 			end
 			if not seen[path] then
@@ -48,6 +69,7 @@ return {
 				out[#out + 1] = { path = path }
 			end
 		end
+
 		for _, path in ipairs(c:listFiles("vscode_extension/src/**/*.ts")) do
 			addPath(path)
 		end
@@ -146,6 +168,71 @@ return {
 				-- leave children empty; Vue fallback below may recover
 			end
 		end
+		-- Deepen: local/helper fns + class methods (span; overlaps with exports merge in coverage).
+		local function addNamedFns(queryId, nameCap, bodyCap, role)
+			local names = c:query({
+				path = path,
+				language = language,
+				query = queryId,
+				capture = nameCap,
+			})
+			local bodies = c:query({
+				path = path,
+				language = language,
+				query = queryId,
+				capture = bodyCap,
+			})
+			table.sort(names, function(a, b)
+				return a.span.from < b.span.from
+			end)
+			table.sort(bodies, function(a, b)
+				return a.span.from < b.span.from
+			end)
+			for i = 1, math.min(#names, #bodies) do
+				local child = c:component("repo.ts_export"):parse({
+					source = { path = path, span = bodies[i].span },
+					parent = identity,
+					role = role,
+					hints = { name = names[i].text },
+				})
+				if child then
+					child.componentId = "repo.ts_export"
+					child.role = role
+					children[#children + 1] = child
+				end
+			end
+		end
+		pcall(function()
+			addNamedFns("repo_typescript.function_declarations", "fnName", "fn", "fn")
+		end)
+		pcall(function()
+			addNamedFns("repo_typescript.const_function_bindings", "fnName", "fn", "fn")
+		end)
+		pcall(function()
+			addNamedFns("repo_typescript.bridge_methods", "methodName", "method", "method")
+		end)
+		-- Import statements as span leaves (prefix gap on activate / providers).
+		pcall(function()
+			local imports = c:query({
+				path = path,
+				language = language,
+				query = "repo_typescript.import_statements",
+				capture = "import",
+			})
+			for i, hit in ipairs(imports) do
+				local child = c:component("repo.ts_export"):parse({
+					source = { path = path, span = hit.span },
+					parent = identity,
+					role = "import",
+					hints = { name = "import#" .. i },
+				})
+				if child then
+					child.componentId = "repo.ts_export"
+					child.role = "import"
+					children[#children + 1] = child
+				end
+			end
+		end)
 		local reexportSpecs = {}
 		local srcOk, src = pcall(function()
 			return c:read(path)
@@ -212,22 +299,37 @@ return {
 			or instance.ast and instance.ast.id
 		local zone = zones.vscodeZoneForPath(path)
 		local edges = { { kind = "lives_in", to = "repo.zone/" .. zone } }
+		local DOMAIN_PREFIXES = {
+			"repo.ts_module/",
+			"repo.vscode_language_context/",
+			"repo.vscode_ext_bootstrap/",
+			"repo.recipe_invoke/",
+			"repo.vue_sfc/",
+		}
 		local function linkSpecs(specs, kind)
 			local seenTo = {}
 			for _, spec in ipairs(specs or {}) do
 				local cands = resolveImport(path, spec)
 				if cands then
 					for _, cand in ipairs(cands) do
-						local to = "repo.ts_module/" .. cand
-						if index:byId(to) and not seenTo[to] then
-							seenTo[to] = true
-							edges[#edges + 1] = { kind = kind, to = to }
+						local linked = false
+						for _, prefix in ipairs(DOMAIN_PREFIXES) do
+							local to = prefix .. cand
+							if index:byId(to) and not seenTo[to] then
+								seenTo[to] = true
+								edges[#edges + 1] = { kind = kind, to = to }
+								linked = true
+								break
+							end
+						end
+						if linked then
 							break
 						end
 					end
 				end
 			end
 		end
+
 		linkSpecs(instance.ast.importSpecs, "imports")
 		-- Barrel index.ts: exports → re-exported siblings (scaffold append target).
 		if path:match("/index%.ts$") then

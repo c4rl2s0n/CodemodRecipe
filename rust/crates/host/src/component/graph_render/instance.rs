@@ -181,6 +181,7 @@ fn render_instance_graph_mermaid_with_forest(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::component::graph_render::kind::render_kind_graph_mermaid;
     use crate::component::relations::{flatten_instances, kind_graph, resolve_edges, RawEdge};
     use crate::component::types::ComponentInstance;
 

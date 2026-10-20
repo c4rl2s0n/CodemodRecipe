@@ -257,33 +257,9 @@ function selectionIncludingAll(files: FilePreview[]): SelectionPayload {
   return selection;
 }
 
-export function formatInvokeKeybindingJson(
-  recipeId: string,
-  mode: InvokeMode = 'auto'
-): string {
-  return JSON.stringify(
-    {
-      key: 'ctrl+shift+i 1',
-      command: 'codemodRecipe.invoke',
-      args: { recipeId, mode },
-    },
-    null,
-    2
-  );
-}
+/** @deprecated Prefer `./recipeKeybindings` — re-exported for callers. */
+export {
+  formatInvokeKeybindingJson,
+  formatSlotKeybindingJson,
+} from './recipeKeybindings';
 
-export function formatSlotKeybindingJson(
-  slot: string,
-  mode: InvokeMode = 'auto'
-): string {
-  const prefix = mode === 'open' ? 'ctrl+shift+t' : 'ctrl+shift+i';
-  return JSON.stringify(
-    {
-      key: `${prefix} ${slot}`,
-      command: 'codemodRecipe.invokeSlot',
-      args: { slot, mode },
-    },
-    null,
-    2
-  );
-}

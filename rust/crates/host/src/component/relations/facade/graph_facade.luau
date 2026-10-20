@@ -1,6 +1,3 @@
-//! Embedded Luau for index/graph facades.
-
-pub(super) const GRAPH_FACADE_LUA: &str = r#"
 local M = {}
 
 local function index_maps(flat)
@@ -172,4 +169,3 @@ function M.build_graph(flat, edges)
 end
 
 return M
-"#;

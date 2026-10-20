@@ -126,8 +126,17 @@ return {
 			children = children,
 		}
 	end,
-	relate = function(_c, _instance)
-		return { { kind = "lives_in", to = "repo.zone/vscode.extension" } }
+	relate = function(_c, instance, index)
+		local edges = { { kind = "lives_in", to = "repo.zone/vscode.extension" } }
+		for _, child in ipairs(instance.ast.children or {}) do
+			if child.componentId == "repo.json_field" and child.id then
+				local to = "repo.json_field/" .. child.id
+				if index:byId(to) then
+					edges[#edges + 1] = { kind = "defines", to = to }
+				end
+			end
+		end
+		return edges
 	end,
 	toSummary = function(_c, instance)
 		return {

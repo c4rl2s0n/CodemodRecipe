@@ -18,6 +18,78 @@ local STAGE_HINTS = {
 	["error.rs"] = "error",
 }
 
+local function deepenLeaves(c, path, identity)
+	local children = {}
+	-- Per-family pcall so one bad query cannot erase successful leaves.
+	pcall(function()
+		local fnNames = c:query({
+			path = path,
+			language = "rust",
+			query = "repo_rust.all_functions",
+			capture = "fnName",
+		})
+		local fns = c:query({
+			path = path,
+			language = "rust",
+			query = "repo_rust.all_functions",
+			capture = "fn",
+		})
+		table.sort(fnNames, function(a, b)
+			return a.span.from < b.span.from
+		end)
+		table.sort(fns, function(a, b)
+			return a.span.from < b.span.from
+		end)
+		for i = 1, math.min(#fnNames, #fns) do
+			local child = c:component("repo.host_module_item"):parse({
+				source = { path = path, span = fns[i].span },
+				parent = identity,
+				role = "fn",
+				hints = { name = fnNames[i].text, kind = "fn" },
+			})
+			if child then
+				child.componentId = "repo.host_module_item"
+				child.role = "fn"
+				children[#children + 1] = child
+			end
+		end
+	end)
+	pcall(function()
+		local typeNames = c:query({
+			path = path,
+			language = "rust",
+			query = "repo_rust.type_items",
+			capture = "typeName",
+		})
+		local types = c:query({
+			path = path,
+			language = "rust",
+			query = "repo_rust.type_items",
+			capture = "typeItem",
+		})
+		table.sort(typeNames, function(a, b)
+			return a.span.from < b.span.from
+		end)
+		table.sort(types, function(a, b)
+			return a.span.from < b.span.from
+		end)
+		for i = 1, math.min(#typeNames, #types) do
+			local child = c:component("repo.host_module_item"):parse({
+				source = { path = path, span = types[i].span },
+				parent = identity,
+				role = "type",
+				hints = { name = typeNames[i].text, kind = "type" },
+			})
+			if child then
+				child.componentId = "repo.host_module_item"
+				child.role = "type"
+				children[#children + 1] = child
+			end
+		end
+	end)
+	return children
+end
+
 return {
 	id = "repo.lua_load_module",
 	description = "Luau asset load stages under rust/crates/lua/src/load/",
@@ -35,11 +107,17 @@ return {
 		end
 		local base = path:match("([^/]+)$") or path
 		local stage = STAGE_HINTS[base] or base
+		local identity = {
+			componentId = "repo.lua_load_module",
+			id = "load." .. stage,
+			path = path,
+		}
 		return {
 			id = "load." .. stage,
 			componentId = "repo.lua_load_module",
 			source = { path = path },
 			stage = stage,
+			children = deepenLeaves(c, path, identity),
 		}
 	end,
 	relate = function(_c, instance, index)
@@ -87,7 +165,10 @@ return {
 			kind = "lua-load-module",
 			title = instance.ast.stage or instance.ast.id,
 			id = instance.ast.id,
-			facts = { instance.ast.source and instance.ast.source.path or "" },
+			facts = {
+				#(instance.ast.children or {}) .. " leaves",
+				instance.ast.source and instance.ast.source.path or "",
+			},
 		}
 	end,
 }

@@ -16,6 +16,8 @@ local MODULES = {
 	{ id = "edit_session", path = "rust/crates/host/src/edit_session/mod.rs" },
 	-- Leaf file (not a directory mod): high-gap helpers for component tests.
 	{ id = "testing", path = "rust/crates/host/src/testing.rs" },
+	-- Leaf file: Luau ctx build / nested run (orphan from dir MODULES).
+	{ id = "lua_runtime", path = "rust/crates/host/src/lua_runtime.rs" },
 }
 
 return {
@@ -145,6 +147,26 @@ return {
 						children[#children + 1] = child
 					end
 				end
+				-- Outer attrs (#[host_method], #[derive], …) sit between items.
+				local attrs = c:query({
+					path = fpath,
+					language = "rust",
+					query = "repo_rust.attribute_items",
+					capture = "attr",
+				})
+				for i, hit in ipairs(attrs) do
+					local child = c:component("repo.host_module_item"):parse({
+						source = { path = fpath, span = hit.span },
+						parent = identity,
+						role = "attr",
+						hints = { name = "attr#" .. i, kind = "attr" },
+					})
+					if child then
+						child.componentId = "repo.host_module_item"
+						child.role = "attr"
+						children[#children + 1] = child
+					end
+				end
 			end)
 			if not ok then
 				-- skip unparseable
@@ -222,6 +244,13 @@ return {
 		elseif id == "testing" then
 			if index:byId("repo.component_pipeline/coverage") then
 				edges[#edges + 1] = { kind = "uses", to = "repo.component_pipeline/coverage" }
+			end
+		elseif id == "lua_runtime" then
+			if index:byId("repo.host_module/host_api") then
+				edges[#edges + 1] = { kind = "uses", to = "repo.host_module/host_api" }
+			end
+			if index:byId("repo.host_api_method/host-api-surface") then
+				edges[#edges + 1] = { kind = "uses", to = "repo.host_api_method/host-api-surface" }
 			end
 		end
 		return edges
