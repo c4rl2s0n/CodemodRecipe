@@ -12,6 +12,9 @@ local STAGE_HINTS = {
 	["test_suite.rs"] = "test_suite",
 	["table_util.rs"] = "table_util",
 	["shared.rs"] = "shared",
+	["ops.rs"] = "ops",
+	["type_parse.rs"] = "type_parse",
+	["explorer.rs"] = "explorer",
 	["error.rs"] = "error",
 }
 
@@ -48,12 +51,30 @@ return {
 			edges[#edges + 1] = { kind = "feeds", to = "repo.recipe_registry/recipe-registry" }
 		end
 		-- Asset-kind stages use the shared table/error helpers.
-		if instance.ast.stage ~= "table_util" and instance.ast.stage ~= "error" and instance.ast.stage ~= "shared" then
+		local helpers = {
+			table_util = true,
+			error = true,
+			shared = true,
+			ops = true,
+			type_parse = true,
+			explorer = true,
+		}
+		if not helpers[instance.ast.stage] then
 			if index:byId("repo.lua_load_module/load.table_util") then
 				edges[#edges + 1] = { kind = "uses", to = "repo.lua_load_module/load.table_util" }
 			end
 			if index:byId("repo.lua_load_module/load.error") then
 				edges[#edges + 1] = { kind = "uses", to = "repo.lua_load_module/load.error" }
+			end
+			if index:byId("repo.lua_load_module/load.shared") then
+				edges[#edges + 1] = { kind = "uses", to = "repo.lua_load_module/load.shared" }
+			end
+		elseif instance.ast.stage == "ops" or instance.ast.stage == "type_parse" or instance.ast.stage == "explorer" then
+			if index:byId("repo.lua_load_module/load.table_util") then
+				edges[#edges + 1] = { kind = "uses", to = "repo.lua_load_module/load.table_util" }
+			end
+			if index:byId("repo.lua_load_module/load.shared") then
+				edges[#edges + 1] = { kind = "uses", to = "repo.lua_load_module/load.shared" }
 			end
 		end
 		return edges

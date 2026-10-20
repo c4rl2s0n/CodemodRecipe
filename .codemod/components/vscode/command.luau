@@ -37,7 +37,7 @@ local function contains(outer, inner)
 	return inner.from >= outer.from and inner.to <= outer.to
 end
 
---- Classify a call callee by its text: bridge method / this-local method / external.
+--- Classify a call callee by its text: bridge method / this-local / bare local / external.
 --- (Awaited generic calls nest `await` in the function field — strip the prefix.)
 local function classifyCallee(text)
 	local t = text:gsub("^await%s+", "")
@@ -45,6 +45,8 @@ local function classifyCallee(text)
 		or t:match("^this%.bridge%.([%w_]+)$")
 		or t:match("^hostBridge%.([%w_]+)$")
 		or t:match("^this%.hostBridge%.([%w_]+)$")
+		-- Common aliases: `const b = bridge` / runner helpers still use `.method`.
+		or t:match("%.bridge%.([%w_]+)$")
 	if m then
 		return "bridge", m
 	end
@@ -52,13 +54,17 @@ local function classifyCallee(text)
 	if m then
 		return "this", m
 	end
+	-- Bare local: bootstrap(), refreshRecipes(), runRecipeFromExplorer(...)
+	m = t:match("^([%w_]+)$")
+	if m then
+		return "local", m
+	end
 	return "external", nil
 end
 
---- All bridge methods reachable from a span, following this.* method calls in the
---- same file (one controller hop, cycle-safe). complete=false when any call is
---- unresolvable (module-level fns, other objects) — the analysis then stays silent.
-local function resolveSpanCalls(span, allCalls, methodsByName)
+--- All bridge methods reachable from a span, following this.* methods and same-file
+--- local function declarations (cycle-safe). complete=false when a call stays unresolved.
+local function resolveSpanCalls(span, allCalls, methodsByName, localsByName)
 	local bridge, seenBridge = {}, {}
 	local complete, anyCalls = true, false
 	local visited = {}
@@ -75,10 +81,11 @@ local function resolveSpanCalls(span, allCalls, methodsByName)
 						seenBridge[name] = true
 						bridge[#bridge + 1] = name
 					end
-				elseif kind == "this" then
-					local mspan = methodsByName[name]
-					if mspan and not visited[name] then
-						visited[name] = true
+				elseif kind == "this" or kind == "local" then
+					local mspan = methodsByName[name] or (localsByName and localsByName[name])
+					local visitKey = kind .. ":" .. name
+					if mspan and not visited[visitKey] then
+						visited[visitKey] = true
 						queue[#queue + 1] = mspan
 					elseif not mspan then
 						complete = false
@@ -146,11 +153,61 @@ local function collectRegistrationDetails(c)
 				methodsByName[methodNames[i].text] = methodSpans[i].span
 			end
 
+			-- Module-level function declarations / const arrows for bare-call following.
+			local localsByName = {}
+			local function ingestLocals(queryId)
+				local fnNames = c:query({
+					path = file,
+					language = "typescript",
+					query = queryId,
+					capture = "fnName",
+				})
+				local fns = c:query({
+					path = file,
+					language = "typescript",
+					query = queryId,
+					capture = "fn",
+				})
+				table.sort(fnNames, function(a, b)
+					return a.span.from < b.span.from
+				end)
+				table.sort(fns, function(a, b)
+					return a.span.from < b.span.from
+				end)
+				for i = 1, math.min(#fnNames, #fns) do
+					localsByName[fnNames[i].text] = fns[i].span
+				end
+			end
+			pcall(function()
+				ingestLocals("repo_typescript.function_declarations")
+				ingestLocals("repo_typescript.const_function_bindings")
+			end)
+
+			-- Detect webview / UI presentation hints in the file (for presents edges).
+			local srcOk, src = pcall(function()
+				return c:read(file)
+			end)
+			local touchesWebview = srcOk
+				and src
+				and (
+					src:find("webview", 1, true)
+					or src:find("postMessage", 1, true)
+					or src:find("Webview", 1, true)
+				)
+
 			for i = 1, math.min(#keys, #handlers) do
 				local handler = handlers[i]
-				local detail = { file = file, bridgeCalls = {}, analyzed = false, complete = false, empty = false }
+				local detail = {
+					file = file,
+					bridgeCalls = {},
+					analyzed = false,
+					complete = false,
+					empty = false,
+					touchesWebview = touchesWebview or false,
+				}
 				if handler.kind == "arrow_function" or handler.kind == "function_expression" then
-					local bridgeCalls, complete, anyCalls = resolveSpanCalls(handler.span, allCalls, methodsByName)
+					local bridgeCalls, complete, anyCalls =
+						resolveSpanCalls(handler.span, allCalls, methodsByName, localsByName)
 					detail.analyzed = true
 					detail.complete = complete
 					detail.empty = not anyCalls
@@ -223,6 +280,8 @@ return {
 					bridgeCalls = detail and detail.bridgeCalls or {},
 					handlerAnalyzed = detail and detail.analyzed or false,
 					handlerEmpty = detail and detail.empty or false,
+					touchesWebview = detail and detail.touchesWebview or false,
+					registrationFile = detail and detail.file or nil,
 				},
 			})
 			if child then

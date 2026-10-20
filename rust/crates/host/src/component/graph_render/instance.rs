@@ -1,3 +1,5 @@
+//! Instance-graph Mermaid rendering.
+
 //! Mermaid rendering of the relations graph: kind-level (architecture roll-up) and
 //! instance-level (connected nodes + membership subgraphs). Pure functions over scan
 //! data; output is deterministic given deterministic inputs.
@@ -8,50 +10,8 @@ use crate::component::membership::{validate_membership_forest, MembershipForest}
 use crate::component::relations::{ComponentEdge, FlatInstance, KindEdge};
 
 /// Mermaid-safe node id: every non-alphanumeric becomes `_`.
-fn mermaid_id(raw: &str) -> String {
-    raw.chars()
-        .map(|c| if c.is_ascii_alphanumeric() { c } else { '_' })
-        .collect()
-}
+use super::style::{mermaid_id, mermaid_label};
 
-/// Escape a label for a quoted mermaid string.
-fn mermaid_label(raw: &str) -> String {
-    raw.replace('"', "#quot;")
-}
-
-/// Kind-level architecture graph: one line per `(fromComponent, kind, toComponent)`
-/// roll-up, edge label `kind ×count` (the `×1` is omitted). External symbol targets
-/// get `(external)` in their label. Caller should omit member-layout kinds.
-pub fn render_kind_graph_mermaid(kind_graph: &[KindEdge]) -> String {
-    let mut out = String::from("graph LR\n");
-    for edge in kind_graph {
-        let label = if edge.count > 1 {
-            format!("{} ×{}", edge.kind, edge.count)
-        } else {
-            edge.kind.clone()
-        };
-        let to_label = if edge.external {
-            format!("{} (external)", edge.to)
-        } else {
-            edge.to.clone()
-        };
-        out.push_str(&format!(
-            "  {}[\"{}\"] -- \"{}\" --> {}[\"{}\"]\n",
-            mermaid_id(&edge.from),
-            mermaid_label(&edge.from),
-            mermaid_label(&label),
-            mermaid_id(&edge.to),
-            mermaid_label(&to_label),
-        ));
-    }
-    out
-}
-
-/// Instance-level graph with optional membership subgraphs.
-///
-/// - Omits isolated nodes (no architecture edge and no membership).
-/// - Member-kind edges are layout only (not drawn as arrows).
-/// - `member_kinds` empty → flat graph (backward compatible).
 pub fn render_instance_graph_mermaid(
     edges: &[ComponentEdge],
     flat: &[FlatInstance],

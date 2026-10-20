@@ -14,7 +14,8 @@ use crate::component::runtime::context::{
     ComponentScaffoldRequest,
 };
 use crate::component::runtime::finalize::{finalize_host, hook_to_json, take_transcript};
-use crate::component::runtime::operations::{invoke_operation, invoke_scaffold};
+use crate::component::runtime::operations::invoke_operation;
+use crate::component::runtime::scaffold::invoke_scaffold;
 use crate::component::scan::component_scan;
 use crate::component::types::{ComponentFinding, ComponentInstance, ComponentInvokeResponse};
 use crate::host_api::context::SharedHost;

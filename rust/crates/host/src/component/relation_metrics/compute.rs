@@ -1,18 +1,8 @@
-//! Relation coverage metrics for scan snapshots.
-//!
-//! Counts membership vs architecture connectivity over the flattened instance
-//! forest, applying `stack.zoneRoles` flags (`ignoreRelations`).
-//!
-//! Architecture ratio eligibility (inferred, no component role field):
-//! - Zone-rooted / free-root instances are eligible.
-//! - Nested under a non-zone parent are eligible only if they participate in a
-//!   non-membership edge (`uses` / `feeds` / …). Membership-only children are
-//!   structural/span members — not architecture-isolated units.
+//! Compute architecture / membership relation metrics.
 
 use std::collections::{BTreeMap, BTreeSet};
 
 use codemod_recipe_lua::{RelationKindDef, ZoneDef, ZoneRole};
-use serde::Serialize;
 
 use crate::component::membership::{
     member_kinds, validate_membership_forest, MembershipForest,
@@ -20,50 +10,8 @@ use crate::component::membership::{
 use crate::component::relations::{flatten_instances, ComponentEdge, FlatInstance};
 use crate::component::types::ComponentInstance;
 
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RelationRatios {
-    pub connected: f64,
-    /// Connected among [`RelationAggregate::architecture_eligible`] only.
-    pub architecture_connected: f64,
-}
+use super::types::{RelationAggregate, RelationByComponent, RelationMetrics, RelationRatios};
 
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RelationAggregate {
-    pub instance_count: usize,
-    pub edge_count: usize,
-    pub isolated: usize,
-    pub membership_connected: usize,
-    pub architecture_connected: usize,
-    pub architecture_isolated: usize,
-    /// Instances in the architecture ratio denominator (see module docs).
-    pub architecture_eligible: usize,
-    pub relation_ignored: usize,
-    pub ratios: RelationRatios,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RelationByComponent {
-    pub component_id: String,
-    pub instance_count: usize,
-    pub architecture_connected: usize,
-    pub architecture_isolated: usize,
-    pub architecture_eligible: usize,
-    pub membership_only: usize,
-    pub relation_ignored: usize,
-}
-
-#[derive(Debug, Clone, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct RelationMetrics {
-    pub aggregate: RelationAggregate,
-    pub by_component: Vec<RelationByComponent>,
-    pub by_kind: BTreeMap<String, usize>,
-}
-
-/// Instance ids under a zone whose role has `ignoreCoverage` (for compact snapshot).
 pub fn ignore_coverage_instance_ids(
     instances: &[ComponentInstance],
     edges: &[ComponentEdge],

@@ -31,13 +31,13 @@ end
 
 return {
 	id = "repo.ts_module",
-	description = "TS/Vue source module: exports as coverage leaves; imports for generation graph",
+	description = "TS source module: exports as coverage leaves; imports for generation graph (.vue → repo.vue_sfc)",
 	identify = function(c)
 		local out = {}
 		local seen = {}
 		local function addPath(path)
-			-- Product tests are repo.ts_test; bootstrap owns webview main.ts.
-			if path:match("%.test%.ts$") or path:match("%.spec%.ts$") then
+			-- Product tests are repo.ts_test; bootstrap owns webview main.ts; SFCs are repo.vue_sfc.
+			if path:match("%.test%.ts$") or path:match("%.spec%.ts$") or path:match("%.vue$") then
 				return
 			end
 			if path == "vscode_extension/src/webview/src/main.ts" then
@@ -49,9 +49,6 @@ return {
 			end
 		end
 		for _, path in ipairs(c:listFiles("vscode_extension/src/**/*.ts")) do
-			addPath(path)
-		end
-		for _, path in ipairs(c:listFiles("vscode_extension/src/**/*.vue")) do
 			addPath(path)
 		end
 		return out
@@ -164,27 +161,6 @@ return {
 			if path:match("/index%.ts$") then
 				for spec in src:gmatch("export%s+.-from%s*[\"'](%.[^\"']+)[\"']") do
 					reexportSpecs[#reexportSpecs + 1] = spec
-				end
-			end
-			-- Vue SFC: span the <script>…</script> block when TS queries miss (SFC root).
-			if path:match("%.vue$") and #children == 0 then
-				local scriptOpen = src:find("<script")
-				local scriptClose = src:find("</script>")
-				if scriptOpen and scriptClose and scriptClose > scriptOpen then
-					-- Lua find is 1-based; engine spans are 0-based [from, to).
-					local from = scriptOpen - 1
-					local to = scriptClose - 1 + #"</script>"
-					local child = c:component("repo.ts_export"):parse({
-						source = { path = path, span = { from = from, to = to } },
-						parent = identity,
-						role = "export",
-						hints = { name = "script" },
-					})
-					if child then
-						child.componentId = "repo.ts_export"
-						child.role = "export"
-						children[#children + 1] = child
-					end
 				end
 			end
 		end

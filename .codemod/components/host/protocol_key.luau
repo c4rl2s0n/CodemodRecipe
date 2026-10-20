@@ -168,8 +168,14 @@ return {
 			end,
 		},
 	},
-	relate = function(_c, _instance)
-		return { { kind = "lives_in", to = "repo.zone/command.adapters" } }
+	relate = function(_c, _instance, index)
+		local edges = { { kind = "lives_in", to = "repo.zone/command.adapters" } }
+		-- Keys are the wire vocabulary SSOT for host protocol.
+		local to = "repo.host_protocol/host-protocol"
+		if not index or index:byId(to) then
+			edges[#edges + 1] = { kind = "defines", to = to }
+		end
+		return edges
 	end,
 	toSummary = function(_c, instance)
 		return {

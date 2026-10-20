@@ -4,6 +4,7 @@ mod context;
 mod finalize;
 mod hook;
 mod operations;
+mod scaffold;
 mod stack_ops;
 
 pub use context::{ComponentInvokeRequest, ComponentRunContext, ComponentScaffoldRequest};
@@ -14,5 +15,6 @@ pub(crate) use context::{
 pub use finalize::hook_to_json;
 pub(crate) use finalize::{component_scan_after_operation, finalize_host, take_transcript};
 pub use hook::{invoke_hook, ComponentHookRequest};
-pub use operations::{invoke_operation, invoke_scaffold};
+pub use operations::invoke_operation;
+pub use scaffold::invoke_scaffold;
 pub use stack_ops::{invoke_stack_operation, StackInvokeRequest};

@@ -227,21 +227,41 @@ graph LR
     repo_vscode_command_vscode_commands["repo.vscode_command/vscode-commands"]
   end
   subgraph repo_zone_domain_components ["repo.zone/domain.components"]
+    repo_component_pipeline_cache["repo.component_pipeline/cache"]
+    repo_component_pipeline_cache_body["repo.component_pipeline/cache_body"]
+    repo_component_pipeline_cache_types["repo.component_pipeline/cache_types"]
     repo_component_pipeline_coverage["repo.component_pipeline/coverage"]
+    repo_component_pipeline_coverage_compute["repo.component_pipeline/coverage_compute"]
+    repo_component_pipeline_coverage_spans["repo.component_pipeline/coverage_spans"]
     repo_component_pipeline_delegate["repo.component_pipeline/delegate"]
+    repo_component_pipeline_delegate_invoke["repo.component_pipeline/delegate_invoke"]
+    repo_component_pipeline_delegate_stack["repo.component_pipeline/delegate_stack"]
     repo_component_pipeline_graph_render["repo.component_pipeline/graph_render"]
+    repo_component_pipeline_graph_render_instance["repo.component_pipeline/graph_render_instance"]
+    repo_component_pipeline_graph_render_kind["repo.component_pipeline/graph_render_kind"]
+    repo_component_pipeline_graph_render_style["repo.component_pipeline/graph_render_style"]
     repo_component_pipeline_membership["repo.component_pipeline/membership"]
     repo_component_pipeline_relation_metrics["repo.component_pipeline/relation_metrics"]
+    repo_component_pipeline_relation_metrics_compute["repo.component_pipeline/relation_metrics_compute"]
+    repo_component_pipeline_relation_metrics_types["repo.component_pipeline/relation_metrics_types"]
     repo_component_pipeline_relations["repo.component_pipeline/relations"]
     repo_component_pipeline_relations_attach["repo.component_pipeline/relations_attach"]
     repo_component_pipeline_relations_facade["repo.component_pipeline/relations_facade"]
+    repo_component_pipeline_relations_facade_builders["repo.component_pipeline/relations_facade_builders"]
+    repo_component_pipeline_relations_facade_script["repo.component_pipeline/relations_facade_script"]
     repo_component_pipeline_relations_resolve["repo.component_pipeline/relations_resolve"]
+    repo_component_pipeline_relations_resolve_edges["repo.component_pipeline/relations_resolve_edges"]
+    repo_component_pipeline_relations_resolve_findings["repo.component_pipeline/relations_resolve_findings"]
+    repo_component_pipeline_relations_resolve_kind["repo.component_pipeline/relations_resolve_kind"]
+    repo_component_pipeline_relations_resolve_normalize["repo.component_pipeline/relations_resolve_normalize"]
+    repo_component_pipeline_relations_resolve_targets["repo.component_pipeline/relations_resolve_targets"]
     repo_component_pipeline_relations_types["repo.component_pipeline/relations_types"]
     repo_component_pipeline_runtime["repo.component_pipeline/runtime"]
     repo_component_pipeline_runtime_context["repo.component_pipeline/runtime_context"]
     repo_component_pipeline_runtime_finalize["repo.component_pipeline/runtime_finalize"]
     repo_component_pipeline_runtime_hook["repo.component_pipeline/runtime_hook"]
     repo_component_pipeline_runtime_operations["repo.component_pipeline/runtime_operations"]
+    repo_component_pipeline_runtime_scaffold["repo.component_pipeline/runtime_scaffold"]
     repo_component_pipeline_runtime_stack_ops["repo.component_pipeline/runtime_stack_ops"]
     repo_component_pipeline_scan["repo.component_pipeline/scan"]
     repo_component_pipeline_scan_full["repo.component_pipeline/scan_full"]
@@ -250,6 +270,9 @@ graph LR
     repo_component_pipeline_scan_incremental["repo.component_pipeline/scan_incremental"]
     repo_component_pipeline_scan_types["repo.component_pipeline/scan_types"]
     repo_component_pipeline_snapshot["repo.component_pipeline/snapshot"]
+    repo_component_pipeline_snapshot_io["repo.component_pipeline/snapshot_io"]
+    repo_component_pipeline_types["repo.component_pipeline/types"]
+    repo_component_pipeline_types_parse["repo.component_pipeline/types_parse"]
     subgraph repo_host_module_testing ["repo.host_module/testing"]
       repo_host_module_item_rust_crates_host_src_testing_rs_FixtureState_4588["repo.host_module_item/rust/crates/host/src/testing.rs:FixtureState@4588"]
       repo_host_module_item_rust_crates_host_src_testing_rs_FixtureStore_4822["repo.host_module_item/rust/crates/host/src/testing.rs:FixtureStore@4822"]
@@ -315,31 +338,31 @@ graph LR
       repo_rust_test_case_rust_crates_core_src_resource_path_rs_test_uses_conventional_subdir_for_bare_names_5373["repo.rust_test_case/rust/crates/core/src/resource_path.rs:test:uses_conventional_subdir_for_bare_names@5373"]
     end
     repo_rust_test_module_rust_crates_core_src_resource_path_rs_mod_tests_3099["repo.rust_test_module/rust/crates/core/src/resource_path.rs:mod:tests@3099"]
-    subgraph repo_rust_test_module_rust_crates_host_src_component_cache_rs_mod_tests_10302 ["repo.rust_test_module/rust/crates/host/src/component/cache.rs:mod:tests@10302"]
-      repo_rust_test_case_rust_crates_host_src_component_cache_rs_test_index_node_paths_includes_children_10349["repo.rust_test_case/rust/crates/host/src/component/cache.rs:test:index_node_paths_includes_children@10349"]
+    subgraph repo_rust_test_module_rust_crates_host_src_component_cache_body_rs_mod_tests_9684 ["repo.rust_test_module/rust/crates/host/src/component/cache/body.rs:mod:tests@9684"]
+      repo_rust_test_case_rust_crates_host_src_component_cache_body_rs_test_index_node_paths_includes_children_9731["repo.rust_test_case/rust/crates/host/src/component/cache/body.rs:test:index_node_paths_includes_children@9731"]
     end
-    repo_rust_test_module_rust_crates_host_src_component_cache_rs_mod_tests_10302["repo.rust_test_module/rust/crates/host/src/component/cache.rs:mod:tests@10302"]
-    subgraph repo_rust_test_module_rust_crates_host_src_component_coverage_rs_mod_tests_12634 ["repo.rust_test_module/rust/crates/host/src/component/coverage.rs:mod:tests@12634"]
-      repo_rust_test_case_rust_crates_host_src_component_coverage_rs_test_all_whitespace_file_is_full_coverage_14977["repo.rust_test_case/rust/crates/host/src/component/coverage.rs:test:all_whitespace_file_is_full_coverage@14977"]
-      repo_rust_test_case_rust_crates_host_src_component_coverage_rs_test_compact_snapshot_excludes_ignored_instance_spans_17089["repo.rust_test_case/rust/crates/host/src/component/coverage.rs:test:compact_snapshot_excludes_ignored_instance_spans@17089"]
-      repo_rust_test_case_rust_crates_host_src_component_coverage_rs_test_consolidated_gap_includes_internal_whitespace_13857["repo.rust_test_case/rust/crates/host/src/component/coverage.rs:test:consolidated_gap_includes_internal_whitespace@13857"]
-      repo_rust_test_case_rust_crates_host_src_component_coverage_rs_test_merge_overlaps_and_adjacent_12681["repo.rust_test_case/rust/crates/host/src/component/coverage.rs:test:merge_overlaps_and_adjacent@12681"]
-      repo_rust_test_case_rust_crates_host_src_component_coverage_rs_test_parent_span_ignored_when_children_have_spans_15801["repo.rust_test_case/rust/crates/host/src/component/coverage.rs:test:parent_span_ignored_when_children_have_spans@15801"]
-      repo_rust_test_case_rust_crates_host_src_component_coverage_rs_test_path_only_source_does_not_collect_span_15272["repo.rust_test_case/rust/crates/host/src/component/coverage.rs:test:path_only_source_does_not_collect_span@15272"]
-      repo_rust_test_case_rust_crates_host_src_component_coverage_rs_test_spanned_parent_with_path_only_children_counts_as_leaf_16609["repo.rust_test_case/rust/crates/host/src/component/coverage.rs:test:spanned_parent_with_path_only_children_counts_as_leaf@16609"]
-      repo_rust_test_case_rust_crates_host_src_component_coverage_rs_test_sweep_whitespace_excluded_comments_count_as_gaps_13161["repo.rust_test_case/rust/crates/host/src/component/coverage.rs:test:sweep_whitespace_excluded_comments_count_as_gaps@13161"]
-      repo_rust_test_case_rust_crates_host_src_component_coverage_rs_test_whitespace_only_uncovered_run_emits_no_gap_14542["repo.rust_test_case/rust/crates/host/src/component/coverage.rs:test:whitespace_only_uncovered_run_emits_no_gap@14542"]
+    repo_rust_test_module_rust_crates_host_src_component_cache_body_rs_mod_tests_9684["repo.rust_test_module/rust/crates/host/src/component/cache/body.rs:mod:tests@9684"]
+    subgraph repo_rust_test_module_rust_crates_host_src_component_coverage_mod_rs_mod_tests_5919 ["repo.rust_test_module/rust/crates/host/src/component/coverage/mod.rs:mod:tests@5919"]
+      repo_rust_test_case_rust_crates_host_src_component_coverage_mod_rs_test_all_whitespace_file_is_full_coverage_8034["repo.rust_test_case/rust/crates/host/src/component/coverage/mod.rs:test:all_whitespace_file_is_full_coverage@8034"]
+      repo_rust_test_case_rust_crates_host_src_component_coverage_mod_rs_test_compact_snapshot_excludes_ignored_instance_spans_10146["repo.rust_test_case/rust/crates/host/src/component/coverage/mod.rs:test:compact_snapshot_excludes_ignored_instance_spans@10146"]
+      repo_rust_test_case_rust_crates_host_src_component_coverage_mod_rs_test_consolidated_gap_includes_internal_whitespace_7071["repo.rust_test_case/rust/crates/host/src/component/coverage/mod.rs:test:consolidated_gap_includes_internal_whitespace@7071"]
+      repo_rust_test_case_rust_crates_host_src_component_coverage_mod_rs_test_merge_overlaps_and_adjacent_6002["repo.rust_test_case/rust/crates/host/src/component/coverage/mod.rs:test:merge_overlaps_and_adjacent@6002"]
+      repo_rust_test_case_rust_crates_host_src_component_coverage_mod_rs_test_parent_span_ignored_when_children_have_spans_8858["repo.rust_test_case/rust/crates/host/src/component/coverage/mod.rs:test:parent_span_ignored_when_children_have_spans@8858"]
+      repo_rust_test_case_rust_crates_host_src_component_coverage_mod_rs_test_path_only_source_does_not_collect_span_8329["repo.rust_test_case/rust/crates/host/src/component/coverage/mod.rs:test:path_only_source_does_not_collect_span@8329"]
+      repo_rust_test_case_rust_crates_host_src_component_coverage_mod_rs_test_spanned_parent_with_path_only_children_counts_as_leaf_9666["repo.rust_test_case/rust/crates/host/src/component/coverage/mod.rs:test:spanned_parent_with_path_only_children_counts_as_leaf@9666"]
+      repo_rust_test_case_rust_crates_host_src_component_coverage_mod_rs_test_sweep_whitespace_excluded_comments_count_as_gaps_6482["repo.rust_test_case/rust/crates/host/src/component/coverage/mod.rs:test:sweep_whitespace_excluded_comments_count_as_gaps@6482"]
+      repo_rust_test_case_rust_crates_host_src_component_coverage_mod_rs_test_whitespace_only_uncovered_run_emits_no_gap_7599["repo.rust_test_case/rust/crates/host/src/component/coverage/mod.rs:test:whitespace_only_uncovered_run_emits_no_gap@7599"]
     end
-    repo_rust_test_module_rust_crates_host_src_component_coverage_rs_mod_tests_12634["repo.rust_test_module/rust/crates/host/src/component/coverage.rs:mod:tests@12634"]
-    subgraph repo_rust_test_module_rust_crates_host_src_component_graph_render_rs_mod_tests_7045 ["repo.rust_test_module/rust/crates/host/src/component/graph_render.rs:mod:tests@7045"]
-      repo_rust_test_case_rust_crates_host_src_component_graph_render_rs_helper_instance_7226["repo.rust_test_case/rust/crates/host/src/component/graph_render.rs:helper:instance@7226"]
-      repo_rust_test_case_rust_crates_host_src_component_graph_render_rs_helper_sample_graph_7558["repo.rust_test_case/rust/crates/host/src/component/graph_render.rs:helper:sample_graph@7558"]
-      repo_rust_test_case_rust_crates_host_src_component_graph_render_rs_test_instance_graph_omits_isolated_and_draws_edges_9959["repo.rust_test_case/rust/crates/host/src/component/graph_render.rs:test:instance_graph_omits_isolated_and_draws_edges@9959"]
-      repo_rust_test_case_rust_crates_host_src_component_graph_render_rs_test_instance_graph_omits_truly_isolated_10733["repo.rust_test_case/rust/crates/host/src/component/graph_render.rs:test:instance_graph_omits_truly_isolated@10733"]
-      repo_rust_test_case_rust_crates_host_src_component_graph_render_rs_test_kind_graph_mermaid_rolls_up_with_counts_9268["repo.rust_test_case/rust/crates/host/src/component/graph_render.rs:test:kind_graph_mermaid_rolls_up_with_counts@9268"]
-      repo_rust_test_case_rust_crates_host_src_component_graph_render_rs_test_membership_subgraph_and_no_member_arrow_11680["repo.rust_test_case/rust/crates/host/src/component/graph_render.rs:test:membership_subgraph_and_no_member_arrow@11680"]
+    repo_rust_test_module_rust_crates_host_src_component_coverage_mod_rs_mod_tests_5919["repo.rust_test_module/rust/crates/host/src/component/coverage/mod.rs:mod:tests@5919"]
+    subgraph repo_rust_test_module_rust_crates_host_src_component_graph_render_instance_rs_mod_tests_5620 ["repo.rust_test_module/rust/crates/host/src/component/graph_render/instance.rs:mod:tests@5620"]
+      repo_rust_test_case_rust_crates_host_src_component_graph_render_instance_rs_helper_instance_5801["repo.rust_test_case/rust/crates/host/src/component/graph_render/instance.rs:helper:instance@5801"]
+      repo_rust_test_case_rust_crates_host_src_component_graph_render_instance_rs_helper_sample_graph_6133["repo.rust_test_case/rust/crates/host/src/component/graph_render/instance.rs:helper:sample_graph@6133"]
+      repo_rust_test_case_rust_crates_host_src_component_graph_render_instance_rs_test_instance_graph_omits_isolated_and_draws_edges_8534["repo.rust_test_case/rust/crates/host/src/component/graph_render/instance.rs:test:instance_graph_omits_isolated_and_draws_edges@8534"]
+      repo_rust_test_case_rust_crates_host_src_component_graph_render_instance_rs_test_instance_graph_omits_truly_isolated_9308["repo.rust_test_case/rust/crates/host/src/component/graph_render/instance.rs:test:instance_graph_omits_truly_isolated@9308"]
+      repo_rust_test_case_rust_crates_host_src_component_graph_render_instance_rs_test_kind_graph_mermaid_rolls_up_with_counts_7843["repo.rust_test_case/rust/crates/host/src/component/graph_render/instance.rs:test:kind_graph_mermaid_rolls_up_with_counts@7843"]
+      repo_rust_test_case_rust_crates_host_src_component_graph_render_instance_rs_test_membership_subgraph_and_no_member_arrow_10255["repo.rust_test_case/rust/crates/host/src/component/graph_render/instance.rs:test:membership_subgraph_and_no_member_arrow@10255"]
     end
-    repo_rust_test_module_rust_crates_host_src_component_graph_render_rs_mod_tests_7045["repo.rust_test_module/rust/crates/host/src/component/graph_render.rs:mod:tests@7045"]
+    repo_rust_test_module_rust_crates_host_src_component_graph_render_instance_rs_mod_tests_5620["repo.rust_test_module/rust/crates/host/src/component/graph_render/instance.rs:mod:tests@5620"]
     subgraph repo_rust_test_module_rust_crates_host_src_component_membership_rs_mod_tests_4536 ["repo.rust_test_module/rust/crates/host/src/component/membership.rs:mod:tests@4536"]
       repo_rust_test_case_rust_crates_host_src_component_membership_rs_helper_edge_4607["repo.rust_test_case/rust/crates/host/src/component/membership.rs:helper:edge@4607"]
       repo_rust_test_case_rust_crates_host_src_component_membership_rs_test_cycle_warns_and_breaks_5545["repo.rust_test_case/rust/crates/host/src/component/membership.rs:test:cycle_warns_and_breaks@5545"]
@@ -349,18 +372,18 @@ graph LR
       repo_rust_test_case_rust_crates_host_src_component_membership_rs_test_valid_nested_tree_no_findings_6529["repo.rust_test_case/rust/crates/host/src/component/membership.rs:test:valid_nested_tree_no_findings@6529"]
     end
     repo_rust_test_module_rust_crates_host_src_component_membership_rs_mod_tests_4536["repo.rust_test_module/rust/crates/host/src/component/membership.rs:mod:tests@4536"]
-    subgraph repo_rust_test_module_rust_crates_host_src_component_relation_metrics_rs_mod_tests_10104 ["repo.rust_test_module/rust/crates/host/src/component/relation_metrics.rs:mod:tests@10104"]
-      repo_rust_test_case_rust_crates_host_src_component_relation_metrics_rs_helper_edge_10898["repo.rust_test_case/rust/crates/host/src/component/relation_metrics.rs:helper:edge@10898"]
-      repo_rust_test_case_rust_crates_host_src_component_relation_metrics_rs_helper_inst_10191["repo.rust_test_case/rust/crates/host/src/component/relation_metrics.rs:helper:inst@10191"]
-      repo_rust_test_case_rust_crates_host_src_component_relation_metrics_rs_helper_relations_11205["repo.rust_test_case/rust/crates/host/src/component/relation_metrics.rs:helper:relations@11205"]
-      repo_rust_test_case_rust_crates_host_src_component_relation_metrics_rs_helper_zone_inst_10539["repo.rust_test_case/rust/crates/host/src/component/relation_metrics.rs:helper:zone_inst@10539"]
-      repo_rust_test_case_rust_crates_host_src_component_relation_metrics_rs_test_ignore_coverage_ids_include_zone_members_18627["repo.rust_test_case/rust/crates/host/src/component/relation_metrics.rs:test:ignore_coverage_ids_include_zone_members@18627"]
-      repo_rust_test_case_rust_crates_host_src_component_relation_metrics_rs_test_ignore_relations_exempts_structural_members_11447["repo.rust_test_case/rust/crates/host/src/component/relation_metrics.rs:test:ignore_relations_exempts_structural_members@11447"]
-      repo_rust_test_case_rust_crates_host_src_component_relation_metrics_rs_test_nested_child_with_architecture_edge_is_eligible_and_connected_16500["repo.rust_test_case/rust/crates/host/src/component/relation_metrics.rs:test:nested_child_with_architecture_edge_is_eligible_and_connected@16500"]
-      repo_rust_test_case_rust_crates_host_src_component_relation_metrics_rs_test_nested_membership_only_child_not_architecture_eligible_14862["repo.rust_test_case/rust/crates/host/src/component/relation_metrics.rs:test:nested_membership_only_child_not_architecture_eligible@14862"]
-      repo_rust_test_case_rust_crates_host_src_component_relation_metrics_rs_test_title_only_role_does_not_ignore_13878["repo.rust_test_case/rust/crates/host/src/component/relation_metrics.rs:test:title_only_role_does_not_ignore@13878"]
+    subgraph repo_rust_test_module_rust_crates_host_src_component_relation_metrics_compute_rs_mod_tests_8296 ["repo.rust_test_module/rust/crates/host/src/component/relation_metrics/compute.rs:mod:tests@8296"]
+      repo_rust_test_case_rust_crates_host_src_component_relation_metrics_compute_rs_helper_edge_9090["repo.rust_test_case/rust/crates/host/src/component/relation_metrics/compute.rs:helper:edge@9090"]
+      repo_rust_test_case_rust_crates_host_src_component_relation_metrics_compute_rs_helper_inst_8383["repo.rust_test_case/rust/crates/host/src/component/relation_metrics/compute.rs:helper:inst@8383"]
+      repo_rust_test_case_rust_crates_host_src_component_relation_metrics_compute_rs_helper_relations_9397["repo.rust_test_case/rust/crates/host/src/component/relation_metrics/compute.rs:helper:relations@9397"]
+      repo_rust_test_case_rust_crates_host_src_component_relation_metrics_compute_rs_helper_zone_inst_8731["repo.rust_test_case/rust/crates/host/src/component/relation_metrics/compute.rs:helper:zone_inst@8731"]
+      repo_rust_test_case_rust_crates_host_src_component_relation_metrics_compute_rs_test_ignore_coverage_ids_include_zone_members_16819["repo.rust_test_case/rust/crates/host/src/component/relation_metrics/compute.rs:test:ignore_coverage_ids_include_zone_members@16819"]
+      repo_rust_test_case_rust_crates_host_src_component_relation_metrics_compute_rs_test_ignore_relations_exempts_structural_members_9639["repo.rust_test_case/rust/crates/host/src/component/relation_metrics/compute.rs:test:ignore_relations_exempts_structural_members@9639"]
+      repo_rust_test_case_rust_crates_host_src_component_relation_metrics_compute_rs_test_nested_child_with_architecture_edge_is_eligible_and_connected_14692["repo.rust_test_case/rust/crates/host/src/component/relation_metrics/compute.rs:test:nested_child_with_architecture_edge_is_eligible_and_connected@14692"]
+      repo_rust_test_case_rust_crates_host_src_component_relation_metrics_compute_rs_test_nested_membership_only_child_not_architecture_eligible_13054["repo.rust_test_case/rust/crates/host/src/component/relation_metrics/compute.rs:test:nested_membership_only_child_not_architecture_eligible@13054"]
+      repo_rust_test_case_rust_crates_host_src_component_relation_metrics_compute_rs_test_title_only_role_does_not_ignore_12070["repo.rust_test_case/rust/crates/host/src/component/relation_metrics/compute.rs:test:title_only_role_does_not_ignore@12070"]
     end
-    repo_rust_test_module_rust_crates_host_src_component_relation_metrics_rs_mod_tests_10104["repo.rust_test_module/rust/crates/host/src/component/relation_metrics.rs:mod:tests@10104"]
+    repo_rust_test_module_rust_crates_host_src_component_relation_metrics_compute_rs_mod_tests_8296["repo.rust_test_module/rust/crates/host/src/component/relation_metrics/compute.rs:mod:tests@8296"]
     subgraph repo_rust_test_module_rust_crates_host_src_component_relations_mod_rs_mod_tests_402 ["repo.rust_test_module/rust/crates/host/src/component/relations/mod.rs:mod:tests@402"]
       repo_rust_test_case_rust_crates_host_src_component_relations_mod_rs_helper_instance_526["repo.rust_test_case/rust/crates/host/src/component/relations/mod.rs:helper:instance@526"]
       repo_rust_test_case_rust_crates_host_src_component_relations_mod_rs_test_attach_relations_groups_by_kind_on_nodes_6709["repo.rust_test_case/rust/crates/host/src/component/relations/mod.rs:test:attach_relations_groups_by_kind_on_nodes@6709"]
@@ -1446,7 +1469,9 @@ graph LR
     repo_lua_load_module_load_component["repo.lua_load_module/load.component"]
     repo_lua_load_module_load_dispatch["repo.lua_load_module/load.dispatch"]
     repo_lua_load_module_load_error["repo.lua_load_module/load.error"]
+    repo_lua_load_module_load_explorer["repo.lua_load_module/load.explorer"]
     repo_lua_load_module_load_map["repo.lua_load_module/load.map"]
+    repo_lua_load_module_load_ops["repo.lua_load_module/load.ops"]
     repo_lua_load_module_load_query_lib["repo.lua_load_module/load.query_lib"]
     repo_lua_load_module_load_recipe["repo.lua_load_module/load.recipe"]
     repo_lua_load_module_load_shared["repo.lua_load_module/load.shared"]
@@ -1454,6 +1479,7 @@ graph LR
     repo_lua_load_module_load_table_util["repo.lua_load_module/load.table_util"]
     repo_lua_load_module_load_test_suite["repo.lua_load_module/load.test_suite"]
     repo_lua_load_module_load_type_def["repo.lua_load_module/load.type_def"]
+    repo_lua_load_module_load_type_parse["repo.lua_load_module/load.type_parse"]
     repo_lua_load_module_load_variables["repo.lua_load_module/load.variables"]
     subgraph repo_rust_test_module_rust_crates_lua_src_host_api_specs_rs_mod_tests_17818 ["repo.rust_test_module/rust/crates/lua/src/host_api/specs.rs:mod:tests@17818"]
       repo_rust_test_case_rust_crates_lua_src_host_api_specs_rs_helper_lua_17881["repo.rust_test_case/rust/crates/lua/src/host_api/specs.rs:helper:lua@17881"]
@@ -1466,41 +1492,41 @@ graph LR
       repo_rust_test_case_rust_crates_lua_src_host_api_specs_rs_test_read_spec_table_19225["repo.rust_test_case/rust/crates/lua/src/host_api/specs.rs:test:read_spec_table@19225"]
     end
     repo_rust_test_module_rust_crates_lua_src_host_api_specs_rs_mod_tests_17818["repo.rust_test_module/rust/crates/lua/src/host_api/specs.rs:mod:tests@17818"]
-    subgraph repo_rust_test_module_rust_crates_lua_src_load_mod_rs_mod_tests_7322 ["repo.rust_test_module/rust/crates/lua/src/load/mod.rs:mod:tests@7322"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_helper_loaded_asset_11967["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:helper:loaded_asset@11967"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_aliases_symbol_to_text_9475["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:aliases_symbol_to_text@9475"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_classify_table_apply_not_function_is_error_11598["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:classify_table_apply_not_function_is_error@11598"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_classify_table_apply_without_id_is_malformed_13296["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:classify_table_apply_without_id_is_malformed@13296"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_classify_table_component_14208["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:classify_table_component@14208"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_classify_table_library_12978["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:classify_table_library@12978"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_classify_table_map_10099["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:classify_table_map@10099"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_classify_table_query_lib_10698["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:classify_table_query_lib@10698"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_classify_table_recipe_9795["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:classify_table_recipe@9795"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_classify_table_stack_13903["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:classify_table_stack@13903"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_classify_table_test_suite_16684["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:classify_table_test_suite@16684"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_classify_table_type_11013["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:classify_table_type@11013"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_classify_table_unknown_11317["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:classify_table_unknown@11317"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_classify_table_variables_10391["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:classify_table_variables@10391"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_component_relate_detected_as_optional_hook_15492["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:component_relate_detected_as_optional_hook@15492"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_component_without_verify_classifies_as_component_14637["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:component_without_verify_classifies_as_component@14637"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_load_asset_library_13666["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:load_asset_library@13666"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_load_asset_map_12464["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:load_asset_map@12464"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_load_asset_recipe_12180["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:load_asset_recipe@12180"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_load_asset_stack_and_component_16032["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:load_asset_stack_and_component@16032"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_load_asset_stack_with_codebase_18202["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:load_asset_stack_with_codebase@18202"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_load_asset_stack_with_relations_18778["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:load_asset_stack_with_relations@18778"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_load_asset_stack_with_zones_and_zone_roles_19338["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:load_asset_stack_with_zones_and_zone_roles@19338"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_load_asset_unknown_12761["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:load_asset_unknown@12761"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_loads_minimal_recipe_7407["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:loads_minimal_recipe@7407"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_loads_type_asset_8691["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:loads_type_asset@8691"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_parses_list_input_kind_8018["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:parses_list_input_kind@8018"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_rejects_missing_apply_7868["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:rejects_missing_apply@7868"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_rejects_nested_list_input_kind_8436["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:rejects_nested_list_input_kind@8436"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_rejects_reserved_type_id_9292["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:rejects_reserved_type_id@9292"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_test_suite_rejects_empty_tests_17938["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:test_suite_rejects_empty_tests@17938"]
-      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_test_suite_rejects_non_function_test_17650["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:test_suite_rejects_non_function_test@17650"]
+    subgraph repo_rust_test_module_rust_crates_lua_src_load_mod_rs_mod_tests_7361 ["repo.rust_test_module/rust/crates/lua/src/load/mod.rs:mod:tests@7361"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_helper_loaded_asset_12006["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:helper:loaded_asset@12006"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_aliases_symbol_to_text_9514["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:aliases_symbol_to_text@9514"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_classify_table_apply_not_function_is_error_11637["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:classify_table_apply_not_function_is_error@11637"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_classify_table_apply_without_id_is_malformed_13335["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:classify_table_apply_without_id_is_malformed@13335"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_classify_table_component_14247["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:classify_table_component@14247"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_classify_table_library_13017["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:classify_table_library@13017"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_classify_table_map_10138["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:classify_table_map@10138"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_classify_table_query_lib_10737["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:classify_table_query_lib@10737"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_classify_table_recipe_9834["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:classify_table_recipe@9834"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_classify_table_stack_13942["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:classify_table_stack@13942"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_classify_table_test_suite_16723["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:classify_table_test_suite@16723"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_classify_table_type_11052["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:classify_table_type@11052"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_classify_table_unknown_11356["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:classify_table_unknown@11356"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_classify_table_variables_10430["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:classify_table_variables@10430"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_component_relate_detected_as_optional_hook_15531["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:component_relate_detected_as_optional_hook@15531"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_component_without_verify_classifies_as_component_14676["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:component_without_verify_classifies_as_component@14676"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_load_asset_library_13705["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:load_asset_library@13705"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_load_asset_map_12503["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:load_asset_map@12503"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_load_asset_recipe_12219["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:load_asset_recipe@12219"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_load_asset_stack_and_component_16071["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:load_asset_stack_and_component@16071"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_load_asset_stack_with_codebase_18241["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:load_asset_stack_with_codebase@18241"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_load_asset_stack_with_relations_18817["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:load_asset_stack_with_relations@18817"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_load_asset_stack_with_zones_and_zone_roles_19377["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:load_asset_stack_with_zones_and_zone_roles@19377"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_load_asset_unknown_12800["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:load_asset_unknown@12800"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_loads_minimal_recipe_7446["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:loads_minimal_recipe@7446"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_loads_type_asset_8730["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:loads_type_asset@8730"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_parses_list_input_kind_8057["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:parses_list_input_kind@8057"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_rejects_missing_apply_7907["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:rejects_missing_apply@7907"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_rejects_nested_list_input_kind_8475["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:rejects_nested_list_input_kind@8475"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_rejects_reserved_type_id_9331["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:rejects_reserved_type_id@9331"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_test_suite_rejects_empty_tests_17977["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:test_suite_rejects_empty_tests@17977"]
+      repo_rust_test_case_rust_crates_lua_src_load_mod_rs_test_test_suite_rejects_non_function_test_17689["repo.rust_test_case/rust/crates/lua/src/load/mod.rs:test:test_suite_rejects_non_function_test@17689"]
     end
-    repo_rust_test_module_rust_crates_lua_src_load_mod_rs_mod_tests_7322["repo.rust_test_module/rust/crates/lua/src/load/mod.rs:mod:tests@7322"]
+    repo_rust_test_module_rust_crates_lua_src_load_mod_rs_mod_tests_7361["repo.rust_test_module/rust/crates/lua/src/load/mod.rs:mod:tests@7361"]
     subgraph repo_rust_test_module_rust_crates_lua_src_require_rs_mod_tests_7543 ["repo.rust_test_module/rust/crates/lua/src/require.rs:mod:tests@7543"]
       repo_rust_test_case_rust_crates_lua_src_require_rs_helper_temp_codemod_7748["repo.rust_test_case/rust/crates/lua/src/require.rs:helper:temp_codemod@7748"]
       repo_rust_test_case_rust_crates_lua_src_require_rs_test_require_loads_library_helper_8107["repo.rust_test_case/rust/crates/lua/src/require.rs:test:require_loads_library_helper@8107"]
@@ -1849,46 +1875,108 @@ graph LR
       repo_rust_mod_item_rust_crates_host_src_bin_generate_host_api_surface_rs_use_use_6_405["repo.rust_mod_item/rust/crates/host/src/bin/generate_host_api_surface.rs:use:use#6@405"]
     end
     repo_rust_mod_file_rust_crates_host_src_bin_generate_host_api_surface_rs["repo.rust_mod_file/rust/crates/host/src/bin/generate_host_api_surface.rs"]
-    subgraph repo_rust_mod_file_rust_crates_host_src_component_cache_rs ["repo.rust_mod_file/rust/crates/host/src/component/cache.rs"]
-      repo_rust_mod_item_rust_crates_host_src_component_cache_rs_mod_tests_10302["repo.rust_mod_item/rust/crates/host/src/component/cache.rs:mod:tests@10302"]
-      repo_rust_mod_item_rust_crates_host_src_component_cache_rs_use_use_1_0["repo.rust_mod_item/rust/crates/host/src/component/cache.rs:use:use#1@0"]
-      repo_rust_mod_item_rust_crates_host_src_component_cache_rs_use_use_2_44["repo.rust_mod_item/rust/crates/host/src/component/cache.rs:use:use#2@44"]
-      repo_rust_mod_item_rust_crates_host_src_component_cache_rs_use_use_3_66["repo.rust_mod_item/rust/crates/host/src/component/cache.rs:use:use#3@66"]
-      repo_rust_mod_item_rust_crates_host_src_component_cache_rs_use_use_4_126["repo.rust_mod_item/rust/crates/host/src/component/cache.rs:use:use#4@126"]
-      repo_rust_mod_item_rust_crates_host_src_component_cache_rs_use_use_5_208["repo.rust_mod_item/rust/crates/host/src/component/cache.rs:use:use#5@208"]
-      repo_rust_mod_item_rust_crates_host_src_component_cache_rs_use_use_6_10318["repo.rust_mod_item/rust/crates/host/src/component/cache.rs:use:use#6@10318"]
+    subgraph repo_rust_mod_file_rust_crates_host_src_component_cache_body_rs ["repo.rust_mod_file/rust/crates/host/src/component/cache/body.rs"]
+      repo_rust_mod_item_rust_crates_host_src_component_cache_body_rs_mod_tests_9684["repo.rust_mod_item/rust/crates/host/src/component/cache/body.rs:mod:tests@9684"]
+      repo_rust_mod_item_rust_crates_host_src_component_cache_body_rs_use_use_1_59["repo.rust_mod_item/rust/crates/host/src/component/cache/body.rs:use:use#1@59"]
+      repo_rust_mod_item_rust_crates_host_src_component_cache_body_rs_use_use_2_103["repo.rust_mod_item/rust/crates/host/src/component/cache/body.rs:use:use#2@103"]
+      repo_rust_mod_item_rust_crates_host_src_component_cache_body_rs_use_use_3_125["repo.rust_mod_item/rust/crates/host/src/component/cache/body.rs:use:use#3@125"]
+      repo_rust_mod_item_rust_crates_host_src_component_cache_body_rs_use_use_4_185["repo.rust_mod_item/rust/crates/host/src/component/cache/body.rs:use:use#4@185"]
+      repo_rust_mod_item_rust_crates_host_src_component_cache_body_rs_use_use_5_267["repo.rust_mod_item/rust/crates/host/src/component/cache/body.rs:use:use#5@267"]
+      repo_rust_mod_item_rust_crates_host_src_component_cache_body_rs_use_use_6_313["repo.rust_mod_item/rust/crates/host/src/component/cache/body.rs:use:use#6@313"]
+      repo_rust_mod_item_rust_crates_host_src_component_cache_body_rs_use_use_7_9700["repo.rust_mod_item/rust/crates/host/src/component/cache/body.rs:use:use#7@9700"]
     end
-    repo_rust_mod_file_rust_crates_host_src_component_cache_rs["repo.rust_mod_file/rust/crates/host/src/component/cache.rs"]
-    subgraph repo_rust_mod_file_rust_crates_host_src_component_coverage_rs ["repo.rust_mod_file/rust/crates/host/src/component/coverage.rs"]
-      repo_rust_mod_item_rust_crates_host_src_component_coverage_rs_mod_tests_12634["repo.rust_mod_item/rust/crates/host/src/component/coverage.rs:mod:tests@12634"]
-      repo_rust_mod_item_rust_crates_host_src_component_coverage_rs_use_use_1_164["repo.rust_mod_item/rust/crates/host/src/component/coverage.rs:use:use#1@164"]
-      repo_rust_mod_item_rust_crates_host_src_component_coverage_rs_use_use_2_196["repo.rust_mod_item/rust/crates/host/src/component/coverage.rs:use:use#2@196"]
-      repo_rust_mod_item_rust_crates_host_src_component_coverage_rs_use_use_3_218["repo.rust_mod_item/rust/crates/host/src/component/coverage.rs:use:use#3@218"]
-      repo_rust_mod_item_rust_crates_host_src_component_coverage_rs_use_use_4_241["repo.rust_mod_item/rust/crates/host/src/component/coverage.rs:use:use#4@241"]
-      repo_rust_mod_item_rust_crates_host_src_component_coverage_rs_use_use_5_289["repo.rust_mod_item/rust/crates/host/src/component/coverage.rs:use:use#5@289"]
-      repo_rust_mod_item_rust_crates_host_src_component_coverage_rs_use_use_6_334["repo.rust_mod_item/rust/crates/host/src/component/coverage.rs:use:use#6@334"]
-      repo_rust_mod_item_rust_crates_host_src_component_coverage_rs_use_use_7_12650["repo.rust_mod_item/rust/crates/host/src/component/coverage.rs:use:use#7@12650"]
+    repo_rust_mod_file_rust_crates_host_src_component_cache_body_rs["repo.rust_mod_file/rust/crates/host/src/component/cache/body.rs"]
+    subgraph repo_rust_mod_file_rust_crates_host_src_component_cache_mod_rs ["repo.rust_mod_file/rust/crates/host/src/component/cache/mod.rs"]
+      repo_rust_mod_item_rust_crates_host_src_component_cache_mod_rs_mod_body_55["repo.rust_mod_item/rust/crates/host/src/component/cache/mod.rs:mod:body@55"]
+      repo_rust_mod_item_rust_crates_host_src_component_cache_mod_rs_mod_types_65["repo.rust_mod_item/rust/crates/host/src/component/cache/mod.rs:mod:types@65"]
+      repo_rust_mod_item_rust_crates_host_src_component_cache_mod_rs_use_use_1_77["repo.rust_mod_item/rust/crates/host/src/component/cache/mod.rs:use:use#1@77"]
+      repo_rust_mod_item_rust_crates_host_src_component_cache_mod_rs_use_use_2_126["repo.rust_mod_item/rust/crates/host/src/component/cache/mod.rs:use:use#2@126"]
     end
-    repo_rust_mod_file_rust_crates_host_src_component_coverage_rs["repo.rust_mod_file/rust/crates/host/src/component/coverage.rs"]
-    subgraph repo_rust_mod_file_rust_crates_host_src_component_delegate_rs ["repo.rust_mod_file/rust/crates/host/src/component/delegate.rs"]
-      repo_rust_mod_item_rust_crates_host_src_component_delegate_rs_use_use_1_0["repo.rust_mod_item/rust/crates/host/src/component/delegate.rs:use:use#1@0"]
-      repo_rust_mod_item_rust_crates_host_src_component_delegate_rs_use_use_2_18["repo.rust_mod_item/rust/crates/host/src/component/delegate.rs:use:use#2@18"]
-      repo_rust_mod_item_rust_crates_host_src_component_delegate_rs_use_use_3_83["repo.rust_mod_item/rust/crates/host/src/component/delegate.rs:use:use#3@83"]
-      repo_rust_mod_item_rust_crates_host_src_component_delegate_rs_use_use_4_125["repo.rust_mod_item/rust/crates/host/src/component/delegate.rs:use:use#4@125"]
-      repo_rust_mod_item_rust_crates_host_src_component_delegate_rs_use_use_5_167["repo.rust_mod_item/rust/crates/host/src/component/delegate.rs:use:use#5@167"]
-      repo_rust_mod_item_rust_crates_host_src_component_delegate_rs_use_use_6_275["repo.rust_mod_item/rust/crates/host/src/component/delegate.rs:use:use#6@275"]
+    repo_rust_mod_file_rust_crates_host_src_component_cache_mod_rs["repo.rust_mod_file/rust/crates/host/src/component/cache/mod.rs"]
+    subgraph repo_rust_mod_file_rust_crates_host_src_component_cache_types_rs ["repo.rust_mod_file/rust/crates/host/src/component/cache/types.rs"]
+      repo_rust_mod_item_rust_crates_host_src_component_cache_types_rs_use_use_1_29["repo.rust_mod_item/rust/crates/host/src/component/cache/types.rs:use:use#1@29"]
+      repo_rust_mod_item_rust_crates_host_src_component_cache_types_rs_use_use_2_74["repo.rust_mod_item/rust/crates/host/src/component/cache/types.rs:use:use#2@74"]
+      repo_rust_mod_item_rust_crates_host_src_component_cache_types_rs_use_use_3_134["repo.rust_mod_item/rust/crates/host/src/component/cache/types.rs:use:use#3@134"]
     end
-    repo_rust_mod_file_rust_crates_host_src_component_delegate_rs["repo.rust_mod_file/rust/crates/host/src/component/delegate.rs"]
-    subgraph repo_rust_mod_file_rust_crates_host_src_component_graph_render_rs ["repo.rust_mod_file/rust/crates/host/src/component/graph_render.rs"]
-      repo_rust_mod_item_rust_crates_host_src_component_graph_render_rs_mod_tests_7045["repo.rust_mod_item/rust/crates/host/src/component/graph_render.rs:mod:tests@7045"]
-      repo_rust_mod_item_rust_crates_host_src_component_graph_render_rs_use_use_1_233["repo.rust_mod_item/rust/crates/host/src/component/graph_render.rs:use:use#1@233"]
-      repo_rust_mod_item_rust_crates_host_src_component_graph_render_rs_use_use_2_278["repo.rust_mod_item/rust/crates/host/src/component/graph_render.rs:use:use#2@278"]
-      repo_rust_mod_item_rust_crates_host_src_component_graph_render_rs_use_use_3_360["repo.rust_mod_item/rust/crates/host/src/component/graph_render.rs:use:use#3@360"]
-      repo_rust_mod_item_rust_crates_host_src_component_graph_render_rs_use_use_4_7061["repo.rust_mod_item/rust/crates/host/src/component/graph_render.rs:use:use#4@7061"]
-      repo_rust_mod_item_rust_crates_host_src_component_graph_render_rs_use_use_5_7079["repo.rust_mod_item/rust/crates/host/src/component/graph_render.rs:use:use#5@7079"]
-      repo_rust_mod_item_rust_crates_host_src_component_graph_render_rs_use_use_6_7173["repo.rust_mod_item/rust/crates/host/src/component/graph_render.rs:use:use#6@7173"]
+    repo_rust_mod_file_rust_crates_host_src_component_cache_types_rs["repo.rust_mod_file/rust/crates/host/src/component/cache/types.rs"]
+    subgraph repo_rust_mod_file_rust_crates_host_src_component_coverage_compute_rs ["repo.rust_mod_file/rust/crates/host/src/component/coverage/compute.rs"]
+      repo_rust_mod_item_rust_crates_host_src_component_coverage_compute_rs_use_use_1_63["repo.rust_mod_item/rust/crates/host/src/component/coverage/compute.rs:use:use#1@63"]
+      repo_rust_mod_item_rust_crates_host_src_component_coverage_compute_rs_use_use_2_95["repo.rust_mod_item/rust/crates/host/src/component/coverage/compute.rs:use:use#2@95"]
+      repo_rust_mod_item_rust_crates_host_src_component_coverage_compute_rs_use_use_3_117["repo.rust_mod_item/rust/crates/host/src/component/coverage/compute.rs:use:use#3@117"]
+      repo_rust_mod_item_rust_crates_host_src_component_coverage_compute_rs_use_use_4_169["repo.rust_mod_item/rust/crates/host/src/component/coverage/compute.rs:use:use#4@169"]
+      repo_rust_mod_item_rust_crates_host_src_component_coverage_compute_rs_use_use_5_220["repo.rust_mod_item/rust/crates/host/src/component/coverage/compute.rs:use:use#5@220"]
     end
-    repo_rust_mod_file_rust_crates_host_src_component_graph_render_rs["repo.rust_mod_file/rust/crates/host/src/component/graph_render.rs"]
+    repo_rust_mod_file_rust_crates_host_src_component_coverage_compute_rs["repo.rust_mod_file/rust/crates/host/src/component/coverage/compute.rs"]
+    subgraph repo_rust_mod_file_rust_crates_host_src_component_coverage_mod_rs ["repo.rust_mod_file/rust/crates/host/src/component/coverage/mod.rs"]
+      repo_rust_mod_item_rust_crates_host_src_component_coverage_mod_rs_mod_compute_164["repo.rust_mod_item/rust/crates/host/src/component/coverage/mod.rs:mod:compute@164"]
+      repo_rust_mod_item_rust_crates_host_src_component_coverage_mod_rs_mod_spans_177["repo.rust_mod_item/rust/crates/host/src/component/coverage/mod.rs:mod:spans@177"]
+      repo_rust_mod_item_rust_crates_host_src_component_coverage_mod_rs_mod_tests_5919["repo.rust_mod_item/rust/crates/host/src/component/coverage/mod.rs:mod:tests@5919"]
+      repo_rust_mod_item_rust_crates_host_src_component_coverage_mod_rs_use_use_10_5935["repo.rust_mod_item/rust/crates/host/src/component/coverage/mod.rs:use:use#10@5935"]
+      repo_rust_mod_item_rust_crates_host_src_component_coverage_mod_rs_use_use_11_5953["repo.rust_mod_item/rust/crates/host/src/component/coverage/mod.rs:use:use#11@5953"]
+      repo_rust_mod_item_rust_crates_host_src_component_coverage_mod_rs_use_use_1_189["repo.rust_mod_item/rust/crates/host/src/component/coverage/mod.rs:use:use#1@189"]
+      repo_rust_mod_item_rust_crates_host_src_component_coverage_mod_rs_use_use_2_221["repo.rust_mod_item/rust/crates/host/src/component/coverage/mod.rs:use:use#2@221"]
+      repo_rust_mod_item_rust_crates_host_src_component_coverage_mod_rs_use_use_3_243["repo.rust_mod_item/rust/crates/host/src/component/coverage/mod.rs:use:use#3@243"]
+      repo_rust_mod_item_rust_crates_host_src_component_coverage_mod_rs_use_use_4_266["repo.rust_mod_item/rust/crates/host/src/component/coverage/mod.rs:use:use#4@266"]
+      repo_rust_mod_item_rust_crates_host_src_component_coverage_mod_rs_use_use_5_314["repo.rust_mod_item/rust/crates/host/src/component/coverage/mod.rs:use:use#5@314"]
+      repo_rust_mod_item_rust_crates_host_src_component_coverage_mod_rs_use_use_6_360["repo.rust_mod_item/rust/crates/host/src/component/coverage/mod.rs:use:use#6@360"]
+      repo_rust_mod_item_rust_crates_host_src_component_coverage_mod_rs_use_use_7_421["repo.rust_mod_item/rust/crates/host/src/component/coverage/mod.rs:use:use#7@421"]
+      repo_rust_mod_item_rust_crates_host_src_component_coverage_mod_rs_use_use_8_500["repo.rust_mod_item/rust/crates/host/src/component/coverage/mod.rs:use:use#8@500"]
+      repo_rust_mod_item_rust_crates_host_src_component_coverage_mod_rs_use_use_9_531["repo.rust_mod_item/rust/crates/host/src/component/coverage/mod.rs:use:use#9@531"]
+    end
+    repo_rust_mod_file_rust_crates_host_src_component_coverage_mod_rs["repo.rust_mod_file/rust/crates/host/src/component/coverage/mod.rs"]
+    subgraph repo_rust_mod_file_rust_crates_host_src_component_coverage_spans_rs ["repo.rust_mod_file/rust/crates/host/src/component/coverage/spans.rs"]
+      repo_rust_mod_item_rust_crates_host_src_component_coverage_spans_rs_use_use_1_82["repo.rust_mod_item/rust/crates/host/src/component/coverage/spans.rs:use:use#1@82"]
+      repo_rust_mod_item_rust_crates_host_src_component_coverage_spans_rs_use_use_2_115["repo.rust_mod_item/rust/crates/host/src/component/coverage/spans.rs:use:use#2@115"]
+    end
+    repo_rust_mod_file_rust_crates_host_src_component_coverage_spans_rs["repo.rust_mod_file/rust/crates/host/src/component/coverage/spans.rs"]
+    subgraph repo_rust_mod_file_rust_crates_host_src_component_delegate_invoke_rs ["repo.rust_mod_file/rust/crates/host/src/component/delegate/invoke.rs"]
+      repo_rust_mod_item_rust_crates_host_src_component_delegate_invoke_rs_use_use_1_78["repo.rust_mod_item/rust/crates/host/src/component/delegate/invoke.rs:use:use#1@78"]
+      repo_rust_mod_item_rust_crates_host_src_component_delegate_invoke_rs_use_use_2_96["repo.rust_mod_item/rust/crates/host/src/component/delegate/invoke.rs:use:use#2@96"]
+      repo_rust_mod_item_rust_crates_host_src_component_delegate_invoke_rs_use_use_3_161["repo.rust_mod_item/rust/crates/host/src/component/delegate/invoke.rs:use:use#3@161"]
+      repo_rust_mod_item_rust_crates_host_src_component_delegate_invoke_rs_use_use_4_203["repo.rust_mod_item/rust/crates/host/src/component/delegate/invoke.rs:use:use#4@203"]
+      repo_rust_mod_item_rust_crates_host_src_component_delegate_invoke_rs_use_use_5_245["repo.rust_mod_item/rust/crates/host/src/component/delegate/invoke.rs:use:use#5@245"]
+    end
+    repo_rust_mod_file_rust_crates_host_src_component_delegate_invoke_rs["repo.rust_mod_file/rust/crates/host/src/component/delegate/invoke.rs"]
+    subgraph repo_rust_mod_file_rust_crates_host_src_component_delegate_mod_rs ["repo.rust_mod_file/rust/crates/host/src/component/delegate/mod.rs"]
+      repo_rust_mod_item_rust_crates_host_src_component_delegate_mod_rs_mod_invoke_85["repo.rust_mod_item/rust/crates/host/src/component/delegate/mod.rs:mod:invoke@85"]
+      repo_rust_mod_item_rust_crates_host_src_component_delegate_mod_rs_mod_stack_97["repo.rust_mod_item/rust/crates/host/src/component/delegate/mod.rs:mod:stack@97"]
+      repo_rust_mod_item_rust_crates_host_src_component_delegate_mod_rs_use_use_1_109["repo.rust_mod_item/rust/crates/host/src/component/delegate/mod.rs:use:use#1@109"]
+      repo_rust_mod_item_rust_crates_host_src_component_delegate_mod_rs_use_use_2_127["repo.rust_mod_item/rust/crates/host/src/component/delegate/mod.rs:use:use#2@127"]
+      repo_rust_mod_item_rust_crates_host_src_component_delegate_mod_rs_use_use_3_159["repo.rust_mod_item/rust/crates/host/src/component/delegate/mod.rs:use:use#3@159"]
+      repo_rust_mod_item_rust_crates_host_src_component_delegate_mod_rs_use_use_4_201["repo.rust_mod_item/rust/crates/host/src/component/delegate/mod.rs:use:use#4@201"]
+      repo_rust_mod_item_rust_crates_host_src_component_delegate_mod_rs_use_use_5_310["repo.rust_mod_item/rust/crates/host/src/component/delegate/mod.rs:use:use#5@310"]
+      repo_rust_mod_item_rust_crates_host_src_component_delegate_mod_rs_use_use_6_384["repo.rust_mod_item/rust/crates/host/src/component/delegate/mod.rs:use:use#6@384"]
+    end
+    repo_rust_mod_file_rust_crates_host_src_component_delegate_mod_rs["repo.rust_mod_file/rust/crates/host/src/component/delegate/mod.rs"]
+    subgraph repo_rust_mod_file_rust_crates_host_src_component_delegate_stack_rs ["repo.rust_mod_file/rust/crates/host/src/component/delegate/stack.rs"]
+      repo_rust_mod_item_rust_crates_host_src_component_delegate_stack_rs_use_use_1_74["repo.rust_mod_item/rust/crates/host/src/component/delegate/stack.rs:use:use#1@74"]
+    end
+    repo_rust_mod_file_rust_crates_host_src_component_delegate_stack_rs["repo.rust_mod_file/rust/crates/host/src/component/delegate/stack.rs"]
+    subgraph repo_rust_mod_file_rust_crates_host_src_component_graph_render_instance_rs ["repo.rust_mod_file/rust/crates/host/src/component/graph_render/instance.rs"]
+      repo_rust_mod_item_rust_crates_host_src_component_graph_render_instance_rs_mod_tests_5620["repo.rust_mod_item/rust/crates/host/src/component/graph_render/instance.rs:mod:tests@5620"]
+      repo_rust_mod_item_rust_crates_host_src_component_graph_render_instance_rs_use_use_1_272["repo.rust_mod_item/rust/crates/host/src/component/graph_render/instance.rs:use:use#1@272"]
+      repo_rust_mod_item_rust_crates_host_src_component_graph_render_instance_rs_use_use_2_317["repo.rust_mod_item/rust/crates/host/src/component/graph_render/instance.rs:use:use#2@317"]
+      repo_rust_mod_item_rust_crates_host_src_component_graph_render_instance_rs_use_use_3_399["repo.rust_mod_item/rust/crates/host/src/component/graph_render/instance.rs:use:use#3@399"]
+      repo_rust_mod_item_rust_crates_host_src_component_graph_render_instance_rs_use_use_4_536["repo.rust_mod_item/rust/crates/host/src/component/graph_render/instance.rs:use:use#4@536"]
+      repo_rust_mod_item_rust_crates_host_src_component_graph_render_instance_rs_use_use_5_5636["repo.rust_mod_item/rust/crates/host/src/component/graph_render/instance.rs:use:use#5@5636"]
+      repo_rust_mod_item_rust_crates_host_src_component_graph_render_instance_rs_use_use_6_5654["repo.rust_mod_item/rust/crates/host/src/component/graph_render/instance.rs:use:use#6@5654"]
+      repo_rust_mod_item_rust_crates_host_src_component_graph_render_instance_rs_use_use_7_5748["repo.rust_mod_item/rust/crates/host/src/component/graph_render/instance.rs:use:use#7@5748"]
+    end
+    repo_rust_mod_file_rust_crates_host_src_component_graph_render_instance_rs["repo.rust_mod_file/rust/crates/host/src/component/graph_render/instance.rs"]
+    subgraph repo_rust_mod_file_rust_crates_host_src_component_graph_render_kind_rs ["repo.rust_mod_file/rust/crates/host/src/component/graph_render/kind.rs"]
+      repo_rust_mod_item_rust_crates_host_src_component_graph_render_kind_rs_use_use_1_35["repo.rust_mod_item/rust/crates/host/src/component/graph_render/kind.rs:use:use#1@35"]
+      repo_rust_mod_item_rust_crates_host_src_component_graph_render_kind_rs_use_use_2_79["repo.rust_mod_item/rust/crates/host/src/component/graph_render/kind.rs:use:use#2@79"]
+    end
+    repo_rust_mod_file_rust_crates_host_src_component_graph_render_kind_rs["repo.rust_mod_file/rust/crates/host/src/component/graph_render/kind.rs"]
+    subgraph repo_rust_mod_file_rust_crates_host_src_component_graph_render_mod_rs ["repo.rust_mod_file/rust/crates/host/src/component/graph_render/mod.rs"]
+      repo_rust_mod_item_rust_crates_host_src_component_graph_render_mod_rs_mod_instance_62["repo.rust_mod_item/rust/crates/host/src/component/graph_render/mod.rs:mod:instance@62"]
+      repo_rust_mod_item_rust_crates_host_src_component_graph_render_mod_rs_mod_kind_76["repo.rust_mod_item/rust/crates/host/src/component/graph_render/mod.rs:mod:kind@76"]
+      repo_rust_mod_item_rust_crates_host_src_component_graph_render_mod_rs_mod_style_86["repo.rust_mod_item/rust/crates/host/src/component/graph_render/mod.rs:mod:style@86"]
+      repo_rust_mod_item_rust_crates_host_src_component_graph_render_mod_rs_use_use_1_98["repo.rust_mod_item/rust/crates/host/src/component/graph_render/mod.rs:use:use#1@98"]
+      repo_rust_mod_item_rust_crates_host_src_component_graph_render_mod_rs_use_use_2_147["repo.rust_mod_item/rust/crates/host/src/component/graph_render/mod.rs:use:use#2@147"]
+    end
+    repo_rust_mod_file_rust_crates_host_src_component_graph_render_mod_rs["repo.rust_mod_file/rust/crates/host/src/component/graph_render/mod.rs"]
+    repo_rust_mod_file_rust_crates_host_src_component_graph_render_style_rs["repo.rust_mod_file/rust/crates/host/src/component/graph_render/style.rs"]
     subgraph repo_rust_mod_file_rust_crates_host_src_component_membership_rs ["repo.rust_mod_file/rust/crates/host/src/component/membership.rs"]
       repo_rust_mod_item_rust_crates_host_src_component_membership_rs_mod_tests_4536["repo.rust_mod_item/rust/crates/host/src/component/membership.rs:mod:tests@4536"]
       repo_rust_mod_item_rust_crates_host_src_component_membership_rs_use_use_1_295["repo.rust_mod_item/rust/crates/host/src/component/membership.rs:use:use#1@295"]
@@ -1922,31 +2010,50 @@ graph LR
       repo_rust_mod_item_rust_crates_host_src_component_mod_rs_use_use_9_959["repo.rust_mod_item/rust/crates/host/src/component/mod.rs:use:use#9@959"]
     end
     repo_rust_mod_file_rust_crates_host_src_component_mod_rs["repo.rust_mod_file/rust/crates/host/src/component/mod.rs"]
-    subgraph repo_rust_mod_file_rust_crates_host_src_component_relation_metrics_rs ["repo.rust_mod_file/rust/crates/host/src/component/relation_metrics.rs"]
-      repo_rust_mod_item_rust_crates_host_src_component_relation_metrics_rs_mod_tests_10104["repo.rust_mod_item/rust/crates/host/src/component/relation_metrics.rs:mod:tests@10104"]
-      repo_rust_mod_item_rust_crates_host_src_component_relation_metrics_rs_use_use_1_558["repo.rust_mod_item/rust/crates/host/src/component/relation_metrics.rs:use:use#1@558"]
-      repo_rust_mod_item_rust_crates_host_src_component_relation_metrics_rs_use_use_2_603["repo.rust_mod_item/rust/crates/host/src/component/relation_metrics.rs:use:use#2@603"]
-      repo_rust_mod_item_rust_crates_host_src_component_relation_metrics_rs_use_use_3_665["repo.rust_mod_item/rust/crates/host/src/component/relation_metrics.rs:use:use#3@665"]
-      repo_rust_mod_item_rust_crates_host_src_component_relation_metrics_rs_use_use_4_688["repo.rust_mod_item/rust/crates/host/src/component/relation_metrics.rs:use:use#4@688"]
-      repo_rust_mod_item_rust_crates_host_src_component_relation_metrics_rs_use_use_5_791["repo.rust_mod_item/rust/crates/host/src/component/relation_metrics.rs:use:use#5@791"]
-      repo_rust_mod_item_rust_crates_host_src_component_relation_metrics_rs_use_use_6_874["repo.rust_mod_item/rust/crates/host/src/component/relation_metrics.rs:use:use#6@874"]
-      repo_rust_mod_item_rust_crates_host_src_component_relation_metrics_rs_use_use_7_10120["repo.rust_mod_item/rust/crates/host/src/component/relation_metrics.rs:use:use#7@10120"]
-      repo_rust_mod_item_rust_crates_host_src_component_relation_metrics_rs_use_use_8_10138["repo.rust_mod_item/rust/crates/host/src/component/relation_metrics.rs:use:use#8@10138"]
+    subgraph repo_rust_mod_file_rust_crates_host_src_component_relation_metrics_compute_rs ["repo.rust_mod_file/rust/crates/host/src/component/relation_metrics/compute.rs"]
+      repo_rust_mod_item_rust_crates_host_src_component_relation_metrics_compute_rs_mod_tests_8296["repo.rust_mod_item/rust/crates/host/src/component/relation_metrics/compute.rs:mod:tests@8296"]
+      repo_rust_mod_item_rust_crates_host_src_component_relation_metrics_compute_rs_use_use_1_57["repo.rust_mod_item/rust/crates/host/src/component/relation_metrics/compute.rs:use:use#1@57"]
+      repo_rust_mod_item_rust_crates_host_src_component_relation_metrics_compute_rs_use_use_2_102["repo.rust_mod_item/rust/crates/host/src/component/relation_metrics/compute.rs:use:use#2@102"]
+      repo_rust_mod_item_rust_crates_host_src_component_relation_metrics_compute_rs_use_use_3_165["repo.rust_mod_item/rust/crates/host/src/component/relation_metrics/compute.rs:use:use#3@165"]
+      repo_rust_mod_item_rust_crates_host_src_component_relation_metrics_compute_rs_use_use_4_268["repo.rust_mod_item/rust/crates/host/src/component/relation_metrics/compute.rs:use:use#4@268"]
+      repo_rust_mod_item_rust_crates_host_src_component_relation_metrics_compute_rs_use_use_5_351["repo.rust_mod_item/rust/crates/host/src/component/relation_metrics/compute.rs:use:use#5@351"]
+      repo_rust_mod_item_rust_crates_host_src_component_relation_metrics_compute_rs_use_use_6_400["repo.rust_mod_item/rust/crates/host/src/component/relation_metrics/compute.rs:use:use#6@400"]
+      repo_rust_mod_item_rust_crates_host_src_component_relation_metrics_compute_rs_use_use_7_8312["repo.rust_mod_item/rust/crates/host/src/component/relation_metrics/compute.rs:use:use#7@8312"]
+      repo_rust_mod_item_rust_crates_host_src_component_relation_metrics_compute_rs_use_use_8_8330["repo.rust_mod_item/rust/crates/host/src/component/relation_metrics/compute.rs:use:use#8@8330"]
     end
-    repo_rust_mod_file_rust_crates_host_src_component_relation_metrics_rs["repo.rust_mod_file/rust/crates/host/src/component/relation_metrics.rs"]
+    repo_rust_mod_file_rust_crates_host_src_component_relation_metrics_compute_rs["repo.rust_mod_file/rust/crates/host/src/component/relation_metrics/compute.rs"]
+    subgraph repo_rust_mod_file_rust_crates_host_src_component_relation_metrics_mod_rs ["repo.rust_mod_file/rust/crates/host/src/component/relation_metrics/mod.rs"]
+      repo_rust_mod_item_rust_crates_host_src_component_relation_metrics_mod_rs_mod_compute_55["repo.rust_mod_item/rust/crates/host/src/component/relation_metrics/mod.rs:mod:compute@55"]
+      repo_rust_mod_item_rust_crates_host_src_component_relation_metrics_mod_rs_mod_types_68["repo.rust_mod_item/rust/crates/host/src/component/relation_metrics/mod.rs:mod:types@68"]
+      repo_rust_mod_item_rust_crates_host_src_component_relation_metrics_mod_rs_use_use_1_80["repo.rust_mod_item/rust/crates/host/src/component/relation_metrics/mod.rs:use:use#1@80"]
+      repo_rust_mod_item_rust_crates_host_src_component_relation_metrics_mod_rs_use_use_2_147["repo.rust_mod_item/rust/crates/host/src/component/relation_metrics/mod.rs:use:use#2@147"]
+    end
+    repo_rust_mod_file_rust_crates_host_src_component_relation_metrics_mod_rs["repo.rust_mod_file/rust/crates/host/src/component/relation_metrics/mod.rs"]
+    subgraph repo_rust_mod_file_rust_crates_host_src_component_relation_metrics_types_rs ["repo.rust_mod_file/rust/crates/host/src/component/relation_metrics/types.rs"]
+      repo_rust_mod_item_rust_crates_host_src_component_relation_metrics_types_rs_use_use_1_39["repo.rust_mod_item/rust/crates/host/src/component/relation_metrics/types.rs:use:use#1@39"]
+    end
+    repo_rust_mod_file_rust_crates_host_src_component_relation_metrics_types_rs["repo.rust_mod_file/rust/crates/host/src/component/relation_metrics/types.rs"]
     subgraph repo_rust_mod_file_rust_crates_host_src_component_relations_attach_rs ["repo.rust_mod_file/rust/crates/host/src/component/relations/attach.rs"]
       repo_rust_mod_item_rust_crates_host_src_component_relations_attach_rs_use_use_1_52["repo.rust_mod_item/rust/crates/host/src/component/relations/attach.rs:use:use#1@52"]
       repo_rust_mod_item_rust_crates_host_src_component_relations_attach_rs_use_use_2_85["repo.rust_mod_item/rust/crates/host/src/component/relations/attach.rs:use:use#2@85"]
       repo_rust_mod_item_rust_crates_host_src_component_relations_attach_rs_use_use_3_176["repo.rust_mod_item/rust/crates/host/src/component/relations/attach.rs:use:use#3@176"]
     end
     repo_rust_mod_file_rust_crates_host_src_component_relations_attach_rs["repo.rust_mod_file/rust/crates/host/src/component/relations/attach.rs"]
-    subgraph repo_rust_mod_file_rust_crates_host_src_component_relations_facade_rs ["repo.rust_mod_file/rust/crates/host/src/component/relations/facade.rs"]
-      repo_rust_mod_item_rust_crates_host_src_component_relations_facade_rs_use_use_1_60["repo.rust_mod_item/rust/crates/host/src/component/relations/facade.rs:use:use#1@60"]
-      repo_rust_mod_item_rust_crates_host_src_component_relations_facade_rs_use_use_2_95["repo.rust_mod_item/rust/crates/host/src/component/relations/facade.rs:use:use#2@95"]
-      repo_rust_mod_item_rust_crates_host_src_component_relations_facade_rs_use_use_3_138["repo.rust_mod_item/rust/crates/host/src/component/relations/facade.rs:use:use#3@138"]
-      repo_rust_mod_item_rust_crates_host_src_component_relations_facade_rs_use_use_4_186["repo.rust_mod_item/rust/crates/host/src/component/relations/facade.rs:use:use#4@186"]
+    subgraph repo_rust_mod_file_rust_crates_host_src_component_relations_facade_builders_rs ["repo.rust_mod_file/rust/crates/host/src/component/relations/facade/builders.rs"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_facade_builders_rs_use_use_1_59["repo.rust_mod_item/rust/crates/host/src/component/relations/facade/builders.rs:use:use#1@59"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_facade_builders_rs_use_use_2_94["repo.rust_mod_item/rust/crates/host/src/component/relations/facade/builders.rs:use:use#2@94"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_facade_builders_rs_use_use_3_137["repo.rust_mod_item/rust/crates/host/src/component/relations/facade/builders.rs:use:use#3@137"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_facade_builders_rs_use_use_4_185["repo.rust_mod_item/rust/crates/host/src/component/relations/facade/builders.rs:use:use#4@185"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_facade_builders_rs_use_use_5_257["repo.rust_mod_item/rust/crates/host/src/component/relations/facade/builders.rs:use:use#5@257"]
     end
-    repo_rust_mod_file_rust_crates_host_src_component_relations_facade_rs["repo.rust_mod_file/rust/crates/host/src/component/relations/facade.rs"]
+    repo_rust_mod_file_rust_crates_host_src_component_relations_facade_builders_rs["repo.rust_mod_file/rust/crates/host/src/component/relations/facade/builders.rs"]
+    subgraph repo_rust_mod_file_rust_crates_host_src_component_relations_facade_mod_rs ["repo.rust_mod_file/rust/crates/host/src/component/relations/facade/mod.rs"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_facade_mod_rs_mod_builders_60["repo.rust_mod_item/rust/crates/host/src/component/relations/facade/mod.rs:mod:builders@60"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_facade_mod_rs_mod_script_74["repo.rust_mod_item/rust/crates/host/src/component/relations/facade/mod.rs:mod:script@74"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_facade_mod_rs_use_use_1_87["repo.rust_mod_item/rust/crates/host/src/component/relations/facade/mod.rs:use:use#1@87"]
+    end
+    repo_rust_mod_file_rust_crates_host_src_component_relations_facade_mod_rs["repo.rust_mod_file/rust/crates/host/src/component/relations/facade/mod.rs"]
+    repo_rust_mod_file_rust_crates_host_src_component_relations_facade_script_rs["repo.rust_mod_file/rust/crates/host/src/component/relations/facade/script.rs"]
     subgraph repo_rust_mod_file_rust_crates_host_src_component_relations_mod_rs ["repo.rust_mod_file/rust/crates/host/src/component/relations/mod.rs"]
       repo_rust_mod_item_rust_crates_host_src_component_relations_mod_rs_mod_attach_66["repo.rust_mod_item/rust/crates/host/src/component/relations/mod.rs:mod:attach@66"]
       repo_rust_mod_item_rust_crates_host_src_component_relations_mod_rs_mod_facade_78["repo.rust_mod_item/rust/crates/host/src/component/relations/mod.rs:mod:facade@78"]
@@ -1962,12 +2069,49 @@ graph LR
       repo_rust_mod_item_rust_crates_host_src_component_relations_mod_rs_use_use_7_473["repo.rust_mod_item/rust/crates/host/src/component/relations/mod.rs:use:use#7@473"]
     end
     repo_rust_mod_file_rust_crates_host_src_component_relations_mod_rs["repo.rust_mod_file/rust/crates/host/src/component/relations/mod.rs"]
-    subgraph repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_rs ["repo.rust_mod_file/rust/crates/host/src/component/relations/resolve.rs"]
-      repo_rust_mod_item_rust_crates_host_src_component_relations_resolve_rs_use_use_1_66["repo.rust_mod_item/rust/crates/host/src/component/relations/resolve.rs:use:use#1@66"]
-      repo_rust_mod_item_rust_crates_host_src_component_relations_resolve_rs_use_use_2_111["repo.rust_mod_item/rust/crates/host/src/component/relations/resolve.rs:use:use#2@111"]
-      repo_rust_mod_item_rust_crates_host_src_component_relations_resolve_rs_use_use_3_192["repo.rust_mod_item/rust/crates/host/src/component/relations/resolve.rs:use:use#3@192"]
+    subgraph repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_edges_rs ["repo.rust_mod_file/rust/crates/host/src/component/relations/resolve/edges.rs"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_resolve_edges_rs_use_use_1_62["repo.rust_mod_item/rust/crates/host/src/component/relations/resolve/edges.rs:use:use#1@62"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_resolve_edges_rs_use_use_2_107["repo.rust_mod_item/rust/crates/host/src/component/relations/resolve/edges.rs:use:use#2@107"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_resolve_edges_rs_use_use_3_178["repo.rust_mod_item/rust/crates/host/src/component/relations/resolve/edges.rs:use:use#3@178"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_resolve_edges_rs_use_use_4_226["repo.rust_mod_item/rust/crates/host/src/component/relations/resolve/edges.rs:use:use#4@226"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_resolve_edges_rs_use_use_5_290["repo.rust_mod_item/rust/crates/host/src/component/relations/resolve/edges.rs:use:use#5@290"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_resolve_edges_rs_use_use_6_321["repo.rust_mod_item/rust/crates/host/src/component/relations/resolve/edges.rs:use:use#6@321"]
     end
-    repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_rs["repo.rust_mod_file/rust/crates/host/src/component/relations/resolve.rs"]
+    repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_edges_rs["repo.rust_mod_file/rust/crates/host/src/component/relations/resolve/edges.rs"]
+    subgraph repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_findings_rs ["repo.rust_mod_file/rust/crates/host/src/component/relations/resolve/findings.rs"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_resolve_findings_rs_use_use_1_60["repo.rust_mod_item/rust/crates/host/src/component/relations/resolve/findings.rs:use:use#1@60"]
+    end
+    repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_findings_rs["repo.rust_mod_file/rust/crates/host/src/component/relations/resolve/findings.rs"]
+    subgraph repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_kind_rs ["repo.rust_mod_file/rust/crates/host/src/component/relations/resolve/kind.rs"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_resolve_kind_rs_use_use_1_58["repo.rust_mod_item/rust/crates/host/src/component/relations/resolve/kind.rs:use:use#1@58"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_resolve_kind_rs_use_use_2_91["repo.rust_mod_item/rust/crates/host/src/component/relations/resolve/kind.rs:use:use#2@91"]
+    end
+    repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_kind_rs["repo.rust_mod_file/rust/crates/host/src/component/relations/resolve/kind.rs"]
+    subgraph repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_mod_rs ["repo.rust_mod_file/rust/crates/host/src/component/relations/resolve/mod.rs"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_resolve_mod_rs_mod_edges_66["repo.rust_mod_item/rust/crates/host/src/component/relations/resolve/mod.rs:mod:edges@66"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_resolve_mod_rs_mod_findings_77["repo.rust_mod_item/rust/crates/host/src/component/relations/resolve/mod.rs:mod:findings@77"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_resolve_mod_rs_mod_kind_91["repo.rust_mod_item/rust/crates/host/src/component/relations/resolve/mod.rs:mod:kind@91"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_resolve_mod_rs_mod_normalize_101["repo.rust_mod_item/rust/crates/host/src/component/relations/resolve/mod.rs:mod:normalize@101"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_resolve_mod_rs_mod_targets_116["repo.rust_mod_item/rust/crates/host/src/component/relations/resolve/mod.rs:mod:targets@116"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_resolve_mod_rs_use_use_1_130["repo.rust_mod_item/rust/crates/host/src/component/relations/resolve/mod.rs:use:use#1@130"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_resolve_mod_rs_use_use_2_160["repo.rust_mod_item/rust/crates/host/src/component/relations/resolve/mod.rs:use:use#2@160"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_resolve_mod_rs_use_use_3_186["repo.rust_mod_item/rust/crates/host/src/component/relations/resolve/mod.rs:use:use#3@186"]
+    end
+    repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_mod_rs["repo.rust_mod_file/rust/crates/host/src/component/relations/resolve/mod.rs"]
+    subgraph repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_normalize_rs ["repo.rust_mod_file/rust/crates/host/src/component/relations/resolve/normalize.rs"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_resolve_normalize_rs_use_use_1_61["repo.rust_mod_item/rust/crates/host/src/component/relations/resolve/normalize.rs:use:use#1@61"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_resolve_normalize_rs_use_use_2_94["repo.rust_mod_item/rust/crates/host/src/component/relations/resolve/normalize.rs:use:use#2@94"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_resolve_normalize_rs_use_use_3_142["repo.rust_mod_item/rust/crates/host/src/component/relations/resolve/normalize.rs:use:use#3@142"]
+    end
+    repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_normalize_rs["repo.rust_mod_file/rust/crates/host/src/component/relations/resolve/normalize.rs"]
+    subgraph repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_targets_rs ["repo.rust_mod_file/rust/crates/host/src/component/relations/resolve/targets.rs"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_resolve_targets_rs_use_use_1_61["repo.rust_mod_item/rust/crates/host/src/component/relations/resolve/targets.rs:use:use#1@61"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_resolve_targets_rs_use_use_2_106["repo.rust_mod_item/rust/crates/host/src/component/relations/resolve/targets.rs:use:use#2@106"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_resolve_targets_rs_use_use_3_160["repo.rust_mod_item/rust/crates/host/src/component/relations/resolve/targets.rs:use:use#3@160"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_resolve_targets_rs_use_use_4_208["repo.rust_mod_item/rust/crates/host/src/component/relations/resolve/targets.rs:use:use#4@208"]
+      repo_rust_mod_item_rust_crates_host_src_component_relations_resolve_targets_rs_use_use_5_247["repo.rust_mod_item/rust/crates/host/src/component/relations/resolve/targets.rs:use:use#5@247"]
+    end
+    repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_targets_rs["repo.rust_mod_file/rust/crates/host/src/component/relations/resolve/targets.rs"]
     subgraph repo_rust_mod_file_rust_crates_host_src_component_relations_types_rs ["repo.rust_mod_file/rust/crates/host/src/component/relations/types.rs"]
       repo_rust_mod_item_rust_crates_host_src_component_relations_types_rs_use_use_1_60["repo.rust_mod_item/rust/crates/host/src/component/relations/types.rs:use:use#1@60"]
       repo_rust_mod_item_rust_crates_host_src_component_relations_types_rs_use_use_2_93["repo.rust_mod_item/rust/crates/host/src/component/relations/types.rs:use:use#2@93"]
@@ -2005,11 +2149,12 @@ graph LR
     end
     repo_rust_mod_file_rust_crates_host_src_component_runtime_finalize_rs["repo.rust_mod_file/rust/crates/host/src/component/runtime/finalize.rs"]
     subgraph repo_rust_mod_file_rust_crates_host_src_component_runtime_hook_rs ["repo.rust_mod_file/rust/crates/host/src/component/runtime/hook.rs"]
-      repo_rust_mod_item_rust_crates_host_src_component_runtime_hook_rs_use_use_10_777["repo.rust_mod_item/rust/crates/host/src/component/runtime/hook.rs:use:use#10@777"]
-      repo_rust_mod_item_rust_crates_host_src_component_runtime_hook_rs_use_use_11_821["repo.rust_mod_item/rust/crates/host/src/component/runtime/hook.rs:use:use#11@821"]
-      repo_rust_mod_item_rust_crates_host_src_component_runtime_hook_rs_use_use_12_914["repo.rust_mod_item/rust/crates/host/src/component/runtime/hook.rs:use:use#12@914"]
-      repo_rust_mod_item_rust_crates_host_src_component_runtime_hook_rs_use_use_13_956["repo.rust_mod_item/rust/crates/host/src/component/runtime/hook.rs:use:use#13@956"]
-      repo_rust_mod_item_rust_crates_host_src_component_runtime_hook_rs_use_use_14_989["repo.rust_mod_item/rust/crates/host/src/component/runtime/hook.rs:use:use#14@989"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_hook_rs_use_use_10_758["repo.rust_mod_item/rust/crates/host/src/component/runtime/hook.rs:use:use#10@758"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_hook_rs_use_use_11_816["repo.rust_mod_item/rust/crates/host/src/component/runtime/hook.rs:use:use#11@816"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_hook_rs_use_use_12_860["repo.rust_mod_item/rust/crates/host/src/component/runtime/hook.rs:use:use#12@860"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_hook_rs_use_use_13_953["repo.rust_mod_item/rust/crates/host/src/component/runtime/hook.rs:use:use#13@953"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_hook_rs_use_use_14_995["repo.rust_mod_item/rust/crates/host/src/component/runtime/hook.rs:use:use#14@995"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_hook_rs_use_use_15_1028["repo.rust_mod_item/rust/crates/host/src/component/runtime/hook.rs:use:use#15@1028"]
       repo_rust_mod_item_rust_crates_host_src_component_runtime_hook_rs_use_use_1_73["repo.rust_mod_item/rust/crates/host/src/component/runtime/hook.rs:use:use#1@73"]
       repo_rust_mod_item_rust_crates_host_src_component_runtime_hook_rs_use_use_2_105["repo.rust_mod_item/rust/crates/host/src/component/runtime/hook.rs:use:use#2@105"]
       repo_rust_mod_item_rust_crates_host_src_component_runtime_hook_rs_use_use_3_123["repo.rust_mod_item/rust/crates/host/src/component/runtime/hook.rs:use:use#3@123"]
@@ -2026,14 +2171,16 @@ graph LR
       repo_rust_mod_item_rust_crates_host_src_component_runtime_mod_rs_mod_finalize_88["repo.rust_mod_item/rust/crates/host/src/component/runtime/mod.rs:mod:finalize@88"]
       repo_rust_mod_item_rust_crates_host_src_component_runtime_mod_rs_mod_hook_102["repo.rust_mod_item/rust/crates/host/src/component/runtime/mod.rs:mod:hook@102"]
       repo_rust_mod_item_rust_crates_host_src_component_runtime_mod_rs_mod_operations_112["repo.rust_mod_item/rust/crates/host/src/component/runtime/mod.rs:mod:operations@112"]
-      repo_rust_mod_item_rust_crates_host_src_component_runtime_mod_rs_mod_stack_ops_128["repo.rust_mod_item/rust/crates/host/src/component/runtime/mod.rs:mod:stack_ops@128"]
-      repo_rust_mod_item_rust_crates_host_src_component_runtime_mod_rs_use_use_1_144["repo.rust_mod_item/rust/crates/host/src/component/runtime/mod.rs:use:use#1@144"]
-      repo_rust_mod_item_rust_crates_host_src_component_runtime_mod_rs_use_use_2_234["repo.rust_mod_item/rust/crates/host/src/component/runtime/mod.rs:use:use#2@234"]
-      repo_rust_mod_item_rust_crates_host_src_component_runtime_mod_rs_use_use_3_427["repo.rust_mod_item/rust/crates/host/src/component/runtime/mod.rs:use:use#3@427"]
-      repo_rust_mod_item_rust_crates_host_src_component_runtime_mod_rs_use_use_4_459["repo.rust_mod_item/rust/crates/host/src/component/runtime/mod.rs:use:use#4@459"]
-      repo_rust_mod_item_rust_crates_host_src_component_runtime_mod_rs_use_use_5_550["repo.rust_mod_item/rust/crates/host/src/component/runtime/mod.rs:use:use#5@550"]
-      repo_rust_mod_item_rust_crates_host_src_component_runtime_mod_rs_use_use_6_601["repo.rust_mod_item/rust/crates/host/src/component/runtime/mod.rs:use:use#6@601"]
-      repo_rust_mod_item_rust_crates_host_src_component_runtime_mod_rs_use_use_7_658["repo.rust_mod_item/rust/crates/host/src/component/runtime/mod.rs:use:use#7@658"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_mod_rs_mod_scaffold_128["repo.rust_mod_item/rust/crates/host/src/component/runtime/mod.rs:mod:scaffold@128"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_mod_rs_mod_stack_ops_142["repo.rust_mod_item/rust/crates/host/src/component/runtime/mod.rs:mod:stack_ops@142"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_mod_rs_use_use_1_158["repo.rust_mod_item/rust/crates/host/src/component/runtime/mod.rs:use:use#1@158"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_mod_rs_use_use_2_248["repo.rust_mod_item/rust/crates/host/src/component/runtime/mod.rs:use:use#2@248"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_mod_rs_use_use_3_441["repo.rust_mod_item/rust/crates/host/src/component/runtime/mod.rs:use:use#3@441"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_mod_rs_use_use_4_473["repo.rust_mod_item/rust/crates/host/src/component/runtime/mod.rs:use:use#4@473"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_mod_rs_use_use_5_564["repo.rust_mod_item/rust/crates/host/src/component/runtime/mod.rs:use:use#5@564"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_mod_rs_use_use_6_615["repo.rust_mod_item/rust/crates/host/src/component/runtime/mod.rs:use:use#6@615"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_mod_rs_use_use_7_653["repo.rust_mod_item/rust/crates/host/src/component/runtime/mod.rs:use:use#7@653"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_mod_rs_use_use_8_688["repo.rust_mod_item/rust/crates/host/src/component/runtime/mod.rs:use:use#8@688"]
     end
     repo_rust_mod_file_rust_crates_host_src_component_runtime_mod_rs["repo.rust_mod_file/rust/crates/host/src/component/runtime/mod.rs"]
     subgraph repo_rust_mod_file_rust_crates_host_src_component_runtime_operations_rs ["repo.rust_mod_file/rust/crates/host/src/component/runtime/operations.rs"]
@@ -2054,6 +2201,24 @@ graph LR
       repo_rust_mod_item_rust_crates_host_src_component_runtime_operations_rs_use_use_9_657["repo.rust_mod_item/rust/crates/host/src/component/runtime/operations.rs:use:use#9@657"]
     end
     repo_rust_mod_file_rust_crates_host_src_component_runtime_operations_rs["repo.rust_mod_file/rust/crates/host/src/component/runtime/operations.rs"]
+    subgraph repo_rust_mod_file_rust_crates_host_src_component_runtime_scaffold_rs ["repo.rust_mod_file/rust/crates/host/src/component/runtime/scaffold.rs"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_scaffold_rs_use_use_10_810["repo.rust_mod_item/rust/crates/host/src/component/runtime/scaffold.rs:use:use#10@810"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_scaffold_rs_use_use_11_903["repo.rust_mod_item/rust/crates/host/src/component/runtime/scaffold.rs:use:use#11@903"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_scaffold_rs_use_use_12_955["repo.rust_mod_item/rust/crates/host/src/component/runtime/scaffold.rs:use:use#12@955"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_scaffold_rs_use_use_13_997["repo.rust_mod_item/rust/crates/host/src/component/runtime/scaffold.rs:use:use#13@997"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_scaffold_rs_use_use_14_1064["repo.rust_mod_item/rust/crates/host/src/component/runtime/scaffold.rs:use:use#14@1064"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_scaffold_rs_use_use_15_1122["repo.rust_mod_item/rust/crates/host/src/component/runtime/scaffold.rs:use:use#15@1122"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_scaffold_rs_use_use_1_92["repo.rust_mod_item/rust/crates/host/src/component/runtime/scaffold.rs:use:use#1@92"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_scaffold_rs_use_use_2_124["repo.rust_mod_item/rust/crates/host/src/component/runtime/scaffold.rs:use:use#2@124"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_scaffold_rs_use_use_3_142["repo.rust_mod_item/rust/crates/host/src/component/runtime/scaffold.rs:use:use#3@142"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_scaffold_rs_use_use_4_204["repo.rust_mod_item/rust/crates/host/src/component/runtime/scaffold.rs:use:use#4@204"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_scaffold_rs_use_use_5_295["repo.rust_mod_item/rust/crates/host/src/component/runtime/scaffold.rs:use:use#5@295"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_scaffold_rs_use_use_6_337["repo.rust_mod_item/rust/crates/host/src/component/runtime/scaffold.rs:use:use#6@337"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_scaffold_rs_use_use_7_411["repo.rust_mod_item/rust/crates/host/src/component/runtime/scaffold.rs:use:use#7@411"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_scaffold_rs_use_use_8_606["repo.rust_mod_item/rust/crates/host/src/component/runtime/scaffold.rs:use:use#8@606"]
+      repo_rust_mod_item_rust_crates_host_src_component_runtime_scaffold_rs_use_use_9_696["repo.rust_mod_item/rust/crates/host/src/component/runtime/scaffold.rs:use:use#9@696"]
+    end
+    repo_rust_mod_file_rust_crates_host_src_component_runtime_scaffold_rs["repo.rust_mod_file/rust/crates/host/src/component/runtime/scaffold.rs"]
     subgraph repo_rust_mod_file_rust_crates_host_src_component_runtime_stack_ops_rs ["repo.rust_mod_file/rust/crates/host/src/component/runtime/stack_ops.rs"]
       repo_rust_mod_item_rust_crates_host_src_component_runtime_stack_ops_rs_use_use_10_699["repo.rust_mod_item/rust/crates/host/src/component/runtime/stack_ops.rs:use:use#10@699"]
       repo_rust_mod_item_rust_crates_host_src_component_runtime_stack_ops_rs_use_use_11_792["repo.rust_mod_item/rust/crates/host/src/component/runtime/stack_ops.rs:use:use#11@792"]
@@ -2134,24 +2299,38 @@ graph LR
       repo_rust_mod_item_rust_crates_host_src_component_scan_types_rs_use_use_2_100["repo.rust_mod_item/rust/crates/host/src/component/scan/types.rs:use:use#2@100"]
     end
     repo_rust_mod_file_rust_crates_host_src_component_scan_types_rs["repo.rust_mod_file/rust/crates/host/src/component/scan/types.rs"]
-    subgraph repo_rust_mod_file_rust_crates_host_src_component_snapshot_rs ["repo.rust_mod_file/rust/crates/host/src/component/snapshot.rs"]
-      repo_rust_mod_item_rust_crates_host_src_component_snapshot_rs_use_use_10_540["repo.rust_mod_item/rust/crates/host/src/component/snapshot.rs:use:use#10@540"]
-      repo_rust_mod_item_rust_crates_host_src_component_snapshot_rs_use_use_1_76["repo.rust_mod_item/rust/crates/host/src/component/snapshot.rs:use:use#1@76"]
-      repo_rust_mod_item_rust_crates_host_src_component_snapshot_rs_use_use_2_108["repo.rust_mod_item/rust/crates/host/src/component/snapshot.rs:use:use#2@108"]
-      repo_rust_mod_item_rust_crates_host_src_component_snapshot_rs_use_use_3_140["repo.rust_mod_item/rust/crates/host/src/component/snapshot.rs:use:use#3@140"]
-      repo_rust_mod_item_rust_crates_host_src_component_snapshot_rs_use_use_4_182["repo.rust_mod_item/rust/crates/host/src/component/snapshot.rs:use:use#4@182"]
-      repo_rust_mod_item_rust_crates_host_src_component_snapshot_rs_use_use_5_205["repo.rust_mod_item/rust/crates/host/src/component/snapshot.rs:use:use#5@205"]
-      repo_rust_mod_item_rust_crates_host_src_component_snapshot_rs_use_use_6_301["repo.rust_mod_item/rust/crates/host/src/component/snapshot.rs:use:use#6@301"]
-      repo_rust_mod_item_rust_crates_host_src_component_snapshot_rs_use_use_7_391["repo.rust_mod_item/rust/crates/host/src/component/snapshot.rs:use:use#7@391"]
-      repo_rust_mod_item_rust_crates_host_src_component_snapshot_rs_use_use_8_443["repo.rust_mod_item/rust/crates/host/src/component/snapshot.rs:use:use#8@443"]
-      repo_rust_mod_item_rust_crates_host_src_component_snapshot_rs_use_use_9_495["repo.rust_mod_item/rust/crates/host/src/component/snapshot.rs:use:use#9@495"]
+    subgraph repo_rust_mod_file_rust_crates_host_src_component_snapshot_io_rs ["repo.rust_mod_file/rust/crates/host/src/component/snapshot/io.rs"]
+      repo_rust_mod_item_rust_crates_host_src_component_snapshot_io_rs_use_use_1_34["repo.rust_mod_item/rust/crates/host/src/component/snapshot/io.rs:use:use#1@34"]
+      repo_rust_mod_item_rust_crates_host_src_component_snapshot_io_rs_use_use_2_66["repo.rust_mod_item/rust/crates/host/src/component/snapshot/io.rs:use:use#2@66"]
+      repo_rust_mod_item_rust_crates_host_src_component_snapshot_io_rs_use_use_3_108["repo.rust_mod_item/rust/crates/host/src/component/snapshot/io.rs:use:use#3@108"]
     end
-    repo_rust_mod_file_rust_crates_host_src_component_snapshot_rs["repo.rust_mod_file/rust/crates/host/src/component/snapshot.rs"]
-    subgraph repo_rust_mod_file_rust_crates_host_src_component_types_rs ["repo.rust_mod_file/rust/crates/host/src/component/types.rs"]
-      repo_rust_mod_item_rust_crates_host_src_component_types_rs_use_use_1_0["repo.rust_mod_item/rust/crates/host/src/component/types.rs:use:use#1@0"]
-      repo_rust_mod_item_rust_crates_host_src_component_types_rs_use_use_2_23["repo.rust_mod_item/rust/crates/host/src/component/types.rs:use:use#2@23"]
+    repo_rust_mod_file_rust_crates_host_src_component_snapshot_io_rs["repo.rust_mod_file/rust/crates/host/src/component/snapshot/io.rs"]
+    subgraph repo_rust_mod_file_rust_crates_host_src_component_snapshot_mod_rs ["repo.rust_mod_file/rust/crates/host/src/component/snapshot/mod.rs"]
+      repo_rust_mod_item_rust_crates_host_src_component_snapshot_mod_rs_mod_io_141["repo.rust_mod_item/rust/crates/host/src/component/snapshot/mod.rs:mod:io@141"]
+      repo_rust_mod_item_rust_crates_host_src_component_snapshot_mod_rs_use_use_10_603["repo.rust_mod_item/rust/crates/host/src/component/snapshot/mod.rs:use:use#10@603"]
+      repo_rust_mod_item_rust_crates_host_src_component_snapshot_mod_rs_use_use_11_648["repo.rust_mod_item/rust/crates/host/src/component/snapshot/mod.rs:use:use#11@648"]
+      repo_rust_mod_item_rust_crates_host_src_component_snapshot_mod_rs_use_use_1_76["repo.rust_mod_item/rust/crates/host/src/component/snapshot/mod.rs:use:use#1@76"]
+      repo_rust_mod_item_rust_crates_host_src_component_snapshot_mod_rs_use_use_2_108["repo.rust_mod_item/rust/crates/host/src/component/snapshot/mod.rs:use:use#2@108"]
+      repo_rust_mod_item_rust_crates_host_src_component_snapshot_mod_rs_use_use_3_149["repo.rust_mod_item/rust/crates/host/src/component/snapshot/mod.rs:use:use#3@149"]
+      repo_rust_mod_item_rust_crates_host_src_component_snapshot_mod_rs_use_use_4_248["repo.rust_mod_item/rust/crates/host/src/component/snapshot/mod.rs:use:use#4@248"]
+      repo_rust_mod_item_rust_crates_host_src_component_snapshot_mod_rs_use_use_5_290["repo.rust_mod_item/rust/crates/host/src/component/snapshot/mod.rs:use:use#5@290"]
+      repo_rust_mod_item_rust_crates_host_src_component_snapshot_mod_rs_use_use_6_313["repo.rust_mod_item/rust/crates/host/src/component/snapshot/mod.rs:use:use#6@313"]
+      repo_rust_mod_item_rust_crates_host_src_component_snapshot_mod_rs_use_use_7_409["repo.rust_mod_item/rust/crates/host/src/component/snapshot/mod.rs:use:use#7@409"]
+      repo_rust_mod_item_rust_crates_host_src_component_snapshot_mod_rs_use_use_8_499["repo.rust_mod_item/rust/crates/host/src/component/snapshot/mod.rs:use:use#8@499"]
+      repo_rust_mod_item_rust_crates_host_src_component_snapshot_mod_rs_use_use_9_551["repo.rust_mod_item/rust/crates/host/src/component/snapshot/mod.rs:use:use#9@551"]
     end
-    repo_rust_mod_file_rust_crates_host_src_component_types_rs["repo.rust_mod_file/rust/crates/host/src/component/types.rs"]
+    repo_rust_mod_file_rust_crates_host_src_component_snapshot_mod_rs["repo.rust_mod_file/rust/crates/host/src/component/snapshot/mod.rs"]
+    subgraph repo_rust_mod_file_rust_crates_host_src_component_types_mod_rs ["repo.rust_mod_file/rust/crates/host/src/component/types/mod.rs"]
+      repo_rust_mod_item_rust_crates_host_src_component_types_mod_rs_mod_parse_64["repo.rust_mod_item/rust/crates/host/src/component/types/mod.rs:mod:parse@64"]
+      repo_rust_mod_item_rust_crates_host_src_component_types_mod_rs_use_use_1_76["repo.rust_mod_item/rust/crates/host/src/component/types/mod.rs:use:use#1@76"]
+      repo_rust_mod_item_rust_crates_host_src_component_types_mod_rs_use_use_2_99["repo.rust_mod_item/rust/crates/host/src/component/types/mod.rs:use:use#2@99"]
+      repo_rust_mod_item_rust_crates_host_src_component_types_mod_rs_use_use_3_139["repo.rust_mod_item/rust/crates/host/src/component/types/mod.rs:use:use#3@139"]
+    end
+    repo_rust_mod_file_rust_crates_host_src_component_types_mod_rs["repo.rust_mod_file/rust/crates/host/src/component/types/mod.rs"]
+    subgraph repo_rust_mod_file_rust_crates_host_src_component_types_parse_rs ["repo.rust_mod_file/rust/crates/host/src/component/types/parse.rs"]
+      repo_rust_mod_item_rust_crates_host_src_component_types_parse_rs_use_use_1_80["repo.rust_mod_item/rust/crates/host/src/component/types/parse.rs:use:use#1@80"]
+    end
+    repo_rust_mod_file_rust_crates_host_src_component_types_parse_rs["repo.rust_mod_file/rust/crates/host/src/component/types/parse.rs"]
     subgraph repo_rust_mod_file_rust_crates_host_src_config_bootstrap_rs ["repo.rust_mod_file/rust/crates/host/src/config/bootstrap.rs"]
       repo_rust_mod_item_rust_crates_host_src_config_bootstrap_rs_mod_tests_4508["repo.rust_mod_item/rust/crates/host/src/config/bootstrap.rs:mod:tests@4508"]
       repo_rust_mod_item_rust_crates_host_src_config_bootstrap_rs_use_use_1_0["repo.rust_mod_item/rust/crates/host/src/config/bootstrap.rs:use:use#1@0"]
@@ -2699,6 +2878,15 @@ graph LR
       repo_rust_mod_item_rust_crates_lua_src_load_error_rs_use_use_3_61["repo.rust_mod_item/rust/crates/lua/src/load/error.rs:use:use#3@61"]
     end
     repo_rust_mod_file_rust_crates_lua_src_load_error_rs["repo.rust_mod_file/rust/crates/lua/src/load/error.rs"]
+    subgraph repo_rust_mod_file_rust_crates_lua_src_load_explorer_rs ["repo.rust_mod_file/rust/crates/lua/src/load/explorer.rs"]
+      repo_rust_mod_item_rust_crates_lua_src_load_explorer_rs_use_use_1_0["repo.rust_mod_item/rust/crates/lua/src/load/explorer.rs:use:use#1@0"]
+      repo_rust_mod_item_rust_crates_lua_src_load_explorer_rs_use_use_2_26["repo.rust_mod_item/rust/crates/lua/src/load/explorer.rs:use:use#2@26"]
+      repo_rust_mod_item_rust_crates_lua_src_load_explorer_rs_use_use_3_59["repo.rust_mod_item/rust/crates/lua/src/load/explorer.rs:use:use#3@59"]
+      repo_rust_mod_item_rust_crates_lua_src_load_explorer_rs_use_use_4_93["repo.rust_mod_item/rust/crates/lua/src/load/explorer.rs:use:use#4@93"]
+      repo_rust_mod_item_rust_crates_lua_src_load_explorer_rs_use_use_5_208["repo.rust_mod_item/rust/crates/lua/src/load/explorer.rs:use:use#5@208"]
+      repo_rust_mod_item_rust_crates_lua_src_load_explorer_rs_use_use_6_237["repo.rust_mod_item/rust/crates/lua/src/load/explorer.rs:use:use#6@237"]
+    end
+    repo_rust_mod_file_rust_crates_lua_src_load_explorer_rs["repo.rust_mod_file/rust/crates/lua/src/load/explorer.rs"]
     subgraph repo_rust_mod_file_rust_crates_lua_src_load_map_rs ["repo.rust_mod_file/rust/crates/lua/src/load/map.rs"]
       repo_rust_mod_item_rust_crates_lua_src_load_map_rs_use_use_1_0["repo.rust_mod_item/rust/crates/lua/src/load/map.rs:use:use#1@0"]
       repo_rust_mod_item_rust_crates_lua_src_load_map_rs_use_use_2_18["repo.rust_mod_item/rust/crates/lua/src/load/map.rs:use:use#2@18"]
@@ -2710,34 +2898,47 @@ graph LR
     subgraph repo_rust_mod_file_rust_crates_lua_src_load_mod_rs ["repo.rust_mod_file/rust/crates/lua/src/load/mod.rs"]
       repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_mod_component_43["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:mod:component@43"]
       repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_mod_error_58["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:mod:error@58"]
+      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_mod_explorer_130["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:mod:explorer@130"]
       repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_mod_map_69["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:mod:map@69"]
+      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_mod_ops_105["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:mod:ops@105"]
       repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_mod_query_lib_78["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:mod:query_lib@78"]
       repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_mod_recipe_93["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:mod:recipe@93"]
-      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_mod_shared_105["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:mod:shared@105"]
-      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_mod_stack_117["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:mod:stack@117"]
-      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_mod_table_util_128["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:mod:table_util@128"]
-      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_mod_test_suite_144["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:mod:test_suite@144"]
-      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_mod_tests_7322["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:mod:tests@7322"]
-      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_mod_type_def_160["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:mod:type_def@160"]
-      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_mod_variables_174["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:mod:variables@174"]
-      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_10_663["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#10@663"]
-      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_11_694["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#11@694"]
-      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_12_715["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#12@715"]
-      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_13_761["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#13@761"]
-      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_14_782["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#14@782"]
-      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_15_7338["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#15@7338"]
-      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_16_7356["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#16@7356"]
-      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_1_190["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#1@190"]
-      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_2_248["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#2@248"]
-      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_3_294["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#3@294"]
-      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_4_340["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#4@340"]
-      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_5_404["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#5@404"]
-      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_6_459["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#6@459"]
-      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_7_497["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#7@497"]
-      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_8_545["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#8@545"]
-      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_9_598["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#9@598"]
+      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_mod_shared_144["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:mod:shared@144"]
+      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_mod_stack_156["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:mod:stack@156"]
+      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_mod_table_util_167["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:mod:table_util@167"]
+      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_mod_test_suite_183["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:mod:test_suite@183"]
+      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_mod_tests_7361["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:mod:tests@7361"]
+      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_mod_type_def_199["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:mod:type_def@199"]
+      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_mod_type_parse_114["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:mod:type_parse@114"]
+      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_mod_variables_213["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:mod:variables@213"]
+      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_10_702["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#10@702"]
+      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_11_733["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#11@733"]
+      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_12_754["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#12@754"]
+      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_13_800["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#13@800"]
+      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_14_821["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#14@821"]
+      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_15_7377["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#15@7377"]
+      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_16_7395["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#16@7395"]
+      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_1_229["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#1@229"]
+      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_2_287["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#2@287"]
+      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_3_333["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#3@333"]
+      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_4_379["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#4@379"]
+      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_5_443["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#5@443"]
+      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_6_498["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#6@498"]
+      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_7_536["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#7@536"]
+      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_8_584["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#8@584"]
+      repo_rust_mod_item_rust_crates_lua_src_load_mod_rs_use_use_9_637["repo.rust_mod_item/rust/crates/lua/src/load/mod.rs:use:use#9@637"]
     end
     repo_rust_mod_file_rust_crates_lua_src_load_mod_rs["repo.rust_mod_file/rust/crates/lua/src/load/mod.rs"]
+    subgraph repo_rust_mod_file_rust_crates_lua_src_load_ops_rs ["repo.rust_mod_file/rust/crates/lua/src/load/ops.rs"]
+      repo_rust_mod_item_rust_crates_lua_src_load_ops_rs_use_use_1_0["repo.rust_mod_item/rust/crates/lua/src/load/ops.rs:use:use#1@0"]
+      repo_rust_mod_item_rust_crates_lua_src_load_ops_rs_use_use_2_26["repo.rust_mod_item/rust/crates/lua/src/load/ops.rs:use:use#2@26"]
+      repo_rust_mod_item_rust_crates_lua_src_load_ops_rs_use_use_3_59["repo.rust_mod_item/rust/crates/lua/src/load/ops.rs:use:use#3@59"]
+      repo_rust_mod_item_rust_crates_lua_src_load_ops_rs_use_use_4_93["repo.rust_mod_item/rust/crates/lua/src/load/ops.rs:use:use#4@93"]
+      repo_rust_mod_item_rust_crates_lua_src_load_ops_rs_use_use_5_208["repo.rust_mod_item/rust/crates/lua/src/load/ops.rs:use:use#5@208"]
+      repo_rust_mod_item_rust_crates_lua_src_load_ops_rs_use_use_6_237["repo.rust_mod_item/rust/crates/lua/src/load/ops.rs:use:use#6@237"]
+      repo_rust_mod_item_rust_crates_lua_src_load_ops_rs_use_use_7_274["repo.rust_mod_item/rust/crates/lua/src/load/ops.rs:use:use#7@274"]
+    end
+    repo_rust_mod_file_rust_crates_lua_src_load_ops_rs["repo.rust_mod_file/rust/crates/lua/src/load/ops.rs"]
     subgraph repo_rust_mod_file_rust_crates_lua_src_load_query_lib_rs ["repo.rust_mod_file/rust/crates/lua/src/load/query_lib.rs"]
       repo_rust_mod_item_rust_crates_lua_src_load_query_lib_rs_use_use_1_0["repo.rust_mod_item/rust/crates/lua/src/load/query_lib.rs:use:use#1@0"]
       repo_rust_mod_item_rust_crates_lua_src_load_query_lib_rs_use_use_2_18["repo.rust_mod_item/rust/crates/lua/src/load/query_lib.rs:use:use#2@18"]
@@ -2756,12 +2957,9 @@ graph LR
     end
     repo_rust_mod_file_rust_crates_lua_src_load_recipe_rs["repo.rust_mod_file/rust/crates/lua/src/load/recipe.rs"]
     subgraph repo_rust_mod_file_rust_crates_lua_src_load_shared_rs ["repo.rust_mod_file/rust/crates/lua/src/load/shared.rs"]
-      repo_rust_mod_item_rust_crates_lua_src_load_shared_rs_use_use_1_0["repo.rust_mod_item/rust/crates/lua/src/load/shared.rs:use:use#1@0"]
-      repo_rust_mod_item_rust_crates_lua_src_load_shared_rs_use_use_2_26["repo.rust_mod_item/rust/crates/lua/src/load/shared.rs:use:use#2@26"]
-      repo_rust_mod_item_rust_crates_lua_src_load_shared_rs_use_use_3_59["repo.rust_mod_item/rust/crates/lua/src/load/shared.rs:use:use#3@59"]
-      repo_rust_mod_item_rust_crates_lua_src_load_shared_rs_use_use_4_93["repo.rust_mod_item/rust/crates/lua/src/load/shared.rs:use:use#4@93"]
-      repo_rust_mod_item_rust_crates_lua_src_load_shared_rs_use_use_5_208["repo.rust_mod_item/rust/crates/lua/src/load/shared.rs:use:use#5@208"]
-      repo_rust_mod_item_rust_crates_lua_src_load_shared_rs_use_use_6_237["repo.rust_mod_item/rust/crates/lua/src/load/shared.rs:use:use#6@237"]
+      repo_rust_mod_item_rust_crates_lua_src_load_shared_rs_use_use_1_63["repo.rust_mod_item/rust/crates/lua/src/load/shared.rs:use:use#1@63"]
+      repo_rust_mod_item_rust_crates_lua_src_load_shared_rs_use_use_2_98["repo.rust_mod_item/rust/crates/lua/src/load/shared.rs:use:use#2@98"]
+      repo_rust_mod_item_rust_crates_lua_src_load_shared_rs_use_use_3_128["repo.rust_mod_item/rust/crates/lua/src/load/shared.rs:use:use#3@128"]
     end
     repo_rust_mod_file_rust_crates_lua_src_load_shared_rs["repo.rust_mod_file/rust/crates/lua/src/load/shared.rs"]
     subgraph repo_rust_mod_file_rust_crates_lua_src_load_stack_rs ["repo.rust_mod_file/rust/crates/lua/src/load/stack.rs"]
@@ -2793,6 +2991,16 @@ graph LR
       repo_rust_mod_item_rust_crates_lua_src_load_type_def_rs_use_use_5_111["repo.rust_mod_item/rust/crates/lua/src/load/type_def.rs:use:use#5@111"]
     end
     repo_rust_mod_file_rust_crates_lua_src_load_type_def_rs["repo.rust_mod_file/rust/crates/lua/src/load/type_def.rs"]
+    subgraph repo_rust_mod_file_rust_crates_lua_src_load_type_parse_rs ["repo.rust_mod_file/rust/crates/lua/src/load/type_parse.rs"]
+      repo_rust_mod_item_rust_crates_lua_src_load_type_parse_rs_use_use_1_0["repo.rust_mod_item/rust/crates/lua/src/load/type_parse.rs:use:use#1@0"]
+      repo_rust_mod_item_rust_crates_lua_src_load_type_parse_rs_use_use_2_26["repo.rust_mod_item/rust/crates/lua/src/load/type_parse.rs:use:use#2@26"]
+      repo_rust_mod_item_rust_crates_lua_src_load_type_parse_rs_use_use_3_59["repo.rust_mod_item/rust/crates/lua/src/load/type_parse.rs:use:use#3@59"]
+      repo_rust_mod_item_rust_crates_lua_src_load_type_parse_rs_use_use_4_93["repo.rust_mod_item/rust/crates/lua/src/load/type_parse.rs:use:use#4@93"]
+      repo_rust_mod_item_rust_crates_lua_src_load_type_parse_rs_use_use_5_208["repo.rust_mod_item/rust/crates/lua/src/load/type_parse.rs:use:use#5@208"]
+      repo_rust_mod_item_rust_crates_lua_src_load_type_parse_rs_use_use_6_237["repo.rust_mod_item/rust/crates/lua/src/load/type_parse.rs:use:use#6@237"]
+      repo_rust_mod_item_rust_crates_lua_src_load_type_parse_rs_use_use_7_264["repo.rust_mod_item/rust/crates/lua/src/load/type_parse.rs:use:use#7@264"]
+    end
+    repo_rust_mod_file_rust_crates_lua_src_load_type_parse_rs["repo.rust_mod_file/rust/crates/lua/src/load/type_parse.rs"]
     subgraph repo_rust_mod_file_rust_crates_lua_src_load_variables_rs ["repo.rust_mod_file/rust/crates/lua/src/load/variables.rs"]
       repo_rust_mod_item_rust_crates_lua_src_load_variables_rs_use_use_1_0["repo.rust_mod_item/rust/crates/lua/src/load/variables.rs:use:use#1@0"]
       repo_rust_mod_item_rust_crates_lua_src_load_variables_rs_use_use_2_18["repo.rust_mod_item/rust/crates/lua/src/load/variables.rs:use:use#2@18"]
@@ -3504,6 +3712,28 @@ graph LR
       repo_ts_test_case_vscode_extension_src_extension_views_recipeRunnerState_test_ts_test_test_4_1703["repo.ts_test_case/vscode_extension/src/extension/views/recipeRunnerState.test.ts:test:test#4@1703"]
     end
     repo_ts_test_vscode_extension_src_extension_views_recipeRunnerState_test_ts["repo.ts_test/vscode_extension/src/extension/views/recipeRunnerState.test.ts"]
+    subgraph repo_vscode_manifest_vscode_manifest ["repo.vscode_manifest/vscode-manifest"]
+      repo_json_field_vscode_extension_package_json_categories_413["repo.json_field/vscode_extension/package.json:categories@413"]
+      repo_json_field_vscode_extension_package_json_contributes_commands_1227["repo.json_field/vscode_extension/package.json:contributes.commands@1227"]
+      repo_json_field_vscode_extension_package_json_contributes_configuration_7601["repo.json_field/vscode_extension/package.json:contributes.configuration@7601"]
+      repo_json_field_vscode_extension_package_json_contributes_keybindings_5477["repo.json_field/vscode_extension/package.json:contributes.keybindings@5477"]
+      repo_json_field_vscode_extension_package_json_contributes_menus_6149["repo.json_field/vscode_extension/package.json:contributes.menus@6149"]
+      repo_json_field_vscode_extension_package_json_contributes_submenus_7486["repo.json_field/vscode_extension/package.json:contributes.submenus@7486"]
+      repo_json_field_vscode_extension_package_json_contributes_views_721["repo.json_field/vscode_extension/package.json:contributes.views@721"]
+      repo_json_field_vscode_extension_package_json_contributes_viewsContainers_531["repo.json_field/vscode_extension/package.json:contributes.viewsContainers@531"]
+      repo_json_field_vscode_extension_package_json_description_67["repo.json_field/vscode_extension/package.json:description@67"]
+      repo_json_field_vscode_extension_package_json_devDependencies_11175["repo.json_field/vscode_extension/package.json:devDependencies@11175"]
+      repo_json_field_vscode_extension_package_json_displayName_32["repo.json_field/vscode_extension/package.json:displayName@32"]
+      repo_json_field_vscode_extension_package_json_engines_369["repo.json_field/vscode_extension/package.json:engines@369"]
+      repo_json_field_vscode_extension_package_json_license_340["repo.json_field/vscode_extension/package.json:license@340"]
+      repo_json_field_vscode_extension_package_json_main_477["repo.json_field/vscode_extension/package.json:main@477"]
+      repo_json_field_vscode_extension_package_json_name_4["repo.json_field/vscode_extension/package.json:name@4"]
+      repo_json_field_vscode_extension_package_json_publisher_210["repo.json_field/vscode_extension/package.json:publisher@210"]
+      repo_json_field_vscode_extension_package_json_repository_243["repo.json_field/vscode_extension/package.json:repository@243"]
+      repo_json_field_vscode_extension_package_json_scripts_10730["repo.json_field/vscode_extension/package.json:scripts@10730"]
+      repo_json_field_vscode_extension_package_json_version_188["repo.json_field/vscode_extension/package.json:version@188"]
+    end
+    repo_vscode_manifest_vscode_manifest["repo.vscode_manifest/vscode-manifest"]
   end
   subgraph repo_zone_vscode_shared ["repo.zone/vscode.shared"]
     subgraph repo_ts_module_vscode_extension_src_shared_argsKey_ts ["repo.ts_module/vscode_extension/src/shared/argsKey.ts"]
@@ -3655,42 +3885,6 @@ graph LR
       repo_ts_export_vscode_extension_src_webview_env_d_ts_export_1_173["repo.ts_export/vscode_extension/src/webview/env.d.ts:export#1@173"]
     end
     repo_ts_module_vscode_extension_src_webview_env_d_ts["repo.ts_module/vscode_extension/src/webview/env.d.ts"]
-    subgraph repo_ts_module_vscode_extension_src_webview_src_App_vue ["repo.ts_module/vscode_extension/src/webview/src/App.vue"]
-      repo_ts_export_vscode_extension_src_webview_src_App_vue_script_0["repo.ts_export/vscode_extension/src/webview/src/App.vue:script@0"]
-    end
-    repo_ts_module_vscode_extension_src_webview_src_App_vue["repo.ts_module/vscode_extension/src/webview/src/App.vue"]
-    subgraph repo_ts_module_vscode_extension_src_webview_src_components_ArgField_vue ["repo.ts_module/vscode_extension/src/webview/src/components/ArgField.vue"]
-      repo_ts_export_vscode_extension_src_webview_src_components_ArgField_vue_script_0["repo.ts_export/vscode_extension/src/webview/src/components/ArgField.vue:script@0"]
-    end
-    repo_ts_module_vscode_extension_src_webview_src_components_ArgField_vue["repo.ts_module/vscode_extension/src/webview/src/components/ArgField.vue"]
-    subgraph repo_ts_module_vscode_extension_src_webview_src_components_CoverageTree_vue ["repo.ts_module/vscode_extension/src/webview/src/components/CoverageTree.vue"]
-      repo_ts_export_vscode_extension_src_webview_src_components_CoverageTree_vue_script_0["repo.ts_export/vscode_extension/src/webview/src/components/CoverageTree.vue:script@0"]
-    end
-    repo_ts_module_vscode_extension_src_webview_src_components_CoverageTree_vue["repo.ts_module/vscode_extension/src/webview/src/components/CoverageTree.vue"]
-    subgraph repo_ts_module_vscode_extension_src_webview_src_components_FileCard_vue ["repo.ts_module/vscode_extension/src/webview/src/components/FileCard.vue"]
-      repo_ts_export_vscode_extension_src_webview_src_components_FileCard_vue_script_0["repo.ts_export/vscode_extension/src/webview/src/components/FileCard.vue:script@0"]
-    end
-    repo_ts_module_vscode_extension_src_webview_src_components_FileCard_vue["repo.ts_module/vscode_extension/src/webview/src/components/FileCard.vue"]
-    subgraph repo_ts_module_vscode_extension_src_webview_src_components_RecipeArgForm_vue ["repo.ts_module/vscode_extension/src/webview/src/components/RecipeArgForm.vue"]
-      repo_ts_export_vscode_extension_src_webview_src_components_RecipeArgForm_vue_script_0["repo.ts_export/vscode_extension/src/webview/src/components/RecipeArgForm.vue:script@0"]
-    end
-    repo_ts_module_vscode_extension_src_webview_src_components_RecipeArgForm_vue["repo.ts_module/vscode_extension/src/webview/src/components/RecipeArgForm.vue"]
-    subgraph repo_ts_module_vscode_extension_src_webview_src_components_RecipeGroupNode_vue ["repo.ts_module/vscode_extension/src/webview/src/components/RecipeGroupNode.vue"]
-      repo_ts_export_vscode_extension_src_webview_src_components_RecipeGroupNode_vue_script_0["repo.ts_export/vscode_extension/src/webview/src/components/RecipeGroupNode.vue:script@0"]
-    end
-    repo_ts_module_vscode_extension_src_webview_src_components_RecipeGroupNode_vue["repo.ts_module/vscode_extension/src/webview/src/components/RecipeGroupNode.vue"]
-    subgraph repo_ts_module_vscode_extension_src_webview_src_components_RecipeInfo_vue ["repo.ts_module/vscode_extension/src/webview/src/components/RecipeInfo.vue"]
-      repo_ts_export_vscode_extension_src_webview_src_components_RecipeInfo_vue_script_0["repo.ts_export/vscode_extension/src/webview/src/components/RecipeInfo.vue:script@0"]
-    end
-    repo_ts_module_vscode_extension_src_webview_src_components_RecipeInfo_vue["repo.ts_module/vscode_extension/src/webview/src/components/RecipeInfo.vue"]
-    subgraph repo_ts_module_vscode_extension_src_webview_src_components_RecipesTab_vue ["repo.ts_module/vscode_extension/src/webview/src/components/RecipesTab.vue"]
-      repo_ts_export_vscode_extension_src_webview_src_components_RecipesTab_vue_script_0["repo.ts_export/vscode_extension/src/webview/src/components/RecipesTab.vue:script@0"]
-    end
-    repo_ts_module_vscode_extension_src_webview_src_components_RecipesTab_vue["repo.ts_module/vscode_extension/src/webview/src/components/RecipesTab.vue"]
-    subgraph repo_ts_module_vscode_extension_src_webview_src_components_ReviewPanel_vue ["repo.ts_module/vscode_extension/src/webview/src/components/ReviewPanel.vue"]
-      repo_ts_export_vscode_extension_src_webview_src_components_ReviewPanel_vue_script_0["repo.ts_export/vscode_extension/src/webview/src/components/ReviewPanel.vue:script@0"]
-    end
-    repo_ts_module_vscode_extension_src_webview_src_components_ReviewPanel_vue["repo.ts_module/vscode_extension/src/webview/src/components/ReviewPanel.vue"]
     subgraph repo_ts_module_vscode_extension_src_webview_src_composables_useComponentsView_ts ["repo.ts_module/vscode_extension/src/webview/src/composables/useComponentsView.ts"]
       repo_ts_export_vscode_extension_src_webview_src_composables_useComponentsView_ts_ComponentsViewProps_539["repo.ts_export/vscode_extension/src/webview/src/composables/useComponentsView.ts:ComponentsViewProps@539"]
       repo_ts_export_vscode_extension_src_webview_src_composables_useComponentsView_ts_useComponentsView_1093["repo.ts_export/vscode_extension/src/webview/src/composables/useComponentsView.ts:useComponentsView@1093"]
@@ -3796,22 +3990,6 @@ graph LR
       repo_ts_export_vscode_extension_src_webview_src_shared_ts_export_1_0["repo.ts_export/vscode_extension/src/webview/src/shared.ts:export#1@0"]
     end
     repo_ts_module_vscode_extension_src_webview_src_shared_ts["repo.ts_module/vscode_extension/src/webview/src/shared.ts"]
-    subgraph repo_ts_module_vscode_extension_src_webview_src_views_BootstrapView_vue ["repo.ts_module/vscode_extension/src/webview/src/views/BootstrapView.vue"]
-      repo_ts_export_vscode_extension_src_webview_src_views_BootstrapView_vue_script_0["repo.ts_export/vscode_extension/src/webview/src/views/BootstrapView.vue:script@0"]
-    end
-    repo_ts_module_vscode_extension_src_webview_src_views_BootstrapView_vue["repo.ts_module/vscode_extension/src/webview/src/views/BootstrapView.vue"]
-    subgraph repo_ts_module_vscode_extension_src_webview_src_views_ComponentsView_vue ["repo.ts_module/vscode_extension/src/webview/src/views/ComponentsView.vue"]
-      repo_ts_export_vscode_extension_src_webview_src_views_ComponentsView_vue_script_0["repo.ts_export/vscode_extension/src/webview/src/views/ComponentsView.vue:script@0"]
-    end
-    repo_ts_module_vscode_extension_src_webview_src_views_ComponentsView_vue["repo.ts_module/vscode_extension/src/webview/src/views/ComponentsView.vue"]
-    subgraph repo_ts_module_vscode_extension_src_webview_src_views_RecipesView_vue ["repo.ts_module/vscode_extension/src/webview/src/views/RecipesView.vue"]
-      repo_ts_export_vscode_extension_src_webview_src_views_RecipesView_vue_script_0["repo.ts_export/vscode_extension/src/webview/src/views/RecipesView.vue:script@0"]
-    end
-    repo_ts_module_vscode_extension_src_webview_src_views_RecipesView_vue["repo.ts_module/vscode_extension/src/webview/src/views/RecipesView.vue"]
-    subgraph repo_ts_module_vscode_extension_src_webview_src_views_RunnerView_vue ["repo.ts_module/vscode_extension/src/webview/src/views/RunnerView.vue"]
-      repo_ts_export_vscode_extension_src_webview_src_views_RunnerView_vue_script_0["repo.ts_export/vscode_extension/src/webview/src/views/RunnerView.vue:script@0"]
-    end
-    repo_ts_module_vscode_extension_src_webview_src_views_RunnerView_vue["repo.ts_module/vscode_extension/src/webview/src/views/RunnerView.vue"]
     subgraph repo_ts_module_vscode_extension_src_webview_src_vsCodeApi_ts ["repo.ts_module/vscode_extension/src/webview/src/vsCodeApi.ts"]
       repo_ts_export_vscode_extension_src_webview_src_vsCodeApi_ts_getPersistedState_1212["repo.ts_export/vscode_extension/src/webview/src/vsCodeApi.ts:getPersistedState@1212"]
       repo_ts_export_vscode_extension_src_webview_src_vsCodeApi_ts_onExtensionMessage_852["repo.ts_export/vscode_extension/src/webview/src/vsCodeApi.ts:onExtensionMessage@852"]
@@ -3930,6 +4108,78 @@ graph LR
     end
     repo_ts_test_vscode_extension_src_webview_src_lib_transcript_test_ts["repo.ts_test/vscode_extension/src/webview/src/lib/transcript.test.ts"]
     repo_vscode_bootstrap_vscode_extension_src_webview_src_main_ts["repo.vscode_bootstrap/vscode_extension/src/webview/src/main.ts"]
+    subgraph repo_vue_sfc_vscode_extension_src_webview_src_App_vue ["repo.vue_sfc/vscode_extension/src/webview/src/App.vue"]
+      repo_vue_section_vscode_extension_src_webview_src_App_vue_script_0["repo.vue_section/vscode_extension/src/webview/src/App.vue:script@0"]
+      repo_vue_section_vscode_extension_src_webview_src_App_vue_template_2600["repo.vue_section/vscode_extension/src/webview/src/App.vue:template@2600"]
+    end
+    repo_vue_sfc_vscode_extension_src_webview_src_App_vue["repo.vue_sfc/vscode_extension/src/webview/src/App.vue"]
+    subgraph repo_vue_sfc_vscode_extension_src_webview_src_components_ArgField_vue ["repo.vue_sfc/vscode_extension/src/webview/src/components/ArgField.vue"]
+      repo_vue_section_vscode_extension_src_webview_src_components_ArgField_vue_script_0["repo.vue_section/vscode_extension/src/webview/src/components/ArgField.vue:script@0"]
+      repo_vue_section_vscode_extension_src_webview_src_components_ArgField_vue_style_8244["repo.vue_section/vscode_extension/src/webview/src/components/ArgField.vue:style@8244"]
+      repo_vue_section_vscode_extension_src_webview_src_components_ArgField_vue_template_3559["repo.vue_section/vscode_extension/src/webview/src/components/ArgField.vue:template@3559"]
+    end
+    repo_vue_sfc_vscode_extension_src_webview_src_components_ArgField_vue["repo.vue_sfc/vscode_extension/src/webview/src/components/ArgField.vue"]
+    subgraph repo_vue_sfc_vscode_extension_src_webview_src_components_CoverageTree_vue ["repo.vue_sfc/vscode_extension/src/webview/src/components/CoverageTree.vue"]
+      repo_vue_section_vscode_extension_src_webview_src_components_CoverageTree_vue_script_0["repo.vue_section/vscode_extension/src/webview/src/components/CoverageTree.vue:script@0"]
+      repo_vue_section_vscode_extension_src_webview_src_components_CoverageTree_vue_script_2144["repo.vue_section/vscode_extension/src/webview/src/components/CoverageTree.vue:script@2144"]
+      repo_vue_section_vscode_extension_src_webview_src_components_CoverageTree_vue_style_2218["repo.vue_section/vscode_extension/src/webview/src/components/CoverageTree.vue:style@2218"]
+      repo_vue_section_vscode_extension_src_webview_src_components_CoverageTree_vue_template_888["repo.vue_section/vscode_extension/src/webview/src/components/CoverageTree.vue:template@888"]
+    end
+    repo_vue_sfc_vscode_extension_src_webview_src_components_CoverageTree_vue["repo.vue_sfc/vscode_extension/src/webview/src/components/CoverageTree.vue"]
+    subgraph repo_vue_sfc_vscode_extension_src_webview_src_components_FileCard_vue ["repo.vue_sfc/vscode_extension/src/webview/src/components/FileCard.vue"]
+      repo_vue_section_vscode_extension_src_webview_src_components_FileCard_vue_script_0["repo.vue_section/vscode_extension/src/webview/src/components/FileCard.vue:script@0"]
+      repo_vue_section_vscode_extension_src_webview_src_components_FileCard_vue_template_597["repo.vue_section/vscode_extension/src/webview/src/components/FileCard.vue:template@597"]
+    end
+    repo_vue_sfc_vscode_extension_src_webview_src_components_FileCard_vue["repo.vue_sfc/vscode_extension/src/webview/src/components/FileCard.vue"]
+    subgraph repo_vue_sfc_vscode_extension_src_webview_src_components_RecipeArgForm_vue ["repo.vue_sfc/vscode_extension/src/webview/src/components/RecipeArgForm.vue"]
+      repo_vue_section_vscode_extension_src_webview_src_components_RecipeArgForm_vue_script_0["repo.vue_section/vscode_extension/src/webview/src/components/RecipeArgForm.vue:script@0"]
+      repo_vue_section_vscode_extension_src_webview_src_components_RecipeArgForm_vue_template_1077["repo.vue_section/vscode_extension/src/webview/src/components/RecipeArgForm.vue:template@1077"]
+    end
+    repo_vue_sfc_vscode_extension_src_webview_src_components_RecipeArgForm_vue["repo.vue_sfc/vscode_extension/src/webview/src/components/RecipeArgForm.vue"]
+    subgraph repo_vue_sfc_vscode_extension_src_webview_src_components_RecipeGroupNode_vue ["repo.vue_sfc/vscode_extension/src/webview/src/components/RecipeGroupNode.vue"]
+      repo_vue_section_vscode_extension_src_webview_src_components_RecipeGroupNode_vue_script_0["repo.vue_section/vscode_extension/src/webview/src/components/RecipeGroupNode.vue:script@0"]
+      repo_vue_section_vscode_extension_src_webview_src_components_RecipeGroupNode_vue_script_2616["repo.vue_section/vscode_extension/src/webview/src/components/RecipeGroupNode.vue:script@2616"]
+      repo_vue_section_vscode_extension_src_webview_src_components_RecipeGroupNode_vue_template_671["repo.vue_section/vscode_extension/src/webview/src/components/RecipeGroupNode.vue:template@671"]
+    end
+    repo_vue_sfc_vscode_extension_src_webview_src_components_RecipeGroupNode_vue["repo.vue_sfc/vscode_extension/src/webview/src/components/RecipeGroupNode.vue"]
+    subgraph repo_vue_sfc_vscode_extension_src_webview_src_components_RecipeInfo_vue ["repo.vue_sfc/vscode_extension/src/webview/src/components/RecipeInfo.vue"]
+      repo_vue_section_vscode_extension_src_webview_src_components_RecipeInfo_vue_script_0["repo.vue_section/vscode_extension/src/webview/src/components/RecipeInfo.vue:script@0"]
+      repo_vue_section_vscode_extension_src_webview_src_components_RecipeInfo_vue_style_3199["repo.vue_section/vscode_extension/src/webview/src/components/RecipeInfo.vue:style@3199"]
+      repo_vue_section_vscode_extension_src_webview_src_components_RecipeInfo_vue_template_1465["repo.vue_section/vscode_extension/src/webview/src/components/RecipeInfo.vue:template@1465"]
+    end
+    repo_vue_sfc_vscode_extension_src_webview_src_components_RecipeInfo_vue["repo.vue_sfc/vscode_extension/src/webview/src/components/RecipeInfo.vue"]
+    subgraph repo_vue_sfc_vscode_extension_src_webview_src_components_RecipesTab_vue ["repo.vue_sfc/vscode_extension/src/webview/src/components/RecipesTab.vue"]
+      repo_vue_section_vscode_extension_src_webview_src_components_RecipesTab_vue_script_0["repo.vue_section/vscode_extension/src/webview/src/components/RecipesTab.vue:script@0"]
+      repo_vue_section_vscode_extension_src_webview_src_components_RecipesTab_vue_template_4476["repo.vue_section/vscode_extension/src/webview/src/components/RecipesTab.vue:template@4476"]
+    end
+    repo_vue_sfc_vscode_extension_src_webview_src_components_RecipesTab_vue["repo.vue_sfc/vscode_extension/src/webview/src/components/RecipesTab.vue"]
+    subgraph repo_vue_sfc_vscode_extension_src_webview_src_components_ReviewPanel_vue ["repo.vue_sfc/vscode_extension/src/webview/src/components/ReviewPanel.vue"]
+      repo_vue_section_vscode_extension_src_webview_src_components_ReviewPanel_vue_script_0["repo.vue_section/vscode_extension/src/webview/src/components/ReviewPanel.vue:script@0"]
+      repo_vue_section_vscode_extension_src_webview_src_components_ReviewPanel_vue_style_4783["repo.vue_section/vscode_extension/src/webview/src/components/ReviewPanel.vue:style@4783"]
+      repo_vue_section_vscode_extension_src_webview_src_components_ReviewPanel_vue_template_1972["repo.vue_section/vscode_extension/src/webview/src/components/ReviewPanel.vue:template@1972"]
+    end
+    repo_vue_sfc_vscode_extension_src_webview_src_components_ReviewPanel_vue["repo.vue_sfc/vscode_extension/src/webview/src/components/ReviewPanel.vue"]
+    subgraph repo_vue_sfc_vscode_extension_src_webview_src_views_BootstrapView_vue ["repo.vue_sfc/vscode_extension/src/webview/src/views/BootstrapView.vue"]
+      repo_vue_section_vscode_extension_src_webview_src_views_BootstrapView_vue_script_0["repo.vue_section/vscode_extension/src/webview/src/views/BootstrapView.vue:script@0"]
+      repo_vue_section_vscode_extension_src_webview_src_views_BootstrapView_vue_template_702["repo.vue_section/vscode_extension/src/webview/src/views/BootstrapView.vue:template@702"]
+    end
+    repo_vue_sfc_vscode_extension_src_webview_src_views_BootstrapView_vue["repo.vue_sfc/vscode_extension/src/webview/src/views/BootstrapView.vue"]
+    subgraph repo_vue_sfc_vscode_extension_src_webview_src_views_ComponentsView_vue ["repo.vue_sfc/vscode_extension/src/webview/src/views/ComponentsView.vue"]
+      repo_vue_section_vscode_extension_src_webview_src_views_ComponentsView_vue_script_0["repo.vue_section/vscode_extension/src/webview/src/views/ComponentsView.vue:script@0"]
+      repo_vue_section_vscode_extension_src_webview_src_views_ComponentsView_vue_style_13859["repo.vue_section/vscode_extension/src/webview/src/views/ComponentsView.vue:style@13859"]
+      repo_vue_section_vscode_extension_src_webview_src_views_ComponentsView_vue_template_1798["repo.vue_section/vscode_extension/src/webview/src/views/ComponentsView.vue:template@1798"]
+    end
+    repo_vue_sfc_vscode_extension_src_webview_src_views_ComponentsView_vue["repo.vue_sfc/vscode_extension/src/webview/src/views/ComponentsView.vue"]
+    subgraph repo_vue_sfc_vscode_extension_src_webview_src_views_RecipesView_vue ["repo.vue_sfc/vscode_extension/src/webview/src/views/RecipesView.vue"]
+      repo_vue_section_vscode_extension_src_webview_src_views_RecipesView_vue_script_0["repo.vue_section/vscode_extension/src/webview/src/views/RecipesView.vue:script@0"]
+      repo_vue_section_vscode_extension_src_webview_src_views_RecipesView_vue_template_429["repo.vue_section/vscode_extension/src/webview/src/views/RecipesView.vue:template@429"]
+    end
+    repo_vue_sfc_vscode_extension_src_webview_src_views_RecipesView_vue["repo.vue_sfc/vscode_extension/src/webview/src/views/RecipesView.vue"]
+    subgraph repo_vue_sfc_vscode_extension_src_webview_src_views_RunnerView_vue ["repo.vue_sfc/vscode_extension/src/webview/src/views/RunnerView.vue"]
+      repo_vue_section_vscode_extension_src_webview_src_views_RunnerView_vue_script_0["repo.vue_section/vscode_extension/src/webview/src/views/RunnerView.vue:script@0"]
+      repo_vue_section_vscode_extension_src_webview_src_views_RunnerView_vue_template_1555["repo.vue_section/vscode_extension/src/webview/src/views/RunnerView.vue:template@1555"]
+    end
+    repo_vue_sfc_vscode_extension_src_webview_src_views_RunnerView_vue["repo.vue_sfc/vscode_extension/src/webview/src/views/RunnerView.vue"]
   end
   repo_host_bridge_method_listRecipes["repo.host_bridge_method/listRecipes"]
   repo_host_bridge_method_reloadRecipes["repo.host_bridge_method/reloadRecipes"]
@@ -3976,30 +4226,75 @@ graph LR
   repo_mcp_tool_entry_stack_dry_run_operation["repo.mcp_tool_entry/stack_dry_run_operation"]
   repo_mcp_tool_entry_stack_apply_operation["repo.mcp_tool_entry/stack_apply_operation"]
   repo_mcp_tool_entry_run_tests["repo.mcp_tool_entry/run_tests"]
+  repo_vscode_command_entry_codemodRecipe_refresh["repo.vscode_command_entry/codemodRecipe.refresh"]
+  repo_vscode_command_entry_codemodRecipe_bootstrap["repo.vscode_command_entry/codemodRecipe.bootstrap"]
+  repo_vscode_command_entry_codemodRecipe_scaffoldProject["repo.vscode_command_entry/codemodRecipe.scaffoldProject"]
+  repo_vscode_command_entry_codemodRecipe_updateProjectScaffold["repo.vscode_command_entry/codemodRecipe.updateProjectScaffold"]
+  repo_vscode_command_entry_codemodRecipe_runRecipe["repo.vscode_command_entry/codemodRecipe.runRecipe"]
+  repo_vscode_command_entry_codemodRecipe_runFromCursorContext["repo.vscode_command_entry/codemodRecipe.runFromCursorContext"]
+  repo_vscode_command_entry_codemodRecipe_runFromExplorer["repo.vscode_command_entry/codemodRecipe.runFromExplorer"]
+  repo_vscode_command_entry_codemodRecipe_openFromExplorer["repo.vscode_command_entry/codemodRecipe.openFromExplorer"]
+  repo_vscode_command_entry_codemodRecipe_invoke["repo.vscode_command_entry/codemodRecipe.invoke"]
+  repo_vscode_command_entry_codemodRecipe_invokeSlot["repo.vscode_command_entry/codemodRecipe.invokeSlot"]
+  repo_vscode_command_entry_codemodRecipe_copyInvokeKeybinding["repo.vscode_command_entry/codemodRecipe.copyInvokeKeybinding"]
+  repo_vscode_command_entry_codemodRecipe_assignToSlot["repo.vscode_command_entry/codemodRecipe.assignToSlot"]
+  repo_vscode_command_entry_codemodRecipe_copySlotKeybinding["repo.vscode_command_entry/codemodRecipe.copySlotKeybinding"]
+  repo_vscode_command_entry_codemodRecipe_configureHost["repo.vscode_command_entry/codemodRecipe.configureHost"]
   repo_vscode_command_entry_codemodRecipe_validateRecipes["repo.vscode_command_entry/codemodRecipe.validateRecipes"]
   repo_vscode_command_entry_codemodRecipe_runTests["repo.vscode_command_entry/codemodRecipe.runTests"]
+  repo_vscode_command_entry_codemodRecipe_openInRecipeRunner["repo.vscode_command_entry/codemodRecipe.openInRecipeRunner"]
+  repo_vscode_command_entry_codemodRecipe_testQueryOnFile["repo.vscode_command_entry/codemodRecipe.testQueryOnFile"]
   repo_vscode_command_entry_codemodRecipe_queryTools_run["repo.vscode_command_entry/codemodRecipe.queryTools.run"]
   repo_vscode_command_entry_codemodRecipe_queryTools_generateFromCursor["repo.vscode_command_entry/codemodRecipe.queryTools.generateFromCursor"]
   repo_vscode_command_entry_codemodRecipe_queryTools_revealAst["repo.vscode_command_entry/codemodRecipe.queryTools.revealAst"]
+  repo_vscode_command_entry_codemodRecipe_queryTools_nextMatch["repo.vscode_command_entry/codemodRecipe.queryTools.nextMatch"]
+  repo_vscode_command_entry_codemodRecipe_queryTools_prevMatch["repo.vscode_command_entry/codemodRecipe.queryTools.prevMatch"]
+  repo_vscode_command_entry_codemodRecipe_queryTools_copy["repo.vscode_command_entry/codemodRecipe.queryTools.copy"]
+  repo_vscode_command_entry_codemodRecipe_queryTools_copyYaml_insert["repo.vscode_command_entry/codemodRecipe.queryTools.copyYaml.insert"]
+  repo_vscode_command_entry_codemodRecipe_queryTools_copyYaml_replace["repo.vscode_command_entry/codemodRecipe.queryTools.copyYaml.replace"]
+  repo_vscode_command_entry_codemodRecipe_queryTools_copyYaml_remove["repo.vscode_command_entry/codemodRecipe.queryTools.copyYaml.remove"]
   repo_vscode_command_entry_codemodRecipe_queryTools_openFromRecipe["repo.vscode_command_entry/codemodRecipe.queryTools.openFromRecipe"]
   repo_vscode_command_entry_codemodRecipe_queryTools_goToEditPath["repo.vscode_command_entry/codemodRecipe.queryTools.goToEditPath"]
   repo_vscode_command_entry_codemodRecipe_queryTools_selectAstNode["repo.vscode_command_entry/codemodRecipe.queryTools.selectAstNode"]
+  repo_vscode_command_entry_codemodRecipe_queryTools_astDisplayMode["repo.vscode_command_entry/codemodRecipe.queryTools.astDisplayMode"]
+  repo_zone_vscode_extension["repo.zone/vscode.extension"]
+  repo_zone_vscode_webview["repo.zone/vscode.webview"]
   codemod_recipe_core__apply__file_change__FileChange["codemod_recipe_core::apply::file_change::FileChange (external)"]
+  repo_component_pipeline_cache -- "feeds" --> repo_component_pipeline_scan_incremental
+  repo_component_pipeline_cache_body -- "feeds" --> repo_component_pipeline_cache
+  repo_component_pipeline_cache_types -- "feeds" --> repo_component_pipeline_cache
   repo_component_pipeline_coverage -- "feeds" --> repo_component_pipeline_snapshot
+  repo_component_pipeline_coverage_compute -- "feeds" --> repo_component_pipeline_coverage
+  repo_component_pipeline_coverage_spans -- "feeds" --> repo_component_pipeline_coverage
   repo_component_pipeline_delegate -- "feeds" --> repo_component_pipeline_runtime
+  repo_component_pipeline_delegate_invoke -- "feeds" --> repo_component_pipeline_delegate
+  repo_component_pipeline_delegate_stack -- "feeds" --> repo_component_pipeline_delegate
   repo_component_pipeline_graph_render -- "feeds" --> repo_component_pipeline_snapshot
+  repo_component_pipeline_graph_render_instance -- "feeds" --> repo_component_pipeline_graph_render
+  repo_component_pipeline_graph_render_kind -- "feeds" --> repo_component_pipeline_graph_render
+  repo_component_pipeline_graph_render_style -- "feeds" --> repo_component_pipeline_graph_render
   repo_component_pipeline_membership -- "feeds" --> repo_component_pipeline_relations
   repo_component_pipeline_relation_metrics -- "feeds" --> repo_component_pipeline_snapshot
+  repo_component_pipeline_relation_metrics_compute -- "feeds" --> repo_component_pipeline_relation_metrics
+  repo_component_pipeline_relation_metrics_types -- "feeds" --> repo_component_pipeline_relation_metrics
   repo_component_pipeline_relations -- "feeds" --> repo_component_pipeline_coverage
   repo_component_pipeline_relations -- "feeds" --> repo_component_pipeline_relation_metrics
   repo_component_pipeline_relations_attach -- "feeds" --> repo_component_pipeline_relations
   repo_component_pipeline_relations_facade -- "feeds" --> repo_component_pipeline_relations
+  repo_component_pipeline_relations_facade_builders -- "feeds" --> repo_component_pipeline_relations_facade
+  repo_component_pipeline_relations_facade_script -- "feeds" --> repo_component_pipeline_relations_facade
   repo_component_pipeline_relations_resolve -- "feeds" --> repo_component_pipeline_relations
+  repo_component_pipeline_relations_resolve_edges -- "feeds" --> repo_component_pipeline_relations_resolve
+  repo_component_pipeline_relations_resolve_findings -- "feeds" --> repo_component_pipeline_relations_resolve
+  repo_component_pipeline_relations_resolve_kind -- "feeds" --> repo_component_pipeline_relations_resolve
+  repo_component_pipeline_relations_resolve_normalize -- "feeds" --> repo_component_pipeline_relations_resolve
+  repo_component_pipeline_relations_resolve_targets -- "feeds" --> repo_component_pipeline_relations_resolve
   repo_component_pipeline_relations_types -- "feeds" --> repo_component_pipeline_relations
   repo_component_pipeline_runtime -- "feeds" --> repo_component_pipeline_runtime_finalize
   repo_component_pipeline_runtime_context -- "feeds" --> repo_component_pipeline_runtime
   repo_component_pipeline_runtime_hook -- "feeds" --> repo_component_pipeline_runtime
   repo_component_pipeline_runtime_operations -- "feeds" --> repo_component_pipeline_runtime
+  repo_component_pipeline_runtime_scaffold -- "feeds" --> repo_component_pipeline_runtime
   repo_component_pipeline_runtime_stack_ops -- "feeds" --> repo_component_pipeline_runtime
   repo_component_pipeline_scan -- "feeds" --> repo_component_pipeline_relations
   repo_component_pipeline_scan -- "feeds" --> repo_component_pipeline_runtime
@@ -4008,6 +4303,10 @@ graph LR
   repo_component_pipeline_scan_identify -- "feeds" --> repo_component_pipeline_scan
   repo_component_pipeline_scan_incremental -- "feeds" --> repo_component_pipeline_scan
   repo_component_pipeline_scan_types -- "feeds" --> repo_component_pipeline_scan
+  repo_component_pipeline_snapshot_io -- "feeds" --> repo_component_pipeline_snapshot
+  repo_component_pipeline_types -- "feeds" --> repo_component_pipeline_relations
+  repo_component_pipeline_types -- "feeds" --> repo_component_pipeline_scan
+  repo_component_pipeline_types_parse -- "feeds" --> repo_component_pipeline_types
   repo_domain_type_IfExists_lua -- "mirrors" --> repo_domain_type_IfExists_core
   repo_domain_type_QuerySpec_lua -- "mirrors" --> repo_domain_type_QuerySpec_core
   repo_engine_edit_engine_edit -- "produces" --> codemod_recipe_core__apply__file_change__FileChange
@@ -4161,23 +4460,38 @@ graph LR
   repo_host_module_template -- "uses" --> repo_host_api_handlers_template_methods
   repo_host_module_testing -- "uses" --> repo_component_pipeline_coverage
   repo_lua_load_module_load_component -- "uses" --> repo_lua_load_module_load_error
+  repo_lua_load_module_load_component -- "uses" --> repo_lua_load_module_load_shared
   repo_lua_load_module_load_component -- "uses" --> repo_lua_load_module_load_table_util
   repo_lua_load_module_load_dispatch -- "feeds" --> repo_recipe_registry_recipe_registry
   repo_lua_load_module_load_dispatch -- "uses" --> repo_lua_load_module_load_error
+  repo_lua_load_module_load_dispatch -- "uses" --> repo_lua_load_module_load_shared
   repo_lua_load_module_load_dispatch -- "uses" --> repo_lua_load_module_load_table_util
+  repo_lua_load_module_load_explorer -- "uses" --> repo_lua_load_module_load_shared
+  repo_lua_load_module_load_explorer -- "uses" --> repo_lua_load_module_load_table_util
   repo_lua_load_module_load_map -- "uses" --> repo_lua_load_module_load_error
+  repo_lua_load_module_load_map -- "uses" --> repo_lua_load_module_load_shared
   repo_lua_load_module_load_map -- "uses" --> repo_lua_load_module_load_table_util
+  repo_lua_load_module_load_ops -- "uses" --> repo_lua_load_module_load_shared
+  repo_lua_load_module_load_ops -- "uses" --> repo_lua_load_module_load_table_util
   repo_lua_load_module_load_query_lib -- "uses" --> repo_lua_load_module_load_error
+  repo_lua_load_module_load_query_lib -- "uses" --> repo_lua_load_module_load_shared
   repo_lua_load_module_load_query_lib -- "uses" --> repo_lua_load_module_load_table_util
   repo_lua_load_module_load_recipe -- "uses" --> repo_lua_load_module_load_error
+  repo_lua_load_module_load_recipe -- "uses" --> repo_lua_load_module_load_shared
   repo_lua_load_module_load_recipe -- "uses" --> repo_lua_load_module_load_table_util
   repo_lua_load_module_load_stack -- "uses" --> repo_lua_load_module_load_error
+  repo_lua_load_module_load_stack -- "uses" --> repo_lua_load_module_load_shared
   repo_lua_load_module_load_stack -- "uses" --> repo_lua_load_module_load_table_util
   repo_lua_load_module_load_test_suite -- "uses" --> repo_lua_load_module_load_error
+  repo_lua_load_module_load_test_suite -- "uses" --> repo_lua_load_module_load_shared
   repo_lua_load_module_load_test_suite -- "uses" --> repo_lua_load_module_load_table_util
   repo_lua_load_module_load_type_def -- "uses" --> repo_lua_load_module_load_error
+  repo_lua_load_module_load_type_def -- "uses" --> repo_lua_load_module_load_shared
   repo_lua_load_module_load_type_def -- "uses" --> repo_lua_load_module_load_table_util
+  repo_lua_load_module_load_type_parse -- "uses" --> repo_lua_load_module_load_shared
+  repo_lua_load_module_load_type_parse -- "uses" --> repo_lua_load_module_load_table_util
   repo_lua_load_module_load_variables -- "uses" --> repo_lua_load_module_load_error
+  repo_lua_load_module_load_variables -- "uses" --> repo_lua_load_module_load_shared
   repo_lua_load_module_load_variables -- "uses" --> repo_lua_load_module_load_table_util
   repo_mcp_tool_entry_apply_recipe -- "exposes" --> repo_host_command_apply
   repo_mcp_tool_entry_component_apply_hook -- "exposes" --> repo_host_command_componentInvokeHook
@@ -4200,6 +4514,21 @@ graph LR
   repo_mcp_tool_entry_stack_apply_operation -- "exposes" --> repo_host_command_stackInvokeOperation
   repo_mcp_tool_entry_stack_dry_run_operation -- "exposes" --> repo_host_command_stackInvokeOperation
   repo_mcp_tool_entry_validate_recipes -- "exposes" --> repo_host_command_validate
+  repo_protocol_key_ARGS -- "defines" --> repo_host_protocol_host_protocol
+  repo_protocol_key_ERROR -- "defines" --> repo_host_protocol_host_protocol
+  repo_protocol_key_FILE -- "defines" --> repo_host_protocol_host_protocol
+  repo_protocol_key_FILES -- "defines" --> repo_host_protocol_host_protocol
+  repo_protocol_key_ID -- "defines" --> repo_host_protocol_host_protocol
+  repo_protocol_key_INCLUDE -- "defines" --> repo_host_protocol_host_protocol
+  repo_protocol_key_INLINE_RECIPE -- "defines" --> repo_host_protocol_host_protocol
+  repo_protocol_key_INLINE_RECIPE_ID -- "defines" --> repo_host_protocol_host_protocol
+  repo_protocol_key_OK -- "defines" --> repo_host_protocol_host_protocol
+  repo_protocol_key_PREVIEW_TOKEN -- "defines" --> repo_host_protocol_host_protocol
+  repo_protocol_key_RECIPE -- "defines" --> repo_host_protocol_host_protocol
+  repo_protocol_key_SELECTION -- "defines" --> repo_host_protocol_host_protocol
+  repo_protocol_key_SNAPSHOTS -- "defines" --> repo_host_protocol_host_protocol
+  repo_protocol_key_SNIPPET_LINES -- "defines" --> repo_host_protocol_host_protocol
+  repo_protocol_key_UNKNOWN_RECIPE_ID -- "defines" --> repo_host_protocol_host_protocol
   repo_rust_mod_file_rust_crates_core_src_apply_file_change_rs -- "uses" --> repo_rust_mod_file_rust_crates_core_src_apply_mod_rs
   repo_rust_mod_file_rust_crates_core_src_apply_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_core_src_apply_atomic_apply_rs
   repo_rust_mod_file_rust_crates_core_src_apply_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_core_src_apply_file_change_rs
@@ -4230,35 +4559,62 @@ graph LR
   repo_rust_mod_file_rust_crates_engine_src_query_query_chain_rs -- "uses" --> repo_rust_mod_file_rust_crates_engine_src_language_mod_rs
   repo_rust_mod_file_rust_crates_engine_src_span_leading_trivia_rs -- "uses" --> repo_rust_mod_file_rust_crates_engine_src_language_mod_rs
   repo_rust_mod_file_rust_crates_engine_src_span_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_engine_src_span_leading_trivia_rs
-  repo_rust_mod_file_rust_crates_host_src_component_cache_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
-  repo_rust_mod_file_rust_crates_host_src_component_cache_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_recipe_mod_rs
-  repo_rust_mod_file_rust_crates_host_src_component_coverage_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
-  repo_rust_mod_file_rust_crates_host_src_component_coverage_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_recipe_mod_rs
-  repo_rust_mod_file_rust_crates_host_src_component_coverage_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_sandbox_mod_rs
-  repo_rust_mod_file_rust_crates_host_src_component_delegate_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_host_api_mod_rs
-  repo_rust_mod_file_rust_crates_host_src_component_delegate_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_lua_runtime_rs
-  repo_rust_mod_file_rust_crates_host_src_component_graph_render_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_cache_body_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_cache_body_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_recipe_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_cache_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_cache_body_rs
+  repo_rust_mod_file_rust_crates_host_src_component_cache_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_cache_types_rs
+  repo_rust_mod_file_rust_crates_host_src_component_cache_types_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_coverage_compute_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_sandbox_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_coverage_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_coverage_compute_rs
+  repo_rust_mod_file_rust_crates_host_src_component_coverage_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_coverage_spans_rs
+  repo_rust_mod_file_rust_crates_host_src_component_coverage_mod_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_coverage_mod_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_recipe_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_coverage_spans_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_delegate_invoke_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_host_api_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_delegate_invoke_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_lua_runtime_rs
+  repo_rust_mod_file_rust_crates_host_src_component_delegate_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_delegate_invoke_rs
+  repo_rust_mod_file_rust_crates_host_src_component_delegate_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_delegate_stack_rs
+  repo_rust_mod_file_rust_crates_host_src_component_delegate_mod_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_host_api_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_delegate_stack_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_host_api_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_graph_render_instance_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_graph_render_kind_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_graph_render_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_graph_render_instance_rs
+  repo_rust_mod_file_rust_crates_host_src_component_graph_render_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_graph_render_kind_rs
+  repo_rust_mod_file_rust_crates_host_src_component_graph_render_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_graph_render_style_rs
   repo_rust_mod_file_rust_crates_host_src_component_membership_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
-  repo_rust_mod_file_rust_crates_host_src_component_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_cache_rs
-  repo_rust_mod_file_rust_crates_host_src_component_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_coverage_rs
-  repo_rust_mod_file_rust_crates_host_src_component_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_delegate_rs
-  repo_rust_mod_file_rust_crates_host_src_component_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_graph_render_rs
+  repo_rust_mod_file_rust_crates_host_src_component_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_cache_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_coverage_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_delegate_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_graph_render_mod_rs
   repo_rust_mod_file_rust_crates_host_src_component_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_membership_rs
-  repo_rust_mod_file_rust_crates_host_src_component_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_relation_metrics_rs
+  repo_rust_mod_file_rust_crates_host_src_component_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_relation_metrics_mod_rs
   repo_rust_mod_file_rust_crates_host_src_component_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_relations_mod_rs
   repo_rust_mod_file_rust_crates_host_src_component_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_runtime_mod_rs
   repo_rust_mod_file_rust_crates_host_src_component_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_scan_mod_rs
-  repo_rust_mod_file_rust_crates_host_src_component_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_snapshot_rs
-  repo_rust_mod_file_rust_crates_host_src_component_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_types_rs
-  repo_rust_mod_file_rust_crates_host_src_component_relation_metrics_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_snapshot_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_types_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_relation_metrics_compute_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_relation_metrics_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_relation_metrics_compute_rs
+  repo_rust_mod_file_rust_crates_host_src_component_relation_metrics_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_relation_metrics_types_rs
   repo_rust_mod_file_rust_crates_host_src_component_relations_attach_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
-  repo_rust_mod_file_rust_crates_host_src_component_relations_facade_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_relations_facade_builders_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_relations_facade_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_relations_facade_builders_rs
+  repo_rust_mod_file_rust_crates_host_src_component_relations_facade_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_relations_facade_script_rs
   repo_rust_mod_file_rust_crates_host_src_component_relations_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_relations_attach_rs
-  repo_rust_mod_file_rust_crates_host_src_component_relations_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_relations_facade_rs
-  repo_rust_mod_file_rust_crates_host_src_component_relations_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_rs
+  repo_rust_mod_file_rust_crates_host_src_component_relations_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_relations_facade_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_relations_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_mod_rs
   repo_rust_mod_file_rust_crates_host_src_component_relations_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_relations_types_rs
   repo_rust_mod_file_rust_crates_host_src_component_relations_mod_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
-  repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_edges_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_findings_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_kind_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_edges_rs
+  repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_findings_rs
+  repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_kind_rs
+  repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_normalize_rs
+  repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_targets_rs
+  repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_normalize_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_relations_resolve_targets_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
   repo_rust_mod_file_rust_crates_host_src_component_relations_types_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
   repo_rust_mod_file_rust_crates_host_src_component_runtime_context_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
   repo_rust_mod_file_rust_crates_host_src_component_runtime_context_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_edit_session_mod_rs
@@ -4279,6 +4635,7 @@ graph LR
   repo_rust_mod_file_rust_crates_host_src_component_runtime_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_runtime_finalize_rs
   repo_rust_mod_file_rust_crates_host_src_component_runtime_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_runtime_hook_rs
   repo_rust_mod_file_rust_crates_host_src_component_runtime_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_runtime_operations_rs
+  repo_rust_mod_file_rust_crates_host_src_component_runtime_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_runtime_scaffold_rs
   repo_rust_mod_file_rust_crates_host_src_component_runtime_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_runtime_stack_ops_rs
   repo_rust_mod_file_rust_crates_host_src_component_runtime_operations_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
   repo_rust_mod_file_rust_crates_host_src_component_runtime_operations_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_edit_session_mod_rs
@@ -4286,6 +4643,12 @@ graph LR
   repo_rust_mod_file_rust_crates_host_src_component_runtime_operations_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_lua_runtime_rs
   repo_rust_mod_file_rust_crates_host_src_component_runtime_operations_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_preview_mod_rs
   repo_rust_mod_file_rust_crates_host_src_component_runtime_operations_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_recipe_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_runtime_scaffold_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_runtime_scaffold_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_edit_session_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_runtime_scaffold_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_host_api_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_runtime_scaffold_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_lua_runtime_rs
+  repo_rust_mod_file_rust_crates_host_src_component_runtime_scaffold_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_preview_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_runtime_scaffold_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_recipe_mod_rs
   repo_rust_mod_file_rust_crates_host_src_component_runtime_stack_ops_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
   repo_rust_mod_file_rust_crates_host_src_component_runtime_stack_ops_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_edit_session_mod_rs
   repo_rust_mod_file_rust_crates_host_src_component_runtime_stack_ops_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_host_api_mod_rs
@@ -4309,10 +4672,13 @@ graph LR
   repo_rust_mod_file_rust_crates_host_src_component_scan_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_scan_incremental_rs
   repo_rust_mod_file_rust_crates_host_src_component_scan_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_scan_types_rs
   repo_rust_mod_file_rust_crates_host_src_component_scan_types_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
-  repo_rust_mod_file_rust_crates_host_src_component_snapshot_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
-  repo_rust_mod_file_rust_crates_host_src_component_snapshot_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_recipe_mod_rs
-  repo_rust_mod_file_rust_crates_host_src_component_snapshot_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_sandbox_mod_rs
-  repo_rust_mod_file_rust_crates_host_src_component_types_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_protocol_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_snapshot_io_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_sandbox_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_snapshot_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_snapshot_io_rs
+  repo_rust_mod_file_rust_crates_host_src_component_snapshot_mod_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_component_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_snapshot_mod_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_recipe_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_snapshot_mod_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_sandbox_mod_rs
+  repo_rust_mod_file_rust_crates_host_src_component_types_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_component_types_parse_rs
+  repo_rust_mod_file_rust_crates_host_src_component_types_mod_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_protocol_mod_rs
   repo_rust_mod_file_rust_crates_host_src_config_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_config_bootstrap_rs
   repo_rust_mod_file_rust_crates_host_src_diagnostics_diag_source_rs -- "uses" --> repo_rust_mod_file_rust_crates_host_src_protocol_mod_rs
   repo_rust_mod_file_rust_crates_host_src_diagnostics_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_host_src_diagnostics_diag_source_rs
@@ -4441,10 +4807,14 @@ graph LR
   repo_rust_mod_file_rust_crates_lua_src_lib_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_lua_src_require_rs
   repo_rust_mod_file_rust_crates_lua_src_load_component_rs -- "uses" --> repo_rust_mod_file_rust_crates_lua_src_model_rs
   repo_rust_mod_file_rust_crates_lua_src_load_error_rs -- "uses" --> repo_rust_mod_file_rust_crates_lua_src_model_rs
+  repo_rust_mod_file_rust_crates_lua_src_load_explorer_rs -- "uses" --> repo_rust_mod_file_rust_crates_lua_src_input_kind_rs
+  repo_rust_mod_file_rust_crates_lua_src_load_explorer_rs -- "uses" --> repo_rust_mod_file_rust_crates_lua_src_model_rs
   repo_rust_mod_file_rust_crates_lua_src_load_map_rs -- "uses" --> repo_rust_mod_file_rust_crates_lua_src_model_rs
   repo_rust_mod_file_rust_crates_lua_src_load_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_lua_src_load_component_rs
   repo_rust_mod_file_rust_crates_lua_src_load_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_lua_src_load_error_rs
+  repo_rust_mod_file_rust_crates_lua_src_load_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_lua_src_load_explorer_rs
   repo_rust_mod_file_rust_crates_lua_src_load_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_lua_src_load_map_rs
+  repo_rust_mod_file_rust_crates_lua_src_load_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_lua_src_load_ops_rs
   repo_rust_mod_file_rust_crates_lua_src_load_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_lua_src_load_query_lib_rs
   repo_rust_mod_file_rust_crates_lua_src_load_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_lua_src_load_recipe_rs
   repo_rust_mod_file_rust_crates_lua_src_load_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_lua_src_load_shared_rs
@@ -4452,15 +4822,18 @@ graph LR
   repo_rust_mod_file_rust_crates_lua_src_load_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_lua_src_load_table_util_rs
   repo_rust_mod_file_rust_crates_lua_src_load_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_lua_src_load_test_suite_rs
   repo_rust_mod_file_rust_crates_lua_src_load_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_lua_src_load_type_def_rs
+  repo_rust_mod_file_rust_crates_lua_src_load_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_lua_src_load_type_parse_rs
   repo_rust_mod_file_rust_crates_lua_src_load_mod_rs -- "declares_mod" --> repo_rust_mod_file_rust_crates_lua_src_load_variables_rs
   repo_rust_mod_file_rust_crates_lua_src_load_mod_rs -- "uses" --> repo_rust_mod_file_rust_crates_lua_src_input_kind_rs
+  repo_rust_mod_file_rust_crates_lua_src_load_ops_rs -- "uses" --> repo_rust_mod_file_rust_crates_lua_src_input_kind_rs
+  repo_rust_mod_file_rust_crates_lua_src_load_ops_rs -- "uses" --> repo_rust_mod_file_rust_crates_lua_src_model_rs
   repo_rust_mod_file_rust_crates_lua_src_load_query_lib_rs -- "uses" --> repo_rust_mod_file_rust_crates_lua_src_model_rs
   repo_rust_mod_file_rust_crates_lua_src_load_recipe_rs -- "uses" --> repo_rust_mod_file_rust_crates_lua_src_model_rs
-  repo_rust_mod_file_rust_crates_lua_src_load_shared_rs -- "uses" --> repo_rust_mod_file_rust_crates_lua_src_input_kind_rs
-  repo_rust_mod_file_rust_crates_lua_src_load_shared_rs -- "uses" --> repo_rust_mod_file_rust_crates_lua_src_model_rs
   repo_rust_mod_file_rust_crates_lua_src_load_stack_rs -- "uses" --> repo_rust_mod_file_rust_crates_lua_src_model_rs
   repo_rust_mod_file_rust_crates_lua_src_load_test_suite_rs -- "uses" --> repo_rust_mod_file_rust_crates_lua_src_model_rs
   repo_rust_mod_file_rust_crates_lua_src_load_type_def_rs -- "uses" --> repo_rust_mod_file_rust_crates_lua_src_model_rs
+  repo_rust_mod_file_rust_crates_lua_src_load_type_parse_rs -- "uses" --> repo_rust_mod_file_rust_crates_lua_src_input_kind_rs
+  repo_rust_mod_file_rust_crates_lua_src_load_type_parse_rs -- "uses" --> repo_rust_mod_file_rust_crates_lua_src_model_rs
   repo_rust_mod_file_rust_crates_lua_src_load_variables_rs -- "uses" --> repo_rust_mod_file_rust_crates_lua_src_model_rs
   repo_rust_mod_file_rust_crates_lua_src_model_rs -- "uses" --> repo_rust_mod_file_rust_crates_lua_src_input_kind_rs
   repo_rust_mod_file_rust_crates_lua_src_require_rs -- "uses" --> repo_rust_mod_file_rust_crates_lua_src_load_mod_rs
@@ -4518,11 +4891,11 @@ graph LR
   repo_rust_test_module_rust_crates_engine_src_query_query_chain_rs_mod_tests_1460 -- "tests" --> repo_rust_mod_file_rust_crates_engine_src_query_query_chain_rs
   repo_rust_test_module_rust_crates_engine_src_span_leading_trivia_rs_mod_tests_1234 -- "tests" --> repo_rust_mod_file_rust_crates_engine_src_span_leading_trivia_rs
   repo_rust_test_module_rust_crates_engine_src_span_mod_rs_mod_tests_3729 -- "tests" --> repo_rust_mod_file_rust_crates_engine_src_span_mod_rs
-  repo_rust_test_module_rust_crates_host_src_component_cache_rs_mod_tests_10302 -- "tests" --> repo_rust_mod_file_rust_crates_host_src_component_cache_rs
-  repo_rust_test_module_rust_crates_host_src_component_coverage_rs_mod_tests_12634 -- "tests" --> repo_rust_mod_file_rust_crates_host_src_component_coverage_rs
-  repo_rust_test_module_rust_crates_host_src_component_graph_render_rs_mod_tests_7045 -- "tests" --> repo_rust_mod_file_rust_crates_host_src_component_graph_render_rs
+  repo_rust_test_module_rust_crates_host_src_component_cache_body_rs_mod_tests_9684 -- "tests" --> repo_rust_mod_file_rust_crates_host_src_component_cache_body_rs
+  repo_rust_test_module_rust_crates_host_src_component_coverage_mod_rs_mod_tests_5919 -- "tests" --> repo_rust_mod_file_rust_crates_host_src_component_coverage_mod_rs
+  repo_rust_test_module_rust_crates_host_src_component_graph_render_instance_rs_mod_tests_5620 -- "tests" --> repo_rust_mod_file_rust_crates_host_src_component_graph_render_instance_rs
   repo_rust_test_module_rust_crates_host_src_component_membership_rs_mod_tests_4536 -- "tests" --> repo_rust_mod_file_rust_crates_host_src_component_membership_rs
-  repo_rust_test_module_rust_crates_host_src_component_relation_metrics_rs_mod_tests_10104 -- "tests" --> repo_rust_mod_file_rust_crates_host_src_component_relation_metrics_rs
+  repo_rust_test_module_rust_crates_host_src_component_relation_metrics_compute_rs_mod_tests_8296 -- "tests" --> repo_rust_mod_file_rust_crates_host_src_component_relation_metrics_compute_rs
   repo_rust_test_module_rust_crates_host_src_component_relations_mod_rs_mod_tests_402 -- "tests" --> repo_rust_mod_file_rust_crates_host_src_component_relations_mod_rs
   repo_rust_test_module_rust_crates_host_src_component_scan_identify_rs_mod_tests_6642 -- "tests" --> repo_rust_mod_file_rust_crates_host_src_component_scan_identify_rs
   repo_rust_test_module_rust_crates_host_src_config_bootstrap_rs_mod_tests_4508 -- "tests" --> repo_rust_mod_file_rust_crates_host_src_config_bootstrap_rs
@@ -4547,7 +4920,7 @@ graph LR
   repo_rust_test_module_rust_crates_host_src_template_naming_rs_mod_tests_3078 -- "tests" --> repo_rust_mod_file_rust_crates_host_src_template_naming_rs
   repo_rust_test_module_rust_crates_host_src_template_path_filters_rs_mod_tests_1468 -- "tests" --> repo_rust_mod_file_rust_crates_host_src_template_path_filters_rs
   repo_rust_test_module_rust_crates_lua_src_host_api_specs_rs_mod_tests_17818 -- "tests" --> repo_rust_mod_file_rust_crates_lua_src_host_api_specs_rs
-  repo_rust_test_module_rust_crates_lua_src_load_mod_rs_mod_tests_7322 -- "tests" --> repo_rust_mod_file_rust_crates_lua_src_load_mod_rs
+  repo_rust_test_module_rust_crates_lua_src_load_mod_rs_mod_tests_7361 -- "tests" --> repo_rust_mod_file_rust_crates_lua_src_load_mod_rs
   repo_rust_test_module_rust_crates_lua_src_require_rs_mod_tests_7543 -- "tests" --> repo_rust_mod_file_rust_crates_lua_src_require_rs
   repo_rust_test_module_rust_crates_query_tools_src_debug_instrument_rs_mod_tests_7856 -- "tests" --> repo_rust_mod_file_rust_crates_query_tools_src_debug_instrument_rs
   repo_ts_module_vscode_extension_src_extension_ts -- "imports" --> repo_ts_module_vscode_extension_src_extension_extension_ts
@@ -4721,29 +5094,6 @@ graph LR
   repo_ts_module_vscode_extension_src_shared_index_ts -- "imports" --> repo_ts_module_vscode_extension_src_shared_types_ts
   repo_ts_module_vscode_extension_src_shared_messages_ts -- "imports" --> repo_ts_module_vscode_extension_src_shared_types_ts
   repo_ts_module_vscode_extension_src_shared_types_ts -- "imports" --> repo_ts_module_vscode_extension_src_shared_constants_ts
-  repo_ts_module_vscode_extension_src_webview_src_components_ArgField_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_composables_useExtensionClient_ts
-  repo_ts_module_vscode_extension_src_webview_src_components_ArgField_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_args_ts
-  repo_ts_module_vscode_extension_src_webview_src_components_ArgField_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_focus_ts
-  repo_ts_module_vscode_extension_src_webview_src_components_ArgField_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_shared_ts
-  repo_ts_module_vscode_extension_src_webview_src_components_CoverageTree_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_coverageTree_ts
-  repo_ts_module_vscode_extension_src_webview_src_components_FileCard_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_diffStats_ts
-  repo_ts_module_vscode_extension_src_webview_src_components_FileCard_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_selection_ts
-  repo_ts_module_vscode_extension_src_webview_src_components_FileCard_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_shared_ts
-  repo_ts_module_vscode_extension_src_webview_src_components_RecipeArgForm_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_args_ts
-  repo_ts_module_vscode_extension_src_webview_src_components_RecipeArgForm_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_shared_ts
-  repo_ts_module_vscode_extension_src_webview_src_components_RecipeGroupNode_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_recipeTree_ts
-  repo_ts_module_vscode_extension_src_webview_src_components_RecipeGroupNode_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_slotBadges_ts
-  repo_ts_module_vscode_extension_src_webview_src_components_RecipeGroupNode_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_shared_ts
-  repo_ts_module_vscode_extension_src_webview_src_components_RecipeInfo_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_slotBadges_ts
-  repo_ts_module_vscode_extension_src_webview_src_components_RecipeInfo_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_shared_ts
-  repo_ts_module_vscode_extension_src_webview_src_components_RecipesTab_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_composables_useExtensionClient_ts
-  repo_ts_module_vscode_extension_src_webview_src_components_RecipesTab_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_recipeTree_ts
-  repo_ts_module_vscode_extension_src_webview_src_components_RecipesTab_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_slotBadges_ts
-  repo_ts_module_vscode_extension_src_webview_src_components_RecipesTab_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_shared_ts
-  repo_ts_module_vscode_extension_src_webview_src_components_ReviewPanel_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_composables_useExtensionClient_ts
-  repo_ts_module_vscode_extension_src_webview_src_components_ReviewPanel_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_selection_ts
-  repo_ts_module_vscode_extension_src_webview_src_components_ReviewPanel_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_transcript_ts
-  repo_ts_module_vscode_extension_src_webview_src_components_ReviewPanel_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_shared_ts
   repo_ts_module_vscode_extension_src_webview_src_composables_useComponentsView_ts -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_composables_useExtensionClient_ts
   repo_ts_module_vscode_extension_src_webview_src_composables_useComponentsView_ts -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_coverageTree_ts
   repo_ts_module_vscode_extension_src_webview_src_composables_useComponentsView_ts -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_selection_ts
@@ -4768,12 +5118,6 @@ graph LR
   repo_ts_module_vscode_extension_src_webview_src_lib_selection_ts -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_shared_ts
   repo_ts_module_vscode_extension_src_webview_src_lib_transcript_ts -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_shared_ts
   repo_ts_module_vscode_extension_src_webview_src_shared_ts -- "imports" --> repo_ts_module_vscode_extension_src_shared_index_ts
-  repo_ts_module_vscode_extension_src_webview_src_views_BootstrapView_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_shared_ts
-  repo_ts_module_vscode_extension_src_webview_src_views_ComponentsView_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_composables_useComponentsView_ts
-  repo_ts_module_vscode_extension_src_webview_src_views_ComponentsView_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_shared_ts
-  repo_ts_module_vscode_extension_src_webview_src_views_RunnerView_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_composables_useExtensionClient_ts
-  repo_ts_module_vscode_extension_src_webview_src_views_RunnerView_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_selection_ts
-  repo_ts_module_vscode_extension_src_webview_src_views_RunnerView_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_shared_ts
   repo_ts_module_vscode_extension_src_webview_src_vsCodeApi_ts -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_shared_ts
   repo_ts_test_vscode_extension_src_extension_diff_diffContentProvider_test_ts -- "tests" --> repo_ts_module_vscode_extension_src_extension_diff_diffContentProvider_ts
   repo_ts_test_vscode_extension_src_extension_host_hostBridgeRetryPolicy_test_ts -- "tests" --> repo_ts_module_vscode_extension_src_extension_host_hostBridgeRetryPolicy_ts
@@ -4804,18 +5148,75 @@ graph LR
   repo_ts_test_vscode_extension_src_webview_src_lib_recipeTree_test_ts -- "tests" --> repo_ts_module_vscode_extension_src_webview_src_lib_recipeTree_ts
   repo_ts_test_vscode_extension_src_webview_src_lib_selection_test_ts -- "tests" --> repo_ts_module_vscode_extension_src_webview_src_lib_selection_ts
   repo_ts_test_vscode_extension_src_webview_src_lib_transcript_test_ts -- "tests" --> repo_ts_module_vscode_extension_src_webview_src_lib_transcript_ts
+  repo_vscode_command_entry_codemodRecipe_assignToSlot -- "presents" --> repo_zone_vscode_webview
+  repo_vscode_command_entry_codemodRecipe_bootstrap -- "invokes" --> repo_host_bridge_method_bootstrapProject
+  repo_vscode_command_entry_codemodRecipe_bootstrap -- "invokes" --> repo_host_bridge_method_ensureHost
+  repo_vscode_command_entry_codemodRecipe_configureHost -- "invokes" --> repo_host_bridge_method_bootstrapProject
+  repo_vscode_command_entry_codemodRecipe_configureHost -- "invokes" --> repo_host_bridge_method_ensureHost
+  repo_vscode_command_entry_codemodRecipe_copyInvokeKeybinding -- "presents" --> repo_zone_vscode_webview
+  repo_vscode_command_entry_codemodRecipe_copySlotKeybinding -- "presents" --> repo_zone_vscode_webview
+  repo_vscode_command_entry_codemodRecipe_invoke -- "presents" --> repo_zone_vscode_webview
+  repo_vscode_command_entry_codemodRecipe_invokeSlot -- "presents" --> repo_zone_vscode_webview
+  repo_vscode_command_entry_codemodRecipe_openFromExplorer -- "presents" --> repo_zone_vscode_webview
+  repo_vscode_command_entry_codemodRecipe_openInRecipeRunner -- "presents" --> repo_zone_vscode_extension
+  repo_vscode_command_entry_codemodRecipe_queryTools_astDisplayMode -- "presents" --> repo_zone_vscode_webview
+  repo_vscode_command_entry_codemodRecipe_queryTools_copy -- "presents" --> repo_zone_vscode_webview
+  repo_vscode_command_entry_codemodRecipe_queryTools_copyYaml_insert -- "presents" --> repo_zone_vscode_webview
+  repo_vscode_command_entry_codemodRecipe_queryTools_copyYaml_remove -- "presents" --> repo_zone_vscode_webview
+  repo_vscode_command_entry_codemodRecipe_queryTools_copyYaml_replace -- "presents" --> repo_zone_vscode_webview
   repo_vscode_command_entry_codemodRecipe_queryTools_generateFromCursor -- "invokes" --> repo_host_bridge_method_dumpAst
   repo_vscode_command_entry_codemodRecipe_queryTools_generateFromCursor -- "invokes" --> repo_host_bridge_method_generateQuery
   repo_vscode_command_entry_codemodRecipe_queryTools_goToEditPath -- "invokes" --> repo_host_bridge_method_resolveStaticPath
+  repo_vscode_command_entry_codemodRecipe_queryTools_nextMatch -- "presents" --> repo_zone_vscode_webview
   repo_vscode_command_entry_codemodRecipe_queryTools_openFromRecipe -- "invokes" --> repo_host_bridge_method_debugQuery
   repo_vscode_command_entry_codemodRecipe_queryTools_openFromRecipe -- "invokes" --> repo_host_bridge_method_dumpAst
   repo_vscode_command_entry_codemodRecipe_queryTools_openFromRecipe -- "invokes" --> repo_host_bridge_method_resolveStaticPath
+  repo_vscode_command_entry_codemodRecipe_queryTools_prevMatch -- "presents" --> repo_zone_vscode_webview
   repo_vscode_command_entry_codemodRecipe_queryTools_revealAst -- "invokes" --> repo_host_bridge_method_dumpAst
   repo_vscode_command_entry_codemodRecipe_queryTools_revealAst -- "invokes" --> repo_host_bridge_method_generateQuery
   repo_vscode_command_entry_codemodRecipe_queryTools_run -- "invokes" --> repo_host_bridge_method_debugQuery
   repo_vscode_command_entry_codemodRecipe_queryTools_run -- "invokes" --> repo_host_bridge_method_dumpAst
   repo_vscode_command_entry_codemodRecipe_queryTools_selectAstNode -- "invokes" --> repo_host_bridge_method_generateQuery
+  repo_vscode_command_entry_codemodRecipe_refresh -- "invokes" --> repo_host_bridge_method_bootstrapProject
+  repo_vscode_command_entry_codemodRecipe_refresh -- "invokes" --> repo_host_bridge_method_ensureHost
+  repo_vscode_command_entry_codemodRecipe_runFromCursorContext -- "presents" --> repo_zone_vscode_webview
+  repo_vscode_command_entry_codemodRecipe_runFromExplorer -- "presents" --> repo_zone_vscode_webview
+  repo_vscode_command_entry_codemodRecipe_runRecipe -- "presents" --> repo_zone_vscode_webview
   repo_vscode_command_entry_codemodRecipe_runTests -- "invokes" --> repo_host_bridge_method_ensureHost
+  repo_vscode_command_entry_codemodRecipe_scaffoldProject -- "invokes" --> repo_host_bridge_method_bootstrapProject
+  repo_vscode_command_entry_codemodRecipe_scaffoldProject -- "invokes" --> repo_host_bridge_method_ensureHost
+  repo_vscode_command_entry_codemodRecipe_testQueryOnFile -- "presents" --> repo_zone_vscode_extension
+  repo_vscode_command_entry_codemodRecipe_updateProjectScaffold -- "invokes" --> repo_host_bridge_method_bootstrapProject
+  repo_vscode_command_entry_codemodRecipe_updateProjectScaffold -- "invokes" --> repo_host_bridge_method_ensureHost
   repo_vscode_command_entry_codemodRecipe_validateRecipes -- "invokes" --> repo_host_bridge_method_ensureHost
   repo_vscode_command_entry_codemodRecipe_validateRecipes -- "invokes" --> repo_host_bridge_method_validateRecipes
+  repo_vue_sfc_vscode_extension_src_webview_src_components_ArgField_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_composables_useExtensionClient_ts
+  repo_vue_sfc_vscode_extension_src_webview_src_components_ArgField_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_args_ts
+  repo_vue_sfc_vscode_extension_src_webview_src_components_ArgField_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_focus_ts
+  repo_vue_sfc_vscode_extension_src_webview_src_components_ArgField_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_shared_ts
+  repo_vue_sfc_vscode_extension_src_webview_src_components_CoverageTree_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_coverageTree_ts
+  repo_vue_sfc_vscode_extension_src_webview_src_components_FileCard_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_diffStats_ts
+  repo_vue_sfc_vscode_extension_src_webview_src_components_FileCard_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_selection_ts
+  repo_vue_sfc_vscode_extension_src_webview_src_components_FileCard_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_shared_ts
+  repo_vue_sfc_vscode_extension_src_webview_src_components_RecipeArgForm_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_args_ts
+  repo_vue_sfc_vscode_extension_src_webview_src_components_RecipeArgForm_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_shared_ts
+  repo_vue_sfc_vscode_extension_src_webview_src_components_RecipeGroupNode_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_recipeTree_ts
+  repo_vue_sfc_vscode_extension_src_webview_src_components_RecipeGroupNode_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_slotBadges_ts
+  repo_vue_sfc_vscode_extension_src_webview_src_components_RecipeGroupNode_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_shared_ts
+  repo_vue_sfc_vscode_extension_src_webview_src_components_RecipeInfo_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_slotBadges_ts
+  repo_vue_sfc_vscode_extension_src_webview_src_components_RecipeInfo_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_shared_ts
+  repo_vue_sfc_vscode_extension_src_webview_src_components_RecipesTab_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_composables_useExtensionClient_ts
+  repo_vue_sfc_vscode_extension_src_webview_src_components_RecipesTab_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_recipeTree_ts
+  repo_vue_sfc_vscode_extension_src_webview_src_components_RecipesTab_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_slotBadges_ts
+  repo_vue_sfc_vscode_extension_src_webview_src_components_RecipesTab_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_shared_ts
+  repo_vue_sfc_vscode_extension_src_webview_src_components_ReviewPanel_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_composables_useExtensionClient_ts
+  repo_vue_sfc_vscode_extension_src_webview_src_components_ReviewPanel_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_selection_ts
+  repo_vue_sfc_vscode_extension_src_webview_src_components_ReviewPanel_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_transcript_ts
+  repo_vue_sfc_vscode_extension_src_webview_src_components_ReviewPanel_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_shared_ts
+  repo_vue_sfc_vscode_extension_src_webview_src_views_BootstrapView_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_shared_ts
+  repo_vue_sfc_vscode_extension_src_webview_src_views_ComponentsView_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_composables_useComponentsView_ts
+  repo_vue_sfc_vscode_extension_src_webview_src_views_ComponentsView_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_shared_ts
+  repo_vue_sfc_vscode_extension_src_webview_src_views_RunnerView_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_composables_useExtensionClient_ts
+  repo_vue_sfc_vscode_extension_src_webview_src_views_RunnerView_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_lib_selection_ts
+  repo_vue_sfc_vscode_extension_src_webview_src_views_RunnerView_vue -- "imports" --> repo_ts_module_vscode_extension_src_webview_src_shared_ts
   repo_working_tree_working_tree -- "finalizes" --> codemod_recipe_core__apply__file_change__FileChange

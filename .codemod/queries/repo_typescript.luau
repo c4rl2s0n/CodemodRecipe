@@ -191,5 +191,12 @@ return {
 (function_declaration
   name: (identifier) @fnName) @fn
 ]],
+		-- const foo = () => … / async () => … (module-level helpers).
+		const_function_bindings = [[
+(lexical_declaration
+  (variable_declarator
+    name: (identifier) @fnName
+    value: [(arrow_function) (function_expression)] @fn))
+]],
 	},
 }

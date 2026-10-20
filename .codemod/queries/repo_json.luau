@@ -34,5 +34,27 @@ return {
   (#eq? @section "contributes")
   (#eq? @group "commands"))
 ]],
+		-- Top-level document pairs (key + whole pair span).
+		-- value: (_) required so @pair can sit on the pair node (capture-after-fields).
+		top_level_pairs = [[
+(document
+  (object
+    (pair
+      key: (string
+        (string_content) @key)
+      value: (_)) @pair))
+]],
+		-- contributes.<group> pairs (group name + whole pair under contributes).
+		contributes_groups = [[
+(pair
+  key: (string
+    (string_content) @section)
+  value: (object
+    (pair
+      key: (string
+        (string_content) @group)
+      value: (_)) @pair)
+  (#eq? @section "contributes"))
+]],
 	},
 }

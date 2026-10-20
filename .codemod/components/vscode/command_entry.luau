@@ -17,6 +17,8 @@ return {
 			bridgeCalls = hints.bridgeCalls or {},
 			handlerAnalyzed = hints.handlerAnalyzed or false,
 			handlerEmpty = hints.handlerEmpty or false,
+			touchesWebview = hints.touchesWebview or false,
+			registrationFile = hints.registrationFile,
 		}
 	end,
 	relate = function(_c, instance, _index)
@@ -27,6 +29,19 @@ return {
 			edges[#edges + 1] = {
 				kind = "invokes",
 				to = { componentId = "repo.host_bridge_method", key = method },
+				source = ast.source,
+			}
+		end
+		-- UI-only / extension-local commands: honest presents edge (not fake invokes).
+		if #edges == 0 and ast.handlerAnalyzed then
+			local zone = "vscode.extension"
+			local reg = ast.registrationFile or ""
+			if ast.touchesWebview or reg:find("/webview/", 1, true) then
+				zone = "vscode.webview"
+			end
+			edges[#edges + 1] = {
+				kind = "presents",
+				to = "repo.zone/" .. zone,
 				source = ast.source,
 			}
 		end

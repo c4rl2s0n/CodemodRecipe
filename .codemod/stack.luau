@@ -30,22 +30,22 @@ return {
 		-- vscode
 		"repo.host_bridge",
 		"repo.vscode_command",
+		"repo.vscode_manifest",
 		"repo.webview_message",
 		"repo.ts_module",
+		"repo.vue_sfc",
 		"repo.vscode_bootstrap",
 		-- Product tests (not Luau component *.test.luau)
 		"repo.rust_test_module",
 		"repo.rust_test",
 		"repo.ts_test",
-		-- specialized vscode roots (compose on ts_module parse; listed for domain verify later)
-		-- avoid triple-identify: ts_module already covers extension + webview + shared
 	},
 	-- Product sources + product tests (includes crates/*/src/bin/*.rs entrypoints).
+	-- Cargo.toml is identified by repo.rust_crate but excluded from the span universe.
 	-- Optional `!pattern` excludes carve out non-product trees (e.g. !**/node_modules/**).
 	codebase = {
 		"rust/crates/*/src/**/*.rs",
 		"rust/crates/*/tests/**/*.rs",
-		"rust/crates/*/Cargo.toml",
 		"vscode_extension/src/**/*.ts",
 		"vscode_extension/src/**/*.vue",
 		"vscode_extension/package.json",
@@ -71,6 +71,10 @@ return {
 		imports = { layout = "edge" },
 		exports = { layout = "edge" },
 		tests = { layout = "edge" },
+		-- Command → webview / UI surface (UI-only commands; evidence-based)
+		presents = { layout = "edge" },
+		-- Protocol vocabulary → host protocol root
+		defines = { layout = "edge" },
 	},
 	operations = ops.operations,
 }
