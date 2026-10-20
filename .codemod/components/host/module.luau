@@ -14,6 +14,8 @@ local MODULES = {
 	{ id = "recipe", path = "rust/crates/host/src/recipe/mod.rs" },
 	{ id = "protocol", path = "rust/crates/host/src/protocol/mod.rs" },
 	{ id = "edit_session", path = "rust/crates/host/src/edit_session/mod.rs" },
+	-- Leaf file (not a directory mod): high-gap helpers for component tests.
+	{ id = "testing", path = "rust/crates/host/src/testing.rs" },
 }
 
 return {
@@ -34,15 +36,20 @@ return {
 		if not path or not moduleId then
 			return nil
 		end
-		local dir = path:match("^(.*)/[^/]+$") or path
 		local identity = {
 			componentId = "repo.host_module",
 			id = moduleId,
 			path = path,
 		}
 		local children = {}
-		-- Collect pub fns and type items from every .rs file under the module dir.
-		local files = c:listFiles(dir .. "/**/*.rs")
+		-- Directory mods: all .rs under the dir. Leaf file modules: only that path.
+		local files
+		if path:match("/mod%.rs$") then
+			local dir = path:match("^(.*)/[^/]+$") or path
+			files = c:listFiles(dir .. "/**/*.rs")
+		else
+			files = { path }
+		end
 		for _, fpath in ipairs(files) do
 			local ok = pcall(function()
 				local fnNames = c:query({
@@ -104,6 +111,37 @@ return {
 					if child then
 						child.componentId = "repo.host_module_item"
 						child.role = "type"
+						children[#children + 1] = child
+					end
+				end
+				local constNames = c:query({
+					path = fpath,
+					language = "rust",
+					query = "repo_rust.pub_str_consts",
+					capture = "constName",
+				})
+				local consts = c:query({
+					path = fpath,
+					language = "rust",
+					query = "repo_rust.pub_str_consts",
+					capture = "constItem",
+				})
+				table.sort(constNames, function(a, b)
+					return a.span.from < b.span.from
+				end)
+				table.sort(consts, function(a, b)
+					return a.span.from < b.span.from
+				end)
+				for i = 1, math.min(#constNames, #consts) do
+					local child = c:component("repo.host_module_item"):parse({
+						source = { path = fpath, span = consts[i].span },
+						parent = identity,
+						role = "const",
+						hints = { name = constNames[i].text, kind = "const" },
+					})
+					if child then
+						child.componentId = "repo.host_module_item"
+						child.role = "const"
 						children[#children + 1] = child
 					end
 				end
@@ -180,6 +218,10 @@ return {
 		elseif id == "diagnostics" then
 			if index:byId("repo.host_module/protocol") then
 				edges[#edges + 1] = { kind = "uses", to = "repo.host_module/protocol" }
+			end
+		elseif id == "testing" then
+			if index:byId("repo.component_pipeline/coverage") then
+				edges[#edges + 1] = { kind = "uses", to = "repo.component_pipeline/coverage" }
 			end
 		end
 		return edges

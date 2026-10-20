@@ -13,6 +13,7 @@ return {
 		"repo.support_crate_surface",
 		-- host domain
 		"repo.host_protocol",
+		"repo.protocol_key",
 		"repo.mcp_tool",
 		"repo.host_api_method",
 		"repo.engine_edit",
@@ -31,7 +32,9 @@ return {
 		"repo.vscode_command",
 		"repo.webview_message",
 		"repo.ts_module",
+		"repo.vscode_bootstrap",
 		-- Product tests (not Luau component *.test.luau)
+		"repo.rust_test_module",
 		"repo.rust_test",
 		"repo.ts_test",
 		-- specialized vscode roots (compose on ts_module parse; listed for domain verify later)

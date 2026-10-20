@@ -51,7 +51,7 @@ function M.hostZoneForPath(path)
 	if path:find("/host_api/", 1, true) or path:find("/lua_runtime", 1, true) then
 		return "domain.host_api"
 	end
-	if path:find("/component/", 1, true) then
+	if path:find("/component/", 1, true) or path:match("testing%.rs$") then
 		return "domain.components"
 	end
 	if path:find("/query/", 1, true) then

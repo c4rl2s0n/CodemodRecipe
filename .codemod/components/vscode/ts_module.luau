@@ -36,8 +36,11 @@ return {
 		local out = {}
 		local seen = {}
 		local function addPath(path)
-			-- Product tests are repo.ts_test, not production modules.
+			-- Product tests are repo.ts_test; bootstrap owns webview main.ts.
 			if path:match("%.test%.ts$") or path:match("%.spec%.ts$") then
+				return
+			end
+			if path == "vscode_extension/src/webview/src/main.ts" then
 				return
 			end
 			if not seen[path] then

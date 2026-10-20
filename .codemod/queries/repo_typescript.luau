@@ -174,5 +174,22 @@ return {
         (pair
           key: (property_identifier) @key)))))
 ]],
+		-- Vitest/Jest it(...) / test(...) call expressions (whole call span).
+		test_it_calls = [[
+(call_expression
+  function: (identifier) @fn
+  (#match? @fn "^(it|test)$")) @call
+]],
+		-- describe(...) blocks for grouping span.
+		test_describe_calls = [[
+(call_expression
+  function: (identifier) @fn
+  (#eq? @fn "describe")) @call
+]],
+		-- Top-level / nested function declarations (helpers).
+		function_declarations = [[
+(function_declaration
+  name: (identifier) @fnName) @fn
+]],
 	},
 }

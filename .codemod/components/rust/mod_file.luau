@@ -96,6 +96,40 @@ return {
 					children[#children + 1] = child
 				end
 			end
+			-- Cargo bins: paint fn leaves (not covered by host_module dirs).
+			if path:find("/bin/", 1, true) then
+				local fnNames = c:query({
+					path = path,
+					language = "rust",
+					query = "repo_rust.all_functions",
+					capture = "fnName",
+				})
+				local fns = c:query({
+					path = path,
+					language = "rust",
+					query = "repo_rust.all_functions",
+					capture = "fn",
+				})
+				table.sort(fnNames, function(a, b)
+					return a.span.from < b.span.from
+				end)
+				table.sort(fns, function(a, b)
+					return a.span.from < b.span.from
+				end)
+				for i = 1, math.min(#fnNames, #fns) do
+					local child = c:component("repo.rust_mod_item"):parse({
+						source = { path = path, span = fns[i].span },
+						parent = identity,
+						role = "fn",
+						hints = { kind = "fn", name = fnNames[i].text },
+					})
+					if child then
+						child.componentId = "repo.rust_mod_item"
+						child.role = "fn"
+						children[#children + 1] = child
+					end
+				end
+			end
 		end)
 		if not ok then
 			children = {}

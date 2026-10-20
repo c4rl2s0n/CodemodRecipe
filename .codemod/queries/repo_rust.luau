@@ -133,6 +133,43 @@ return {
 (function_item
   name: (identifier) @fnName) @fn
 ]],
+		-- `mod tests` (unit-test modules; usually #[cfg(test)]).
+		test_mod_items = [[
+(mod_item
+  name: (identifier) @modName
+  (#eq? @modName "tests")) @modItem
+]],
+		-- #[test] / #[tokio::test] precede function_item as siblings (not children).
+		test_functions = [[
+(
+  (attribute_item
+    (attribute
+      (identifier) @attr)
+    (#eq? @attr "test"))
+  .
+  (function_item
+    name: (identifier) @fnName) @fn
+)
+
+(
+  (attribute_item
+    (attribute
+      (scoped_identifier
+        name: (identifier) @attr)
+      (#eq? @attr "test")))
+  .
+  (function_item
+    name: (identifier) @fnName) @fn
+)
+]],
+		-- Pub string consts: pub const NAME: &str = "…";
+		pub_str_consts = [[
+(const_item
+  (visibility_modifier)
+  name: (identifier) @constName
+  value: (string_literal
+    (string_content) @constValue)) @constItem
+]],
 		-- Impl blocks with type name.
 		impl_items = [[
 (impl_item

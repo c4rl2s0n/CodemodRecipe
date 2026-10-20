@@ -1,16 +1,16 @@
---- Product Rust integration/unit tests related to production modules.
+--- Integration tests under crates/*/tests (file root + case/helper leaves).
+
+local childrenLib = require("../../lib/rust_test_children")
 
 local function productionCandidates(path)
 	local crate = path:match("^(rust/crates/[^/]+)/")
 	if not crate then
 		return {}
 	end
-	-- Integration tests → crate lib; src/*_test.rs → sibling module stem.
 	local out = { crate .. "/src/lib.rs", crate .. "/src/main.rs" }
-	local stem = path:match("/([^/]+)_test%.rs$")
-	if stem then
+	local stem = path:match("/([^/]+)_test%.rs$") or path:match("/([^/]+)%.rs$")
+	if stem and stem ~= "mod" and stem ~= "common" then
 		local dir = path:match("^(.*)/[^/]+$") or ""
-		-- Prefer co-located production module under src/
 		local srcDir = dir:gsub("/tests$", "/src")
 		out[#out + 1] = srcDir .. "/" .. stem .. ".rs"
 		out[#out + 1] = srcDir .. "/" .. stem .. "/mod.rs"
@@ -20,7 +20,7 @@ end
 
 return {
 	id = "repo.rust_test",
-	description = "Rust product test file (*_test.rs or crates/*/tests/*.rs)",
+	description = "Rust integration test file (crates/*/tests/**/*.rs) with test/helper leaves",
 	identify = function(c)
 		local out = {}
 		local seen = {}
@@ -38,21 +38,34 @@ return {
 		end
 		return out
 	end,
-	parse = function(_c, locator)
+	parse = function(c, locator)
 		local path = locator.path
 		if not path then
 			return nil
 		end
+		local identity = {
+			componentId = "repo.rust_test",
+			id = path,
+			path = path,
+		}
+		local children = childrenLib.parseChildren(c, path, identity, nil)
+		local span = nil
+		local ok, src = pcall(function()
+			return c:read(path)
+		end)
+		if ok and type(src) == "string" then
+			span = { from = 0, to = #src }
+		end
 		return {
 			id = path,
 			componentId = "repo.rust_test",
-			source = { path = path },
+			source = { path = path, span = span },
+			children = children,
 			productionCandidates = productionCandidates(path),
 		}
 	end,
 	relate = function(_c, instance, index)
 		local path = instance.ast and instance.ast.source and instance.ast.source.path or ""
-		-- Architecture zone (not structural.modules — that ignores relations).
 		local zone = "domain.components"
 		if path:find("/engine/", 1, true) then
 			zone = "platform.engine"
@@ -79,7 +92,7 @@ return {
 			kind = "rust-test",
 			title = instance.ast.id,
 			id = instance.ast.id,
-			facts = {},
+			facts = { #(instance.ast.children or {}) .. " leaves" },
 		}
 	end,
 }

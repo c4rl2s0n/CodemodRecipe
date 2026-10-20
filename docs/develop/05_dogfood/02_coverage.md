@@ -23,11 +23,12 @@ Layout: components live under `.codemod/components/{rust,host,vscode,engine,lua}
 | L | Span deepen (private fns, Vue `<script>`); span universe = `stack.codebase` only (no host path hardcodes) | done |
 | M | Product test composers (`repo.rust_test` / `repo.ts_test`) + `tests` edges + `scaffoldTest` pilot | done |
 | N | `relation.duplicate` hygiene (path-qualified child ids); `engine_surface` → `engine_edit` edges | done |
+| O | `rust_test_module` + case leaves; `protocol_key`; `vscode_bootstrap`; host/bin deepen | done |
 
-Latest snapshot (2026-10-20): span **~51.6%**; architecture-connected **~85.2%**
-(`329 / 386` eligible — [inferred eligibility](03_decisions.md#architecture-ratio-eligibility-inferred)).
-Path-module `declares_mod`/`imports`/`exports`; product `tests` edges; findings clean
-(no `relation.duplicate`). Path modules stay eligible; scores move only with real edges.
+Latest snapshot (2026-10-20): span **~73.8%**; architecture-connected **~83.8%**
+(`372 / 444` eligible — [inferred eligibility](03_decisions.md#architecture-ratio-eligibility-inferred)).
+`keys.rs` / webview `main.ts` at full span; 42 `rust_test_module` + 32 `rust_test` + 30 `ts_test`;
+15 `protocol_key`; findings clean.
 
 **Metric:** snapshot `coverage.aggregate` + `relations.aggregate` after each scan. Aim for spanned architecture units and a trustworthy architecture ratio (not 100% private bodies).
 
@@ -56,6 +57,7 @@ Mega-files fight the framework: path-only composers + pub-fn leaves leave privat
 | `repo.rust_mod_file` / `repo.rust_mod_item` | yes / child | `lib.rs` / `mod.rs` barrels | mod + use leaves |
 | `repo.support_crate_surface` | yes | core / query_tools / lua_macros | pub types/fns |
 | `repo.host_protocol` (+ `host_command`, `host_dispatch_arm`) | yes | protocol + dispatch | rename/dispatch/TS parity |
+| `repo.protocol_key` | yes | `protocol/keys.rs` consts | catalog; TS/MCP mirror verify; `addKey` |
 | `repo.mcp_tool` / entry | yes / child | MCP inventory | adapter SSOT |
 | `repo.host_bridge` / method | yes / child | hostBridge | sends |
 | `repo.vscode_command` / entry | yes / child | package.json commands | COMMANDS parity |
@@ -71,8 +73,10 @@ Mega-files fight the framework: path-only composers + pub-fn leaves leave privat
 | `repo.lua_load_module` | yes | `lua/src/load/*.rs` | asset-kind load stages |
 | `repo.host_api_handlers` | yes | `host_api/handlers/*` | capability groups |
 | `repo.webview_message` / entry | yes / child | messages.ts | membership under webview |
-| `repo.ts_module` / `ts_export` | yes / child | extension TS/Vue (not `*.test.ts`) | `imports`/`exports`; Vue script span; `scaffoldTest` |
-| `repo.rust_test` / `repo.ts_test` | yes | product tests | `tests` → production module |
+| `repo.ts_module` / `ts_export` | yes / child | extension TS/Vue (not `*.test.ts` / main.ts) | `imports`/`exports`; Vue script span; `scaffoldTest` |
+| `repo.vscode_bootstrap` | yes | webview `main.ts` | classify + whole-file span |
+| `repo.rust_test_module` | yes | `#[cfg(test)] mod tests` | test/helper leaves; `tests` → mod file |
+| `repo.rust_test` / `repo.ts_test` | yes | integration / `*.test.ts` | case leaves; `tests` → production module |
 | `repo.vscode_controller` / `webview_view` | (files present, not stack roots) | specialized composers | avoid duplicate identify |
 | `repo.zone` | yes | `stack.zones` catalog | membership subgraphs + role titles |
 
@@ -124,7 +128,8 @@ domain_type --mirrors--> domain_type
 rust_mod_file --declares_mod--> rust_mod_file
 ts_module --imports--> ts_module
 ts_module --exports--> ts_module   (barrels)
-rust_test / ts_test --tests--> rust_mod_file / ts_module
+rust_test_module / rust_test / ts_test --tests--> rust_mod_file / ts_module
+protocol_key (catalog + mirror verify)
 ```
 
 ## Backlog
@@ -135,7 +140,8 @@ rust_test / ts_test --tests--> rust_mod_file / ts_module
 4. Full mermaid CI goldens (D-014 partial: schema test only).
 5. Promote `vscode_controller` / `webview_view` to roots with verify-only if needed.
 6. Crate extraction when [criteria](03_decisions.md#crate-extraction-deferred-d-025-f) hold (deferred).
-7. Deeper product-test scaffolds (Rust `#[test]` / more than vitest stub).
+7. Optional `wrapUnitTests` op for src files missing `mod tests`.
+8. Finer test→symbol `tests` edges when AST makes them honest.
 
 ### Restructure handoff log
 
@@ -153,3 +159,4 @@ rust_test / ts_test --tests--> rust_mod_file / ts_module
 | 2026-10-19 | Arch eligibility | Inferred architecture ratio (exclude membership-only nested); pipeline `feeds`; ADR in decisions |
 | 2026-10-20 | K–N gaps | Path-module relates; product tests + scaffoldTest; child id hygiene; span ~51.6% / arch ~85.2%; findings clear |
 | 2026-10-20 | Glob excludes | Shared `resolve_globs` + `!` for listFiles/codebase; removed coverage `/bin/` hardcode; `src/bin` is product |
+| 2026-10-20 | Modeling deepen | `rust_test_module` + case/helper leaves (`#[test]` sibling query); `protocol_key` + TS/MCP mirror allowlists + `addKey`; `vscode_bootstrap`; host `testing` + bin fn leaves; span ~73.8% / arch ~83.8% |
