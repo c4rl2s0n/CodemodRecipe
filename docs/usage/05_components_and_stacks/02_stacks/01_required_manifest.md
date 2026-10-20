@@ -11,9 +11,10 @@ return {
     "example.store",
     -- root-scan ids only — NOT example.property
   },
-  -- optional: universe for component span coverage
+  -- optional: universe for component span coverage (`!` excludes carve-outs)
   codebase = {
     "lib/**/*.dart",
+    -- "!**/generated/**",
   },
   -- optional: named membership zones (identified by repo.zone)
   zones = {
@@ -33,7 +34,7 @@ return {
 |-------|----------|
 | `id` | Yes |
 | `components` | Yes — array of component ids for **root scan** |
-| `codebase` | No — array of workspace-relative globs (`*`, `**`, `*.ext`) defining files measured by [span coverage](../01_components/09_coverage.md) |
+| `codebase` | No — array of workspace-relative globs (`*`, `**`, `*.ext`) defining files measured by [span coverage](../01_components/09_coverage.md). Patterns starting with `!` exclude (union all includes, then drop any path matching any exclude; order does not matter) |
 | `zones` | No — catalog of membership zone instances (`id`, optional `role` / `title` / `parentId`). Empty ⇒ no `repo.zone` instances. See [relations](../01_components/10_relations.md) |
 | `zoneRoles` | No — map `role` → `{ ignoreRelations?, ignoreCoverage? }` (`ZoneRole`). Omitted fields default `false`. A zone whose `role` has **no** entry stays title-only (no metric special-case) |
 | `relations` | No — map of relation kind → `{ layout = "edge" \| "member" }`. Undeclared kinds default to `edge`. `member` kinds become opaque-string subgraphs in instance mermaid (not arrows); see [relations](../01_components/10_relations.md) |

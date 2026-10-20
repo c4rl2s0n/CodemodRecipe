@@ -9,8 +9,9 @@ return {
 		if not source or not source.path or not source.span then
 			return nil
 		end
+		-- Include path so anonymous export#N@offset ids do not collide across modules.
 		return {
-			id = (hints.name or "export") .. "@" .. tostring(source.span.from),
+			id = source.path .. ":" .. (hints.name or "export") .. "@" .. tostring(source.span.from),
 			componentId = "repo.ts_export",
 			source = source,
 			name = hints.name,

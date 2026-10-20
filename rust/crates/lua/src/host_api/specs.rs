@@ -346,6 +346,55 @@ impl HostType for ReadSpec {
 }
 impl HostSpec for ReadSpec {}
 
+/// Schema shape for `c:listFiles`: one glob string or an array of globs (`!` excludes).
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, JsonSchema)]
+#[serde(untagged)]
+enum ListFilesSchema {
+    One(String),
+    Many(Vec<String>),
+}
+
+/// `c:listFiles(pattern | { pattern, … })` — workspace globs; `!` prefixes exclude.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ListFilesSpec {
+    pub patterns: Vec<String>,
+}
+
+impl FromLua for ListFilesSpec {
+    fn from_lua(value: Value, _: &Lua) -> mlua::Result<Self> {
+        match value {
+            Value::String(s) => Ok(Self {
+                patterns: vec![s.to_str()?.to_string()],
+            }),
+            Value::Table(t) => {
+                let len = t.len()?;
+                let mut patterns = Vec::with_capacity(len as usize);
+                for i in 1..=len {
+                    let s: String = t.get(i)?;
+                    patterns.push(s);
+                }
+                Ok(Self { patterns })
+            }
+            other => Err(mlua::Error::FromLuaConversionError {
+                from: other.type_name(),
+                to: "ListFilesSpec".to_string(),
+                message: Some(
+                    "expected a glob string or an array of glob strings (use !pattern to exclude)"
+                        .to_string(),
+                ),
+            }),
+        }
+    }
+}
+
+impl HostType for ListFilesSpec {
+    const NAME: &'static str = "ListFilesSpec";
+    fn schema() -> RootSchema {
+        schema_for!(ListFilesSchema)
+    }
+}
+impl HostSpec for ListFilesSpec {}
+
 /// `c:query(spec)` — requires a capture name; returns [`QueryHit`] rows.
 #[derive(Debug, Clone, PartialEq, Eq, JsonSchema, LuaSpec)]
 #[serde(rename_all = "camelCase")]

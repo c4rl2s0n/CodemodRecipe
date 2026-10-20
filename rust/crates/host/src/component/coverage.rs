@@ -8,7 +8,7 @@ use serde::Serialize;
 
 use crate::component::types::ComponentInstance;
 use crate::recipe::registry::RecipeRegistry;
-use crate::sandbox::workspace_glob::glob_workspace;
+use crate::sandbox::workspace_glob::resolve_globs;
 
 const CODEBASE_REQUIRED_WARNING: &str = "stack.codebase is required to enable component coverage; add codebase = { \"…\" } globs to .codemod/stack.luau";
 
@@ -305,13 +305,7 @@ fn compute_coverage(
     codebase: &[String],
     spans_by_path: &BTreeMap<String, Vec<SpanInterval>>,
 ) -> Result<(CoverageTotals, Vec<FileCoverage>), String> {
-    let mut universe: Vec<String> = Vec::new();
-    for pattern in codebase {
-        let hits = glob_workspace(workspace_root, pattern)?;
-        universe.extend(hits);
-    }
-    universe.sort();
-    universe.dedup();
+    let universe = resolve_globs(workspace_root, codebase)?;
 
     let mut files = Vec::with_capacity(universe.len());
     let mut agg_covered = 0u64;

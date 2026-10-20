@@ -128,6 +128,11 @@ return {
   (visibility_modifier)
   name: (identifier) @fnName) @fn
 ]],
+		-- All function items (pub + private) for span deepen.
+		all_functions = [[
+(function_item
+  name: (identifier) @fnName) @fn
+]],
 		-- Impl blocks with type name.
 		impl_items = [[
 (impl_item

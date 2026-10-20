@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use codemod_recipe_core::apply::file_change::{IfExists, IfMissing};
 use codemod_recipe_lua::host_api::specs::{
-    CreateSpec, DeleteSpec, MatchFileRow, ReadSpec, SpanTextSpec,
+    CreateSpec, DeleteSpec, ListFilesSpec, MatchFileRow, ReadSpec, SpanTextSpec,
 };
 use codemod_recipe_lua::model::{TranscriptEvent, TranscriptStats};
 use codemod_recipe_lua_macros::host_method;
@@ -169,18 +169,20 @@ pub(crate) fn do_query_lib(host: &SharedHost, lua: &Lua, id: String) -> Result<V
 
 #[host_method(
     name = "listFiles",
-    description = "List workspace-relative paths matching a glob (`*` = one path segment; `**` = recursive).",
-    string_id,
+    description = "List workspace-relative paths matching globs (`*` / `**`). Pass a string or an array; patterns starting with `!` exclude (union-then-subtract).",
+    spec = ListFilesSpec,
     return_type = StringList,
 )]
 pub(crate) fn do_list_files(
     host: &SharedHost,
     lua: &Lua,
-    pattern: String,
+    spec: ListFilesSpec,
 ) -> Result<Value, String> {
     let inner = host.lock().map_err(|e| e.to_string())?;
-    let paths =
-        crate::sandbox::workspace_glob::glob_workspace(inner.sandbox.workspace_root(), &pattern)?;
+    let paths = crate::sandbox::workspace_glob::resolve_globs(
+        inner.sandbox.workspace_root(),
+        &spec.patterns,
+    )?;
     let tbl = lua.create_table().map_err(|e| e.to_string())?;
     for (i, path) in paths.iter().enumerate() {
         tbl.set(i + 1, path.as_str()).map_err(|e| e.to_string())?;

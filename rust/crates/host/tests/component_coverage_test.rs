@@ -150,3 +150,72 @@ fn coverage_skipped_when_codebase_empty_on_minimal_stack() {
 
     let _ = fs::remove_dir_all(root);
 }
+
+#[test]
+fn coverage_exclude_globs_drop_vendor_keep_src_bin() {
+    let root = std::env::temp_dir().join(format!(
+        "codemod_cov_exclude_{}",
+        std::process::id()
+    ));
+    let _ = fs::remove_dir_all(&root);
+    let workspace = root.join("workspace");
+    let codemod = root.join(".codemod");
+    let components = codemod.join("components");
+    fs::create_dir_all(workspace.join("src/bin")).unwrap();
+    fs::create_dir_all(workspace.join("vendor")).unwrap();
+    fs::create_dir_all(&components).unwrap();
+
+    fs::write(workspace.join("src/lib.rs"), "fn a() {}\n").unwrap();
+    fs::write(workspace.join("src/bin/tool.rs"), "fn main() {}\n").unwrap();
+    fs::write(workspace.join("vendor/noise.rs"), "fn x() {}\n").unwrap();
+
+    write_stack(
+        &codemod,
+        Some(r#""**/*.rs", "!**/vendor/**""#),
+    );
+
+    fs::write(
+        components.join("cov.root.luau"),
+        r#"
+return {
+  id = "cov.root",
+  identify = function(c)
+    return { { path = "src/lib.rs" } }
+  end,
+  parse = function(c, locator)
+    return {
+      id = "lib",
+      source = { path = locator.path, span = { from = 0, to = 1 } },
+      children = {},
+    }
+  end,
+}
+"#,
+    )
+    .unwrap();
+
+    let mut registry = RecipeRegistry::new(workspace, codemod);
+    registry.reload();
+
+    let response = dispatch::handle_command(&mut registry, HostCommand::ComponentCoverage);
+    assert_eq!(response["ok"], true, "{response}");
+    let files = response["files"].as_array().expect("files");
+    let paths: Vec<&str> = files
+        .iter()
+        .filter_map(|f| f["path"].as_str())
+        .collect();
+    assert!(
+        paths.iter().any(|p| *p == "src/bin/tool.rs"),
+        "src/bin is product code: {paths:?}"
+    );
+    assert!(
+        paths.iter().any(|p| *p == "src/lib.rs"),
+        "expected src/lib.rs: {paths:?}"
+    );
+    assert!(
+        !paths.iter().any(|p| p.contains("vendor")),
+        "vendor must be excluded via !: {paths:?}"
+    );
+
+    let _ = fs::remove_dir_all(root);
+}

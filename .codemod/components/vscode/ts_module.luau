@@ -1,21 +1,56 @@
---- TypeScript / Vue module file with top-level export children.
+--- TypeScript / Vue module file with top-level export children + import edges.
+
+local function parentDir(path)
+	return path:match("^(.*)/[^/]+$") or ""
+end
+
+local function resolveImport(fromPath, spec)
+	if not spec or spec:sub(1, 1) ~= "." then
+		return nil
+	end
+	local dir = parentDir(fromPath)
+	-- normalize ./ and ../
+	local parts = {}
+	for seg in (dir .. "/" .. spec):gmatch("[^/]+") do
+		if seg == ".." then
+			if #parts > 0 then
+				table.remove(parts)
+			end
+		elseif seg ~= "." and seg ~= "" then
+			parts[#parts + 1] = seg
+		end
+	end
+	local base = table.concat(parts, "/")
+	return {
+		base .. ".ts",
+		base .. ".vue",
+		base .. "/index.ts",
+		base .. "/index.vue",
+	}
+end
 
 return {
 	id = "repo.ts_module",
-	description = "TS/Vue source module: top-level exports as coverage leaves",
+	description = "TS/Vue source module: exports as coverage leaves; imports for generation graph",
 	identify = function(c)
 		local out = {}
 		local seen = {}
-		local function addAll(pattern)
-			for _, path in ipairs(c:listFiles(pattern)) do
-				if not seen[path] then
-					seen[path] = true
-					out[#out + 1] = { path = path }
-				end
+		local function addPath(path)
+			-- Product tests are repo.ts_test, not production modules.
+			if path:match("%.test%.ts$") or path:match("%.spec%.ts$") then
+				return
+			end
+			if not seen[path] then
+				seen[path] = true
+				out[#out + 1] = { path = path }
 			end
 		end
-		addAll("vscode_extension/src/**/*.ts")
-		addAll("vscode_extension/src/**/*.vue")
+		for _, path in ipairs(c:listFiles("vscode_extension/src/**/*.ts")) do
+			addPath(path)
+		end
+		for _, path in ipairs(c:listFiles("vscode_extension/src/**/*.vue")) do
+			addPath(path)
+		end
 		return out
 	end,
 	parse = function(c, locator)
@@ -23,14 +58,14 @@ return {
 		if not path then
 			return nil
 		end
-		-- Vue SFCs: query language still typescript for script; skip if no exports.
-		local language = path:match("%.vue$") and "typescript" or "typescript"
+		local language = "typescript"
 		local identity = {
 			componentId = "repo.ts_module",
 			id = path,
 			path = path,
 		}
 		local children = {}
+		local importSpecs = {}
 		local function addExports(queryId, captureName)
 			local names = c:query({
 				path = path,
@@ -64,41 +99,89 @@ return {
 				end
 			end
 		end
+		local parseError = nil
 		local ok, err = pcall(function()
 			addExports("repo_typescript.export_lexical", "exportName")
 			addExports("repo_typescript.export_function", "exportName")
 			addExports("repo_typescript.export_class", "exportName")
 			addExports("repo_typescript.export_type", "exportName")
-		end)
-		if not ok then
-			-- Vue / parse failures: still emit path-only root (no coverage leaf).
-			return {
-				id = path,
-				componentId = "repo.ts_module",
-				source = { path = path },
-				children = {},
-				parseError = tostring(err),
-			}
-		end
-		-- Fallback: bare export_statement spans when named captures missed
-		if #children == 0 then
-			local stmts = c:query({
+			local imports = c:query({
 				path = path,
 				language = language,
-				query = "repo_typescript.export_statements",
-				capture = "export",
+				query = "repo_typescript.import_sources",
+				capture = "importPath",
 			})
-			for i, hit in ipairs(stmts) do
-				local child = c:component("repo.ts_export"):parse({
-					source = { path = path, span = hit.span },
-					parent = identity,
-					role = "export",
-					hints = { name = "export#" .. i },
+			for _, hit in ipairs(imports) do
+				if hit.text and hit.text ~= "" then
+					importSpecs[#importSpecs + 1] = hit.text
+				end
+			end
+		end)
+		if not ok then
+			parseError = tostring(err)
+		end
+		if #children == 0 and not parseError then
+			local stmtsOk = pcall(function()
+				local stmts = c:query({
+					path = path,
+					language = language,
+					query = "repo_typescript.export_statements",
+					capture = "export",
 				})
-				if child then
-					child.componentId = "repo.ts_export"
-					child.role = "export"
-					children[#children + 1] = child
+				for i, hit in ipairs(stmts) do
+					local child = c:component("repo.ts_export"):parse({
+						source = { path = path, span = hit.span },
+						parent = identity,
+						role = "export",
+						hints = { name = "export#" .. i },
+					})
+					if child then
+						child.componentId = "repo.ts_export"
+						child.role = "export"
+						children[#children + 1] = child
+					end
+				end
+			end)
+			if not stmtsOk then
+				-- leave children empty; Vue fallback below may recover
+			end
+		end
+		local reexportSpecs = {}
+		local srcOk, src = pcall(function()
+			return c:read(path)
+		end)
+		if srcOk and src then
+			-- Text fallback for imports if query missed (Vue / string shape)
+			if #importSpecs == 0 then
+				for spec in src:gmatch("from%s*[\"'](%.[^\"']+)[\"']") do
+					importSpecs[#importSpecs + 1] = spec
+				end
+			end
+			-- Barrel re-exports: export … from './foo'
+			if path:match("/index%.ts$") then
+				for spec in src:gmatch("export%s+.-from%s*[\"'](%.[^\"']+)[\"']") do
+					reexportSpecs[#reexportSpecs + 1] = spec
+				end
+			end
+			-- Vue SFC: span the <script>…</script> block when TS queries miss (SFC root).
+			if path:match("%.vue$") and #children == 0 then
+				local scriptOpen = src:find("<script")
+				local scriptClose = src:find("</script>")
+				if scriptOpen and scriptClose and scriptClose > scriptOpen then
+					-- Lua find is 1-based; engine spans are 0-based [from, to).
+					local from = scriptOpen - 1
+					local to = scriptClose - 1 + #"</script>"
+					local child = c:component("repo.ts_export"):parse({
+						source = { path = path, span = { from = from, to = to } },
+						parent = identity,
+						role = "export",
+						hints = { name = "script" },
+					})
+					if child then
+						child.componentId = "repo.ts_export"
+						child.role = "export"
+						children[#children + 1] = child
+					end
 				end
 			end
 		end
@@ -107,14 +190,71 @@ return {
 			componentId = "repo.ts_module",
 			source = { path = path },
 			children = children,
+			importSpecs = importSpecs,
+			reexportSpecs = reexportSpecs,
+			parseError = parseError,
 		}
 	end,
-	relate = function(_c, instance)
+	operations = {
+		scaffoldTest = {
+			description = "Create a vitest stub *.test.ts beside this module (product test graph edge)",
+			args = {
+				{ name = "ifExists", required = false, help = "skip (default) | error" },
+			},
+			apply = function(c, args, target, _graph)
+				local path = target and target.ast and target.ast.source and target.ast.source.path
+					or target and target.ast and target.ast.id
+				if not path or not path:match("%.ts$") or path:match("%.vue$") then
+					error("scaffoldTest requires a .ts module target")
+				end
+				local testPath = path:gsub("%.ts$", ".test.ts")
+				local stem = path:match("([^/]+)%.ts$") or "module"
+				local content = table.concat({
+					"import { describe, expect, it } from 'vitest';",
+					"",
+					"describe('" .. stem .. "', () => {",
+					"  it('placeholder — replace with real assertions', () => {",
+					"    expect(true).toBe(true);",
+					"  });",
+					"});",
+					"",
+				}, "\n")
+				c:create({
+					path = testPath,
+					content = content,
+					ifExists = args.ifExists or "skip",
+				})
+			end,
+		},
+	},
+	relate = function(_c, instance, index)
 		local zones = require("../../lib/zones")
 		local path = instance.ast and instance.ast.source and instance.ast.source.path
 			or instance.ast and instance.ast.id
 		local zone = zones.vscodeZoneForPath(path)
-		return { { kind = "lives_in", to = "repo.zone/" .. zone } }
+		local edges = { { kind = "lives_in", to = "repo.zone/" .. zone } }
+		local function linkSpecs(specs, kind)
+			local seenTo = {}
+			for _, spec in ipairs(specs or {}) do
+				local cands = resolveImport(path, spec)
+				if cands then
+					for _, cand in ipairs(cands) do
+						local to = "repo.ts_module/" .. cand
+						if index:byId(to) and not seenTo[to] then
+							seenTo[to] = true
+							edges[#edges + 1] = { kind = kind, to = to }
+							break
+						end
+					end
+				end
+			end
+		end
+		linkSpecs(instance.ast.importSpecs, "imports")
+		-- Barrel index.ts: exports → re-exported siblings (scaffold append target).
+		if path:match("/index%.ts$") then
+			linkSpecs(instance.ast.reexportSpecs, "exports")
+		end
+		return edges
 	end,
 	toSummary = function(_c, instance)
 		return {

@@ -95,8 +95,19 @@ return {
 			children = children,
 		}
 	end,
-	relate = function(_c, _instance)
-		return { { kind = "lives_in", to = "repo.zone/structural.modules" } }
+	relate = function(_c, instance, index)
+		local edges = {
+			{ kind = "lives_in", to = "repo.zone/platform.engine" },
+		}
+		local path = instance.ast and instance.ast.source and instance.ast.source.path or ""
+		if index:byId("repo.engine_edit/engine-edit") then
+			local kind = "uses"
+			if path:find("/query/", 1, true) or path:find("/language/", 1, true) or path:match("ops%.rs$") then
+				kind = "feeds"
+			end
+			edges[#edges + 1] = { kind = kind, to = "repo.engine_edit/engine-edit" }
+		end
+		return edges
 	end,
 	toSummary = function(_c, instance)
 		return {

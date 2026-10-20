@@ -1,15 +1,21 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-/// Workspace-relative glob with a single `*` per path segment (e.g. `src/entities/*.dart`).
-pub fn glob_workspace(workspace_root: &Path, pattern: &str) -> Result<Vec<String>, String> {
+/// Normalize a workspace-relative glob or path: trim, strip `./`, reject `..`.
+fn normalize_pattern(pattern: &str, label: &str) -> Result<String, String> {
     let pattern = pattern.trim().trim_start_matches("./");
     if pattern.is_empty() {
-        return Err("listFiles pattern must not be empty".to_string());
+        return Err(format!("{label} must not be empty"));
     }
     if pattern.contains("..") {
-        return Err("listFiles pattern must not contain '..'".to_string());
+        return Err(format!("{label} must not contain '..'"));
     }
+    Ok(pattern.to_string())
+}
+
+/// Expand one positive include glob (no `!` handling).
+fn expand_include(workspace_root: &Path, pattern: &str) -> Result<Vec<String>, String> {
+    let pattern = normalize_pattern(pattern, "listFiles pattern")?;
     let parts: Vec<&str> = pattern.split('/').filter(|s| !s.is_empty()).collect();
     let mut matches = Vec::new();
     glob_segment(workspace_root, &parts, &mut matches)?;
@@ -24,6 +30,105 @@ pub fn glob_workspace(workspace_root: &Path, pattern: &str) -> Result<Vec<String
     relative.sort();
     relative.dedup();
     Ok(relative)
+}
+
+/// Whether a workspace-relative `path` matches a glob `pattern` (`*`, `**`, `*.ext`).
+///
+/// No filesystem walk — used to apply `!` excludes after includes are expanded.
+pub fn path_matches_glob(path: &str, pattern: &str) -> bool {
+    let Ok(path) = normalize_pattern(path, "path") else {
+        return false;
+    };
+    let Ok(pattern) = normalize_pattern(pattern, "pattern") else {
+        return false;
+    };
+    let path_parts: Vec<&str> = path.split('/').filter(|s| !s.is_empty()).collect();
+    let pat_parts: Vec<&str> = pattern.split('/').filter(|s| !s.is_empty()).collect();
+    match_path_parts(&path_parts, &pat_parts)
+}
+
+fn match_path_parts(path: &[&str], pat: &[&str]) -> bool {
+    if pat.is_empty() {
+        return path.is_empty();
+    }
+    if pat[0] == "**" {
+        if pat.len() == 1 {
+            return true;
+        }
+        for i in 0..=path.len() {
+            if match_path_parts(&path[i..], &pat[1..]) {
+                return true;
+            }
+        }
+        return false;
+    }
+    if path.is_empty() {
+        return false;
+    }
+    if segment_matches_glob(path[0], pat[0]) {
+        return match_path_parts(&path[1..], &pat[1..]);
+    }
+    false
+}
+
+fn segment_matches_glob(name: &str, pat: &str) -> bool {
+    if pat == "*" {
+        return true;
+    }
+    if pat.contains('*') {
+        if pat.matches('*').count() != 1 {
+            return false;
+        }
+        let Some((prefix, suffix)) = pat.split_once('*') else {
+            return false;
+        };
+        return name.starts_with(prefix) && name.ends_with(suffix);
+    }
+    name == pat
+}
+
+/// Expand workspace globs with gitignore-style `!` excludes.
+///
+/// Positive patterns are unioned; then any path matching **any** `!` pattern is
+/// dropped. Order does not matter (excludes win; no re-include).
+pub fn resolve_globs(
+    workspace_root: &Path,
+    patterns: &[impl AsRef<str>],
+) -> Result<Vec<String>, String> {
+    let mut includes: Vec<String> = Vec::new();
+    let mut excludes: Vec<String> = Vec::new();
+    for raw in patterns {
+        let raw = raw.as_ref().trim();
+        if raw.is_empty() {
+            return Err("glob pattern must not be empty".to_string());
+        }
+        if let Some(rest) = raw.strip_prefix('!') {
+            let ex = normalize_pattern(rest, "exclude pattern after '!'")?;
+            excludes.push(ex);
+        } else {
+            let inc = normalize_pattern(raw, "listFiles pattern")?;
+            includes.push(inc);
+        }
+    }
+
+    let mut universe: Vec<String> = Vec::new();
+    for inc in &includes {
+        universe.extend(expand_include(workspace_root, inc)?);
+    }
+    universe.sort();
+    universe.dedup();
+
+    if !excludes.is_empty() {
+        universe.retain(|path| !excludes.iter().any(|ex| path_matches_glob(path, ex)));
+    }
+    Ok(universe)
+}
+
+/// Workspace-relative glob with a single `*` per path segment (e.g. `src/entities/*.dart`).
+///
+/// Thin wrapper around [`resolve_globs`] for a single pattern (supports a lone `!exclude`).
+pub fn glob_workspace(workspace_root: &Path, pattern: &str) -> Result<Vec<String>, String> {
+    resolve_globs(workspace_root, &[pattern])
 }
 
 /// Match workspace files against a `{placeholder}` path pattern.
@@ -309,6 +414,42 @@ mod tests {
         assert!(hits.iter().any(|p| p.ends_with("a.dart")));
         assert!(hits.iter().any(|p| p.ends_with("b.dart")));
         assert!(hits.iter().any(|p| p.ends_with("c.dart")));
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn path_matches_glob_vendor_and_ext() {
+        assert!(path_matches_glob("vendor/noise.rs", "**/vendor/**"));
+        assert!(path_matches_glob("a/vendor/b/c.rs", "**/vendor/**"));
+        assert!(!path_matches_glob("src/bin/tool.rs", "**/vendor/**"));
+        assert!(path_matches_glob("lib/foo.dart", "lib/*.dart"));
+        assert!(!path_matches_glob("lib/nested/foo.dart", "lib/*.dart"));
+    }
+
+    #[test]
+    fn resolve_globs_exclude_vendor_keeps_src_bin() {
+        let root = std::env::temp_dir().join(format!("codemod_resolve_{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(root.join("src/bin")).unwrap();
+        fs::create_dir_all(root.join("vendor")).unwrap();
+        fs::write(root.join("src/lib.rs"), "").unwrap();
+        fs::write(root.join("src/bin/tool.rs"), "").unwrap();
+        fs::write(root.join("vendor/noise.rs"), "").unwrap();
+
+        let a = resolve_globs(&root, &["**/*.rs", "!**/vendor/**"]).unwrap();
+        let b = resolve_globs(&root, &["!**/vendor/**", "**/*.rs"]).unwrap();
+        assert_eq!(a, b, "order must not matter");
+        assert!(a.iter().any(|p| p == "src/bin/tool.rs"));
+        assert!(a.iter().any(|p| p == "src/lib.rs"));
+        assert!(!a.iter().any(|p| p.contains("vendor")));
+
+        // Specific include still lost to exclude (excludes win).
+        let c = resolve_globs(&root, &["vendor/noise.rs", "!**/vendor/**"]).unwrap();
+        assert!(c.is_empty());
+
+        let alone = resolve_globs(&root, &["!**/vendor/**"]).unwrap();
+        assert!(alone.is_empty());
+
         let _ = fs::remove_dir_all(root);
     }
 }

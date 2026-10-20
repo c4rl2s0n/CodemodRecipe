@@ -58,13 +58,13 @@ return {
 			local fnNames = c:query({
 				path = path,
 				language = "rust",
-				query = "repo_rust.pub_functions",
+				query = "repo_rust.all_functions",
 				capture = "fnName",
 			})
 			local fns = c:query({
 				path = path,
 				language = "rust",
-				query = "repo_rust.pub_functions",
+				query = "repo_rust.all_functions",
 				capture = "fn",
 			})
 			table.sort(fnNames, function(a, b)
@@ -136,12 +136,21 @@ return {
 			scan = { "relations", "runtime" },
 			scan_full = { "scan" },
 			scan_identify = { "scan" },
+			scan_incremental = { "scan" },
+			scan_graph_phases = { "scan" },
+			scan_types = { "scan" },
 			relations = { "relation_metrics", "coverage" },
 			relations_resolve = { "relations" },
+			relations_attach = { "relations" },
+			relations_facade = { "relations" },
+			relations_types = { "relations" },
 			membership = { "relations" },
+			delegate = { "runtime" },
+			graph_render = { "snapshot" },
 			relation_metrics = { "snapshot" },
 			coverage = { "snapshot" },
 			runtime = { "runtime_finalize" },
+			runtime_context = { "runtime" },
 			runtime_hook = { "runtime" },
 			runtime_operations = { "runtime" },
 			runtime_stack_ops = { "runtime" },

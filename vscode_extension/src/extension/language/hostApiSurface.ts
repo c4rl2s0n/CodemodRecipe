@@ -68,7 +68,7 @@ export const HOST_METHODS: readonly HostMethodSpec[] = [
   },
   {
     name: 'listFiles',
-    description: 'List workspace-relative paths matching a `*` glob (one `*` per segment).',
+    description: 'List workspace-relative paths matching globs (`*` / `**`). Pass a string or an array; patterns starting with `!` exclude (union-then-subtract).',
     keys: [],
   },
   {

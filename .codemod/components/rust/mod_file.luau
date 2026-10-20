@@ -1,21 +1,33 @@
---- Rust barrel / module file (lib.rs or mod.rs) with mod/use children.
+--- Rust module file under crates/*/src (barrels + leaf modules) with mod/use children.
+
+local function parentDir(path)
+	return path:match("^(.*)/[^/]+$") or path
+end
+
+local function resolveModChild(dir, name)
+	return {
+		dir .. "/" .. name .. "/mod.rs",
+		dir .. "/" .. name .. ".rs",
+	}
+end
 
 return {
 	id = "repo.rust_mod_file",
-	description = "Rust module file (lib.rs / mod.rs): declares mod and use items",
+	description = "Rust source module under crates/*/src: declares_mod / uses for generation",
 	identify = function(c)
 		local out = {}
 		local seen = {}
 		local function add(path)
+			-- Product tests are repo.rust_test; still include src/bin/*.rs (Cargo entrypoints).
+			if path:match("_test%.rs$") or path:match("/tests/") then
+				return
+			end
 			if not seen[path] then
 				seen[path] = true
 				out[#out + 1] = { path = path }
 			end
 		end
-		for _, path in ipairs(c:listFiles("rust/crates/*/src/lib.rs")) do
-			add(path)
-		end
-		for _, path in ipairs(c:listFiles("rust/crates/*/src/**/mod.rs")) do
+		for _, path in ipairs(c:listFiles("rust/crates/*/src/**/*.rs")) do
 			add(path)
 		end
 		return out
@@ -31,54 +43,72 @@ return {
 			path = path,
 		}
 		local children = {}
-		local modNames = c:query({
-			path = path,
-			language = "rust",
-			query = "repo_rust.mod_items",
-			capture = "modName",
-		})
-		local modItems = c:query({
-			path = path,
-			language = "rust",
-			query = "repo_rust.mod_items",
-			capture = "modItem",
-		})
-		table.sort(modNames, function(a, b)
-			return a.span.from < b.span.from
-		end)
-		table.sort(modItems, function(a, b)
-			return a.span.from < b.span.from
-		end)
-		for i = 1, math.min(#modNames, #modItems) do
-			local child = c:component("repo.rust_mod_item"):parse({
-				source = { path = path, span = modItems[i].span },
-				parent = identity,
-				role = "mod",
-				hints = { kind = "mod", name = modNames[i].text },
+		local modNames = {}
+		local ok = pcall(function()
+			local names = c:query({
+				path = path,
+				language = "rust",
+				query = "repo_rust.mod_items",
+				capture = "modName",
 			})
-			if child then
-				child.componentId = "repo.rust_mod_item"
-				child.role = "mod"
-				children[#children + 1] = child
+			local modItems = c:query({
+				path = path,
+				language = "rust",
+				query = "repo_rust.mod_items",
+				capture = "modItem",
+			})
+			table.sort(names, function(a, b)
+				return a.span.from < b.span.from
+			end)
+			table.sort(modItems, function(a, b)
+				return a.span.from < b.span.from
+			end)
+			for i = 1, math.min(#names, #modItems) do
+				modNames[#modNames + 1] = names[i].text
+				local child = c:component("repo.rust_mod_item"):parse({
+					source = { path = path, span = modItems[i].span },
+					parent = identity,
+					role = "mod",
+					hints = { kind = "mod", name = names[i].text },
+				})
+				if child then
+					child.componentId = "repo.rust_mod_item"
+					child.role = "mod"
+					children[#children + 1] = child
+				end
 			end
-		end
-		local uses = c:query({
-			path = path,
-			language = "rust",
-			query = "repo_rust.use_declarations",
-			capture = "useItem",
-		})
-		for i, hit in ipairs(uses) do
-			local child = c:component("repo.rust_mod_item"):parse({
-				source = { path = path, span = hit.span },
-				parent = identity,
-				role = "use",
-				hints = { kind = "use", name = "use#" .. i },
+			local uses = c:query({
+				path = path,
+				language = "rust",
+				query = "repo_rust.use_declarations",
+				capture = "useItem",
 			})
-			if child then
-				child.componentId = "repo.rust_mod_item"
-				child.role = "use"
-				children[#children + 1] = child
+			for i, hit in ipairs(uses) do
+				local child = c:component("repo.rust_mod_item"):parse({
+					source = { path = path, span = hit.span },
+					parent = identity,
+					role = "use",
+					hints = { kind = "use", name = "use#" .. i },
+				})
+				if child then
+					child.componentId = "repo.rust_mod_item"
+					child.role = "use"
+					children[#children + 1] = child
+				end
+			end
+		end)
+		if not ok then
+			children = {}
+			modNames = {}
+		end
+		-- crate::foo first segment for uses edges (text scan; stable enough for codegen anchors)
+		local crateUses = {}
+		local srcOk, src = pcall(function()
+			return c:read(path)
+		end)
+		if srcOk and src then
+			for seg in src:gmatch("use%s+crate::([%w_]+)") do
+				crateUses[seg] = true
 			end
 		end
 		return {
@@ -86,11 +116,46 @@ return {
 			componentId = "repo.rust_mod_file",
 			source = { path = path },
 			children = children,
+			modNames = modNames,
+			crateUses = crateUses,
 		}
 	end,
-	relate = function(_c, _instance, _index)
-		-- Structural barrels: membership zone (ignoreRelations), not crate packaging.
-		return { { kind = "lives_in", to = "repo.zone/structural.modules" } }
+	relate = function(_c, instance, index)
+		local edges = {
+			{ kind = "lives_in", to = "repo.zone/structural.modules" },
+		}
+		local path = instance.ast and instance.ast.source and instance.ast.source.path
+		if not path then
+			return edges
+		end
+		local dir = parentDir(path)
+		for _, name in ipairs(instance.ast.modNames or {}) do
+			for _, cand in ipairs(resolveModChild(dir, name)) do
+				local to = "repo.rust_mod_file/" .. cand
+				if index:byId(to) then
+					edges[#edges + 1] = { kind = "declares_mod", to = to }
+					break
+				end
+			end
+		end
+		-- use crate::seg → sibling/child module under same crate src root
+		local crateRoot = path:match("^(rust/crates/[^/]+/src)")
+		if crateRoot then
+			for seg, _ in pairs(instance.ast.crateUses or {}) do
+				for _, cand in ipairs({
+					crateRoot .. "/" .. seg .. "/mod.rs",
+					crateRoot .. "/" .. seg .. ".rs",
+					crateRoot .. "/" .. seg .. "/lib.rs",
+				}) do
+					local to = "repo.rust_mod_file/" .. cand
+					if index:byId(to) and to ~= "repo.rust_mod_file/" .. path then
+						edges[#edges + 1] = { kind = "uses", to = to }
+						break
+					end
+				end
+			end
+		end
+		return edges
 	end,
 	toSummary = function(_c, instance)
 		return {

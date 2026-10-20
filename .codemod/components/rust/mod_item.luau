@@ -9,8 +9,15 @@ return {
 		if not source or not source.path or not source.span then
 			return nil
 		end
+		-- Include path so span-offset ids do not collide across module files.
 		return {
-			id = (hints.kind or "item") .. ":" .. (hints.name or "?") .. "@" .. tostring(source.span.from),
+			id = source.path
+				.. ":"
+				.. (hints.kind or "item")
+				.. ":"
+				.. (hints.name or "?")
+				.. "@"
+				.. tostring(source.span.from),
 			componentId = "repo.rust_mod_item",
 			source = source,
 			kind = hints.kind,

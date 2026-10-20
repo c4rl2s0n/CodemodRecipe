@@ -2,7 +2,7 @@
 
 | Method | Purpose |
 |--------|---------|
-| `c:listFiles(pattern)` | Workspace-relative `*` glob → path strings |
+| `c:listFiles(pattern \| { patterns… })` | Workspace globs (`*` / `**`); `!` excludes → path strings |
 | `c:matchFiles(pattern)` | `{placeholder}` path pattern → `{ path, …captures }` rows |
 | `c:filename(path)` | Basename without extension |
 | `c:resolve(template, vars?)` | Replace `{key}` in a path template (no FS / no MiniJinja; use `c:template` for content) |

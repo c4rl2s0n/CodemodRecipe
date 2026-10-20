@@ -48,13 +48,13 @@ return {
 				local fnNames = c:query({
 					path = fpath,
 					language = "rust",
-					query = "repo_rust.pub_functions",
+					query = "repo_rust.all_functions",
 					capture = "fnName",
 				})
 				local fns = c:query({
 					path = fpath,
 					language = "rust",
-					query = "repo_rust.pub_functions",
+					query = "repo_rust.all_functions",
 					capture = "fn",
 				})
 				table.sort(fnNames, function(a, b)
@@ -149,6 +149,37 @@ return {
 		elseif id == "query" then
 			if index:byId("repo.engine_edit/engine-edit") then
 				edges[#edges + 1] = { kind = "uses", to = "repo.engine_edit/engine-edit" }
+			end
+		elseif id == "preview" then
+			if index:byId("repo.host_module/edit_session") then
+				edges[#edges + 1] = { kind = "uses", to = "repo.host_module/edit_session" }
+			end
+			if index:byId("repo.working_tree/working-tree") then
+				edges[#edges + 1] = { kind = "stages_via", to = "repo.working_tree/working-tree" }
+			end
+		elseif id == "protocol" then
+			if index:byId("repo.host_protocol/host-protocol") then
+				edges[#edges + 1] = { kind = "uses", to = "repo.host_protocol/host-protocol" }
+			end
+		elseif id == "sandbox" then
+			if index:byId("repo.host_module/host_api") then
+				edges[#edges + 1] = { kind = "uses", to = "repo.host_module/host_api" }
+			end
+		elseif id == "config" then
+			if index:byId("repo.host_module/recipe") then
+				edges[#edges + 1] = { kind = "feeds", to = "repo.host_module/recipe" }
+			end
+		elseif id == "template" then
+			if index:byId("repo.host_api_handlers/template_methods") then
+				edges[#edges + 1] = { kind = "uses", to = "repo.host_api_handlers/template_methods" }
+			end
+		elseif id == "explorer" then
+			if index:byId("repo.host_module/recipe") then
+				edges[#edges + 1] = { kind = "uses", to = "repo.host_module/recipe" }
+			end
+		elseif id == "diagnostics" then
+			if index:byId("repo.host_module/protocol") then
+				edges[#edges + 1] = { kind = "uses", to = "repo.host_module/protocol" }
 			end
 		end
 		return edges

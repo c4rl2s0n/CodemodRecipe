@@ -19,8 +19,15 @@ Layout: components live under `.codemod/components/{rust,host,vscode,engine,lua}
 | D | VS Code via `ts_module` (controllers/views as optional non-root composers) | done (structural); specialized roots deferred to avoid triple-identify |
 | E | Relation policy (child `lives_in` + inventory zone) + adapter `handles` edges + deepen hot partials; friction→D-017 clarity | done |
 | F | Placement (D-020): drop inventory catch-all; zone modules by architecture; split component/dispatch mega-files; snapshot key order | done |
+| K | Path-module edges: `declares_mod` / `uses` (Rust), `imports` / `exports` (TS barrels); host_module + pipeline domain edges | done |
+| L | Span deepen (private fns, Vue `<script>`); span universe = `stack.codebase` only (no host path hardcodes) | done |
+| M | Product test composers (`repo.rust_test` / `repo.ts_test`) + `tests` edges + `scaffoldTest` pilot | done |
+| N | `relation.duplicate` hygiene (path-qualified child ids); `engine_surface` → `engine_edit` edges | done |
 
-Latest snapshot (2026-10-19): span **~45.3%**; architecture-connected **~44.6%** (`152 / 341` eligible — [inferred eligibility](03_decisions.md#architecture-ratio-eligibility-inferred)). Pipeline `feeds`; webview handlers + `dispose` hygiene. Findings down to `relation.duplicate` ×5.
+Latest snapshot (2026-10-20): span **~51.6%**; architecture-connected **~85.2%**
+(`329 / 386` eligible — [inferred eligibility](03_decisions.md#architecture-ratio-eligibility-inferred)).
+Path-module `declares_mod`/`imports`/`exports`; product `tests` edges; findings clean
+(no `relation.duplicate`). Path modules stay eligible; scores move only with real edges.
 
 **Metric:** snapshot `coverage.aggregate` + `relations.aggregate` after each scan. Aim for spanned architecture units and a trustworthy architecture ratio (not 100% private bodies).
 
@@ -64,15 +71,17 @@ Mega-files fight the framework: path-only composers + pub-fn leaves leave privat
 | `repo.lua_load_module` | yes | `lua/src/load/*.rs` | asset-kind load stages |
 | `repo.host_api_handlers` | yes | `host_api/handlers/*` | capability groups |
 | `repo.webview_message` / entry | yes / child | messages.ts | membership under webview |
-| `repo.ts_module` / `ts_export` | yes / child | all extension TS/Vue | vscode.* zone by path + child `lives_in` |
+| `repo.ts_module` / `ts_export` | yes / child | extension TS/Vue (not `*.test.ts`) | `imports`/`exports`; Vue script span; `scaffoldTest` |
+| `repo.rust_test` / `repo.ts_test` | yes | product tests | `tests` → production module |
 | `repo.vscode_controller` / `webview_view` | (files present, not stack roots) | specialized composers | avoid duplicate identify |
 | `repo.zone` | yes | `stack.zones` catalog | membership subgraphs + role titles |
 
 Stack ops: `createCommand` fan-out (see [Decisions](03_decisions.md)).
-`relations`: edge vs `lives_in` member subgraphs (zones as nestable parents); `handles` = dispatch→command.
+`relations`: edge vs `lives_in` member subgraphs; path-module `declares_mod`/`imports`/`exports`/`tests`; `handles` = dispatch→command.
 
-**`stack.codebase`:** `rust/crates/*/src/**/*.rs`, `rust/crates/*/Cargo.toml`,
-`vscode_extension/src/**/*.ts|.vue`, `package.json` (no crate `tests/`).
+**`stack.codebase`:** `rust/crates/*/src/**/*.rs`, `rust/crates/*/tests/**/*.rs`,
+`Cargo.toml`, `vscode_extension/src/**/*.ts|.vue`, `package.json`. Span skips
+`src/bin` entrypoints included. Optional `!` excludes for artifacts. Luau `.codemod/**` is not in the product graph.
 Snapshot stores compact `coverage` (no gaps) + `relations` metrics; live `component_coverage` has gaps.
 
 ### Zones + relation metrics
@@ -112,17 +121,21 @@ host_api_method --stages_via--> working_tree
 recipe_registry --feeds--> host_api_method
 host_command --uses--> engine_edit / recipe_registry
 domain_type --mirrors--> domain_type
+rust_mod_file --declares_mod--> rust_mod_file
+ts_module --imports--> ts_module
+ts_module --exports--> ts_module   (barrels)
+rust_test / ts_test --tests--> rust_mod_file / ts_module
 ```
 
 ## Backlog
 
 1. Adapters codegen from HostCommand.
-2. Retire blanket `repo.engine_surface` once engine domain kinds deepen.
+2. Retire blanket `repo.engine_surface` once engine domain kinds deepen (edges already → `engine_edit`).
 3. `repo.rust_workspace` / docs / codemod_asset.
 4. Full mermaid CI goldens (D-014 partial: schema test only).
 5. Promote `vscode_controller` / `webview_view` to roots with verify-only if needed.
 6. Crate extraction when [criteria](03_decisions.md#crate-extraction-deferred-d-025-f) hold (deferred).
-7. Clear `webview_message.missing_handler` noise / `relation.unresolved` for configureHost (scan hygiene).
+7. Deeper product-test scaffolds (Rust `#[test]` / more than vitest stub).
 
 ### Restructure handoff log
 
@@ -138,3 +151,5 @@ domain_type --mirrors--> domain_type
 | 2026-10-19 | D-025 F | Crate extraction deferred (components still need SharedHost) |
 | 2026-10-19 | D-025 rescan | Snapshot refreshed; span ~45.4%; domain edges; `lua→core` DAG allow; D-010 |
 | 2026-10-19 | Arch eligibility | Inferred architecture ratio (exclude membership-only nested); pipeline `feeds`; ADR in decisions |
+| 2026-10-20 | K–N gaps | Path-module relates; product tests + scaffoldTest; child id hygiene; span ~51.6% / arch ~85.2%; findings clear |
+| 2026-10-20 | Glob excludes | Shared `resolve_globs` + `!` for listFiles/codebase; removed coverage `/bin/` hardcode; `src/bin` is product |

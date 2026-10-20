@@ -380,6 +380,11 @@ fn method_signature_luau(method: &HostMethodSurface) -> String {
                     "(self: CodemodContext, path: string | {{ path: string }}) -> {ret}"
                 );
             }
+            if info.name == "ListFilesSpec" {
+                return format!(
+                    "(self: CodemodContext, patterns: string | {{ string }}) -> {ret}"
+                );
+            }
             let type_name = info.name;
             format!("(self: CodemodContext, spec: {type_name}) -> {ret}")
         }

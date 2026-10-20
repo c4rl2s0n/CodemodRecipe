@@ -10,7 +10,7 @@ return {
 			return nil
 		end
 		return {
-			id = (hints.name or "?") .. "@" .. tostring(source.span.from),
+			id = source.path .. ":" .. (hints.name or "?") .. "@" .. tostring(source.span.from),
 			componentId = "repo.host_module_item",
 			source = source,
 			kind = hints.kind,

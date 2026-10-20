@@ -125,6 +125,12 @@ return {
       (object) @commandsObj))
   (#eq? @constName "COMMANDS"))
 ]],
+		-- Import string literals (from '…' / from "…").
+		import_sources = [[
+(import_statement
+  source: (string
+    (string_fragment) @importPath))
+]],
 		-- Top-level export statements (whole statement span).
 		export_statements = [[
 (export_statement) @export

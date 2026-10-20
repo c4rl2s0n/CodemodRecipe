@@ -159,3 +159,23 @@ for bootstrap/IDE. Copies are deploy artifacts — never hand-edit.
 `host/src/component/` (~5.5k LOC) meets size, but **fails** independent testability
 without `SharedHost` / `WorkingTree` / protocol. Keep as `domain.components` modules
 inside host until a thin facade API exists. Revisit when criterion 2 holds.
+
+### Path-module graph + product tests (K–M)
+
+Path inventories (`repo.ts_module`, `repo.rust_mod_file`) stay architecture-eligible:
+isolation means missing relates, not “drop from metrics.” Generation needs module
+edges (`declares_mod` / `imports` / `exports` / `uses`).
+
+**Span universe:** declared only by `stack.codebase` globs (shared `resolve_globs`;
+optional `!pattern` excludes). `src/bin/*.rs` is **product** (host/MCP entrypoints) —
+do not carve it out. Non-product trees (e.g. `target/`, `node_modules/`) stay out
+via include globs or explicit `!` excludes — never host path hardcodes.
+
+**Product tests in the graph:** `repo.rust_test` / `repo.ts_test` identify
+`crates/*/tests/**/*.rs` and `*.test.ts` (not Luau `*.test.luau`). Edge `tests` →
+production `rust_mod_file` / `ts_module`. Pilot scaffold:
+`repo.ts_module` operation `scaffoldTest` creates a vitest stub beside a `.ts` module.
+
+**Graph scope:** Rust + VS Code product code (+ product tests). Luau under
+`.codemod/` is the modeling language — component defs and `*.test.luau` stay off
+the architecture/span instance graph.

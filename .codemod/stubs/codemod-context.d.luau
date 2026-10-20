@@ -24,6 +24,8 @@ export type InsertSpec = {
 	text: string,
 }
 
+export type ListFilesSpec = string | { [number]: string }
+
 export type MatchFileRow = { [string]: string }
 
 export type PostExecSpec = {
@@ -152,7 +154,7 @@ export type CodemodContext = {
 	expectNoMatch: (self: CodemodContext, spec: QueryTableSpec) -> (),
 	filename: (self: CodemodContext, id: string) -> string,
 	insert: (self: CodemodContext, spec: InsertSpec) -> (),
-	listFiles: (self: CodemodContext, id: string) -> { string },
+	listFiles: (self: CodemodContext, patterns: string | { string }) -> { string },
 	log: (self: CodemodContext, ...any) -> (),
 	map: (self: CodemodContext, id: string) -> { [string]: string },
 	matchFiles: (self: CodemodContext, id: string) -> { MatchFileRow },

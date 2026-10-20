@@ -1,12 +1,13 @@
 {
   "meta": {
     "version": 1,
-    "timestamp": 1792412257,
+    "timestamp": 1792484587,
     "stack": "flutter-poc-stack"
   },
   "relations": {
     "aggregate": {
       "architectureConnected": 4,
+      "architectureEligible": 9,
       "architectureIsolated": 5,
       "edgeCount": 2,
       "instanceCount": 9,
@@ -21,6 +22,7 @@
     "byComponent": [
       {
         "architectureConnected": 0,
+        "architectureEligible": 1,
         "architectureIsolated": 1,
         "componentId": "flutter.method",
         "instanceCount": 1,
@@ -29,6 +31,7 @@
       },
       {
         "architectureConnected": 2,
+        "architectureEligible": 2,
         "architectureIsolated": 0,
         "componentId": "flutter.model",
         "instanceCount": 2,
@@ -37,6 +40,7 @@
       },
       {
         "architectureConnected": 0,
+        "architectureEligible": 4,
         "architectureIsolated": 4,
         "componentId": "flutter.property",
         "instanceCount": 4,
@@ -45,6 +49,7 @@
       },
       {
         "architectureConnected": 2,
+        "architectureEligible": 2,
         "architectureIsolated": 0,
         "componentId": "flutter.state",
         "instanceCount": 2,

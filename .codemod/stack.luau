@@ -31,12 +31,17 @@ return {
 		"repo.vscode_command",
 		"repo.webview_message",
 		"repo.ts_module",
+		-- Product tests (not Luau component *.test.luau)
+		"repo.rust_test",
+		"repo.ts_test",
 		-- specialized vscode roots (compose on ts_module parse; listed for domain verify later)
 		-- avoid triple-identify: ts_module already covers extension + webview + shared
 	},
-	-- Production sources only (exclude crate integration tests)
+	-- Product sources + product tests (includes crates/*/src/bin/*.rs entrypoints).
+	-- Optional `!pattern` excludes carve out non-product trees (e.g. !**/node_modules/**).
 	codebase = {
 		"rust/crates/*/src/**/*.rs",
+		"rust/crates/*/tests/**/*.rs",
 		"rust/crates/*/Cargo.toml",
 		"vscode_extension/src/**/*.ts",
 		"vscode_extension/src/**/*.vue",
@@ -58,6 +63,11 @@ return {
 		produces = { layout = "edge" },
 		lives_in = { layout = "member" },
 		handles = { layout = "edge" },
+		-- Path-module / generation graph
+		declares_mod = { layout = "edge" },
+		imports = { layout = "edge" },
+		exports = { layout = "edge" },
+		tests = { layout = "edge" },
 	},
 	operations = ops.operations,
 }

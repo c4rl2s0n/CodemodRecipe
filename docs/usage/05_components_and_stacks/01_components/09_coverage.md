@@ -23,6 +23,8 @@ Each file returns the full `gaps` list (no truncation):
 1. `.codemod/stack.luau` with a non-empty **`codebase`** glob list (see [stacks](../02_stacks/01_required_manifest.md)).
 2. A scan cache (`component_scan` / `component_coverage` runs scan first if needed).
 
+The coverage **universe** is `resolve_globs(codebase)`: positive globs are unioned, then any path matching a `!` exclude is dropped. Same helper as `c:listFiles`.
+
 If `codebase` is missing or empty, coverage is **skipped** (`skipped: true`) with a **warning** — the scan itself still succeeds.
 
 ## Host / MCP

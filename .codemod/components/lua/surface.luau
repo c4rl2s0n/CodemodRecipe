@@ -59,13 +59,13 @@ return {
 			local fnNames = c:query({
 				path = path,
 				language = "rust",
-				query = "repo_rust.pub_functions",
+				query = "repo_rust.all_functions",
 				capture = "fnName",
 			})
 			local fns = c:query({
 				path = path,
 				language = "rust",
-				query = "repo_rust.pub_functions",
+				query = "repo_rust.all_functions",
 				capture = "fn",
 			})
 			table.sort(fnNames, function(a, b)
