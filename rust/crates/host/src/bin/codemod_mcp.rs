@@ -400,6 +400,10 @@ fn mcp_component_invoke_hook(
                 .and_then(|v| v.as_str())
                 .map(String::from),
             args,
+            preview_token: arguments
+                .get(protocol_keys::PREVIEW_TOKEN)
+                .and_then(|v| v.as_str())
+                .map(String::from),
         },
     )
 }
@@ -432,6 +436,10 @@ fn mcp_stack_invoke_operation(
             operation,
             preview,
             args,
+            preview_token: arguments
+                .get(protocol_keys::PREVIEW_TOKEN)
+                .and_then(|v| v.as_str())
+                .map(String::from),
         },
     )
 }

@@ -15,13 +15,16 @@ All tools return a JSON string. Parse it, then check `ok`.
 | `generate_query` | Starter query from byte `start`/`end` in a file |
 | `resolve_static_path` | Jinja-render a path with empty args (static paths only) |
 | `component_scan` | Scan stack root components (instances, findings, summaries, relation `edges`, `kindGraph`); populates cache |
-| `list_component_instances` | Alias of `component_scan` |
+| `list_component_instances` | Alias of `component_scan` (same HostCommand family; prefer `component_scan`) |
 | `component_coverage` | Span coverage vs `stack.codebase` (per-file + aggregate); skips with warning if `codebase` missing |
 | `component_graph` | Render the relations graph as mermaid text; `level`: `kinds` (default) or `instances` |
+| `component_snapshot` | Write deterministic scan snapshot JSON under the codemod root (default `.cache/scan-snapshot.json`) |
 | `component_incremental_scan` | Rescan after edits: `dirtyPaths`, `detectChanges`, or `force` |
 | `describe_component` | Metadata: hooks present, scaffold args, operations |
-| `component_dry_run_hook` | Dry-run one hook; returns `result`, `transcript`, top-level `logs[]` — **scan has no logs** |
-| `component_apply_hook` | Apply one hook (flushes WorkingTree); same args as dry-run |
+| `component_dry_run_hook` | Dry-run one hook; returns `result`, `transcript`, `logs[]`, **`previewToken`** — **scan has no logs** |
+| `component_apply_hook` | Apply one hook (flushes WorkingTree); requires **`previewToken`** from dry-run with the same args |
+| `stack_dry_run_operation` | Dry-run a stack-level op (e.g. `createCommand`); returns `previewToken` |
+| `stack_apply_operation` | Apply a stack-level op; requires **`previewToken`** from dry-run |
 | `run_tests` | Run `*.test.luau` suites against temp fixture workspaces; optional `filter` (suite id, `target`, `suite/test`, or test name). Read-only for the real workspace — see [Testing](../../07_testing/00_index.md) |
 
 When `.codemod/stack.luau` and components exist: `component_scan` first, then
@@ -30,8 +33,9 @@ blind spots (requires `codebase` on the stack — see [coverage](../../05_compon
 To author/debug hooks, use
 `describe_component` and `component_dry_run_hook` (read `logs` / `transcript` for `c:log`).
 Authoring agents should be allowlisted for dry-run + scan/describe — withhold
-`component_apply_hook` when agents must not write the workspace. Experiment fixture:
-[flutter-poc.md](../../../develop/02_flutter_poc/00_index.md). See Builder skill apply checklist.
+`component_apply_hook` / `stack_apply_operation` when agents must not write the workspace.
+Preview vs apply tokens: [07_preview_vs_apply.md](07_preview_vs_apply.md).
+Experiment fixture: [flutter-poc.md](../../../develop/02_flutter_poc/00_index.md). See Builder skill apply checklist.
 
 ## Query Tools (MCP)
 

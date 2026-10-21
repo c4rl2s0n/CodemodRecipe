@@ -154,10 +154,29 @@ export async function handleStackOperation(
   }
   host.state.componentArgs = args;
   try {
+    let previewToken: string | undefined;
+    if (!preview) {
+      const dry = await host.bridge.stackInvokeOperation({
+        operation,
+        args,
+        preview: true,
+      });
+      if (!dry.ok || !dry.previewToken) {
+        host.state.setComponentPreviewResult(
+          [],
+          dry.transcript ?? [],
+          dry.error ?? 'Stack dry-run failed (previewToken required before apply)'
+        );
+        host.postState();
+        return;
+      }
+      previewToken = dry.previewToken;
+    }
     const response = await host.bridge.stackInvokeOperation({
       operation,
       args,
       preview,
+      previewToken,
     });
     if (!response.ok) {
       host.state.setComponentPreviewResult(

@@ -20,10 +20,16 @@ Mutate the workspace via MCP. Full tool table: [codemod-mcp.md](../../docs/06_mc
 
 1. `describe_component` — scaffold args / operations
 2. Ensure scan cache is warm (`component_scan` or prior intel)
-3. `component_dry_run_hook` with `hook: "scaffold"` or `"operation"` (+ `operation` name, `target` / args)
+3. `component_dry_run_hook` with `hook: "scaffold"` or `"operation"` (+ `operation` name, `instance` / args) → save `previewToken`
 4. Inspect `files` + `transcript` (`c:log` appears as `kind: "log"`)
-5. `component_apply_hook` with the same arguments
+5. `component_apply_hook` with the **same** arguments + `previewToken`
 6. `component_incremental_scan` with `dirtyPaths` when known
+
+## Stack op checklist
+
+1. `stack_dry_run_operation` with `operation` + `args` → save `previewToken`
+2. Inspect `files` / `transcript`
+3. `stack_apply_operation` with the **same** args + `previewToken`
 
 ## Authoring hooks (dry-run only)
 

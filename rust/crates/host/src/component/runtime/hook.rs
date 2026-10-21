@@ -120,6 +120,7 @@ fn invoke_read_hook(
             transcript: None,
             logs: None,
             applied: None,
+            preview_token: None,
         };
     }
 
@@ -234,6 +235,7 @@ fn invoke_read_hook(
                 transcript: None,
                 logs: None,
                 applied,
+                preview_token: None,
             }
             .with_transcript(Some(transcript))
         }

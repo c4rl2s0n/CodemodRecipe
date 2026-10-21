@@ -100,22 +100,22 @@ pub fn tool_metas() -> &'static [McpToolMeta] {
         },
         McpToolMeta {
             name: "component_dry_run_hook",
-            description: "Dry-run a component hook (Preview WorkingTree; never writes disk). Returns result JSON + transcript + top-level logs[] (c:log details). component_scan has no logs — use this to debug parse/identify. hook: identify|parse|verify|toSummary|scaffold|operation. Authoring agents: prefer this over component_apply_hook.",
+            description: "Dry-run a component hook (Preview WorkingTree; never writes disk). Returns result JSON + transcript + top-level logs[] (c:log details) + previewToken. component_scan has no logs — use this to debug parse/identify. hook: identify|parse|verify|toSummary|scaffold|operation. Authoring agents: prefer this over component_apply_hook.",
             host_command: Some("ComponentInvokeHook"),
         },
         McpToolMeta {
             name: "component_apply_hook",
-            description: "Apply a component hook (flushes WorkingTree writes). Same args as component_dry_run_hook. Prefer dry-run first. Withhold this tool from authoring-only agent allowlists.",
+            description: "Apply a component hook (flushes WorkingTree writes). Requires previewToken from component_dry_run_hook with the same args. Withhold this tool from authoring-only agent allowlists.",
             host_command: Some("ComponentInvokeHook"),
         },
         McpToolMeta {
             name: "stack_dry_run_operation",
-            description: "Dry-run a stack-level operation (Preview WorkingTree; never writes disk). Stack ops are instance-less fan-outs (e.g. createCommand). Prefer this over stack_apply_operation.",
+            description: "Dry-run a stack-level operation (Preview WorkingTree; never writes disk). Returns previewToken. Stack ops are instance-less fan-outs (e.g. createCommand).",
             host_command: Some("StackInvokeOperation"),
         },
         McpToolMeta {
             name: "stack_apply_operation",
-            description: "Apply a stack-level operation (flushes WorkingTree writes). Same args as stack_dry_run_operation. Prefer dry-run first. Withhold from authoring-only agent allowlists.",
+            description: "Apply a stack-level operation (flushes WorkingTree writes). Requires previewToken from stack_dry_run_operation with the same args. Withhold from authoring-only agent allowlists.",
             host_command: Some("StackInvokeOperation"),
         },
         McpToolMeta {
@@ -140,10 +140,10 @@ fn input_schema(name: &str) -> Value {
             json!({"type": "object", "properties": {"recipe": {"type": "string", "description": "Optional recipe id to validate without reloading others"}}})
         }
         "preview_recipe" => {
-            json!({"type": "object", "properties": {"recipe": {"type": "string"}, "inlineRecipe": {"type": "object"}, "args": {"type": "object"}, "snippetLines": {"type": "number"}}})
+            json!({"type": "object", "properties": {"recipe": {"type": "string"}, "inlineRecipe": {"type": "string", "description": "Luau source string that returns a recipe table"}, "args": {"type": "object"}, "snippetLines": {"type": "number"}}})
         }
         "apply_recipe" => {
-            json!({"type": "object", "properties": {"recipe": {"type": "string"}, "inlineRecipe": {"type": "object"}, "args": {"type": "object"}, "previewToken": {"type": "string"}, "selection": {"type": "object"}}, "required": ["previewToken"]})
+            json!({"type": "object", "properties": {"recipe": {"type": "string"}, "inlineRecipe": {"type": "string", "description": "Luau source string that returns a recipe table"}, "args": {"type": "object"}, "previewToken": {"type": "string"}, "selection": {"type": "object"}}, "required": ["previewToken"]})
         }
         "bootstrap_project" => {
             json!({"type": "object", "properties": {"force": {"type": "boolean", "description": "Overwrite existing files (default false)"}, "edit_policy": {"type": "string", "enum": ["recommend", "strict"], "description": "Rule pack: recommend (default, soft prefer+preview) or strict (recipe-first edit policy)"}, "companions": {"type": "array", "items": {"type": "string", "enum": ["codebase-memory"]}, "description": "Optional companion rule packs (default []). Use [\"codebase-memory\"] when that MCP is configured."}}})
@@ -179,13 +179,13 @@ fn input_schema(name: &str) -> Value {
             json!({"type": "object", "properties": {"componentId": {"type": "string"}, "hook": {"type": "string"}, "locator": {}, "instance": {}, "operation": {"type": "string"}, "args": {"type": "object"}}, "required": ["componentId", "hook"]})
         }
         "component_apply_hook" => {
-            json!({"type": "object", "properties": {"componentId": {"type": "string"}, "hook": {"type": "string"}, "locator": {}, "instance": {}, "operation": {"type": "string"}, "args": {"type": "object"}}, "required": ["componentId", "hook"]})
+            json!({"type": "object", "properties": {"componentId": {"type": "string"}, "hook": {"type": "string"}, "locator": {}, "instance": {}, "operation": {"type": "string"}, "args": {"type": "object"}, "previewToken": {"type": "string"}}, "required": ["componentId", "hook", "previewToken"]})
         }
         "stack_dry_run_operation" => {
             json!({"type": "object", "properties": {"operation": {"type": "string"}, "args": {"type": "object"}}, "required": ["operation"]})
         }
         "stack_apply_operation" => {
-            json!({"type": "object", "properties": {"operation": {"type": "string"}, "args": {"type": "object"}}, "required": ["operation"]})
+            json!({"type": "object", "properties": {"operation": {"type": "string"}, "args": {"type": "object"}, "previewToken": {"type": "string"}}, "required": ["operation", "previewToken"]})
         }
         "run_tests" => json!({"type": "object", "properties": {"filter": {"type": "string"}}}),
         _ => json!({ "type": "object" }),

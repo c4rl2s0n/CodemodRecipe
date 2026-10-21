@@ -20,7 +20,7 @@ return {
   zones = {
     { id = "structural.modules", role = "structural", title = "Module barrels" },
     { id = "command.adapters", role = "architecture", title = "Command adapters" },
-    { id = "rust.runtime", role = "architecture", title = "Rust runtime" },
+    { id = "domain.recipe", role = "architecture", title = "Recipe domain" },
     { id = "docs.surface", role = "documentation", title = "Docs surface" },
   },
   -- optional: metric flags per role string (missing role ⇒ title-only, no flags)

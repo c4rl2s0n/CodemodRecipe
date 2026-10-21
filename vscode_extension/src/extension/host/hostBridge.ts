@@ -291,6 +291,7 @@ export class HostBridge extends HostBridgeCore {
     instance?: unknown;
     operation?: string;
     args?: ArgValues;
+    previewToken?: string;
   }): Promise<ComponentInvokeResponse> {
     return this.send<ComponentInvokeResponse>({
       command: 'componentInvokeHook',
@@ -301,6 +302,7 @@ export class HostBridge extends HostBridgeCore {
       instance: opts.instance,
       operation: opts.operation,
       args: opts.args ?? {},
+      previewToken: opts.previewToken,
     });
   }
 
@@ -308,12 +310,14 @@ export class HostBridge extends HostBridgeCore {
     operation: string;
     args?: ArgValues;
     preview?: boolean;
+    previewToken?: string;
   }): Promise<ComponentInvokeResponse> {
     return this.send<ComponentInvokeResponse>({
       command: 'stackInvokeOperation',
       operation: opts.operation,
       args: opts.args ?? {},
       preview: opts.preview ?? true,
+      previewToken: opts.previewToken,
     });
   }
 

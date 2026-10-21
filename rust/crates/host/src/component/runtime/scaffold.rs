@@ -125,6 +125,7 @@ pub fn invoke_scaffold(
             transcript: None,
             logs: None,
             applied,
+            preview_token: None,
         }
         .with_transcript(Some(transcript)))
     })();

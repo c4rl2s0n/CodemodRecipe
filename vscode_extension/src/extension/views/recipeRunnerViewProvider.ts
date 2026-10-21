@@ -16,7 +16,7 @@ import { RecipeRunnerState } from './recipeRunnerState';
 import {
   handleWebviewMessage,
   type RecipeRunnerHandlerHost,
-} from './recipeRunnerHandlers';
+} from './recipeRunner';
 import type { RecipeRepository } from '../recipes/recipeRepository';
 import { CoverageDecorations } from '../coverage/coverageDecorations';
 

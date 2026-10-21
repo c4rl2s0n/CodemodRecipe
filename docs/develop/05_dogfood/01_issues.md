@@ -69,6 +69,12 @@ Status: `open` / `in-progress` / `fixed` / `wontfix(decision documented)`.
 | D-028 | note | architecture | HostInner facet sketch documented; Phase 1 code in `host_api/facets.rs` — `ComponentSession` used by delegate stack + graph snapshot. Recipe/Query facets typed but not fully migrated. Crate extraction still deferred. | fixed (partial — Phase 1) |
 | D-029 | gap | host / scan | Framework Track C2: `composer.identify_path_conflict`; `summary.productSpanRatio`; `codemod_mcp --scan-summary`; leaf-wipe audit. Tried auto-merging `codebase` `!` into `listFiles` — **reverted** (`listFiles` stays caller-only; `codebase` is coverage-only). | fixed |
 
+## 2026-10-21 — Pre-extension cleanup sweep
+
+| ID | Severity | Area | Issue | Status |
+|----|----------|------|-------|--------|
+| D-030 | ux / arch | agent + host | Pre-extension cleanup: collapse fat Cursor MCP playbook → agents skill; sync tools docs to inventory; `inlineRecipe` schema = string; **previewToken** on component/stack apply; one-page component authoring path; stub→folder redirects; zone map honesty (`domain.sandbox|config|template|explorer`, retire `rust.runtime`); `preview/` → `edit_session/preview`, `lua_runtime` → `host_api/`; drop `recipeRunnerHandlers` shim; split `protocol/{command,responses}.rs`. Facet Phase 2 / crate extract still deferred. | fixed |
+
 ## Template for new entries
 
 Append to the current date section (or start a new one):

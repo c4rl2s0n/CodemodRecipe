@@ -132,7 +132,7 @@ Catalog in `.codemod/lib/zones.luau` (wired from `stack.zones` / `zoneRoles`):
 | Zone id | Role | Notes |
 |---------|------|--------|
 | `structural.modules` | `structural` | `ignoreRelations` — Rust barrels / support surfaces |
-| `command.adapters` / `domain.*` / `platform.engine` / `platform.lua` / `rust.runtime` / `vscode.*` | `architecture` | Title + grouping (no metric flags) |
+| `command.adapters` / `domain.*` / `platform.engine` / `platform.lua` / `vscode.*` | `architecture` | Title + grouping (no metric flags) |
 | `docs.surface` | `documentation` | Title-only |
 
 Coverage children (`host_module_item`, `ts_export`, `rust_mod_item`, `host_api_method_entry`) emit `lives_in` → parent so zone flags reach the leaf forest. Do **not** blanket-`ignoreRelations` on `command.adapters` / all `vscode.*` (that greenwashes the triangle).
@@ -216,3 +216,4 @@ vscode_language_context / vscode_ext_bootstrap (extension domain grain)
 | 2026-10-20 | Arch + framework C1 | Retire `generateAstPath`; `composer.identify_empty` + scan `summary`; triangle H/B/M/V + HostInner facet docs; graph doc → cache SSOT |
 | 2026-10-21 | C1 opt-out + C2 | Drop `allowEmptyIdentify`; HostInner `ComponentSession` Phase 1; C2: path-conflict, `productSpanRatio`, `--scan-summary`, leaf-wipe fix |
 | 2026-10-21 | Revert listFiles∩codebase | Drop `glob_excludes` merge; `listFiles` caller-only again; `codebase` coverage-only |
+| 2026-10-21 | Pre-extension cleanup D-030 | MCP/docs honesty + previewToken gates; zone map; preview/lua_runtime placement; protocol split |

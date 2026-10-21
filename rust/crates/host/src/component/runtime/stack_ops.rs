@@ -135,6 +135,7 @@ pub fn invoke_stack_operation(
             transcript: None,
             logs: None,
             applied,
+            preview_token: None,
         }
         .with_transcript(Some(transcript)))
     })();

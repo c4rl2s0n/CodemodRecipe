@@ -4,7 +4,7 @@ local zonesLib = require("../../lib/zones")
 
 local MODULES = {
 	{ id = "sandbox", path = "rust/crates/host/src/sandbox/mod.rs" },
-	{ id = "preview", path = "rust/crates/host/src/preview/mod.rs" },
+	{ id = "preview", path = "rust/crates/host/src/edit_session/preview/mod.rs" },
 	{ id = "template", path = "rust/crates/host/src/template/mod.rs" },
 	{ id = "query", path = "rust/crates/host/src/query/mod.rs" },
 	{ id = "explorer", path = "rust/crates/host/src/explorer/mod.rs" },
@@ -17,7 +17,7 @@ local MODULES = {
 	-- Leaf file (not a directory mod): high-gap helpers for component tests.
 	{ id = "testing", path = "rust/crates/host/src/testing.rs" },
 	-- Leaf file: Luau ctx build / nested run (orphan from dir MODULES).
-	{ id = "lua_runtime", path = "rust/crates/host/src/lua_runtime.rs" },
+	{ id = "lua_runtime", path = "rust/crates/host/src/host_api/lua_runtime.rs" },
 }
 
 return {

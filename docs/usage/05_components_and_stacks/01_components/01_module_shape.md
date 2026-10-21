@@ -11,10 +11,10 @@ return {
   readSource = function(c, context) ... end, -- optional
   toSummary = function(c, instance) ... end, -- optional; host calls after parse
 
-  -- CREATE: no target yet
+  -- CREATE: no target yet (`graph` = pre-op forest snapshot; often unused)
   scaffold = {
     args = { { name = "name", required = true } },
-    apply = function(c, args)
+    apply = function(c, args, graph)
       -- create files from args; may call c:component("child")...
     end,
   },

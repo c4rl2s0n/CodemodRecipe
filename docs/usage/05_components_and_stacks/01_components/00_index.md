@@ -4,6 +4,7 @@ Components are Luau modules under `.codemod/components/` that **identify**, **pa
 
 | Page | |
 |------|---|
+| [Author a component (minimum path)](00_author_a_component.md) | Start here |
 | [Module shape](01_module_shape.md) | |
 | [Hooks](02_hooks.md) | |
 | [Parse tree](03_parse_tree.md) | |

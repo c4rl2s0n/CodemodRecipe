@@ -164,6 +164,7 @@ pub fn handle_command(registry: &mut RecipeRegistry, cmd: HostCommand) -> serde_
             instance,
             operation,
             args,
+            preview_token,
         } => components::invoke_hook_cmd(
             registry,
             component_id,
@@ -173,12 +174,14 @@ pub fn handle_command(registry: &mut RecipeRegistry, cmd: HostCommand) -> serde_
             instance,
             operation,
             args,
+            preview_token,
         ),
         HostCommand::StackInvokeOperation {
             operation,
             preview,
             args,
-        } => components::stack_invoke(registry, operation, preview, args),
+            preview_token,
+        } => components::stack_invoke(registry, operation, preview, args, preview_token),
         HostCommand::DescribeComponent { component_id } => {
             components::describe_component(registry, component_id)
         }

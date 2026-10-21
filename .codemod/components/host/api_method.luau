@@ -3,7 +3,7 @@
 -- Globs / leaf files after handlers + delegate grain splits (Phase P/Q).
 local HANDLER_GLOBS = {
 	"rust/crates/host/src/host_api/handlers/**/*.rs",
-	"rust/crates/host/src/lua_runtime.rs",
+	"rust/crates/host/src/host_api/lua_runtime.rs",
 	"rust/crates/host/src/component/delegate/**/*.rs",
 }
 local IDENTIFY_ROOT = "rust/crates/host/src/host_api/handlers/mod.rs"

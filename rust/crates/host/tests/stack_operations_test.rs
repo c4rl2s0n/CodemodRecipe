@@ -136,6 +136,7 @@ return {
             args: [("name".to_string(), serde_json::json!("Snap"))]
                 .into_iter()
                 .collect(),
+                    preview_token: None,
         },
     );
     assert_eq!(preview["ok"], true, "preview failed: {preview}");
@@ -154,7 +155,11 @@ return {
         "preview must not write"
     );
 
-    // Apply writes both
+    // Apply writes both (requires previewToken from dry-run)
+    let token = preview["previewToken"]
+        .as_str()
+        .expect("previewToken")
+        .to_string();
     let apply = dispatch::handle_command(
         &mut registry,
         HostCommand::StackInvokeOperation {
@@ -163,6 +168,7 @@ return {
             args: [("name".to_string(), serde_json::json!("Snap"))]
                 .into_iter()
                 .collect(),
+            preview_token: Some(token),
         },
     );
     assert_eq!(apply["ok"], true, "apply failed: {apply}");
@@ -214,6 +220,7 @@ return {
             operation: "noSuchOp".to_string(),
             preview: true,
             args: Default::default(),
+                    preview_token: None,
         },
     );
     assert_eq!(resp["ok"], false);
@@ -280,6 +287,7 @@ return {
             operation: "createCommand".to_string(),
             preview: true,
             args: Default::default(),
+                    preview_token: None,
         },
     );
     assert_eq!(resp["ok"], false, "cycle should fail: {resp}");

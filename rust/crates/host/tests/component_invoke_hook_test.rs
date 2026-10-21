@@ -25,6 +25,31 @@ fn invoke_hook(
     operation: Option<String>,
     args: BTreeMap<String, serde_json::Value>,
 ) -> serde_json::Value {
+    invoke_hook_with_token(
+        registry,
+        component_id,
+        hook,
+        preview,
+        locator,
+        instance,
+        operation,
+        args,
+        None,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn invoke_hook_with_token(
+    registry: &mut RecipeRegistry,
+    component_id: &str,
+    hook: &str,
+    preview: bool,
+    locator: Option<serde_json::Value>,
+    instance: Option<serde_json::Value>,
+    operation: Option<String>,
+    args: BTreeMap<String, serde_json::Value>,
+    preview_token: Option<String>,
+) -> serde_json::Value {
     dispatch::handle_command(
         registry,
         HostCommand::ComponentInvokeHook {
@@ -35,6 +60,7 @@ fn invoke_hook(
             instance,
             operation,
             args,
+            preview_token,
         },
     )
 }
@@ -292,7 +318,11 @@ return {
         .collect();
     assert!(kinds.contains(&"log"));
 
-    let apply = invoke_hook(
+    let token = preview["previewToken"]
+        .as_str()
+        .expect("previewToken")
+        .to_string();
+    let apply = invoke_hook_with_token(
         &mut registry,
         "example.scaffold",
         "scaffold",
@@ -301,6 +331,7 @@ return {
         None,
         None,
         args,
+        Some(token),
     );
     assert_eq!(apply["ok"], true, "scaffold apply failed: {apply}");
     assert!(

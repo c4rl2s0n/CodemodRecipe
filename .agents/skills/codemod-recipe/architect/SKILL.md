@@ -26,7 +26,7 @@ Author **`.codemod` assets**. Do not invent API — read the linked usage docs.
 |------|--------|------|
 | One coherent AST/file change | Recipe with `apply(c, args)` | [writing-recipes.md](../docs/02_writing_recipes/01_workflow/00_index.md), [host-api.md](../docs/02_writing_recipes/02_host_api/00_index.md) |
 | Greenfield files / feature workflow | `create_*` / `scaffold_*` taxonomy | [recipe-design-patterns.md](../docs/04_templates_and_patterns/02_recipe_design_patterns/00_index.md) |
-| Identify / parse / mutate domain instances | Component + stack | [components.md](../docs/05_components_and_stacks/01_components/00_index.md), [stacks.md](../docs/05_components_and_stacks/02_stacks/00_index.md), [component-contract.md](../docs/05_components_and_stacks/03_component_contract/00_index.md) |
+| Identify / parse / mutate domain instances | Component + stack | **Start:** [author a component](../docs/05_components_and_stacks/01_components/00_author_a_component.md); then [stacks](../docs/05_components_and_stacks/02_stacks/00_index.md) |
 | Query syntax / captures | Tree-sitter query | [tree-sitter-queries.md](../docs/03_queries_and_languages/01_tree_sitter_queries/00_index.md) |
 | Non-Dart file | Set `language` on ops | [language-support.md](../docs/03_queries_and_languages/02_language_support/00_index.md) |
 | MiniJinja text | `c:template` | [recipe-templates.md](../docs/04_templates_and_patterns/01_recipe_templates/00_index.md) |

@@ -1,15 +1,21 @@
 //! Component / stack HostCommand handlers.
 
+use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
+
 use crate::component::scan::component_scan_inner;
 use crate::component::{
     component_coverage, component_incremental_scan, component_scan, invoke_hook, invoke_operation,
     invoke_scaffold, invoke_stack_operation, ComponentHookRequest, ComponentIncrementalScanRequest,
     ComponentInvokeRequest, ComponentScaffoldRequest, StackInvokeRequest,
 };
+use crate::component::types::ComponentInvokeResponse;
 use crate::lua_runtime::RunKind;
+use crate::preview::preview_token::{compute_preview_token, validate_preview_token};
 use crate::protocol::dispatch::common::{to_value, write_workspace_relative};
-use crate::protocol::{ComponentGraphResponse, DescribeComponentResponse};
+use crate::protocol::{ComponentGraphResponse, DescribeComponentResponse, FilePreview};
 use crate::recipe::registry::RecipeRegistry;
+use crate::sandbox::path_sandbox::PathSandbox;
 
 pub(super) fn component_snapshot(
     registry: &mut RecipeRegistry,
@@ -163,7 +169,11 @@ pub(super) fn invoke_operation_cmd(
             instance_id,
             operation,
             args,
-            kind: if preview { RunKind::Preview } else { RunKind::Apply },
+            kind: if preview {
+                RunKind::Preview
+            } else {
+                RunKind::Apply
+            },
         },
     ))
 }
@@ -179,7 +189,11 @@ pub(super) fn scaffold(
         ComponentScaffoldRequest {
             component_id,
             args,
-            kind: if preview { RunKind::Preview } else { RunKind::Apply },
+            kind: if preview {
+                RunKind::Preview
+            } else {
+                RunKind::Apply
+            },
         },
     ))
 }
@@ -192,36 +206,85 @@ pub(super) fn invoke_hook_cmd(
     locator: Option<serde_json::Value>,
     instance: Option<serde_json::Value>,
     operation: Option<String>,
-    args: std::collections::BTreeMap<String, serde_json::Value>,
+    args: BTreeMap<String, serde_json::Value>,
+    preview_token: Option<String>,
 ) -> serde_json::Value {
-    to_value(invoke_hook(
+    let identity = hook_identity(&component_id, &hook, &locator, &instance, &operation);
+    let make_req = |kind: RunKind| ComponentHookRequest {
+        component_id: component_id.clone(),
+        hook: hook.clone(),
+        kind,
+        locator: locator.clone(),
+        instance: instance.clone(),
+        operation: operation.clone(),
+        args: args.clone(),
+    };
+
+    if !preview {
+        let dry = invoke_hook(registry, make_req(RunKind::Preview));
+        if !dry.ok {
+            return to_value(dry);
+        }
+        if let Err(message) = validate_hook_token(registry, &identity, &args, &dry, &preview_token)
+        {
+            return to_value(ComponentInvokeResponse::fail(message));
+        }
+    }
+
+    let mut resp = invoke_hook(
         registry,
-        ComponentHookRequest {
-            component_id,
-            hook,
-            kind: if preview { RunKind::Preview } else { RunKind::Apply },
-            locator,
-            instance,
-            operation,
-            args,
-        },
-    ))
+        make_req(if preview {
+            RunKind::Preview
+        } else {
+            RunKind::Apply
+        }),
+    );
+    if preview && resp.ok {
+        resp.preview_token = Some(token_for_response(registry, &identity, &args, &resp));
+    }
+    to_value(resp)
 }
 
 pub(super) fn stack_invoke(
     registry: &mut RecipeRegistry,
     operation: String,
     preview: bool,
-    args: std::collections::BTreeMap<String, serde_json::Value>,
+    args: BTreeMap<String, serde_json::Value>,
+    preview_token: Option<String>,
 ) -> serde_json::Value {
-    to_value(invoke_stack_operation(
+    let identity = serde_json::json!({
+        "kind": "stackOperation",
+        "operation": operation,
+    });
+    let make_req = |kind: RunKind| StackInvokeRequest {
+        operation: operation.clone(),
+        args: args.clone(),
+        kind,
+    };
+
+    if !preview {
+        let dry = invoke_stack_operation(registry, make_req(RunKind::Preview));
+        if !dry.ok {
+            return to_value(dry);
+        }
+        if let Err(message) = validate_hook_token(registry, &identity, &args, &dry, &preview_token)
+        {
+            return to_value(ComponentInvokeResponse::fail(message));
+        }
+    }
+
+    let mut resp = invoke_stack_operation(
         registry,
-        StackInvokeRequest {
-            operation,
-            args,
-            kind: if preview { RunKind::Preview } else { RunKind::Apply },
-        },
-    ))
+        make_req(if preview {
+            RunKind::Preview
+        } else {
+            RunKind::Apply
+        }),
+    );
+    if preview && resp.ok {
+        resp.preview_token = Some(token_for_response(registry, &identity, &args, &resp));
+    }
+    to_value(resp)
 }
 
 pub(super) fn describe_component(
@@ -240,4 +303,60 @@ pub(super) fn describe_component(
             component: None,
         }),
     }
+}
+
+fn hook_identity(
+    component_id: &str,
+    hook: &str,
+    locator: &Option<serde_json::Value>,
+    instance: &Option<serde_json::Value>,
+    operation: &Option<String>,
+) -> serde_json::Value {
+    serde_json::json!({
+        "kind": "componentHook",
+        "componentId": component_id,
+        "hook": hook,
+        "locator": locator,
+        "instance": instance,
+        "operation": operation,
+    })
+}
+
+fn validate_hook_token(
+    registry: &RecipeRegistry,
+    identity: &serde_json::Value,
+    args: &BTreeMap<String, serde_json::Value>,
+    dry: &ComponentInvokeResponse,
+    preview_token: &Option<String>,
+) -> Result<(), String> {
+    let provided = preview_token.as_deref().unwrap_or("");
+    let paths = snapshot_paths_from_files(registry, dry.files.as_deref());
+    let path_refs: Vec<&Path> = paths.iter().map(|p| p.as_path()).collect();
+    validate_preview_token(None, Some(identity), args, provided, &path_refs)
+}
+
+fn token_for_response(
+    registry: &RecipeRegistry,
+    identity: &serde_json::Value,
+    args: &BTreeMap<String, serde_json::Value>,
+    resp: &ComponentInvokeResponse,
+) -> String {
+    let paths = snapshot_paths_from_files(registry, resp.files.as_deref());
+    let path_refs: Vec<&Path> = paths.iter().map(|p| p.as_path()).collect();
+    compute_preview_token(None, Some(identity), args, &path_refs)
+}
+
+fn snapshot_paths_from_files(
+    registry: &RecipeRegistry,
+    files: Option<&[FilePreview]>,
+) -> Vec<PathBuf> {
+    let Some(files) = files else {
+        return Vec::new();
+    };
+    let sandbox = PathSandbox::new(registry.workspace_root.clone());
+    files
+        .iter()
+        .filter(|f| !f.skipped)
+        .filter_map(|f| sandbox.resolve_workspace_relative(&f.path).ok())
+        .collect()
 }

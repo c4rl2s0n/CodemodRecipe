@@ -372,6 +372,8 @@ export interface ComponentInvokeResponse {
   /** c:log details — top-level for MCP agents (scan has no logs). */
   logs?: string[];
   applied?: string[];
+  /** Present on successful dry-run; required for apply. */
+  previewToken?: string;
 }
 
 export interface ApplyResponse {
@@ -508,6 +510,8 @@ export type HostCommand =
       instance?: unknown;
       operation?: string;
       args?: ArgValues;
+      /** Required when preview is false (apply). */
+      previewToken?: string;
     }
   | {
       command: 'describeComponent';
@@ -518,6 +522,8 @@ export type HostCommand =
       operation: string;
       preview?: boolean;
       args?: ArgValues;
+      /** Required when preview is false (apply). */
+      previewToken?: string;
     }
   | {
       command: 'runTests';

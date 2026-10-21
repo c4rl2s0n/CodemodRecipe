@@ -9,7 +9,7 @@ import { RecipeRunnerState } from './recipeRunnerState';
 import {
   handleWebviewMessage,
   type RecipeRunnerHandlerHost,
-} from './recipeRunnerHandlers';
+} from './recipeRunner';
 
 const recipe: RecipeSchema = {
   id: 'r1',

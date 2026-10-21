@@ -114,6 +114,9 @@ pub struct ComponentInvokeResponse {
     pub logs: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub applied: Option<Vec<String>>,
+    /// Present on successful dry-run (`preview`); required for apply.
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub preview_token: Option<String>,
 }
 
 impl ComponentInvokeResponse {
@@ -128,6 +131,7 @@ impl ComponentInvokeResponse {
             transcript: None,
             logs: None,
             applied: None,
+            preview_token: None,
         }
     }
 

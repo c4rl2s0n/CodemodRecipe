@@ -24,7 +24,7 @@ pub(crate) fn do_insert() {}
 )]
 pub(crate) fn do_log() {}
 ]],
-		["rust/crates/host/src/lua_runtime.rs"] = [[
+		["rust/crates/host/src/host_api/lua_runtime.rs"] = [[
 // no host methods
 ]],
 		["rust/crates/host/src/component/delegate/mod.rs"] = [[

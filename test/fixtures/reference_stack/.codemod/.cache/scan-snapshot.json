@@ -1,17 +1,48 @@
 {
-  "edges": [
-    {
-      "from": "example.store/recipe",
-      "kind": "stores",
-      "sources": [
-        {
-          "path": "src/stores/recipe_store.dart"
-        }
-      ],
-      "to": "example.entity/recipe"
+  "meta": {
+    "version": 1,
+    "timestamp": 1792583118,
+    "stack": "reference-stack"
+  },
+  "relations": {
+    "aggregate": {
+      "architectureConnected": 2,
+      "architectureEligible": 2,
+      "architectureIsolated": 0,
+      "edgeCount": 1,
+      "instanceCount": 2,
+      "isolated": 0,
+      "membershipConnected": 0,
+      "ratios": {
+        "architectureConnected": 1.0,
+        "connected": 1.0
+      },
+      "relationIgnored": 0
+    },
+    "byComponent": [
+      {
+        "architectureConnected": 1,
+        "architectureEligible": 1,
+        "architectureIsolated": 0,
+        "componentId": "example.entity",
+        "instanceCount": 1,
+        "membershipOnly": 0,
+        "relationIgnored": 0
+      },
+      {
+        "architectureConnected": 1,
+        "architectureEligible": 1,
+        "architectureIsolated": 0,
+        "componentId": "example.store",
+        "instanceCount": 1,
+        "membershipOnly": 0,
+        "relationIgnored": 0
+      }
+    ],
+    "byKind": {
+      "stores": 1
     }
-  ],
-  "findings": [],
+  },
   "instances": [
     {
       "ast": {
@@ -64,6 +95,18 @@
       }
     }
   ],
+  "edges": [
+    {
+      "from": "example.store/recipe",
+      "kind": "stores",
+      "sources": [
+        {
+          "path": "src/stores/recipe_store.dart"
+        }
+      ],
+      "to": "example.entity/recipe"
+    }
+  ],
   "kindGraph": [
     {
       "count": 1,
@@ -72,45 +115,5 @@
       "to": "example.entity"
     }
   ],
-  "meta": {
-    "stack": "reference-stack",
-    "timestamp": 1790777892,
-    "version": 1
-  },
-  "relations": {
-    "aggregate": {
-      "architectureConnected": 2,
-      "architectureIsolated": 0,
-      "edgeCount": 1,
-      "instanceCount": 2,
-      "isolated": 0,
-      "membershipConnected": 0,
-      "ratios": {
-        "architectureConnected": 1.0,
-        "connected": 1.0
-      },
-      "relationIgnored": 0
-    },
-    "byComponent": [
-      {
-        "architectureConnected": 1,
-        "architectureIsolated": 0,
-        "componentId": "example.entity",
-        "instanceCount": 1,
-        "membershipOnly": 0,
-        "relationIgnored": 0
-      },
-      {
-        "architectureConnected": 1,
-        "architectureIsolated": 0,
-        "componentId": "example.store",
-        "instanceCount": 1,
-        "membershipOnly": 0,
-        "relationIgnored": 0
-      }
-    ],
-    "byKind": {
-      "stores": 1
-    }
-  }
+  "findings": []
 }

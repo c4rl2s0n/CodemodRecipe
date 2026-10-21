@@ -96,6 +96,7 @@
 
 - [Components and stacks](usage/05_components_and_stacks/00_index.md)
   - [Components (platform layer)](usage/05_components_and_stacks/01_components/00_index.md)
+    - [Author a component (minimum path)](usage/05_components_and_stacks/01_components/00_author_a_component.md)
     - [Module shape](usage/05_components_and_stacks/01_components/01_module_shape.md)
     - [Hooks](usage/05_components_and_stacks/01_components/02_hooks.md)
     - [Parse tree](usage/05_components_and_stacks/01_components/03_parse_tree.md)

@@ -341,6 +341,7 @@ fn dry_run_relate_and_verify_trigger_scan_when_uncached() {
             instance: Some(instance.clone()),
             operation: None,
             args: BTreeMap::new(),
+                    preview_token: None,
         },
     );
     assert_eq!(relate["ok"], true, "relate dry-run failed: {relate}");
@@ -363,6 +364,7 @@ fn dry_run_relate_and_verify_trigger_scan_when_uncached() {
             instance: Some(instance),
             operation: None,
             args: BTreeMap::new(),
+                    preview_token: None,
         },
     );
     assert_eq!(verify["ok"], true, "verify dry-run failed: {verify}");
@@ -542,6 +544,7 @@ fn scaffold_receives_graph_as_third_arg() {
             instance: None,
             operation: None,
             args: BTreeMap::new(),
+                    preview_token: None,
         },
     );
     assert_eq!(preview["ok"], true, "scaffold dry-run failed: {preview}");

@@ -207,6 +207,14 @@ Shipped (D-029):
 
 **Rejected:** auto-appending stack `codebase` `!` excludes to `c:listFiles`. `codebase` is the coverage universe only; identify/listFiles take caller globs (composers mirror excludes in identify when needed). Both still share `resolve_globs` semantics.
 
+### Pre-extension cleanup (D-030)
+
+Before extending the framework further:
+
+- **Agent honesty:** one MCP skill path (`.agents` playbook + usage docs); Cursor `codemod-mcp` is a thin pointer; mutating component/stack MCP tools require `previewToken` like recipes; `inlineRecipe` schema is a string.
+- **Domain honesty:** `hostZoneForPath` maps sandbox/config/template/explorer; legacy `rust.runtime` catalog entry removed; `preview` lives under `edit_session`, `lua_runtime` under `host_api`; protocol DTOs split (`command.rs` / `responses.rs`).
+- Still deferred: HostInner facet Phase 2, crate extraction, HostCommand TS/MCP codegen.
+
 ### Path-module graph + product tests (K–M)
 
 Path inventories (`repo.ts_module`, `repo.rust_mod_file`) stay architecture-eligible:
