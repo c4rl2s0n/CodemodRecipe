@@ -4,6 +4,7 @@ mod full;
 mod graph_phases;
 mod identify;
 mod incremental;
+mod summary;
 mod types;
 
 pub use full::{component_scan, component_scan_inner};

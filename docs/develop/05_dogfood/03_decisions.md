@@ -181,6 +181,32 @@ for bootstrap/IDE. Copies are deploy artifacts — never hand-edit.
 without `SharedHost` / `WorkingTree` / protocol. Keep as `domain.components` modules
 inside host until a thin facade API exists. Revisit when criterion 2 holds.
 
+### HostInner facet sketch (toward D-025 F criterion 2)
+
+`SharedHost = Rc<Mutex<HostInner>>` ([`host_api/context.rs`](../../../rust/crates/host/src/host_api/context.rs))
+is the remaining concentration smell. **Do not extract a crate yet.** Facet
+**views** live in [`host_api/facets.rs`](../../../rust/crates/host/src/host_api/facets.rs)
+(same mutex; narrower call-site access):
+
+| Facet | Owns (from HostInner) | Status |
+|-------|------------------------|--------|
+| `RecipeSession` | `kind`, `tree`, `sandbox`, args/maps/vars/queries/recipes, transcript, … | types ready; handlers not migrated yet |
+| `ComponentSession` | `components`, `component_stack`, graph JSON, `codemod_root` | **Phase 1:** delegate stack + graph snapshot paths use it |
+| `QueryIntel` | `language_registry`, `ast_cache` | types ready; query paths not migrated yet |
+
+Extraction ADR only after a facet is testable without MCP/VS Code.
+
+### Framework dogfood backlog (Track C2)
+
+Shipped (D-029):
+
+- `summary.productSpanRatio` — product-only span (excludes `**/tests/**`, `*.test.*`, …)
+- `composer.identify_path_conflict` when two stack roots identify the same path
+- CLI one-shot: `codemod_mcp --scan-summary` prints compact scan summary JSON
+- Leaf-wipe audit: `repo.rust_mod_file`, `repo.vscode_manifest`, `repo.ts_test`, `lib/rust_test_children` keep partial children on `pcall` failure
+
+**Rejected:** auto-appending stack `codebase` `!` excludes to `c:listFiles`. `codebase` is the coverage universe only; identify/listFiles take caller globs (composers mirror excludes in identify when needed). Both still share `resolve_globs` semantics.
+
 ### Path-module graph + product tests (K–M)
 
 Path inventories (`repo.ts_module`, `repo.rust_mod_file`) stay architecture-eligible:

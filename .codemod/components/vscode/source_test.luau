@@ -55,7 +55,8 @@ end
 
 local function parseChildren(c, path, parent)
 	local children = {}
-	local ok = pcall(function()
+	-- Best-effort; keep partial children on failure (D-029).
+	pcall(function()
 		local function addCalls(queryId, kind)
 			local calls = c:query({
 				path = path,
@@ -111,9 +112,6 @@ local function parseChildren(c, path, parent)
 			end
 		end
 	end)
-	if not ok then
-		return {}
-	end
 	return children
 end
 

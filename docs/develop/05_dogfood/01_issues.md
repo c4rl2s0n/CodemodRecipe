@@ -60,6 +60,15 @@ Status: `open` / `in-progress` / `fixed` / `wontfix(decision documented)`.
 |----|----------|------|-------|--------|
 | D-025 | decision | architecture | Module-first domain restructure: vocabulary, `edit_session` rename, `domain.*` zones, mega-file splits, D-016/D-018, VS Code grain. Extraction deferred. See [03_decisions.md](03_decisions.md#domain-restructure-d-025). | fixed |
 
+## 2026-10-20 — Architecture review + framework C1
+
+| ID | Severity | Area | Issue | Status |
+|----|----------|------|-------|--------|
+| D-026 | bug | protocol | `generateAstPath` HostCommand was a dispatch stub (“not supported v1”) with no B/M surface — zombie graph node. **Retired** from Rust enum, dispatch, TS union, INTERNAL allowlist. | fixed |
+| D-027 | gap | host / scan | Empty `identify()` on stack roots was silent (0 instances, 0 findings) — e.g. dead `host_api_method` after handlers grain split. Emit `composer.identify_empty` (always; empty locators need investigation). Compact `component_scan.summary` for agents. | fixed |
+| D-028 | note | architecture | HostInner facet sketch documented; Phase 1 code in `host_api/facets.rs` — `ComponentSession` used by delegate stack + graph snapshot. Recipe/Query facets typed but not fully migrated. Crate extraction still deferred. | fixed (partial — Phase 1) |
+| D-029 | gap | host / scan | Framework Track C2: `composer.identify_path_conflict`; `summary.productSpanRatio`; `codemod_mcp --scan-summary`; leaf-wipe audit. Tried auto-merging `codebase` `!` into `listFiles` — **reverted** (`listFiles` stays caller-only; `codebase` is coverage-only). | fixed |
+
 ## Template for new entries
 
 Append to the current date section (or start a new one):

@@ -206,9 +206,12 @@ pub(crate) fn set_host_graph_snapshot(
     let flat = crate::component::relations::flatten_instances(instances);
     let flat_json: Vec<serde_json::Value> = flat.iter().map(|f| f.to_json()).collect();
     let edges_json = serde_json::to_value(edges).map_err(|e| e.to_string())?;
-    let mut inner = host.lock().map_err(|e| e.to_string())?;
-    inner.graph_flat_json = Some(serde_json::Value::Array(flat_json));
-    inner.graph_edges_json = Some(edges_json);
-    Ok(())
+    crate::host_api::facets::ComponentSession::with_host(host, |mut session| {
+        session.set_graph_json(
+            serde_json::Value::Array(flat_json),
+            edges_json,
+        );
+        Ok(())
+    })
 }
 

@@ -34,7 +34,8 @@ return {
 			path = path,
 		}
 		local children = {}
-		local ok = pcall(function()
+		-- Best-effort child paint; keep partial results on failure (D-029).
+		pcall(function()
 			-- Top-level fields (skip contributes — handled as sections below).
 			local keys = c:query({
 				path = path,
@@ -107,9 +108,6 @@ return {
 				end
 			end
 		end)
-		if not ok then
-			children = {}
-		end
 
 		local span = nil
 		local rok, src = pcall(function()

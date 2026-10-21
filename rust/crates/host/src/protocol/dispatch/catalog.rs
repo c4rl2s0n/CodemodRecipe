@@ -1,7 +1,7 @@
 //! Catalog / bootstrap / validate HostCommand handlers.
 
 use crate::protocol::dispatch::common::{catalog_response, error_json, to_value};
-use crate::protocol::{AstPathResult, DescribeResponse};
+use crate::protocol::DescribeResponse;
 use crate::recipe::registry::RecipeRegistry;
 use crate::recipe::validate::{validate_recipe, validate_workspace};
 
@@ -35,15 +35,6 @@ pub(super) fn describe(registry: &RecipeRegistry, recipe: String) -> serde_json:
             recipe: None,
         }),
     }
-}
-
-pub(super) fn generate_ast_path(path: String, offset: u64) -> serde_json::Value {
-    to_value(AstPathResult {
-        ok: false,
-        error: Some(format!(
-            "generateAstPath is not supported by the Rust host (v1) (path={path}, offset={offset})"
-        )),
-    })
 }
 
 pub(super) fn bootstrap(

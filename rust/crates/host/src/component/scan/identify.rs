@@ -25,7 +25,23 @@ pub(crate) fn scan_component(
     let lua = codemod_recipe_lua::new_sandbox_with_require(&ctx.codemod_root)
         .map_err(|e| e.to_string())?;
     let locators = collect_identify_locators(&lua, ctx, component, Rc::clone(&host))?;
-    scan_component_contexts(&lua, ctx, component, Rc::clone(&host), locators)
+    let mut empty_findings = Vec::new();
+    if locators.is_empty() {
+        empty_findings.push(ComponentFinding {
+            severity: "error".to_string(),
+            code: "composer.identify_empty".to_string(),
+            message: format!(
+                "stack component '{}' identify() returned no locators — path drift or missing sources?",
+                component.id
+            ),
+            instance_id: None,
+            locator: None,
+        });
+    }
+    let (instances, mut findings) =
+        scan_component_contexts(&lua, ctx, component, Rc::clone(&host), locators)?;
+    empty_findings.append(&mut findings);
+    Ok((instances, empty_findings))
 }
 
 /// Re-run identify for a root component (used by incremental detectChanges).

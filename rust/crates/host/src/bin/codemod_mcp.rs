@@ -40,6 +40,17 @@ fn main() -> anyhow::Result<()> {
         codemod_recipe_engine::LanguageRegistry::with_config(config.language_registry_config());
     registry.reload();
 
+    // One-shot CLI: print component_scan.summary JSON and exit (D-029).
+    if std::env::args().any(|a| a == "--scan-summary") {
+        let scan = handle_command(&mut registry, HostCommand::ComponentScan);
+        let summary = scan
+            .get("summary")
+            .cloned()
+            .unwrap_or_else(|| json!({ "ok": scan.get("ok"), "error": scan.get("error") }));
+        println!("{}", serde_json::to_string_pretty(&summary)?);
+        return Ok(());
+    }
+
     let stdin = io::stdin();
     let mut stdout = io::stdout();
 

@@ -184,38 +184,21 @@ return {
 			)
 		end,
 
-		-- allowlisted internal variants stay silent even with surfaces modeled
-		verify_skips_allowlisted_internal_commands = function(t)
+		-- bridge-sent commands are not no_surface (INTERNAL allowlist retired with generateAstPath)
+		verify_skips_when_bridge_sends_command = function(t)
 			local ws = t:workspace({
 				files = {
-					[MOD_RS] = [[
-#[derive(Debug, Deserialize)]
-#[serde(tag = "command")]
-pub enum HostCommand {
-    #[serde(rename = "list")]
-    List,
-    #[serde(rename = "generateAstPath")]
-    GenerateAstPath { symbol: String },
-}
-]],
-					[DISPATCH_RS] = [[
-pub fn handle_command(cmd: HostCommand) {
-    match cmd {
-        HostCommand::List => list(),
-        HostCommand::GenerateAstPath { symbol } => generate(symbol),
-    }
-}
-]],
-					[TYPES_TS] = [[
-export type HostCommand =
-  | { command: 'list' }
-  | { command: 'generateAstPath'; symbol: string };
-]],
+					[MOD_RS] = modRs(),
+					[DISPATCH_RS] = dispatchRs(),
+					[TYPES_TS] = typesTs(),
 					[BRIDGE_TS] = bridgeTsSendingList(),
 				},
 			})
 			local scan = ws:scan()
-			t:assertEq(#protocolFindings(scan.findings), 0)
+			local codesList = codes(protocolFindings(scan.findings))
+			for _, c in ipairs(codesList) do
+				t:assert(not c:find("host_command/list", 1, true), "list should have a surface: " .. c)
+			end
 		end,
 	},
 }

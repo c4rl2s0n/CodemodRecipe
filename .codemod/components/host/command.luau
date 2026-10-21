@@ -1,7 +1,6 @@
 -- Variants reachable without an extension/MCP surface in this repo, with the reason.
-local INTERNAL = {
-	GenerateAstPath = "stdio/LSP clients outside this repo",
-}
+-- Keep empty unless a HostCommand is intentionally host-internal / out-of-repo only.
+local INTERNAL = {}
 
 local createCommand = require("../../lib/create_command")
 

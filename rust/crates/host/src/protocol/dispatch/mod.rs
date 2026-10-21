@@ -17,7 +17,6 @@ pub fn handle_command(registry: &mut RecipeRegistry, cmd: HostCommand) -> serde_
         HostCommand::List => catalog::list(registry),
         HostCommand::Validate { recipe } => catalog::validate(registry, recipe),
         HostCommand::Describe { recipe } => catalog::describe(registry, recipe),
-        HostCommand::GenerateAstPath { path, offset } => catalog::generate_ast_path(path, offset),
         HostCommand::Bootstrap {
             force,
             edit_policy,

@@ -133,6 +133,44 @@ flowchart TB
   (`lives_in` → opaque-string subgraphs in instance mermaid; multi-parent/cycle
   → `relation.multi_membership` / `relation.membership_cycle`).
 
+### Adapter matrix policy (H / B / M / V)
+
+Every `HostCommand` must have dispatch **handles** (H). Other adapters are
+**policy**, not “must be 100%”:
+
+| Letter | Edge | Meaning |
+|--------|------|---------|
+| H | `handles` | Dispatch arm — required for every variant |
+| B | `sends` | `hostBridge` method sends this command |
+| M | `exposes` | MCP tool exposes this command |
+| V | `invokes` | VS Code `registerCommand(COMMANDS.x, …)` one-hop to a bridge method |
+
+**Intentional asymmetry (do not “fix” by stuffing adapters):**
+
+- **No M** — VS Code / scaffold / explorer-only: e.g. `bootstrap`, `diff`,
+  `deriveArgs`, `reload`, `filterExplorerRecipes`, `componentScaffold`,
+  `componentInvokeOperation`, `queryCaptures`.
+- **No B** — MCP/intel-oriented (no hostBridge wrapper): e.g.
+  `componentGraph`, `componentListInstances`, `componentSnapshot`.
+- **V under-counts UI** — many COMMANDS are multi-hop (`invoke` →
+  `recipeInvoke` → bridge). Graph `invokes` is **one-hop only**. UI commands may
+  only `presents` a zone; HostCommand coverage is judged via **B/M**, not V.
+  Do not treat missing V as a product smell unless the handler literally never
+  reaches the host.
+
+**Smell:** a HostCommand with **neither B nor M** and no documented INTERNAL
+reason (retired stub). Example fixed: `generateAstPath` (unsupported v1 stub)
+was removed from the SSOT rather than leave a zombie node.
+
+**Overlapping host_api composers (roles, not duplicates):**
+
+| Composer | Role |
+|----------|------|
+| `repo.host_api_handlers` | Domain modules under `host_api/handlers/` |
+| `repo.host_api_method` | `c:` inventory ↔ stub ↔ TS surface verify |
+| `repo.host_module` | Span deepen for host `src` modules (incl. `lua_runtime`) |
+| `repo.lua_host_api_specs` | Lua capability grain under `lua/src/host_api/specs/` |
+
 ## Assets and packaging
 
 - `{codemod_root}/` — recipes, maps, variables, queries, types, components,
@@ -154,7 +192,8 @@ flowchart TB
 | D-004 MCP triple | One HostCommand-derived adapter | `protocol/mcp_inventory.rs` SSOT for tools/list; call arms in `codemod_mcp.rs` | `repo.mcp_tool` |
 | Protocol TS mirror | Generated or derived from Rust | Hand-maintained union | `repo.host_protocol` (sync guard until codegen) |
 | Dual domain types | Shared shapes in `core`; lua FromLua adapters + `From` | **Done** — `core::QuerySpec`; engine re-exports; lua adapters | `repo.domain_type` (owner vs lua_adapter) |
-| Host concentration | Thin integrator over clear **domain modules** | Domain table above; `edit_session` rename; mega-file splits | D-017 / D-025 |
+| Host concentration | Thin integrator over clear **domain modules** | Domain table above; `edit_session` rename; mega-file splits; HostInner **facet sketch** ([decisions](03_decisions.md#hostinner-facet-sketch-toward-d-025-f-criterion-2)) | D-017 / D-025 |
+| Zombie HostCommand | Every variant has H + (B or M or documented INTERNAL) | Retired unsupported `generateAstPath` stub | `repo.host_command` / D-026 |
 | Placement / inventory | Architecture zones own modules (incl. `domain.*`) | D-020 + D-025 zone split | `repo.zone` + relate |
 | Stub fan-out | One generated surface | Generate once; sync copies | fixed (D-018 / D-025 E) |
 | Crate DAG | Allowed path deps only | Must match table above | `repo.rust_crate` |

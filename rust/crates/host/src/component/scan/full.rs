@@ -43,9 +43,11 @@ pub(super) fn scan_error_with_diagnostics(registry: &RecipeRegistry, message: &s
 }
 
 pub(super) fn scan_response(registry: &RecipeRegistry, data: &ScanData) -> ComponentScanResponse {
+    let summary = crate::component::scan::summary::build_scan_summary(registry, data);
     ComponentScanResponse {
         ok: true,
         error: None,
+        summary: Some(summary),
         instances: Some(data.instances.clone()),
         findings: Some(data.all_findings()),
         edges: Some(data.edges.clone()),
@@ -59,25 +61,21 @@ pub(super) fn scan_response(registry: &RecipeRegistry, data: &ScanData) -> Compo
 }
 
 pub(super) fn cached_response(registry: &RecipeRegistry, cache: &ComponentScanCache) -> ComponentScanResponse {
-    ComponentScanResponse {
-        ok: true,
-        error: None,
-        instances: Some(cache.instances.clone()),
-        findings: Some(cache.all_findings()),
-        edges: Some(cache.edges.clone()),
-        kind_graph: Some(cache.kind_graph.clone()),
-        diagnostics: if registry.diagnostics().is_empty() {
-            None
-        } else {
-            Some(registry.diagnostics().to_vec())
-        },
-    }
+    let data = ScanData {
+        instances: cache.instances.clone(),
+        parse_findings: cache.parse_findings.clone(),
+        judgment_findings: cache.judgment_findings.clone(),
+        edges: cache.edges.clone(),
+        kind_graph: cache.kind_graph.clone(),
+    };
+    scan_response(registry, &data)
 }
 
 pub(super) fn scan_error(message: &str) -> ComponentScanResponse {
     ComponentScanResponse {
         ok: false,
         error: Some(message.to_string()),
+        summary: None,
         instances: None,
         findings: None,
         edges: None,
@@ -95,11 +93,34 @@ pub(super) fn run_full_scan(registry: &RecipeRegistry) -> Result<ScanData, Strin
     };
     let ctx = ComponentRunContext::from_registry(registry, RunKind::Preview);
     let mut data = ScanData::default();
+    // path → first stack root component id that identified it (detect dual roots).
+    let mut path_owners: std::collections::BTreeMap<String, String> =
+        std::collections::BTreeMap::new();
     for component_id in &stack.components {
         let Some(component) = registry.get_component(component_id) else {
             continue;
         };
         let (mut found, mut component_findings) = scan_component(&ctx, component)?;
+        for inst in &found {
+            if let Some(path) = crate::component::types::context_path(&inst.locator) {
+                if let Some(prev) = path_owners.insert(path.to_string(), component.id.clone()) {
+                    if prev != component.id {
+                        data.parse_findings.push(
+                            crate::component::types::ComponentFinding {
+                                severity: "error".to_string(),
+                                code: "composer.identify_path_conflict".to_string(),
+                                message: format!(
+                                    "path '{path}' identified by both '{prev}' and '{}' — dual root composers",
+                                    component.id
+                                ),
+                                instance_id: Some(inst.id.clone()),
+                                locator: Some(inst.locator.clone()),
+                            },
+                        );
+                    }
+                }
+            }
+        }
         data.instances.append(&mut found);
         data.parse_findings.append(&mut component_findings);
     }

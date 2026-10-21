@@ -70,12 +70,12 @@ pub fn tool_metas() -> &'static [McpToolMeta] {
         },
         McpToolMeta {
             name: "component_scan",
-            description: "Scan stack root components: identify \u{2192} parse \u{2192} relate \u{2192} verify, and optional toSummary for each instance. Returns instances, findings, relation edges, and the kindGraph roll-up.",
+            description: "Scan stack root components: identify \u{2192} parse \u{2192} relate \u{2192} verify, and optional toSummary for each instance. Returns summary (architecture ratio, dead composers, top product gaps, finding counts) plus instances, findings, relation edges, and kindGraph. Prefer reading summary first.",
             host_command: Some("ComponentScan"),
         },
         McpToolMeta {
             name: "list_component_instances",
-            description: "Alias of component_scan \u{2014} returns instances, findings, and summaries.",
+            description: "Alias of component_scan \u{2014} returns instances, findings, and summary.",
             host_command: Some("ComponentListInstances"),
         },
         McpToolMeta {

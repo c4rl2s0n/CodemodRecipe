@@ -455,7 +455,6 @@ export type HostCommand =
       instrument?: boolean;
       includeSexp?: boolean;
     }
-  | { command: 'generateAstPath'; path: string; offset: number }
   | {
       command: 'generateQuery';
       path?: string;

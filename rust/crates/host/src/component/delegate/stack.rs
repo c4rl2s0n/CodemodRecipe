@@ -1,20 +1,15 @@
 //! Component call-stack cycle guard for nested `c:component` delegates.
 
 use crate::host_api::context::SharedHost;
+use crate::host_api::facets::ComponentSession;
 
 pub(super) fn push_component(host: &SharedHost, id: &str) -> Result<(), String> {
-    let mut inner = host.lock().map_err(|e| e.to_string())?;
-    if inner.component_stack.iter().any(|c| c == id) {
-        return Err(format!("component cycle detected: {id}"));
-    }
-    inner.component_stack.push(id.to_string());
-    Ok(())
+    ComponentSession::with_host(host, |mut session| session.push_component(id))
 }
 
 pub(super) fn pop_stack(host: &SharedHost, id: &str) {
-    if let Ok(mut inner) = host.lock() {
-        if inner.component_stack.last().map(|s| s.as_str()) == Some(id) {
-            inner.component_stack.pop();
-        }
-    }
+    let _ = ComponentSession::with_host(host, |mut session| {
+        session.pop_component(id);
+        Ok(())
+    });
 }

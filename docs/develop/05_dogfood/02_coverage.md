@@ -213,3 +213,6 @@ vscode_language_context / vscode_ext_bootstrap (extension domain grain)
 | 2026-10-20 | Phase U deepen+arch | `lua_load_module`/`lua_host_api_specs`/`engine`/`support` all_functions; zone catalog ignored in arch ratio; crate `uses`; codebase `!*.d.ts`/`!*.config.ts`; language-context barrel; `ts_test` import fallback; span ~90.0% / arch ~98.7% (`466/472`) |
 | 2026-10-20 | Phase V adapters+TS | Root `defines`→entries; mcp direct `lives_in` parent; bootstrap→App.vue; `ts_module` fn/method deepen; span ~91.1% / arch **100%** (`524/524`) |
 | 2026-10-20 | Phase W span chase | Restore `host_api_method` globs after handlers split; `lua_runtime` in `host_module`; TS `import_statements` + Rust `attribute_items`; span ~93.9% / arch **100%** (`526/526`) |
+| 2026-10-20 | Arch + framework C1 | Retire `generateAstPath`; `composer.identify_empty` + scan `summary`; triangle H/B/M/V + HostInner facet docs; graph doc → cache SSOT |
+| 2026-10-21 | C1 opt-out + C2 | Drop `allowEmptyIdentify`; HostInner `ComponentSession` Phase 1; C2: path-conflict, `productSpanRatio`, `--scan-summary`, leaf-wipe fix |
+| 2026-10-21 | Revert listFiles∩codebase | Drop `glob_excludes` merge; `listFiles` caller-only again; `codebase` coverage-only |

@@ -44,7 +44,8 @@ return {
 		}
 		local children = {}
 		local modNames = {}
-		local ok = pcall(function()
+		-- Best-effort child paint; keep partial results on failure (D-029).
+		pcall(function()
 			local names = c:query({
 				path = path,
 				language = "rust",
@@ -131,10 +132,6 @@ return {
 				end
 			end
 		end)
-		if not ok then
-			children = {}
-			modNames = {}
-		end
 		-- crate::foo first segment for uses edges (text scan; stable enough for codegen anchors)
 		local crateUses = {}
 		local srcOk, src = pcall(function()

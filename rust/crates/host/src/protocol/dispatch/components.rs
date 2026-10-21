@@ -66,6 +66,7 @@ pub(super) fn list_instances(registry: &mut RecipeRegistry) -> serde_json::Value
     to_value(serde_json::json!({
         "ok": scan.ok,
         "error": scan.error,
+        "summary": scan.summary,
         "instances": scan.instances,
         "findings": scan.findings,
         "diagnostics": scan.diagnostics,

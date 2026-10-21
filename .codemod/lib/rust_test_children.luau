@@ -11,7 +11,8 @@ end
 function M.parseChildren(c, path, parent, outerSpan)
 	local children = {}
 	local testSpans = {}
-	local ok = pcall(function()
+	-- Best-effort; keep partial children on failure (D-029).
+	pcall(function()
 		local testNames = c:query({
 			path = path,
 			language = "rust",
@@ -84,9 +85,6 @@ function M.parseChildren(c, path, parent, outerSpan)
 			end
 		end
 	end)
-	if not ok then
-		return {}
-	end
 	return children
 end
 

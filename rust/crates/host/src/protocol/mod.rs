@@ -53,8 +53,6 @@ pub enum HostCommand {
         args: std::collections::BTreeMap<String, serde_json::Value>,
         path: String,
     },
-    #[serde(rename = "generateAstPath")]
-    GenerateAstPath { path: String, offset: u64 },
     #[serde(rename = "bootstrap")]
     Bootstrap {
         #[serde(default)]
@@ -636,13 +634,6 @@ pub struct ValidateResponse {
     pub error: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub diagnostics: Option<Vec<RecipeDiagnostic>>,
-}
-
-#[derive(Debug, Serialize, Clone)]
-pub struct AstPathResult {
-    pub ok: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub error: Option<String>,
 }
 
 #[derive(Debug, Serialize, Clone)]
