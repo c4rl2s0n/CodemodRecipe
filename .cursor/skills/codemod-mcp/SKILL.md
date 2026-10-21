@@ -19,7 +19,7 @@ description: >-
 
 - General codebase exploration → use **codebase-memory** first
 - Text-only search/replace with no AST targeting → edit files directly
-- Full-file diffs → MCP exposes preview snippets; host `diff` is VS Code–oriented
+- Interactive full-file review UI → VS Code recipe runner; agents use `preview_recipe` / `diff_recipe` for hunk JSON
 
 ## Instructions
 
