@@ -9,7 +9,8 @@ use codemod_recipe_lua_macros::host_method;
 use mlua::{Lua, Table, Value};
 use serde_json::json;
 
-use crate::host_api::context::{bump_ops, SharedHost};
+use crate::host_api::context::SharedHost;
+use crate::host_api::facets::RecipeSession;
 use super::helpers::{count_lines, string_map_to_table, trunc_text};
 
 #[host_method(
@@ -19,23 +20,23 @@ use super::helpers::{count_lines, string_map_to_table, trunc_text};
     return_type = Nil,
 )]
 pub(crate) fn do_create(host: &SharedHost, _lua: &Lua, spec: CreateSpec) -> Result<Value, String> {
-    let mut inner = host.lock().map_err(|e| e.to_string())?;
-    bump_ops(&mut inner)?;
-    let content = spec.content.or(spec.template).unwrap_or_default();
-    let if_exists: IfExists = spec.if_exists.unwrap_or_default().into();
-    let path = spec.path;
-    let payload = json!({
-        "content": trunc_text(&content),
-    });
-    let stats = TranscriptStats {
-        added_lines: Some(count_lines(&content)),
-        removed_lines: None,
-    };
-    inner.create(&path, content, if_exists)?;
-    inner
-        .transcript
-        .push(TranscriptEvent::edit("create", path, stats, payload));
-    Ok(Value::Nil)
+    RecipeSession::with_host(host, |mut s| {
+        s.bump_ops()?;
+        let content = spec.content.or(spec.template).unwrap_or_default();
+        let if_exists: IfExists = spec.if_exists.unwrap_or_default().into();
+        let path = spec.path;
+        let payload = json!({
+            "content": trunc_text(&content),
+        });
+        let stats = TranscriptStats {
+            added_lines: Some(count_lines(&content)),
+            removed_lines: None,
+        };
+        s.create(&path, content, if_exists)?;
+        s.transcript()
+            .push(TranscriptEvent::edit("create", path, stats, payload));
+        Ok(Value::Nil)
+    })
 }
 
 #[host_method(
@@ -45,15 +46,15 @@ pub(crate) fn do_create(host: &SharedHost, _lua: &Lua, spec: CreateSpec) -> Resu
     return_type = Nil,
 )]
 pub(crate) fn do_delete(host: &SharedHost, _lua: &Lua, spec: DeleteSpec) -> Result<Value, String> {
-    let mut inner = host.lock().map_err(|e| e.to_string())?;
-    bump_ops(&mut inner)?;
-    let if_missing: IfMissing = spec.if_missing.unwrap_or_default().into();
-    let path = spec.path;
-    inner.delete(&path, if_missing)?;
-    inner
-        .transcript
-        .push(TranscriptEvent::simple("delete", path));
-    Ok(Value::Nil)
+    RecipeSession::with_host(host, |mut s| {
+        s.bump_ops()?;
+        let if_missing: IfMissing = spec.if_missing.unwrap_or_default().into();
+        let path = spec.path;
+        s.delete(&path, if_missing)?;
+        s.transcript()
+            .push(TranscriptEvent::simple("delete", path));
+        Ok(Value::Nil)
+    })
 }
 
 #[host_method(
@@ -64,21 +65,22 @@ pub(crate) fn do_delete(host: &SharedHost, _lua: &Lua, spec: DeleteSpec) -> Resu
     accept_string = true,
 )]
 pub(crate) fn do_read(host: &SharedHost, lua: &Lua, spec: ReadSpec) -> Result<Value, String> {
-    let mut inner = host.lock().map_err(|e| e.to_string())?;
-    let text = inner.current_content(&spec.path)?;
-    let chars = text.chars().count();
-    let bytes = text.len();
-    inner.transcript.push(TranscriptEvent::with_payload(
-        "read",
-        spec.path.clone(),
-        json!({
-            "chars": chars,
-            "bytes": bytes,
-        }),
-    ));
-    lua.create_string(&text)
-        .map(Value::String)
-        .map_err(|e| e.to_string())
+    RecipeSession::with_host(host, |mut s| {
+        let text = s.current_content(&spec.path)?;
+        let chars = text.chars().count();
+        let bytes = text.len();
+        s.transcript().push(TranscriptEvent::with_payload(
+            "read",
+            spec.path.clone(),
+            json!({
+                "chars": chars,
+                "bytes": bytes,
+            }),
+        ));
+        lua.create_string(&text)
+            .map(Value::String)
+            .map_err(|e| e.to_string())
+    })
 }
 
 #[host_method(
@@ -92,32 +94,33 @@ pub(crate) fn do_span_text(
     lua: &Lua,
     spec: SpanTextSpec,
 ) -> Result<Value, String> {
-    let mut inner = host.lock().map_err(|e| e.to_string())?;
-    let text = inner.current_content(&spec.path)?;
-    let from = spec.span.from as usize;
-    let to = spec.span.to as usize;
-    if from > to || to > text.len() {
-        return Err(format!(
-            "spanText: span [{from}, {to}) out of bounds for {} (len={})",
-            spec.path,
-            text.len()
+    RecipeSession::with_host(host, |mut s| {
+        let text = s.current_content(&spec.path)?;
+        let from = spec.span.from as usize;
+        let to = spec.span.to as usize;
+        if from > to || to > text.len() {
+            return Err(format!(
+                "spanText: span [{from}, {to}) out of bounds for {} (len={})",
+                spec.path,
+                text.len()
+            ));
+        }
+        if !text.is_char_boundary(from) || !text.is_char_boundary(to) {
+            return Err(format!(
+                "spanText: span [{from}, {to}) is not on a UTF-8 char boundary in {}",
+                spec.path
+            ));
+        }
+        let slice = &text[from..to];
+        s.transcript().push(TranscriptEvent::with_payload(
+            "spanText",
+            format!("{}[{from}..{to}]", spec.path),
+            json!({ "chars": slice.chars().count(), "bytes": slice.len() }),
         ));
-    }
-    if !text.is_char_boundary(from) || !text.is_char_boundary(to) {
-        return Err(format!(
-            "spanText: span [{from}, {to}) is not on a UTF-8 char boundary in {}",
-            spec.path
-        ));
-    }
-    let slice = &text[from..to];
-    inner.transcript.push(TranscriptEvent::with_payload(
-        "spanText",
-        format!("{}[{from}..{to}]", spec.path),
-        json!({ "chars": slice.chars().count(), "bytes": slice.len() }),
-    ));
-    lua.create_string(slice)
-        .map(Value::String)
-        .map_err(|e| e.to_string())
+        lua.create_string(slice)
+            .map(Value::String)
+            .map_err(|e| e.to_string())
+    })
 }
 
 #[host_method(
@@ -127,12 +130,13 @@ pub(crate) fn do_span_text(
     return_type = StringMap,
 )]
 pub(crate) fn do_map(host: &SharedHost, lua: &Lua, id: String) -> Result<Value, String> {
-    let inner = host.lock().map_err(|e| e.to_string())?;
-    let map = inner
-        .maps
-        .get(&id)
-        .ok_or_else(|| format!("unknown map '{id}'"))?;
-    string_map_to_table(lua, map)
+    RecipeSession::with_host(host, |s| {
+        let map = s
+            .maps()
+            .get(&id)
+            .ok_or_else(|| format!("unknown map '{id}'"))?;
+        string_map_to_table(lua, map)
+    })
 }
 
 #[host_method(
@@ -142,12 +146,13 @@ pub(crate) fn do_map(host: &SharedHost, lua: &Lua, id: String) -> Result<Value, 
     return_type = StringMap,
 )]
 pub(crate) fn do_var(host: &SharedHost, lua: &Lua, id: String) -> Result<Value, String> {
-    let inner = host.lock().map_err(|e| e.to_string())?;
-    let map = inner
-        .vars
-        .get(&id)
-        .ok_or_else(|| format!("unknown var '{id}'"))?;
-    string_map_to_table(lua, map)
+    RecipeSession::with_host(host, |s| {
+        let map = s
+            .vars()
+            .get(&id)
+            .ok_or_else(|| format!("unknown var '{id}'"))?;
+        string_map_to_table(lua, map)
+    })
 }
 
 #[host_method(
@@ -157,14 +162,15 @@ pub(crate) fn do_var(host: &SharedHost, lua: &Lua, id: String) -> Result<Value, 
     return_type = String,
 )]
 pub(crate) fn do_query_lib(host: &SharedHost, lua: &Lua, id: String) -> Result<Value, String> {
-    let inner = host.lock().map_err(|e| e.to_string())?;
-    let q = inner
-        .queries
-        .get(&id)
-        .ok_or_else(|| format!("unknown query '{id}'"))?;
-    lua.create_string(q)
-        .map(Value::String)
-        .map_err(|e| e.to_string())
+    RecipeSession::with_host(host, |s| {
+        let q = s
+            .queries()
+            .get(&id)
+            .ok_or_else(|| format!("unknown query '{id}'"))?;
+        lua.create_string(q)
+            .map(Value::String)
+            .map_err(|e| e.to_string())
+    })
 }
 
 #[host_method(
@@ -178,16 +184,17 @@ pub(crate) fn do_list_files(
     lua: &Lua,
     spec: ListFilesSpec,
 ) -> Result<Value, String> {
-    let inner = host.lock().map_err(|e| e.to_string())?;
-    let paths = crate::sandbox::workspace_glob::resolve_globs(
-        inner.sandbox.workspace_root(),
-        &spec.patterns,
-    )?;
-    let tbl = lua.create_table().map_err(|e| e.to_string())?;
-    for (i, path) in paths.iter().enumerate() {
-        tbl.set(i + 1, path.as_str()).map_err(|e| e.to_string())?;
-    }
-    Ok(Value::Table(tbl))
+    RecipeSession::with_host(host, |s| {
+        let paths = crate::sandbox::workspace_glob::resolve_globs(
+            s.sandbox().workspace_root(),
+            &spec.patterns,
+        )?;
+        let tbl = lua.create_table().map_err(|e| e.to_string())?;
+        for (i, path) in paths.iter().enumerate() {
+            tbl.set(i + 1, path.as_str()).map_err(|e| e.to_string())?;
+        }
+        Ok(Value::Table(tbl))
+    })
 }
 
 #[host_method(
@@ -201,20 +208,23 @@ pub(crate) fn do_match_files(
     lua: &Lua,
     pattern: String,
 ) -> Result<Value, String> {
-    let inner = host.lock().map_err(|e| e.to_string())?;
-    let rows =
-        crate::sandbox::workspace_glob::match_workspace(inner.sandbox.workspace_root(), &pattern)?;
-    let tbl = lua.create_table().map_err(|e| e.to_string())?;
-    for (i, row) in rows.iter().enumerate() {
-        let entry = lua.create_table().map_err(|e| e.to_string())?;
-        for (k, v) in row {
-            entry
-                .set(k.as_str(), v.as_str())
-                .map_err(|e| e.to_string())?;
+    RecipeSession::with_host(host, |s| {
+        let rows = crate::sandbox::workspace_glob::match_workspace(
+            s.sandbox().workspace_root(),
+            &pattern,
+        )?;
+        let tbl = lua.create_table().map_err(|e| e.to_string())?;
+        for (i, row) in rows.iter().enumerate() {
+            let entry = lua.create_table().map_err(|e| e.to_string())?;
+            for (k, v) in row {
+                entry
+                    .set(k.as_str(), v.as_str())
+                    .map_err(|e| e.to_string())?;
+            }
+            tbl.set(i + 1, entry).map_err(|e| e.to_string())?;
         }
-        tbl.set(i + 1, entry).map_err(|e| e.to_string())?;
-    }
-    Ok(Value::Table(tbl))
+        Ok(Value::Table(tbl))
+    })
 }
 
 #[host_method(
@@ -294,4 +304,3 @@ pub(crate) fn do_assert(
         Err(msg.unwrap_or_else(|| "assertion failed".to_string()))
     }
 }
-

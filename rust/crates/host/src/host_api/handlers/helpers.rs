@@ -8,7 +8,7 @@ use mlua::{Lua, Table, Value};
 use serde_json::json;
 
 use crate::edit_session::post_execution::run_post_execution_command;
-use crate::host_api::context::{bump_ops, SharedHost};
+use crate::host_api::context::SharedHost;
 
 pub(crate) const TRANSCRIPT_TEXT_LIMIT: usize = 4096;
 
@@ -56,54 +56,56 @@ pub(crate) fn expect_match(host: &SharedHost, spec: &QueryTableSpec, want: bool)
 
 pub(crate) fn post_exec_cmd(host: &SharedHost, cmd: &str) -> Result<(), String> {
     use crate::host_api::context::RunKind;
+    use crate::host_api::facets::RecipeSession;
 
-    let mut inner = host.lock().map_err(|e| e.to_string())?;
-    bump_ops(&mut inner)?;
-    inner.saw_post_exec = true;
-    match inner.kind {
-        RunKind::Preview => {
-            inner.transcript.push(TranscriptEvent {
-                kind: "postExec".to_string(),
-                detail: cmd.to_string(),
-                included_in_preview: false,
-                stats: None,
-                payload: Some(json!({ "executed": false })),
-                expandable: true,
-            });
-            Ok(())
-        }
-        RunKind::Apply => {
-            inner.flush_to_disk()?;
-            let workspace = inner.sandbox.workspace_root().to_path_buf();
-            let codemod = inner.codemod_root.clone();
-            let recipe_file = inner.recipe_path.clone();
-            let args = inner.args.clone();
-            let maps = inner.maps.clone();
-            let vars = inner.vars.clone();
-            run_post_execution_command(
-                cmd,
-                &args,
-                &maps,
-                &vars,
-                &workspace,
-                &codemod,
-                recipe_file.as_deref(),
-            )?;
-            let paths = inner.tree.staged_paths();
-            for p in paths {
-                inner.reload_from_disk(&p)?;
+    RecipeSession::with_host(host, |mut s| {
+        s.bump_ops()?;
+        s.set_saw_post_exec(true);
+        match s.kind() {
+            RunKind::Preview => {
+                s.transcript().push(TranscriptEvent {
+                    kind: "postExec".to_string(),
+                    detail: cmd.to_string(),
+                    included_in_preview: false,
+                    stats: None,
+                    payload: Some(json!({ "executed": false })),
+                    expandable: true,
+                });
+                Ok(())
             }
-            inner.transcript.push(TranscriptEvent {
-                kind: "postExec".to_string(),
-                detail: cmd.to_string(),
-                included_in_preview: false,
-                stats: None,
-                payload: Some(json!({ "executed": true })),
-                expandable: true,
-            });
-            Ok(())
+            RunKind::Apply => {
+                s.flush_to_disk()?;
+                let workspace = s.sandbox().workspace_root().to_path_buf();
+                let codemod = s.codemod_root().to_path_buf();
+                let recipe_file = s.recipe_path().cloned();
+                let args = s.args().clone();
+                let maps = s.maps().clone();
+                let vars = s.vars().clone();
+                run_post_execution_command(
+                    cmd,
+                    &args,
+                    &maps,
+                    &vars,
+                    &workspace,
+                    &codemod,
+                    recipe_file.as_deref(),
+                )?;
+                let paths = s.tree().staged_paths();
+                for p in paths {
+                    s.reload_from_disk(&p)?;
+                }
+                s.transcript().push(TranscriptEvent {
+                    kind: "postExec".to_string(),
+                    detail: cmd.to_string(),
+                    included_in_preview: false,
+                    stats: None,
+                    payload: Some(json!({ "executed": true })),
+                    expandable: true,
+                });
+                Ok(())
+            }
         }
-    }
+    })
 }
 
 pub(crate) fn query_spec_to_engine(
@@ -180,33 +182,36 @@ pub(crate) fn capture_texts(
 }
 
 pub(crate) fn query_count(host: &SharedHost, spec: &QueryTableSpec) -> Result<usize, String> {
-    let mut inner = host.lock().map_err(|e| e.to_string())?;
-    let query = query_spec_to_engine(&spec.query, &inner.queries)?;
-    let lang_id = inner
-        .language_registry
-        .resolve_language_id(spec.language.as_deref(), &spec.path)
-        .map_err(|e| e.to_string())?;
-    let recipe_path = inner.recipe_path.clone();
-    let codemod = inner.codemod_root.clone();
-    let source = inner.current_content(&spec.path)?;
-    let cached = inner.cached_tree(&spec.path, &source, spec.language.as_deref())?;
-    let qctx = QueryContext {
-        recipe_file: recipe_path.as_deref(),
-        codemod_root: &codemod,
-    };
-    let engine = inner
-        .language_registry
-        .get(&lang_id)
-        .map_err(|e| e.to_string())?;
-    engine
-        .query_match_count_on_tree(
-            &qctx,
-            &cached.source,
-            &cached.tree,
-            &query,
-            spec.capture.as_deref(),
-        )
-        .map_err(|e| e.to_string())
+    use crate::host_api::facets::QueryIntel;
+
+    QueryIntel::with_host(host, |mut q| {
+        let query = query_spec_to_engine(&spec.query, q.queries())?;
+        let lang_id = q
+            .language_registry()
+            .resolve_language_id(spec.language.as_deref(), &spec.path)
+            .map_err(|e| e.to_string())?;
+        let recipe_path = q.recipe_path().cloned();
+        let codemod = q.codemod_root().to_path_buf();
+        let source = q.current_content(&spec.path)?;
+        let cached = q.cached_tree(&spec.path, &source, spec.language.as_deref())?;
+        let qctx = QueryContext {
+            recipe_file: recipe_path.as_deref(),
+            codemod_root: &codemod,
+        };
+        let engine = q
+            .language_registry_mut()
+            .get(&lang_id)
+            .map_err(|e| e.to_string())?;
+        engine
+            .query_match_count_on_tree(
+                &qctx,
+                &cached.source,
+                &cached.tree,
+                &query,
+                spec.capture.as_deref(),
+            )
+            .map_err(|e| e.to_string())
+    })
 }
 
 pub(crate) fn string_map_to_table(lua: &Lua, map: &BTreeMap<String, String>) -> Result<Value, String> {

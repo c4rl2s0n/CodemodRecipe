@@ -388,6 +388,7 @@ fn dry_run_relate_and_verify_trigger_scan_when_uncached() {
             })),
             operation: None,
             args: BTreeMap::new(),
+            preview_token: None,
         },
     );
     assert_eq!(entity_verify["ok"], true, "{entity_verify}");

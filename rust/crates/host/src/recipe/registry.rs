@@ -2,17 +2,16 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
 use codemod_recipe_lua::load::{load_asset_with_root, Asset, LoadError, LoadResult};
-use codemod_recipe_lua::model::{
-    Arg, ArgFrom, ComponentDef, ExplorerMenuEntry, Recipe, StackDef, TestSuiteDef, TypeDef,
-};
+use codemod_recipe_lua::model::{ComponentDef, Recipe, StackDef, TestSuiteDef, TypeDef};
 use codemod_recipe_lua::require_chunk_name;
-use codemod_recipe_lua::InputKind;
 
 use crate::diagnostics::diag_source::source_file_only;
 use crate::protocol::{
-    ComponentDetailSchema, ComponentOperationSchema, ComponentSchema, ExplorerMenuEntrySchema,
-    RecipeArg, RecipeDiagnostic, RecipeSchema, StackSchema, TestSuiteSchema, TypeSchema,
+    ComponentDetailSchema, ComponentOperationSchema, ComponentSchema, RecipeDiagnostic,
+    RecipeSchema, StackSchema, TestSuiteSchema, TypeSchema,
 };
+use crate::recipe::fs_walk::{collect_lua_files, relative_path};
+use crate::recipe::schema::{arg_schema, explorer_schema, type_schema};
 
 pub struct RecipeRegistry {
     pub workspace_root: PathBuf,
@@ -526,107 +525,4 @@ impl RecipeRegistry {
                 .collect(),
         }
     }
-}
-
-fn arg_schema(
-    arg: &Arg,
-    maps: &BTreeMap<String, BTreeMap<String, String>>,
-    types: &BTreeMap<String, TypeDef>,
-) -> RecipeArg {
-    let options = crate::recipe::args::choice_options(arg, maps);
-    let allow_custom = !matches!(arg.input_kind, InputKind::Choice);
-    let fields = arg.input_kind.type_id().and_then(|id| {
-        types.get(id).map(|def| {
-            def.fields
-                .iter()
-                .map(|f| arg_schema(f, maps, types))
-                .collect()
-        })
-    });
-    RecipeArg {
-        name: arg.name.clone(),
-        abbr: arg.abbr.clone(),
-        help: arg.help.clone(),
-        required: arg.required,
-        defaults_to: arg.defaults_to.clone(),
-        input_kind: arg.input_kind.to_json(),
-        options,
-        options_from_map: arg.options_from_map.clone(),
-        allow_custom_value: arg.allow_custom_value.unwrap_or(allow_custom),
-        context_key: None,
-        from: arg.from.as_ref().map(|f| match f {
-            ArgFrom::Builtin(s) => serde_json::Value::String(s.clone()),
-            ArgFrom::Spec(spec) => serde_json::json!({
-                "template": spec.template,
-                "query": spec.query,
-                "capture": spec.capture,
-            }),
-        }),
-        from_recipes: vec![],
-        fields,
-    }
-}
-
-fn type_schema(
-    def: &TypeDef,
-    maps: &BTreeMap<String, BTreeMap<String, String>>,
-    types: &BTreeMap<String, TypeDef>,
-) -> TypeSchema {
-    TypeSchema {
-        id: def.id.clone(),
-        description: def.description.clone(),
-        fields: def
-            .fields
-            .iter()
-            .map(|f| arg_schema(f, maps, types))
-            .collect(),
-    }
-}
-
-fn explorer_schema(entry: &ExplorerMenuEntry) -> ExplorerMenuEntrySchema {
-    ExplorerMenuEntrySchema {
-        kind: entry.kind.as_str().to_string(),
-        if_expr: entry.if_expr.clone(),
-        args: entry.args.clone(),
-    }
-}
-
-fn collect_lua_files(root: &Path) -> Vec<PathBuf> {
-    let mut out = Vec::new();
-    visit(root, &mut out);
-    out.sort();
-    // `.codemod/tests/fixtures/` holds workspace fixtures for test suites —
-    // never load them as assets (a fixture may itself contain a .codemod tree).
-    let fixtures_root = root.join("tests").join("fixtures");
-    out.retain(|p| !p.starts_with(&fixtures_root));
-    out
-}
-
-fn visit(dir: &Path, out: &mut Vec<PathBuf>) {
-    let Ok(entries) = std::fs::read_dir(dir) else {
-        return;
-    };
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.is_dir() {
-            visit(&path, out);
-        } else if matches!(
-            path.extension().and_then(|s| s.to_str()),
-            Some("luau") | Some("lua")
-        ) && !is_declaration_file(&path)
-        {
-            out.push(path);
-        }
-    }
-}
-
-fn is_declaration_file(path: &Path) -> bool {
-    codemod_recipe_lua::is_declaration_file_name(path)
-}
-
-fn relative_path(root: &Path, path: &Path) -> String {
-    path.strip_prefix(root)
-        .unwrap_or(path)
-        .to_string_lossy()
-        .replace('\\', "/")
 }

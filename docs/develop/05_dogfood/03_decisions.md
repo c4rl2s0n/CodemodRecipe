@@ -190,11 +190,11 @@ is the remaining concentration smell. **Do not extract a crate yet.** Facet
 
 | Facet | Owns (from HostInner) | Status |
 |-------|------------------------|--------|
-| `RecipeSession` | `kind`, `tree`, `sandbox`, args/maps/vars/queries/recipes, transcript, … | types ready; handlers not migrated yet |
+| `RecipeSession` | `kind`, `tree`, `sandbox`, args/maps/vars/queries, transcript, … | **Phase 2:** edits/files/log/helpers/template handlers via `with_host` |
 | `ComponentSession` | `components`, `component_stack`, graph JSON, `codemod_root` | **Phase 1:** delegate stack + graph snapshot paths use it |
-| `QueryIntel` | `language_registry`, `ast_cache` | types ready; query paths not migrated yet |
+| `QueryIntel` | `language_registry`, `ast_cache` (+ `cached_tree`) | **Phase 2:** queries.rs + `query_count` via `with_host` |
 
-Extraction ADR only after a facet is testable without MCP/VS Code.
+Extraction ADR only after a facet is testable without MCP/VS Code. Still one mutex on `SharedHost`; facets are views.
 
 ### Framework dogfood backlog (Track C2)
 
@@ -213,7 +213,12 @@ Before extending the framework further:
 
 - **Agent honesty:** one MCP skill path (`.agents` playbook + usage docs); Cursor `codemod-mcp` is a thin pointer; mutating component/stack MCP tools require `previewToken` like recipes; `inlineRecipe` schema is a string.
 - **Domain honesty:** `hostZoneForPath` maps sandbox/config/template/explorer; legacy `rust.runtime` catalog entry removed; `preview` lives under `edit_session`, `lua_runtime` under `host_api`; protocol DTOs split (`command.rs` / `responses.rs`).
-- Still deferred: HostInner facet Phase 2, crate extraction, HostCommand TS/MCP codegen.
+
+### Facet Phase 2 + Sweep 3 grain (D-031)
+
+- **Facets:** `RecipeSession` / `QueryIntel` migrated for the handler families above (same mutex; no crate extract).
+- **Grain:** VS Code `HostCommand` → `shared/hostCommand.ts`; `recipe/{schema,fs_walk}.rs`; `template/{legacy,env}.rs`.
+- Still deferred: crate extraction (D-025 F), HostCommand TS/MCP codegen, D-013 warm-from-disk, golden mermaid CI.
 
 ### Path-module graph + product tests (K–M)
 

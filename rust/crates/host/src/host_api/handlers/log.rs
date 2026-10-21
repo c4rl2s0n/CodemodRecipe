@@ -3,7 +3,8 @@ use codemod_recipe_lua_macros::host_method;
 use mlua::{Lua, Value};
 use serde_json::json;
 
-use crate::host_api::context::{bump_ops, SharedHost};
+use crate::host_api::context::SharedHost;
+use crate::host_api::facets::RecipeSession;
 use super::helpers::trunc_text;
 
 #[host_method(
@@ -19,27 +20,28 @@ pub(crate) fn do_log(
     args: mlua::Variadic<Value>,
 ) -> Result<Value, String> {
     let (detail, json_parts) = format_log_args_rich(&args)?;
-    let mut inner = host.lock().map_err(|e| e.to_string())?;
-    bump_ops(&mut inner)?;
-    let expandable = !json_parts.is_empty() || detail.len() > 120;
-    let payload = if json_parts.len() == 1 {
-        Some(json!({ "json": json_parts[0] }))
-    } else if json_parts.len() > 1 {
-        Some(json!({ "json": json_parts }))
-    } else if expandable {
-        Some(json!({ "text": trunc_text(&detail) }))
-    } else {
-        None
-    };
-    inner.transcript.push(TranscriptEvent {
-        kind: "log".to_string(),
-        detail,
-        included_in_preview: true,
-        stats: None,
-        payload,
-        expandable,
-    });
-    Ok(Value::Nil)
+    RecipeSession::with_host(host, |mut s| {
+        s.bump_ops()?;
+        let expandable = !json_parts.is_empty() || detail.len() > 120;
+        let payload = if json_parts.len() == 1 {
+            Some(json!({ "json": json_parts[0] }))
+        } else if json_parts.len() > 1 {
+            Some(json!({ "json": json_parts }))
+        } else if expandable {
+            Some(json!({ "text": trunc_text(&detail) }))
+        } else {
+            None
+        };
+        s.transcript().push(TranscriptEvent {
+            kind: "log".to_string(),
+            detail,
+            included_in_preview: true,
+            stats: None,
+            payload,
+            expandable,
+        });
+        Ok(Value::Nil)
+    })
 }
 
 fn format_log_args_rich(
@@ -83,4 +85,3 @@ fn format_log_value(value: &Value) -> Result<String, String> {
         },
     }
 }
-

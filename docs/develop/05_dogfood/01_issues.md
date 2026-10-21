@@ -66,7 +66,7 @@ Status: `open` / `in-progress` / `fixed` / `wontfix(decision documented)`.
 |----|----------|------|-------|--------|
 | D-026 | bug | protocol | `generateAstPath` HostCommand was a dispatch stub (“not supported v1”) with no B/M surface — zombie graph node. **Retired** from Rust enum, dispatch, TS union, INTERNAL allowlist. | fixed |
 | D-027 | gap | host / scan | Empty `identify()` on stack roots was silent (0 instances, 0 findings) — e.g. dead `host_api_method` after handlers grain split. Emit `composer.identify_empty` (always; empty locators need investigation). Compact `component_scan.summary` for agents. | fixed |
-| D-028 | note | architecture | HostInner facet sketch documented; Phase 1 code in `host_api/facets.rs` — `ComponentSession` used by delegate stack + graph snapshot. Recipe/Query facets typed but not fully migrated. Crate extraction still deferred. | fixed (partial — Phase 1) |
+| D-028 | note | architecture | HostInner facet sketch documented; Phase 1 `ComponentSession`; Phase 2 Recipe/Query migration logged as D-031. Crate extraction still deferred. | fixed (Phase 1+2 views; extract deferred) |
 | D-029 | gap | host / scan | Framework Track C2: `composer.identify_path_conflict`; `summary.productSpanRatio`; `codemod_mcp --scan-summary`; leaf-wipe audit. Tried auto-merging `codebase` `!` into `listFiles` — **reverted** (`listFiles` stays caller-only; `codebase` is coverage-only). | fixed |
 
 ## 2026-10-21 — Pre-extension cleanup sweep
@@ -74,6 +74,12 @@ Status: `open` / `in-progress` / `fixed` / `wontfix(decision documented)`.
 | ID | Severity | Area | Issue | Status |
 |----|----------|------|-------|--------|
 | D-030 | ux / arch | agent + host | Pre-extension cleanup: collapse fat Cursor MCP playbook → agents skill; sync tools docs to inventory; `inlineRecipe` schema = string; **previewToken** on component/stack apply; one-page component authoring path; stub→folder redirects; zone map honesty (`domain.sandbox|config|template|explorer`, retire `rust.runtime`); `preview/` → `edit_session/preview`, `lua_runtime` → `host_api/`; drop `recipeRunnerHandlers` shim; split `protocol/{command,responses}.rs`. Facet Phase 2 / crate extract still deferred. | fixed |
+
+## 2026-10-21 — Facet Phase 2 + Sweep 3
+
+| ID | Severity | Area | Issue | Status |
+|----|----------|------|-------|--------|
+| D-031 | note | architecture | Facet Phase 2: migrate edits/files/log/helpers/template onto `RecipeSession`, queries onto `QueryIntel` (`cached_tree`). Sweep 3 grain: `shared/hostCommand.ts`; `recipe/{schema,fs_walk}.rs`; `template/{legacy,env}.rs`. No crate extraction. | fixed |
 
 ## Template for new entries
 

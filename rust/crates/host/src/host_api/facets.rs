@@ -7,12 +7,13 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use codemod_recipe_core::apply::file_change::{IfExists, IfMissing};
 use codemod_recipe_engine::LanguageRegistry;
-use codemod_recipe_lua::model::{ComponentDef, Recipe, TranscriptEvent};
+use codemod_recipe_lua::model::{ComponentDef, TranscriptEvent};
 
-use super::context::{HostInner, RunKind, SharedHost};
+use super::context::{bump_ops, HostInner, RunKind, SharedHost};
 use crate::edit_session::working_tree::WorkingTree;
-use crate::query::ast_cache::AstParseCache;
+use crate::query::ast_cache::CachedTree;
 use crate::sandbox::path_sandbox::PathSandbox;
 
 /// Component scan / hooks / ops / delegate facet.
@@ -87,7 +88,6 @@ impl<'a> RecipeSession<'a> {
         Self { inner }
     }
 
-    #[allow(dead_code)] // Phase 1: boundary ready; handlers migrate later
     pub(crate) fn with_host<R>(
         host: &SharedHost,
         f: impl FnOnce(RecipeSession<'_>) -> Result<R, String>,
@@ -96,34 +96,89 @@ impl<'a> RecipeSession<'a> {
         f(RecipeSession::from_inner(&mut inner))
     }
 
-    #[allow(dead_code)]
+    /// Escape hatch for helpers that still take `&mut HostInner` (e.g. engine ops).
+    pub(crate) fn host_mut(&mut self) -> &mut HostInner {
+        self.inner
+    }
+
     pub(crate) fn kind(&self) -> RunKind {
         self.inner.kind
     }
 
-    #[allow(dead_code)]
     pub(crate) fn tree(&mut self) -> &mut WorkingTree {
         &mut self.inner.tree
     }
 
-    #[allow(dead_code)]
     pub(crate) fn sandbox(&self) -> &PathSandbox {
         &self.inner.sandbox
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn recipes(&self) -> &BTreeMap<String, Recipe> {
-        &self.inner.recipes
+    pub(crate) fn args(&self) -> &BTreeMap<String, serde_json::Value> {
+        &self.inner.args
     }
 
-    #[allow(dead_code)]
+    pub(crate) fn maps(&self) -> &BTreeMap<String, BTreeMap<String, String>> {
+        &self.inner.maps
+    }
+
+    pub(crate) fn vars(&self) -> &BTreeMap<String, BTreeMap<String, String>> {
+        &self.inner.vars
+    }
+
+    pub(crate) fn queries(&self) -> &BTreeMap<String, String> {
+        &self.inner.queries
+    }
+
     pub(crate) fn transcript(&mut self) -> &mut Vec<TranscriptEvent> {
         &mut self.inner.transcript
     }
 
-    #[allow(dead_code)]
     pub(crate) fn recipe_path(&self) -> Option<&PathBuf> {
         self.inner.recipe_path.as_ref()
+    }
+
+    pub(crate) fn codemod_root(&self) -> &Path {
+        &self.inner.codemod_root
+    }
+
+    pub(crate) fn bump_ops(&mut self) -> Result<(), String> {
+        bump_ops(self.inner)
+    }
+
+    pub(crate) fn set_saw_post_exec(&mut self, value: bool) {
+        self.inner.saw_post_exec = value;
+    }
+
+    pub(crate) fn current_content(&mut self, path: &str) -> Result<String, String> {
+        self.inner.current_content(path)
+    }
+
+    pub(crate) fn apply_edit<F>(&mut self, path: &str, transform: F) -> Result<(), String>
+    where
+        F: FnOnce(&str) -> Result<String, String>,
+    {
+        self.inner.apply_edit(path, transform)
+    }
+
+    pub(crate) fn create(
+        &mut self,
+        path: &str,
+        content: String,
+        if_exists: IfExists,
+    ) -> Result<(), String> {
+        self.inner.create(path, content, if_exists)
+    }
+
+    pub(crate) fn delete(&mut self, path: &str, if_missing: IfMissing) -> Result<(), String> {
+        self.inner.delete(path, if_missing)
+    }
+
+    pub(crate) fn flush_to_disk(&self) -> Result<Vec<String>, String> {
+        self.inner.flush_to_disk()
+    }
+
+    pub(crate) fn reload_from_disk(&mut self, path: &str) -> Result<(), String> {
+        self.inner.reload_from_disk(path)
     }
 }
 
@@ -137,7 +192,6 @@ impl<'a> QueryIntel<'a> {
         Self { inner }
     }
 
-    #[allow(dead_code)]
     pub(crate) fn with_host<R>(
         host: &SharedHost,
         f: impl FnOnce(QueryIntel<'_>) -> Result<R, String>,
@@ -146,13 +200,53 @@ impl<'a> QueryIntel<'a> {
         f(QueryIntel::from_inner(&mut inner))
     }
 
-    #[allow(dead_code)]
     pub(crate) fn language_registry(&self) -> &LanguageRegistry {
         &self.inner.language_registry
     }
 
-    #[allow(dead_code)]
-    pub(crate) fn ast_cache(&mut self) -> &mut AstParseCache {
-        &mut self.inner.ast_cache
+    pub(crate) fn language_registry_mut(&mut self) -> &mut LanguageRegistry {
+        &mut self.inner.language_registry
+    }
+
+    pub(crate) fn queries(&self) -> &BTreeMap<String, String> {
+        &self.inner.queries
+    }
+
+    pub(crate) fn recipe_path(&self) -> Option<&PathBuf> {
+        self.inner.recipe_path.as_ref()
+    }
+
+    pub(crate) fn codemod_root(&self) -> &Path {
+        &self.inner.codemod_root
+    }
+
+    pub(crate) fn current_content(&mut self, path: &str) -> Result<String, String> {
+        self.inner.current_content(path)
+    }
+
+    pub(crate) fn transcript(&mut self) -> &mut Vec<TranscriptEvent> {
+        &mut self.inner.transcript
+    }
+
+    pub(crate) fn cached_tree(
+        &mut self,
+        path: &str,
+        source: &str,
+        language: Option<&str>,
+    ) -> Result<CachedTree, String> {
+        let lang_id = self
+            .inner
+            .language_registry
+            .resolve_language_id(language, path)
+            .map_err(|e| e.to_string())?;
+        let lang = {
+            let engine = self
+                .inner
+                .language_registry
+                .get(&lang_id)
+                .map_err(|e| e.to_string())?;
+            engine.language()
+        };
+        self.inner.ast_cache.get_or_parse(path, source, &lang)
     }
 }

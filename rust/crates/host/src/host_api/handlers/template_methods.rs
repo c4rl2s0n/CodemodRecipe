@@ -5,6 +5,7 @@ use mlua::{Lua, Value};
 use serde_json::json;
 
 use crate::host_api::context::SharedHost;
+use crate::host_api::facets::RecipeSession;
 use crate::template::{render_template, render_template_file};
 use super::helpers::{post_exec_cmd, trunc_text};
 
@@ -51,43 +52,43 @@ pub(crate) fn do_template(
         }
     }
 
-    let mut inner = host.lock().map_err(|e| e.to_string())?;
-    let mut args = inner.args.clone();
-    args.extend(spec.env.map(|e| e.into_inner()).unwrap_or_default());
-    let path_label = spec.path.clone();
-    let rendered = if has_path {
-        render_template_file(
-            spec.path.as_deref().unwrap(),
-            &args,
-            &inner.maps,
-            &inner.vars,
-            &inner.codemod_root,
-            inner.recipe_path.as_deref(),
-        )?
-    } else {
-        render_template(
-            spec.inline.as_deref().unwrap(),
-            &args,
-            &inner.maps,
-            &inner.vars,
-        )?
-    };
-    let detail = if has_path {
-        format!("path={}", path_label.as_deref().unwrap_or(""))
-    } else {
-        "inline".to_string()
-    };
-    inner.transcript.push(TranscriptEvent::with_payload(
-        "template",
-        detail,
-        json!({
-            "source": if has_path { "path" } else { "inline" },
-            "path": path_label,
-            "rendered": trunc_text(&rendered),
-        }),
-    ));
-    lua.create_string(&rendered)
-        .map(Value::String)
-        .map_err(|e| e.to_string())
+    RecipeSession::with_host(host, |mut s| {
+        let mut args = s.args().clone();
+        args.extend(spec.env.map(|e| e.into_inner()).unwrap_or_default());
+        let path_label = spec.path.clone();
+        let rendered = if has_path {
+            render_template_file(
+                spec.path.as_deref().unwrap(),
+                &args,
+                s.maps(),
+                s.vars(),
+                s.codemod_root(),
+                s.recipe_path().map(|p| p.as_path()),
+            )?
+        } else {
+            render_template(
+                spec.inline.as_deref().unwrap(),
+                &args,
+                s.maps(),
+                s.vars(),
+            )?
+        };
+        let detail = if has_path {
+            format!("path={}", path_label.as_deref().unwrap_or(""))
+        } else {
+            "inline".to_string()
+        };
+        s.transcript().push(TranscriptEvent::with_payload(
+            "template",
+            detail,
+            json!({
+                "source": if has_path { "path" } else { "inline" },
+                "path": path_label,
+                "rendered": trunc_text(&rendered),
+            }),
+        ));
+        lua.create_string(&rendered)
+            .map(Value::String)
+            .map_err(|e| e.to_string())
+    })
 }
-

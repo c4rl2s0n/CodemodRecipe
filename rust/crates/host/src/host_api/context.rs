@@ -83,27 +83,6 @@ impl HostInner {
         self.tree.current_content(&self.sandbox, path)
     }
 
-    /// Parse (or reuse) a tree-sitter AST for `path` / `source`.
-    pub(crate) fn cached_tree(
-        &mut self,
-        path: &str,
-        source: &str,
-        language: Option<&str>,
-    ) -> Result<crate::query::ast_cache::CachedTree, String> {
-        let lang_id = self
-            .language_registry
-            .resolve_language_id(language, path)
-            .map_err(|e| e.to_string())?;
-        let lang = {
-            let engine = self
-                .language_registry
-                .get(&lang_id)
-                .map_err(|e| e.to_string())?;
-            engine.language()
-        };
-        self.ast_cache.get_or_parse(path, source, &lang)
-    }
-
     pub(crate) fn apply_edit<F>(&mut self, path: &str, transform: F) -> Result<(), String>
     where
         F: FnOnce(&str) -> Result<String, String>,

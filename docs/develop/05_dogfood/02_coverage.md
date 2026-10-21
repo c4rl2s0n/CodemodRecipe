@@ -217,3 +217,4 @@ vscode_language_context / vscode_ext_bootstrap (extension domain grain)
 | 2026-10-21 | C1 opt-out + C2 | Drop `allowEmptyIdentify`; HostInner `ComponentSession` Phase 1; C2: path-conflict, `productSpanRatio`, `--scan-summary`, leaf-wipe fix |
 | 2026-10-21 | Revert listFiles∩codebase | Drop `glob_excludes` merge; `listFiles` caller-only again; `codebase` coverage-only |
 | 2026-10-21 | Pre-extension cleanup D-030 | MCP/docs honesty + previewToken gates; zone map; preview/lua_runtime placement; protocol split |
+| 2026-10-21 | Facet Phase 2 + Sweep 3 D-031 | RecipeSession/QueryIntel handler migration; hostCommand.ts; registry schema/fs_walk; template legacy/env |
