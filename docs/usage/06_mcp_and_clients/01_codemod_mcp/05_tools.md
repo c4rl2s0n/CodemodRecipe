@@ -8,11 +8,16 @@ All tools return a JSON string. Parse it, then check `ok`.
 | `list_recipes` | Discover registered recipe ids and argument schemas |
 | `describe_recipe` | Show metadata/args for one recipe |
 | `validate_recipes` | Reload + validate Luau recipes/maps/variables/queries |
+| `reload_recipes` | Reload catalog from disk after editing `.codemod` assets |
 | `preview_recipe` | Dry-run; returns `previewToken`, `transcript`, top-level `logs[]` (`c:log`) |
+| `diff_recipe` | Single-path dry-run hunk (`path` required; same args as preview) |
 | `apply_recipe` | Apply atomically; requires `previewToken` |
+| `derive_args` | Derive recipe args from `source` + cursor/selection (+ optional `context`) |
+| `filter_explorer_recipes` | Recipes whose `explorerMenu` matches a path (`kind`: `file` \| `folder`) |
 | `dump_ast` | Dump tree-sitter AST — **call this before writing queries**; `namedOnly: false` to see keywords |
 | `debug_query` | Run a query; return match roots and captures; `instrument` (default true) adds `@__layer_*` depth markers |
 | `generate_query` | Starter query from byte `start`/`end` in a file |
+| `query_captures` | List `@capture` names from inline `query` or registered `queryId` |
 | `resolve_static_path` | Jinja-render a path with empty args (static paths only) |
 | `component_scan` | Scan stack root components (instances, findings, summaries, relation `edges`, `kindGraph`); populates cache |
 | `list_component_instances` | Alias of `component_scan` (same HostCommand family; prefer `component_scan`) |
@@ -44,6 +49,7 @@ These replace the VS Code Query Tools panel for MCP-only agents:
 1. **`dump_ast`** — `{ "path": "lib/foo.dart", "namedOnly": false }` before writing any query. Confirm node types, siblings vs children, anonymous tokens.
 2. **`debug_query`** — `{ "path": "…", "query": "(…)", "instrument": true }`. Set `instrument: false` only if debugging instrumentation itself.
 3. **`generate_query`** — starter pattern from a byte range.
+4. **`query_captures`** — `{ "query": "(…)" }` or `{ "queryId": "lib.name" }` for declared `@capture` names.
 
 Authoring workflow: [tree-sitter authoring](../../03_queries_and_languages/01_tree_sitter_queries/07_authoring_workflow.md).
 

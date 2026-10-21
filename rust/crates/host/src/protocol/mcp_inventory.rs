@@ -29,14 +29,34 @@ pub fn tool_metas() -> &'static [McpToolMeta] {
             host_command: Some("Validate"),
         },
         McpToolMeta {
+            name: "reload_recipes",
+            description: "Reload the recipe catalog from disk (maps, queries, recipes, components). Prefer after editing .codemod assets in-session.",
+            host_command: Some("Reload"),
+        },
+        McpToolMeta {
             name: "preview_recipe",
             description: "Preview a registered or inline recipe. Returns previewToken, files, transcript, and top-level logs[] (c:log details).",
             host_command: Some("Preview"),
         },
         McpToolMeta {
+            name: "diff_recipe",
+            description: "Preview a single workspace-relative path for a recipe (same dry-run as preview_recipe, one file).",
+            host_command: Some("Diff"),
+        },
+        McpToolMeta {
             name: "apply_recipe",
             description: "Apply a previewed recipe atomically",
             host_command: Some("Apply"),
+        },
+        McpToolMeta {
+            name: "derive_args",
+            description: "Derive recipe argument values from source + cursor/selection (and optional editor context map).",
+            host_command: Some("DeriveArgs"),
+        },
+        McpToolMeta {
+            name: "filter_explorer_recipes",
+            description: "List recipes whose explorerMenu matches a workspace path (kind: file or folder), with suggested args.",
+            host_command: Some("FilterExplorerRecipes"),
         },
         McpToolMeta {
             name: "bootstrap_project",
@@ -57,6 +77,11 @@ pub fn tool_metas() -> &'static [McpToolMeta] {
             name: "generate_query",
             description: "Generate a starter tree-sitter query from a byte range in a file (Query Tools).",
             host_command: Some("GenerateQuery"),
+        },
+        McpToolMeta {
+            name: "query_captures",
+            description: "List @capture names from an inline tree-sitter query string or a registered query id (Query Tools).",
+            host_command: Some("QueryCaptures"),
         },
         McpToolMeta {
             name: "resolve_static_path",
@@ -139,11 +164,21 @@ fn input_schema(name: &str) -> Value {
         "validate_recipes" => {
             json!({"type": "object", "properties": {"recipe": {"type": "string", "description": "Optional recipe id to validate without reloading others"}}})
         }
+        "reload_recipes" => json!({"type": "object"}),
         "preview_recipe" => {
             json!({"type": "object", "properties": {"recipe": {"type": "string"}, "inlineRecipe": {"type": "string", "description": "Luau source string that returns a recipe table"}, "args": {"type": "object"}, "snippetLines": {"type": "number"}}})
         }
+        "diff_recipe" => {
+            json!({"type": "object", "properties": {"recipe": {"type": "string"}, "inlineRecipe": {"type": "string", "description": "Luau source string that returns a recipe table"}, "args": {"type": "object"}, "path": {"type": "string"}}, "required": ["path"]})
+        }
         "apply_recipe" => {
             json!({"type": "object", "properties": {"recipe": {"type": "string"}, "inlineRecipe": {"type": "string", "description": "Luau source string that returns a recipe table"}, "args": {"type": "object"}, "previewToken": {"type": "string"}, "selection": {"type": "object"}}, "required": ["previewToken"]})
+        }
+        "derive_args" => {
+            json!({"type": "object", "properties": {"recipe": {"type": "string"}, "source": {"type": "string"}, "language": {"type": "string"}, "path": {"type": "string"}, "cursorOffset": {"type": "number"}, "selectionStart": {"type": "number"}, "selectionEnd": {"type": "number"}, "context": {"type": "object", "additionalProperties": {"type": "string"}}}, "required": ["recipe", "source"]})
+        }
+        "filter_explorer_recipes" => {
+            json!({"type": "object", "properties": {"path": {"type": "string"}, "kind": {"type": "string", "enum": ["file", "folder"]}}, "required": ["path", "kind"]})
         }
         "bootstrap_project" => {
             json!({"type": "object", "properties": {"force": {"type": "boolean", "description": "Overwrite existing files (default false)"}, "edit_policy": {"type": "string", "enum": ["recommend", "strict"], "description": "Rule pack: recommend (default, soft prefer+preview) or strict (recipe-first edit policy)"}, "companions": {"type": "array", "items": {"type": "string", "enum": ["codebase-memory"]}, "description": "Optional companion rule packs (default []). Use [\"codebase-memory\"] when that MCP is configured."}}})
@@ -156,6 +191,9 @@ fn input_schema(name: &str) -> Value {
         }
         "generate_query" => {
             json!({"type": "object", "properties": {"path": {"type": "string"}, "source": {"type": "string"}, "language": {"type": "string"}, "start": {"type": "number"}, "end": {"type": "number"}, "includeTextPredicates": {"type": "boolean"}, "captureLeaf": {"type": "string"}, "maxDepth": {"type": "number"}}, "required": ["start"]})
+        }
+        "query_captures" => {
+            json!({"type": "object", "properties": {"query": {"type": "string"}, "queryId": {"type": "string"}}})
         }
         "resolve_static_path" => {
             json!({"type": "object", "properties": {"template": {"type": "string"}}, "required": ["template"]})

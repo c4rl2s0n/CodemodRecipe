@@ -16,7 +16,8 @@ Gather structure **before** editing. Prefer summaries over raw `ast` payloads.
 3. After known edits → `component_incremental_scan` with `dirtyPaths` (or `detectChanges: true`)
 4. **Coverage blind spots?** → `component_coverage` (needs `stack.codebase`; span-only — see [coverage](../../docs/05_components_and_stacks/01_components/09_coverage.md))
 5. **Recipes** → `list_recipes` / `describe_recipe` for args and descriptions
-6. **Query stuck?** → `dump_ast` / `debug_query` / `generate_query` ([tree-sitter-queries.md](../../docs/03_queries_and_languages/01_tree_sitter_queries/00_index.md))
+6. **Query stuck?** → `dump_ast` / `debug_query` / `generate_query` / `query_captures` ([tree-sitter-queries.md](../../docs/03_queries_and_languages/01_tree_sitter_queries/00_index.md))
+7. **After editing `.codemod`?** → `reload_recipes` (or `validate_recipes`); path→recipe discovery → `filter_explorer_recipes`
 
 ## Reasoning tips
 

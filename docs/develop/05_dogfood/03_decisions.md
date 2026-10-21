@@ -220,6 +220,12 @@ Before extending the framework further:
 - **Grain:** VS Code `HostCommand` → `shared/hostCommand.ts`; `recipe/{schema,fs_walk}.rs`; `template/{legacy,env}.rs`.
 - Still deferred: crate extraction (D-025 F), HostCommand TS/MCP codegen, D-013 warm-from-disk, golden mermaid CI.
 
+### MCP HostCommand parity (D-032)
+
+Agent-useful HostCommands already used by the VS Code bridge are now MCP tools:
+`reload_recipes`, `diff_recipe`, `derive_args`, `filter_explorer_recipes`, `query_captures`.
+Dedicated scaffold/operation MCP tools remain omitted (covered by hook tools). Full inventory→codegen still deferred.
+
 ### Path-module graph + product tests (K–M)
 
 Path inventories (`repo.ts_module`, `repo.rust_mod_file`) stay architecture-eligible:

@@ -137,8 +137,113 @@ fn handle_request(
                         .map(String::from);
                     handle_command(registry, HostCommand::Validate { recipe })
                 }
+                "reload_recipes" => handle_command(registry, HostCommand::Reload),
                 "preview_recipe" => mcp_preview_or_apply(registry, &arguments, false),
+                "diff_recipe" => {
+                    let path = arguments
+                        .get("path")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    if path.is_empty() {
+                        error_json("Missing path")
+                    } else {
+                        let recipe = arguments
+                            .get(protocol_keys::RECIPE)
+                            .and_then(|v| v.as_str())
+                            .map(String::from);
+                        let inline_recipe = arguments.get(protocol_keys::INLINE_RECIPE).cloned();
+                        if recipe.is_none() && inline_recipe.is_none() {
+                            error_json("Missing recipe or inlineRecipe")
+                        } else {
+                            handle_command(
+                                registry,
+                                HostCommand::Diff {
+                                    recipe,
+                                    inline_recipe,
+                                    args: json_args_to_btreemap(&arguments),
+                                    path,
+                                },
+                            )
+                        }
+                    }
+                }
                 "apply_recipe" => mcp_preview_or_apply(registry, &arguments, true),
+                "derive_args" => {
+                    let recipe = arguments
+                        .get("recipe")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let source = arguments
+                        .get("source")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    if recipe.is_empty() || source.is_empty() {
+                        error_json("Missing recipe or source")
+                    } else {
+                        let context = arguments
+                            .get("context")
+                            .and_then(|v| v.as_object())
+                            .map(|obj| {
+                                obj.iter()
+                                    .filter_map(|(k, v)| {
+                                        v.as_str().map(|s| (k.clone(), s.to_string()))
+                                    })
+                                    .collect::<BTreeMap<_, _>>()
+                            })
+                            .unwrap_or_default();
+                        handle_command(
+                            registry,
+                            HostCommand::DeriveArgs {
+                                recipe,
+                                source,
+                                language: arguments
+                                    .get("language")
+                                    .and_then(|v| v.as_str())
+                                    .map(String::from),
+                                path: arguments
+                                    .get("path")
+                                    .and_then(|v| v.as_str())
+                                    .map(String::from),
+                                cursor_offset: arguments
+                                    .get("cursorOffset")
+                                    .and_then(|v| v.as_u64())
+                                    .unwrap_or(0),
+                                selection_start: arguments
+                                    .get("selectionStart")
+                                    .and_then(|v| v.as_u64())
+                                    .unwrap_or(0),
+                                selection_end: arguments
+                                    .get("selectionEnd")
+                                    .and_then(|v| v.as_u64())
+                                    .unwrap_or(0),
+                                context,
+                            },
+                        )
+                    }
+                }
+                "filter_explorer_recipes" => {
+                    let path = arguments
+                        .get("path")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let kind = arguments
+                        .get("kind")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    if path.is_empty() || kind.is_empty() {
+                        error_json("Missing path or kind")
+                    } else {
+                        handle_command(
+                            registry,
+                            HostCommand::FilterExplorerRecipes { path, kind },
+                        )
+                    }
+                }
                 "bootstrap_project" => {
                     let force = arguments
                         .get("force")
@@ -249,6 +354,19 @@ fn handle_request(
                             .and_then(|v| v.as_str())
                             .map(String::from),
                         max_depth: arguments.get("maxDepth").and_then(|v| v.as_u64()),
+                    },
+                ),
+                "query_captures" => handle_command(
+                    registry,
+                    HostCommand::QueryCaptures {
+                        query: arguments
+                            .get("query")
+                            .and_then(|v| v.as_str())
+                            .map(String::from),
+                        query_id: arguments
+                            .get("queryId")
+                            .and_then(|v| v.as_str())
+                            .map(String::from),
                     },
                 ),
                 "resolve_static_path" => handle_command(

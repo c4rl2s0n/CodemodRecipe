@@ -15,9 +15,10 @@ Full tool reference: [codemod-mcp.md](../docs/06_mcp_and_clients/01_codemod_mcp/
 |------|---------|
 | `bootstrap_project` | Install skills, rules, usage `docs/`, `.codemod/` scaffold |
 | `list_recipes` / `describe_recipe` | Discover recipes |
-| `validate_recipes` | Reload + validate Luau under `.codemod/` |
-| `preview_recipe` / `apply_recipe` | Dry-run then apply (`previewToken` required on apply); `inlineRecipe` = Luau **string** |
-| `dump_ast` / `debug_query` / `generate_query` | Query Tools — **dump_ast before authoring queries** (`namedOnly: false` for keywords) |
+| `validate_recipes` / `reload_recipes` | Validate / reload catalog from disk |
+| `preview_recipe` / `diff_recipe` / `apply_recipe` | Dry-run (full or one `path`), then apply (`previewToken` on apply); `inlineRecipe` = Luau **string** |
+| `derive_args` / `filter_explorer_recipes` | Args from cursor/selection; explorerMenu path match |
+| `dump_ast` / `debug_query` / `generate_query` / `query_captures` | Query Tools — **dump_ast before authoring queries** (`namedOnly: false` for keywords) |
 | `resolve_static_path` | Jinja-render a static path template |
 | `component_scan` / `component_incremental_scan` | Stack instances (**no** `c:log` / transcript) |
 | `list_component_instances` | Alias of `component_scan` — prefer `component_scan` |
@@ -30,7 +31,7 @@ Full tool reference: [codemod-mcp.md](../docs/06_mcp_and_clients/01_codemod_mcp/
 ## Debug tips
 
 - `c:log` → dry-run / preview `logs` (not scan)
-- Queries → `dump_ast` first, then `debug_query`
+- Queries → `dump_ast` first, then `debug_query` / `query_captures`
 - Prefer `hit.text` / `c:spanText` over Lua `string.sub` on spans
 - Mutating tools always need a matching dry-run `previewToken`
 

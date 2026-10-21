@@ -81,6 +81,12 @@ Status: `open` / `in-progress` / `fixed` / `wontfix(decision documented)`.
 |----|----------|------|-------|--------|
 | D-031 | note | architecture | Facet Phase 2: migrate edits/files/log/helpers/template onto `RecipeSession`, queries onto `QueryIntel` (`cached_tree`). Sweep 3 grain: `shared/hostCommand.ts`; `recipe/{schema,fs_walk}.rs`; `template/{legacy,env}.rs`. No crate extraction. | fixed |
 
+## 2026-10-21 — MCP HostCommand parity
+
+| ID | Severity | Area | Issue | Status |
+|----|----------|------|-------|--------|
+| D-032 | gap | mcp | MCP omitted useful HostCommands the VS Code bridge already calls (`reload`, `diff`, `deriveArgs`, `filterExplorerRecipes`, `queryCaptures`). Exposed as `reload_recipes` / `diff_recipe` / `derive_args` / `filter_explorer_recipes` / `query_captures` via inventory + tools/call. HostCommand TS/MCP codegen still deferred. | fixed |
+
 ## Template for new entries
 
 Append to the current date section (or start a new one):
