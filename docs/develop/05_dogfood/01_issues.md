@@ -87,6 +87,18 @@ Status: `open` / `in-progress` / `fixed` / `wontfix(decision documented)`.
 |----|----------|------|-------|--------|
 | D-032 | gap | mcp | MCP omitted useful HostCommands the VS Code bridge already calls (`reload`, `diff`, `deriveArgs`, `filterExplorerRecipes`, `queryCaptures`). Exposed as `reload_recipes` / `diff_recipe` / `derive_args` / `filter_explorer_recipes` / `query_captures` via inventory + tools/call. HostCommand TS/MCP codegen still deferred. | fixed |
 
+## 2026-10-21 — Dogfood cleanliness cleanup
+
+| ID | Severity | Area | Issue | Status |
+|----|----------|------|-------|--------|
+| D-033 | gap | dogfood / scan | After D-030 protocol split, HostCommand dogfood still parsed `protocol/mod.rs` → orphans / arch isolates. Dual-root `identify` (structural × domain) flooded `composer.identify_path_conflict`. **Fixed:** retarget to `command.rs`; `lib/rust_owned_paths.luau` opt-outs; `rust_test_module` path-share allowlist; `tests` edges resolve to domain owners; coverage deepen on pipeline/bootstrap/engine/mcp/domain_type. | fixed |
+
+## 2026-10-22 — HostCommand adapter sync (codegen)
+
+| ID | Severity | Area | Issue | Status |
+|----|----------|------|-------|--------|
+| D-034 | gap | protocol / adapters | Hand-maintained `hostCommand.ts` + `mcp_inventory` tool metas drifted from `command.rs`. **Fixed:** shared `.codemod/lib/host_command_adapters.luau` (`parseVariants` / `render*` / `expectedFiles`); generated `hostCommand.g.ts` + `mcp_inventory.g.rs` with hand wrappers; `repo.host_protocol` op `syncAdapters` + verify `adapter.generated_drift`; `createCommand` edits SSOT/dispatch (+ MCP_TOOL_SPECS) then sync — no hand mirror patches. Dropped empty `docs.surface` zone. Kept `support_crate_surface`. Crate extract / HostInner facade: sibling plan (still deferred). | fixed |
+
 ## Template for new entries
 
 Append to the current date section (or start a new one):

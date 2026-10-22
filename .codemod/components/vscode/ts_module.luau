@@ -64,6 +64,15 @@ return {
 			if path:match("/recipes/recipeInvoke%.ts$") or path:match("/recipes/recipeKeybindings%.ts$") then
 				return
 			end
+			if path == "vscode_extension/src/extension/host/hostBridge.ts" then
+				return
+			end
+			if path == "vscode_extension/src/shared/messages.ts" then
+				return
+			end
+			if path == "vscode_extension/src/extension/constants.ts" then
+				return
+			end
 			if not seen[path] then
 				seen[path] = true
 				out[#out + 1] = { path = path }

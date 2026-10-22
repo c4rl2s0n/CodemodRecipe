@@ -8,6 +8,7 @@ local STAGES = {
 	{ id = "scan_identify", path = "rust/crates/host/src/component/scan/identify.rs" },
 	{ id = "scan_incremental", path = "rust/crates/host/src/component/scan/incremental.rs" },
 	{ id = "scan_types", path = "rust/crates/host/src/component/scan/types.rs" },
+	{ id = "scan_summary", path = "rust/crates/host/src/component/scan/summary.rs" },
 	-- relations/
 	{ id = "relations", path = "rust/crates/host/src/component/relations/mod.rs" },
 	{ id = "relations_resolve", path = "rust/crates/host/src/component/relations/resolve/mod.rs" },
@@ -197,6 +198,32 @@ return {
 				end
 			end
 		end)
+		local function paintSimple(queryId, capture, role)
+			pcall(function()
+				local hits = c:query({
+					path = path,
+					language = "rust",
+					query = queryId,
+					capture = capture,
+				})
+				for i, hit in ipairs(hits) do
+					local child = c:component("repo.host_module_item"):parse({
+						source = { path = path, span = hit.span },
+						parent = identity,
+						role = role,
+						hints = { name = role .. "#" .. i, kind = role },
+					})
+					if child then
+						child.componentId = "repo.host_module_item"
+						child.role = role
+						children[#children + 1] = child
+					end
+				end
+			end)
+		end
+		paintSimple("repo_rust.use_items", "useItem", "use")
+		paintSimple("repo_rust.macro_invocations", "macro", "macro")
+		paintSimple("repo_rust.line_comments", "comment", "comment")
 		return {
 			id = stageId,
 			componentId = "repo.component_pipeline",
@@ -214,6 +241,7 @@ return {
 			scan_identify = { "scan" },
 			scan_incremental = { "scan" },
 			scan_graph_phases = { "scan" },
+			scan_summary = { "scan" },
 			scan_types = { "scan" },
 			relations = { "relation_metrics", "coverage" },
 			relations_resolve = { "relations" },

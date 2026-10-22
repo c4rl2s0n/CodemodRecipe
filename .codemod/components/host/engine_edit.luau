@@ -66,25 +66,73 @@ return {
 			id = "engine-edit",
 			path = path,
 		}
-		if engineSpan then
-			children[#children + 1] = {
-				id = "Engine",
-				componentId = "repo.host_module_item",
-				source = { path = path, span = engineSpan },
-				kind = "type",
-				name = "Engine",
-				role = "type",
-			}
+		local function paintFile(fpath)
+			pcall(function()
+				local typeNames = c:query({
+					path = fpath,
+					language = "rust",
+					query = "repo_rust.type_items",
+					capture = "typeName",
+				})
+				local types = c:query({
+					path = fpath,
+					language = "rust",
+					query = "repo_rust.type_items",
+					capture = "typeItem",
+				})
+				table.sort(typeNames, function(a, b)
+					return a.span.from < b.span.from
+				end)
+				table.sort(types, function(a, b)
+					return a.span.from < b.span.from
+				end)
+				for i = 1, math.min(#typeNames, #types) do
+					children[#children + 1] = {
+						id = fpath .. ":" .. typeNames[i].text .. "@" .. tostring(types[i].span.from),
+						componentId = "repo.host_module_item",
+						source = { path = fpath, span = types[i].span },
+						kind = "type",
+						name = typeNames[i].text,
+						role = "type",
+					}
+				end
+			end)
+			pcall(function()
+				local fnNames = c:query({
+					path = fpath,
+					language = "rust",
+					query = "repo_rust.all_functions",
+					capture = "fnName",
+				})
+				local fns = c:query({
+					path = fpath,
+					language = "rust",
+					query = "repo_rust.all_functions",
+					capture = "fn",
+				})
+				table.sort(fnNames, function(a, b)
+					return a.span.from < b.span.from
+				end)
+				table.sort(fns, function(a, b)
+					return a.span.from < b.span.from
+				end)
+				for i = 1, math.min(#fnNames, #fns) do
+					children[#children + 1] = {
+						id = fpath .. ":" .. fnNames[i].text .. "@" .. tostring(fns[i].span.from),
+						componentId = "repo.host_module_item",
+						source = { path = fpath, span = fns[i].span },
+						kind = "fn",
+						name = fnNames[i].text,
+						role = "fn",
+					}
+				end
+			end)
 		end
-		if editSpan then
-			children[#children + 1] = {
-				id = "EditOp",
-				componentId = "repo.host_module_item",
-				source = { path = OPS, span = editSpan },
-				kind = "type",
-				name = "EditOp",
-				role = "type",
-			}
+		paintFile(path)
+		paintFile(OPS)
+		-- Keep Engine/EditOp presence flags even if paintFile queries differ.
+		if engineSpan and not hasEngine then
+			hasEngine = true
 		end
 		return {
 			id = "engine-edit",

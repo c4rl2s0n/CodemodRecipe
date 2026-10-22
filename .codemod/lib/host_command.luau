@@ -26,10 +26,10 @@ function M.pairVariantsBySpan(variantHits, renameHits)
 	return out
 end
 
---- Query HostCommand variants + renames from mod.rs and return paired rows.
---- `c` is the component context; `path` defaults to the protocol mod.rs.
+--- Query HostCommand variants + renames from command.rs and return paired rows.
+--- `c` is the component context; `path` defaults to the protocol command.rs.
 function M.parseEnum(c, path)
-	path = path or "rust/crates/host/src/protocol/mod.rs"
+	path = path or "rust/crates/host/src/protocol/command.rs"
 	local variants = c:query({
 		path = path,
 		language = "rust",

@@ -240,6 +240,42 @@ return {
 			end
 		end
 
+		-- Coverage leaves: MCP binary + inventory SSOT (sole path owners after dual-root opt-out).
+		local function paintFns(fpath, idPrefix)
+			pcall(function()
+				local fnNames = c:query({
+					path = fpath,
+					language = "rust",
+					query = "repo_rust.all_functions",
+					capture = "fnName",
+				})
+				local fns = c:query({
+					path = fpath,
+					language = "rust",
+					query = "repo_rust.all_functions",
+					capture = "fn",
+				})
+				table.sort(fnNames, function(a, b)
+					return a.span.from < b.span.from
+				end)
+				table.sort(fns, function(a, b)
+					return a.span.from < b.span.from
+				end)
+				for i = 1, math.min(#fnNames, #fns) do
+					children[#children + 1] = {
+						id = idPrefix .. fnNames[i].text .. "@" .. tostring(fns[i].span.from),
+						componentId = "repo.host_module_item",
+						source = { path = fpath, span = fns[i].span },
+						kind = "fn",
+						name = fnNames[i].text,
+						role = "fn",
+					}
+				end
+			end)
+		end
+		paintFns(path, "fn.")
+		paintFns(INVENTORY_RS, "inv.fn.")
+
 		return {
 			id = "mcp-surface",
 			componentId = "repo.mcp_tool",
@@ -249,6 +285,7 @@ return {
 			helperRefs = helperRefs,
 			outerArms = roots,
 			listUsesInventory = listUsesInventory,
+			extraPaths = { INVENTORY_RS },
 		}
 	end,
 	verify = function(_c, instance, graph)

@@ -87,6 +87,32 @@ local function deepenLeaves(c, path, identity)
 			end
 		end
 	end)
+	local function paintSimple(queryId, capture, role)
+		pcall(function()
+			local hits = c:query({
+				path = path,
+				language = "rust",
+				query = queryId,
+				capture = capture,
+			})
+			for i, hit in ipairs(hits) do
+				local child = c:component("repo.host_module_item"):parse({
+					source = { path = path, span = hit.span },
+					parent = identity,
+					role = role,
+					hints = { name = role .. "#" .. i, kind = role },
+				})
+				if child then
+					child.componentId = "repo.host_module_item"
+					child.role = role
+					children[#children + 1] = child
+				end
+			end
+		end)
+	end
+	paintSimple("repo_rust.use_items", "useItem", "use")
+	paintSimple("repo_rust.macro_invocations", "macro", "macro")
+	paintSimple("repo_rust.line_comments", "comment", "comment")
 	return children
 end
 

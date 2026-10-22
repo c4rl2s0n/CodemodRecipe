@@ -8,9 +8,7 @@ return {
 	identify = function(c)
 		local out = {}
 		for _, path in ipairs(c:listFiles(GLOB)) do
-			if not path:match("/index%.ts$") then
-				out[#out + 1] = { path = path }
-			end
+			out[#out + 1] = { path = path }
 		end
 		return out
 	end,

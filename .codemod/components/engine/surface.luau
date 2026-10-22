@@ -1,12 +1,17 @@
 --- Engine crate public surfaces: language adapters + query/engine entry types.
 
+local owned = require("../../lib/rust_owned_paths")
+
 return {
 	id = "repo.engine_surface",
 	description = "Engine crate pub types/fns under src/ (language, query, span, ops)",
 	identify = function(c)
 		local out = {}
 		for _, path in ipairs(c:listFiles("rust/crates/engine/src/**/*.rs")) do
-			out[#out + 1] = { path = path }
+			-- repo.engine_edit owns engine/mod.rs
+			if not owned.isEngineEditOwned(path) then
+				out[#out + 1] = { path = path }
+			end
 		end
 		return out
 	end,

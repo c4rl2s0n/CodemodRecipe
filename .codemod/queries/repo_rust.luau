@@ -26,6 +26,20 @@ return {
   (#eq? @attr "serde")
   (#eq? @key "rename"))
 ]],
+		-- HostCommand variant with optional field list (struct variants).
+		host_command_variant_items = [[
+(enum_item
+  name: (type_identifier) @enum
+  body: (enum_variant_list
+    (enum_variant) @variantItem)
+  (#eq? @enum "HostCommand"))
+]],
+		-- Fields inside an enum variant body.
+		enum_variant_fields = [[
+(field_declaration
+  name: (field_identifier) @fieldName
+  type: (_) @fieldType) @fieldItem
+]],
 		-- Dispatch arms: HostCommand::Variant => ... (unit variants); whole arm for coverage.
 		host_command_dispatch_unit = [[
 (match_arm
@@ -183,6 +197,18 @@ return {
 		impl_items = [[
 (impl_item
   type: (type_identifier) @implType) @implItem
+]],
+		-- Use declarations (module prelude — often the residual span gap).
+		use_items = [[
+(use_declaration) @useItem
+]],
+		-- Macro invocations (include! / format! / …).
+		macro_invocations = [[
+(macro_invocation) @macro
+]],
+		-- Line comments incl. //! / /// docs (largest honest residual on helper files).
+		line_comments = [[
+(line_comment) @comment
 ]],
 	},
 }

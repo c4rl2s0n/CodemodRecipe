@@ -84,6 +84,13 @@ pub(super) fn scan_error(message: &str) -> ComponentScanResponse {
     }
 }
 
+/// Inline `mod tests` shares the production `.rs` path with whatever stack root
+/// owns that file (`repo.rust_mod_file` or a domain composer) — D-033.
+/// No other dual-root pairs are allowlisted.
+fn path_share_allowed(a: &str, b: &str) -> bool {
+    a == "repo.rust_test_module" || b == "repo.rust_test_module"
+}
+
 pub(super) fn run_full_scan(registry: &RecipeRegistry) -> Result<ScanData, String> {
     if registry.components().is_empty() {
         return Ok(ScanData::default());
@@ -104,7 +111,9 @@ pub(super) fn run_full_scan(registry: &RecipeRegistry) -> Result<ScanData, Strin
         for inst in &found {
             if let Some(path) = crate::component::types::context_path(&inst.locator) {
                 if let Some(prev) = path_owners.insert(path.to_string(), component.id.clone()) {
-                    if prev != component.id {
+                    if prev != component.id
+                        && !path_share_allowed(&prev, &component.id)
+                    {
                         data.parse_findings.push(
                             crate::component::types::ComponentFinding {
                                 severity: "error".to_string(),

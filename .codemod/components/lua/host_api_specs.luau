@@ -19,13 +19,18 @@ local FEEDS = {
 	template = "repo.host_api_handlers/template_methods",
 }
 
+local owned = require("../../lib/rust_owned_paths")
+
 return {
 	id = "repo.lua_host_api_specs",
 	description = "Luau host API spec modules under rust/crates/lua/src/host_api/specs/",
 	identify = function(c)
 		local out = {}
 		for _, path in ipairs(c:listFiles("rust/crates/lua/src/host_api/specs/**/*.rs")) do
-			out[#out + 1] = { path = path }
+			-- repo.domain_type owns QuerySpec/IfExists adapter leaves
+			if not owned.isDomainTypeLeaf(path) then
+				out[#out + 1] = { path = path }
+			end
 		end
 		return out
 	end,
@@ -129,6 +134,32 @@ return {
 				end
 			end
 		end)
+		local function paintSimple(queryId, capture, role)
+			pcall(function()
+				local hits = c:query({
+					path = path,
+					language = "rust",
+					query = queryId,
+					capture = capture,
+				})
+				for i, hit in ipairs(hits) do
+					local child = c:component("repo.host_module_item"):parse({
+						source = { path = path, span = hit.span },
+						parent = identity,
+						role = role,
+						hints = { name = role .. "#" .. i, kind = role },
+					})
+					if child then
+						child.componentId = "repo.host_module_item"
+						child.role = role
+						children[#children + 1] = child
+					end
+				end
+			end)
+		end
+		paintSimple("repo_rust.use_items", "useItem", "use")
+		paintSimple("repo_rust.macro_invocations", "macro", "macro")
+		paintSimple("repo_rust.line_comments", "comment", "comment")
 		return {
 			id = "specs." .. stage,
 			componentId = "repo.lua_host_api_specs",

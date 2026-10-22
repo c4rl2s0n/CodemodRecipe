@@ -214,17 +214,39 @@ Before extending the framework further:
 - **Agent honesty:** one MCP skill path (`.agents` playbook + usage docs); Cursor `codemod-mcp` is a thin pointer; mutating component/stack MCP tools require `previewToken` like recipes; `inlineRecipe` schema is a string.
 - **Domain honesty:** `hostZoneForPath` maps sandbox/config/template/explorer; legacy `rust.runtime` catalog entry removed; `preview` lives under `edit_session`, `lua_runtime` under `host_api`; protocol DTOs split (`command.rs` / `responses.rs`).
 
+### Dogfood cleanliness (D-033)
+
+Follow-up after D-029/D-030 path split and dual-root enforcement:
+
+- **HostCommand locate:** protocol identify/parse/scaffold + fixtures use `protocol/command.rs` (not `mod.rs`). `host_module` still owns the `protocol/mod.rs` barrel.
+- **Domain-owned path opt-outs:** `lib/rust_owned_paths.luau`; `repo.rust_mod_file` skips domain/platform trees (mirror `ts_module`). Broader surfaces yield to grain (`engine_surface` ↔ `engine_edit`, `support_crate_surface` ↔ `domain_type`, `lua_host_api_specs` ↔ domain leaves).
+- **Test co-locate allowlist:** `composer.identify_path_conflict` skips when either root is `repo.rust_test_module` (inline `mod tests` must share the production path).
+- **`tests` edges:** `lib/rust_test_target.luau` resolves production owners beyond `rust_mod_file` (domain composers after opt-outs; aliases for multi-file units like `ops.rs` → `engine_edit`, `mcp_inventory.rs` → `mcp_tool`; `ts_test` → `webview_message` for `messages.ts`).
+- **VS Code anchors:** `vscode_command` identifies `constants.ts` (manifest stays `vscode_manifest`); `ts_module` skips `hostBridge.ts` / `messages.ts` / `constants.ts`; `vscode_ext_bootstrap` paints `index.ts`.
+- **host_module ownership:** most-specific directory MODULES entry wins (`preview/` under `edit_session/`); exact leaf MODULES paths (`lua_runtime`, `host_api_registry`) own themselves.
+- **Span residual:** pipeline/host/lua composers also paint `use_declaration`, `macro_invocation`, and `line_comment` (doc comments were the bulk of `testing.rs` gap).
+
 ### Facet Phase 2 + Sweep 3 grain (D-031)
 
 - **Facets:** `RecipeSession` / `QueryIntel` migrated for the handler families above (same mutex; no crate extract).
 - **Grain:** VS Code `HostCommand` → `shared/hostCommand.ts`; `recipe/{schema,fs_walk}.rs`; `template/{legacy,env}.rs`.
-- Still deferred: crate extraction (D-025 F), HostCommand TS/MCP codegen, D-013 warm-from-disk, golden mermaid CI.
+- Still deferred: crate extraction (D-025 F), D-013 warm-from-disk, golden mermaid CI.
+- HostCommand TS/MCP codegen: done as D-034.
 
 ### MCP HostCommand parity (D-032)
 
 Agent-useful HostCommands already used by the VS Code bridge are now MCP tools:
 `reload_recipes`, `diff_recipe`, `derive_args`, `filter_explorer_recipes`, `query_captures`.
-Dedicated scaffold/operation MCP tools remain omitted (covered by hook tools). Full inventory→codegen still deferred.
+Dedicated scaffold/operation MCP tools remain omitted (covered by hook tools).
+
+### HostCommand adapter sync (D-034)
+
+- **SSOT:** hand `command.rs` (+ dispatch bodies, MCP `input_schema` / tools/call).
+- **Generated:** `hostCommand.g.ts`, `mcp_inventory.g.rs` via shared Luau `host_command_adapters` (`expectedFiles`); hand wrappers re-export / `include!`.
+- **Verify ≡ sync:** `adapter.generated_drift` diffs disk against the same renderers as `syncAdapters`.
+- **MCP policy:** opt-in rows in `MCP_TOOL_SPECS` (not 1:1 every HostCommand).
+- **Zones:** drop empty `docs.surface`; keep `support_crate_surface` (span painter).
+- **Out of scope:** HostInner facade / crate extract (sibling plan); generating dispatch or tools/call arms.
 
 ### Path-module graph + product tests (K–M)
 
@@ -239,7 +261,8 @@ via include globs or explicit `!` excludes — never host path hardcodes.
 
 **Product tests in the graph:** `repo.rust_test` / `repo.ts_test` identify
 `crates/*/tests/**/*.rs` and `*.test.ts` (not Luau `*.test.luau`). Edge `tests` →
-production `rust_mod_file` / `ts_module`. Pilot scaffold:
+production owner (`rust_mod_file`, domain composer, or `ts_module` — see D-033
+`rust_test_target`). Pilot scaffold:
 `repo.ts_module` operation `scaffoldTest` creates a vitest stub beside a `.ts` module.
 
 **Graph scope:** Rust + VS Code product code (+ product tests). Luau under

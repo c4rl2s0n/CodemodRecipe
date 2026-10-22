@@ -23,8 +23,7 @@ return {
 			t:assert(byId["platform.engine"], "platform.engine zone missing")
 			t:assert(byId["platform.lua"], "platform.lua zone missing")
 			t:assert(byId["vscode.extension"], "vscode.extension zone missing")
-			t:assert(byId["docs.surface"], "docs.surface title-only zone missing")
-			t:assertEq(byId["docs.surface"].ast.role, "documentation")
+			t:assert(byId["docs.surface"] == nil, "docs.surface placeholder removed")
 		end,
 	},
 }

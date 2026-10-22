@@ -84,6 +84,68 @@ return {
 		if span then
 			source.span = span
 		end
+		-- Full-file coverage leaves (domain_type is sole root for these paths).
+		local children = {}
+		pcall(function()
+			local typeNames = c:query({
+				path = path,
+				language = "rust",
+				query = "repo_rust.type_items",
+				capture = "typeName",
+			})
+			local types = c:query({
+				path = path,
+				language = "rust",
+				query = "repo_rust.type_items",
+				capture = "typeItem",
+			})
+			table.sort(typeNames, function(a, b)
+				return a.span.from < b.span.from
+			end)
+			table.sort(types, function(a, b)
+				return a.span.from < b.span.from
+			end)
+			for i = 1, math.min(#typeNames, #types) do
+				children[#children + 1] = {
+					id = path .. ":" .. typeNames[i].text .. "@" .. tostring(types[i].span.from),
+					componentId = "repo.host_module_item",
+					source = { path = path, span = types[i].span },
+					kind = "type",
+					name = typeNames[i].text,
+					role = "type",
+				}
+			end
+		end)
+		pcall(function()
+			local fnNames = c:query({
+				path = path,
+				language = "rust",
+				query = "repo_rust.all_functions",
+				capture = "fnName",
+			})
+			local fns = c:query({
+				path = path,
+				language = "rust",
+				query = "repo_rust.all_functions",
+				capture = "fn",
+			})
+			table.sort(fnNames, function(a, b)
+				return a.span.from < b.span.from
+			end)
+			table.sort(fns, function(a, b)
+				return a.span.from < b.span.from
+			end)
+			for i = 1, math.min(#fnNames, #fns) do
+				children[#children + 1] = {
+					id = path .. ":" .. fnNames[i].text .. "@" .. tostring(fns[i].span.from),
+					componentId = "repo.host_module_item",
+					source = { path = path, span = fns[i].span },
+					kind = "fn",
+					name = fnNames[i].text,
+					role = "fn",
+				}
+			end
+		end)
 		return {
 			id = siteId,
 			componentId = "repo.domain_type",
@@ -92,6 +154,7 @@ return {
 			pair = hints.pair,
 			role = hints.role or "owner",
 			defined = found,
+			children = children,
 		}
 	end,
 	relate = function(_c, instance, index)

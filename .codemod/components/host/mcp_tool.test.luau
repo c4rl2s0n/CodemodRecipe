@@ -1,8 +1,8 @@
 local MCP_RS = "rust/crates/host/src/bin/codemod_mcp.rs"
 local INVENTORY_RS = "rust/crates/host/src/protocol/mcp_inventory.rs"
-local MOD_RS = "rust/crates/host/src/protocol/mod.rs"
+local COMMAND_RS = "rust/crates/host/src/protocol/command.rs"
 local DISPATCH_RS = "rust/crates/host/src/protocol/dispatch/mod.rs"
-local TYPES_TS = "vscode_extension/src/shared/types.ts"
+local HOST_COMMAND_TS = "vscode_extension/src/shared/hostCommand.ts"
 
 --- Minimal MCP binary: tools/list derives from inventory; tools/call routes tools.
 local function mcpRs(callArms, helpers)
@@ -100,7 +100,7 @@ local function baseFiles(overrides)
 	local files = {
 		[MCP_RS] = mcpRs(BASE_CALL, previewHelpers),
 		[INVENTORY_RS] = inventoryRs(BASE_METAS),
-		[MOD_RS] = [[
+		[COMMAND_RS] = [[
 #[derive(Debug, Deserialize)]
 #[serde(tag = "command")]
 pub enum HostCommand {
@@ -124,7 +124,7 @@ pub fn handle_command(cmd: HostCommand) {
     }
 }
 ]],
-		[TYPES_TS] = [[
+		[HOST_COMMAND_TS] = [[
 export type HostCommand =
   | { command: 'list' }
   | { command: 'describe'; recipe: string }
@@ -147,6 +147,18 @@ local function codes(findings)
 	return out
 end
 
+--- Full stack emits composer.* noise in sparse fixtures; assert MCP-family only.
+local function mcpFindings(findings)
+	local out = {}
+	for _, f in ipairs(findings or {}) do
+		local code = f.code or ""
+		if code:find("^mcp_tool%.", 1) then
+			out[#out + 1] = f
+		end
+	end
+	return out
+end
+
 return {
 	id = "repo.mcp_tool.tests",
 	target = "repo.mcp_tool",
@@ -154,7 +166,7 @@ return {
 		consistent_surface_has_exposes_edges_and_no_findings = function(t)
 			local ws = t:workspace({ files = baseFiles() })
 			local scan = ws:scan()
-			t:assertEq(#scan.findings, 0)
+			t:assertEq(#mcpFindings(scan.findings), 0)
 			local root
 			for _, inst in ipairs(scan.instances) do
 				if inst.componentId == "repo.mcp_tool" then
@@ -162,7 +174,13 @@ return {
 				end
 			end
 			t:assert(root, "mcp_tool root missing")
-			t:assertEq(#root.ast.children, 5)
+			local toolChildren = 0
+			for _, child in ipairs(root.ast.children or {}) do
+				if child.componentId == "repo.mcp_tool_entry" then
+					toolChildren += 1
+				end
+			end
+			t:assertEq(toolChildren, 5)
 			local edges = {}
 			for _, e in ipairs(scan.edges or {}) do
 				edges[e.from .. "->" .. (e.to or e.symbol or "")] = e.kind
@@ -181,7 +199,7 @@ return {
 				}),
 			})
 			local scan = ws:scan()
-			t:assertEq(codes(scan.findings), { "mcp_tool.missing_arm@repo.mcp_tool/mcp-surface" })
+			t:assertEq(codes(mcpFindings(scan.findings)), { "mcp_tool.missing_arm@repo.mcp_tool/mcp-surface" })
 		end,
 
 		arm_without_listing_is_flagged = function(t)
@@ -191,7 +209,7 @@ return {
 				}),
 			})
 			local scan = ws:scan()
-			t:assertEq(codes(scan.findings), {
+			t:assertEq(codes(mcpFindings(scan.findings)), {
 				"mcp_tool.unknown_variant@repo.mcp_tool_entry/run_tests",
 				"mcp_tool.unlisted@repo.mcp_tool_entry/run_tests",
 			})
@@ -211,7 +229,7 @@ fn mcp_preview_or_apply(registry: &mut RecipeRegistry, arguments: &serde_json::V
 				}),
 			})
 			local scan = ws:scan()
-			t:assertEq(codes(scan.findings), { "mcp_tool.helper_drift@repo.mcp_tool_entry/preview_recipe" })
+			t:assertEq(codes(mcpFindings(scan.findings)), { "mcp_tool.helper_drift@repo.mcp_tool_entry/preview_recipe" })
 		end,
 
 		decoy_scoped_identifiers_are_not_host_command_refs = function(t)
@@ -225,7 +243,7 @@ fn mcp_preview_or_apply(registry: &mut RecipeRegistry, arguments: &serde_json::V
 				}),
 			})
 			local scan = ws:scan()
-			t:assertEq(codes(scan.findings), { "mcp_tool.unlisted@repo.mcp_tool_entry/run_tests" })
+			t:assertEq(codes(mcpFindings(scan.findings)), { "mcp_tool.unlisted@repo.mcp_tool_entry/run_tests" })
 		end,
 
 		handwritten_tools_list_is_flagged = function(t)

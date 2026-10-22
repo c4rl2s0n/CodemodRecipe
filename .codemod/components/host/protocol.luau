@@ -1,8 +1,9 @@
 local hostCommand = require("../../lib/host_command")
+local adapters = require("../../lib/host_command_adapters")
 
-local MOD_RS = "rust/crates/host/src/protocol/mod.rs"
+local COMMAND_RS = adapters.COMMAND_RS
 local DISPATCH_RS = "rust/crates/host/src/protocol/dispatch/mod.rs"
-local TYPES_TS = "vscode_extension/src/shared/types.ts"
+local HOST_COMMAND_G_TS = adapters.HOST_COMMAND_G_TS
 
 local function collectDispatchArms(c)
 	local arms = {}
@@ -22,7 +23,7 @@ end
 local function collectTsCommands(c)
 	local ts = {}
 	local decls = c:query({
-		path = TYPES_TS,
+		path = HOST_COMMAND_G_TS,
 		language = "typescript",
 		query = "repo_typescript.host_command_alias_decl",
 		capture = "aliasDecl",
@@ -32,7 +33,7 @@ local function collectTsCommands(c)
 		return ts, false
 	end
 	for _, hit in ipairs(c:query({
-		path = TYPES_TS,
+		path = HOST_COMMAND_G_TS,
 		language = "typescript",
 		query = "repo_typescript.host_command_union_members",
 		capture = "tsCommand",
@@ -46,10 +47,10 @@ end
 
 return {
 	id = "repo.host_protocol",
-	description = "Host stdio protocol: HostCommand enum, dispatch arms, and the TS mirror union",
+	description = "Host stdio protocol: HostCommand enum, dispatch arms, and generated TS/MCP adapter mirrors",
 	identify = function(c)
 		local out = {}
-		for _, path in ipairs(c:listFiles(MOD_RS)) do
+		for _, path in ipairs(c:listFiles(COMMAND_RS)) do
 			out[#out + 1] = { path = path }
 		end
 		return out
@@ -83,7 +84,6 @@ return {
 		local dispatchArms = collectDispatchArms(c)
 		local tsCommands, tsPresent = collectTsCommands(c)
 
-		-- Spanned dispatch arms for coverage (dispatch.rs) — full match_arm body.
 		local dispatchChildren = {}
 		pcall(function()
 			local function addArms(qid)
@@ -136,7 +136,7 @@ return {
 			tsMirrorPresent = tsPresent,
 		}
 	end,
-	verify = function(_c, instance)
+	verify = function(c, instance)
 		local findings = {}
 		local ast = instance.ast
 		local arms = ast.dispatchArms or {}
@@ -170,7 +170,9 @@ return {
 					findings[#findings + 1] = {
 						severity = "error",
 						code = "host_command.missing_ts_mirror",
-						message = "command '" .. child.rename .. "' is missing from the TS HostCommand union in shared/types.ts",
+						message = "command '"
+							.. child.rename
+							.. "' is missing from the generated TS HostCommand union in shared/hostCommand.g.ts",
 						instanceId = childId,
 					}
 				end
@@ -198,18 +200,50 @@ return {
 			end
 		end
 
-		local armCount = 0
-		for _ in pairs(arms) do
-			armCount += 1
-		end
-		-- Phase F: handle_command is a thin match delegating to dispatch/{catalog,query,recipe,components}.rs
-		-- (dispatch_dual_model finding retired).
+		-- Drift: disk .g files must match shared renderers (same as syncAdapters).
+		pcall(function()
+			local expected, variants = adapters.expectedFiles(c, COMMAND_RS)
+			for _, f in ipairs(adapters.mcpSpecFindings(variants)) do
+				f.instanceId = instance.id
+				findings[#findings + 1] = f
+			end
+			for path, content in pairs(expected) do
+				local disk = ""
+				local ok = pcall(function()
+					disk = c:read(path)
+				end)
+				if not ok then
+					findings[#findings + 1] = {
+						severity = "error",
+						code = "adapter.generated_missing",
+						message = "generated adapter missing: " .. path .. " (run host_protocol syncAdapters)",
+						instanceId = instance.id,
+					}
+				elseif adapters.diffGenerated(disk, content) then
+					findings[#findings + 1] = {
+						severity = "error",
+						code = "adapter.generated_drift",
+						message = "generated adapter drift: " .. path .. " (run host_protocol syncAdapters)",
+						instanceId = instance.id,
+					}
+				end
+			end
+		end)
 
 		return findings
 	end,
 	relate = function(_c, _instance)
 		return { { kind = "lives_in", to = "repo.zone/command.adapters" } }
 	end,
+	operations = {
+		syncAdapters = {
+			description = "Regenerate hostCommand.g.ts + mcp_inventory.g.rs from HostCommand SSOT / MCP_TOOL_SPECS",
+			args = {},
+			apply = function(c, _args, _target, _graph)
+				adapters.writeExpected(c, COMMAND_RS)
+			end,
+		},
+	},
 	toSummary = function(_c, instance)
 		local ast = instance.ast
 		local commands = 0

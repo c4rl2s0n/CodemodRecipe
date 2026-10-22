@@ -21,7 +21,8 @@ return {
     { id = "structural.modules", role = "structural", title = "Module barrels" },
     { id = "command.adapters", role = "architecture", title = "Command adapters" },
     { id = "domain.recipe", role = "architecture", title = "Recipe domain" },
-    { id = "docs.surface", role = "documentation", title = "Docs surface" },
+    -- role with no zoneRoles entry ⇒ title-only (no metric special-case)
+    { id = "example.docs", role = "documentation", title = "Optional docs label" },
   },
   -- optional: metric flags per role string (missing role ⇒ title-only, no flags)
   zoneRoles = {

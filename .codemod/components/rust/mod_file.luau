@@ -1,5 +1,7 @@
 --- Rust module file under crates/*/src (barrels + leaf modules) with mod/use children.
 
+local owned = require("../../lib/rust_owned_paths")
+
 local function parentDir(path)
 	return path:match("^(.*)/[^/]+$") or path
 end
@@ -20,6 +22,10 @@ return {
 		local function add(path)
 			-- Product tests are repo.rust_test; still include src/bin/*.rs (Cargo entrypoints).
 			if path:match("_test%.rs$") or path:match("/tests/") then
+				return
+			end
+			-- Domain/platform composers own these paths (avoid dual-root identify).
+			if owned.isDomainOwned(path) then
 				return
 			end
 			if not seen[path] then

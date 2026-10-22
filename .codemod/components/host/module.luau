@@ -18,7 +18,41 @@ local MODULES = {
 	{ id = "testing", path = "rust/crates/host/src/testing.rs" },
 	-- Leaf file: Luau ctx build / nested run (orphan from dir MODULES).
 	{ id = "lua_runtime", path = "rust/crates/host/src/host_api/lua_runtime.rs" },
+	-- Leaf file: host_api method registry (high product gap).
+	{ id = "host_api_registry", path = "rust/crates/host/src/host_api/registry.rs" },
 }
+
+local function moduleDir(mod)
+	if mod.path:match("/mod%.rs$") then
+		return mod.path:match("^(.*)/[^/]+$")
+	end
+	return nil
+end
+
+--- True when `fpath` is owned by a different MODULES entry (nested dir or leaf).
+--- Most-specific directory mod wins (preview/ under edit_session/); exact leaf
+--- MODULES paths (lua_runtime, host_api_registry, …) own themselves.
+local function ownedByOtherModule(fpath, currentModuleId)
+	for _, mod in ipairs(MODULES) do
+		if mod.path == fpath then
+			return mod.id ~= currentModuleId
+		end
+	end
+	local bestId, bestLen = nil, -1
+	for _, mod in ipairs(MODULES) do
+		local dir = moduleDir(mod)
+		if dir and fpath:sub(1, #dir + 1) == dir .. "/" then
+			if #dir > bestLen then
+				bestLen = #dir
+				bestId = mod.id
+			end
+		end
+	end
+	if bestId then
+		return bestId ~= currentModuleId
+	end
+	return false
+end
 
 return {
 	id = "repo.host_module",
@@ -53,6 +87,7 @@ return {
 			files = { path }
 		end
 		for _, fpath in ipairs(files) do
+			if not ownedByOtherModule(fpath, moduleId) then
 			local ok = pcall(function()
 				local fnNames = c:query({
 					path = fpath,
@@ -167,10 +202,35 @@ return {
 						children[#children + 1] = child
 					end
 				end
+				local function paintSimple(queryId, capture, role)
+					local hits = c:query({
+						path = fpath,
+						language = "rust",
+						query = queryId,
+						capture = capture,
+					})
+					for i, hit in ipairs(hits) do
+						local child = c:component("repo.host_module_item"):parse({
+							source = { path = fpath, span = hit.span },
+							parent = identity,
+							role = role,
+							hints = { name = role .. "#" .. i, kind = role },
+						})
+						if child then
+							child.componentId = "repo.host_module_item"
+							child.role = role
+							children[#children + 1] = child
+						end
+					end
+				end
+				paintSimple("repo_rust.use_items", "useItem", "use")
+				paintSimple("repo_rust.macro_invocations", "macro", "macro")
+				paintSimple("repo_rust.line_comments", "comment", "comment")
 			end)
 			if not ok then
 				-- skip unparseable
 			end
+			end -- not ownedByOtherModule
 		end
 		return {
 			id = moduleId,

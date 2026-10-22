@@ -1,5 +1,7 @@
 --- Core + query_tools + lua_macros: pub surface leaves (thin crates).
 
+local owned = require("../../lib/rust_owned_paths")
+
 local GLOBS = {
 	"rust/crates/core/src/**/*.rs",
 	"rust/crates/query_tools/src/**/*.rs",
@@ -13,7 +15,8 @@ return {
 		local out, seen = {}, {}
 		for _, pattern in ipairs(GLOBS) do
 			for _, path in ipairs(c:listFiles(pattern)) do
-				if not seen[path] then
+				-- repo.domain_type owns these leaves
+				if not owned.isDomainTypeLeaf(path) and not seen[path] then
 					seen[path] = true
 					out[#out + 1] = { path = path }
 				end

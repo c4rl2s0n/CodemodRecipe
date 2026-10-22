@@ -1,7 +1,7 @@
 local BRIDGE_TS = "vscode_extension/src/extension/host/hostBridge.ts"
-local MOD_RS = "rust/crates/host/src/protocol/mod.rs"
+local COMMAND_RS = "rust/crates/host/src/protocol/command.rs"
 local DISPATCH_RS = "rust/crates/host/src/protocol/dispatch/mod.rs"
-local TYPES_TS = "vscode_extension/src/shared/types.ts"
+local HOST_COMMAND_TS = "vscode_extension/src/shared/hostCommand.ts"
 
 local function bridgeTs(extraMethod)
 	return [[
@@ -35,7 +35,7 @@ end
 local function baseFiles(overrides)
 	local files = {
 		[BRIDGE_TS] = bridgeTs(),
-		[MOD_RS] = [[
+		[COMMAND_RS] = [[
 #[derive(Debug, Deserialize)]
 #[serde(tag = "command")]
 pub enum HostCommand {
@@ -53,7 +53,7 @@ pub fn handle_command(cmd: HostCommand) {
     }
 }
 ]],
-		[TYPES_TS] = [[
+		[HOST_COMMAND_TS] = [[
 export type HostCommand =
   | { command: 'list' }
   | { command: 'apply'; recipe: string };
@@ -74,6 +74,18 @@ local function codes(findings)
 	return out
 end
 
+--- Full stack emits composer.* noise in sparse fixtures; assert bridge/relation only.
+local function bridgeFindings(findings)
+	local out = {}
+	for _, f in ipairs(findings or {}) do
+		local code = f.code or ""
+		if code:find("^relation%.", 1) or code:find("^host_bridge", 1) then
+			out[#out + 1] = f
+		end
+	end
+	return out
+end
+
 return {
 	id = "repo.host_bridge.tests",
 	target = "repo.host_bridge",
@@ -81,7 +93,7 @@ return {
 		methods_with_literals_become_children_with_sends_edges = function(t)
 			local ws = t:workspace({ files = baseFiles() })
 			local scan = ws:scan()
-			t:assertEq(#scan.findings, 0)
+			t:assertEq(#bridgeFindings(scan.findings), 0)
 			local root
 			for _, inst in ipairs(scan.instances) do
 				if inst.componentId == "repo.host_bridge" then
@@ -116,7 +128,7 @@ return {
 				}),
 			})
 			local scan = ws:scan()
-			t:assertEq(codes(scan.findings), {
+			t:assertEq(codes(bridgeFindings(scan.findings)), {
 				"relation.unresolved@repo.host_bridge_method/bogus",
 			})
 		end,

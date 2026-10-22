@@ -124,6 +124,24 @@ return {
 				children[#children + 1] = child
 			end
 		end
+		-- Coverage leaves: exported types/consts beyond tiny key spans.
+		pcall(function()
+			local exports = c:query({
+				path = path,
+				language = "typescript",
+				query = "repo_typescript.export_statements",
+				capture = "export",
+			})
+			for i, hit in ipairs(exports) do
+				children[#children + 1] = {
+					id = "export@" .. tostring(hit.span.from),
+					componentId = "repo.ts_export",
+					source = { path = path, span = hit.span },
+					role = "export",
+				}
+			end
+		end)
+
 		return {
 			id = "webview-messages",
 			componentId = "repo.webview_message",

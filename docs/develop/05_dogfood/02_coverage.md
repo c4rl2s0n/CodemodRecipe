@@ -33,12 +33,12 @@ Layout: components live under `.codemod/components/{rust,host,vscode,engine,lua}
 | V | Adapter root `defines` → entries; VS Code fn/method leaves; bootstrap `uses` App.vue | done |
 | W | Restore `host_api_method` after handlers split; `lua_runtime` in `host_module`; TS imports + Rust attrs | done |
 
-Latest snapshot (2026-10-20): span **~93.9%**; architecture-connected **~100%**
-(`526 / 526` eligible — [inferred eligibility](03_decisions.md#architecture-ratio-eligibility-inferred)).
-Phase W restored `repo.host_api_method` (glob `handlers/**` + `lua_runtime` + `delegate/**`; identify
-`handlers/mod.rs`) — was zero instances after the handlers grain split. `host_module` deepens
-`lua_runtime.rs` (~13% → ~99%). `ts_module` paints import statements; host/lua/pipeline composers
-paint `attribute_item` leaves (`#[host_method]`, …). Zero architecture isolates.
+Latest snapshot (2026-10-21, D-033): span **~94.7%** / product **~96.2%**; architecture-connected
+**100%** (`528 / 528` eligible — [inferred eligibility](03_decisions.md#architecture-ratio-eligibility-inferred)).
+`composer.identify_path_conflict` **0**; `findingCount` **0**. Command triangle
+(`exposes` / `handles` / `sends`) restored via HostCommand→`command.rs`. `rust_mod_file` skips
+domain-owned paths; `host_module` most-specific dir ownership paints nested `preview/` + leaf
+`lua_runtime` / `host_api_registry`; residual span via `use` / `macro` / `line_comment` leaves.
 
 **Rust host `src/component/**` is modeled** by `repo.component_pipeline` (fn / type / string-const /
 attr leaves). Phase S wrongly called its residual an “accepted plateau”; the real bug was a nonexistent
@@ -80,13 +80,13 @@ Mega-files fight the framework: path-only composers + pub-fn leaves leave privat
 | Component | Root? | Models | Verifies / notes |
 |-----------|-------|--------|------------------|
 | `repo.rust_crate` | yes | `Cargo.toml` crates | packaging DAG |
-| `repo.rust_mod_file` / `repo.rust_mod_item` | yes / child | `lib.rs` / `mod.rs` barrels | mod + use leaves |
+| `repo.rust_mod_file` / `repo.rust_mod_item` | yes / child | `crates/*/src` minus domain-owned paths (D-033) | mod + use leaves |
 | `repo.support_crate_surface` | yes | core / query_tools / lua_macros | pub types/fns |
-| `repo.host_protocol` (+ `host_command`, `host_dispatch_arm`) | yes | protocol + dispatch | rename/dispatch/TS parity |
+| `repo.host_protocol` (+ `host_command`, `host_dispatch_arm`) | yes | `protocol/command.rs` + dispatch | rename/dispatch/TS parity |
 | `repo.protocol_key` | yes | `protocol/keys.rs` consts | catalog; TS/MCP mirror verify; `addKey`; `defines` → `host_protocol` |
 | `repo.mcp_tool` / entry | yes / child | MCP inventory | adapter SSOT |
 | `repo.host_bridge` / method | yes / child | hostBridge | sends |
-| `repo.vscode_command` / entry | yes / child | package.json commands | COMMANDS parity |
+| `repo.vscode_command` / entry | yes / child | `constants.ts` COMMANDS (+ reads package.json) | COMMANDS parity; manifest path owned by `vscode_manifest` |
 | `repo.vscode_manifest` / `json_field` | yes / child | package.json top-level + contributes.* | coarse field spans; `lives_in` extension |
 | `repo.host_api_method` / entry | yes / child | `#[host_method]` | stub + TS surface |
 | `repo.engine_edit` | yes | Engine + EditOp | produces FileChange |
@@ -101,13 +101,13 @@ Mega-files fight the framework: path-only composers + pub-fn leaves leave privat
 | `repo.lua_host_api_specs` | yes | `lua/src/host_api/specs/*.rs` | capability specs; `uses`/`feeds` → handlers |
 | `repo.host_api_handlers` | yes | `host_api/handlers/*` | capability groups |
 | `repo.webview_message` / entry | yes / child | messages.ts | membership under webview |
-| `repo.ts_module` / `ts_export` | yes / child | extension TS (excl. domain-owned paths / tests / main.ts / `.vue`) | `imports`/`exports`; `scaffoldTest` |
+| `repo.ts_module` / `ts_export` | yes / child | extension TS (excl. domain-owned paths / bootstrap / hostBridge / messages / constants / tests / main.ts / `.vue`) | `imports`/`exports`; `scaffoldTest` |
 | `repo.vscode_language_context` | yes | `language/context/*.ts` | Luau completion/context; `uses` among modules |
-| `repo.vscode_ext_bootstrap` | yes | `extension/bootstrap/*.ts` | activate workspace setup + pickers |
+| `repo.vscode_ext_bootstrap` | yes | `extension/bootstrap/**/*.ts` (incl. `index.ts`) | activate workspace setup + pickers |
 | `repo.recipe_invoke` | yes | `recipeInvoke` + `recipeKeybindings` | invoke path `uses` → `host_bridge` |
 | `repo.vue_sfc` / `vue_section` | yes / child | `*.vue` script/template/style | full-block section spans (depth-aware); `kind` in summary; `imports`; `scaffoldSfc` |
 | `repo.vscode_bootstrap` | yes | webview `main.ts` | classify + whole-file span |
-| `repo.rust_test_module` | yes | `#[cfg(test)] mod tests` | test/helper leaves; `tests` → mod file |
+| `repo.rust_test_module` | yes | `#[cfg(test)] mod tests` | test/helper leaves; `tests` → production owner (D-033); path-share with any root allowed |
 | `repo.rust_test` / `repo.ts_test` | yes | integration / `*.test.ts` | case leaves; `tests` → production module |
 | `repo.vscode_controller` / `webview_view` | (files present, not stack roots) | specialized composers | avoid duplicate identify |
 | `repo.zone` | yes | `stack.zones` catalog | membership subgraphs + role titles |
@@ -133,7 +133,6 @@ Catalog in `.codemod/lib/zones.luau` (wired from `stack.zones` / `zoneRoles`):
 |---------|------|--------|
 | `structural.modules` | `structural` | `ignoreRelations` — Rust barrels / support surfaces |
 | `command.adapters` / `domain.*` / `platform.engine` / `platform.lua` / `vscode.*` | `architecture` | Title + grouping (no metric flags) |
-| `docs.surface` | `documentation` | Title-only |
 
 Coverage children (`host_module_item`, `ts_export`, `rust_mod_item`, `host_api_method_entry`) emit `lives_in` → parent so zone flags reach the leaf forest. Do **not** blanket-`ignoreRelations` on `command.adapters` / all `vscode.*` (that greenwashes the triangle).
 **Zone catalog instances** (`repo.zone/*`) are always relation-ignored in metrics —
@@ -219,3 +218,5 @@ vscode_language_context / vscode_ext_bootstrap (extension domain grain)
 | 2026-10-21 | Pre-extension cleanup D-030 | MCP/docs honesty + previewToken gates; zone map; preview/lua_runtime placement; protocol split |
 | 2026-10-21 | Facet Phase 2 + Sweep 3 D-031 | RecipeSession/QueryIntel handler migration; hostCommand.ts; registry schema/fs_walk; template legacy/env |
 | 2026-10-21 | MCP HostCommand parity D-032 | MCP tools: reload_recipes, diff_recipe, derive_args, filter_explorer_recipes, query_captures |
+| 2026-10-21 | Dogfood cleanliness D-033 | HostCommand→command.rs; rust_owned_paths; test path-share; tests→domain owners; pipeline summary + bootstrap index; host_module nest/leaf ownership; use/macro/comment deepen; product span **~96.2%** / arch **100%** / findings **0** |
+| 2026-10-22 | HostCommand adapter sync D-034 | `syncAdapters` codegen: `hostCommand.g.ts` + `mcp_inventory.g.rs`; drop `docs.surface`; keep `support_crate_surface`; crate extract deferred (sibling plan) |

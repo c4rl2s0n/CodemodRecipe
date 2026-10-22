@@ -240,8 +240,9 @@ return {
 	id = "repo.vscode_command",
 	description = "VS Code command wiring: package.json manifest ↔ COMMANDS const ↔ registerCommand sites ↔ host bridge calls",
 	identify = function(c)
+		-- Anchor on COMMANDS const (not package.json — repo.vscode_manifest owns that).
 		local out = {}
-		for _, path in ipairs(c:listFiles(PACKAGE_JSON)) do
+		for _, path in ipairs(c:listFiles(CONSTANTS_TS)) do
 			out[#out + 1] = { path = path }
 		end
 		return out
@@ -260,8 +261,9 @@ return {
 		local constantsById = collectConstants(c)
 		local registrationDetails = collectRegistrationDetails(c)
 
+		-- Manifest lives in package.json (repo.vscode_manifest owns that path for identify).
 		local manifest = c:query({
-			path = path,
+			path = PACKAGE_JSON,
 			language = "json",
 			query = "repo_json.manifest_commands",
 			capture = "commandId",
@@ -272,7 +274,7 @@ return {
 			local constKey = constantsById[hit.text]
 			local detail = constKey and registrationDetails[constKey] or nil
 			local child = c:component("repo.vscode_command_entry"):parse({
-				source = { path = path, span = hit.span },
+				source = { path = PACKAGE_JSON, span = hit.span },
 				parent = identity,
 				role = "command",
 				hints = {
@@ -290,6 +292,41 @@ return {
 				children[#children + 1] = child
 			end
 		end
+
+		-- Coverage leaves on constants.ts (identify anchor): full exports + COMMANDS keys.
+		pcall(function()
+			local exports = c:query({
+				path = path,
+				language = "typescript",
+				query = "repo_typescript.export_statements",
+				capture = "export",
+			})
+			for _, hit in ipairs(exports) do
+				children[#children + 1] = {
+					id = "export@" .. tostring(hit.span.from),
+					componentId = "repo.ts_export",
+					source = { path = path, span = hit.span },
+					role = "export",
+				}
+			end
+		end)
+		pcall(function()
+			local keys = c:query({
+				path = path,
+				language = "typescript",
+				query = "repo_typescript.commands_constants",
+				capture = "constKey",
+			})
+			for _, hit in ipairs(keys) do
+				children[#children + 1] = {
+					id = "const." .. hit.text,
+					componentId = "repo.ts_export",
+					source = { path = path, span = hit.span },
+					role = "const",
+					name = hit.text,
+				}
+			end
+		end)
 
 		-- flat constKey -> file view for the wiring checks
 		local registrations = {}

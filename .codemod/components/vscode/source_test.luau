@@ -172,11 +172,14 @@ return {
 		for _, cand in ipairs(instance.ast.productionCandidates or {}) do
 			local toTs = "repo.ts_module/" .. cand
 			local toCtx = "repo.vscode_language_context/" .. cand
+			local toMsg = "repo.webview_message/webview-messages"
 			local to = nil
 			if index:byId(toTs) then
 				to = toTs
 			elseif index:byId(toCtx) then
 				to = toCtx
+			elseif cand == "vscode_extension/src/shared/messages.ts" and index:byId(toMsg) then
+				to = toMsg
 			end
 			if to then
 				edges[#edges + 1] = { kind = "tests", to = to }

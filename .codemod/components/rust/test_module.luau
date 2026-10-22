@@ -2,6 +2,7 @@
 
 local childrenLib = require("../../lib/rust_test_children")
 local zonesLib = require("../../lib/zones")
+local testTarget = require("../../lib/rust_test_target")
 
 return {
 	id = "repo.rust_test_module",
@@ -62,8 +63,8 @@ return {
 		local edges = {
 			{ kind = "lives_in", to = "repo.zone/" .. zone },
 		}
-		local to = "repo.rust_mod_file/" .. path
-		if index:byId(to) then
+		local to = testTarget.testsTarget(index, path)
+		if to then
 			edges[#edges + 1] = { kind = "tests", to = to }
 		end
 		return edges

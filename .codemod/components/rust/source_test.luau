@@ -1,6 +1,7 @@
 --- Integration tests under crates/*/tests (file root + case/helper leaves).
 
 local childrenLib = require("../../lib/rust_test_children")
+local testTarget = require("../../lib/rust_test_target")
 
 local function productionCandidates(path)
 	local crate = path:match("^(rust/crates/[^/]+)/")
@@ -79,8 +80,8 @@ return {
 			{ kind = "lives_in", to = "repo.zone/" .. zone },
 		}
 		for _, cand in ipairs(instance.ast.productionCandidates or {}) do
-			local to = "repo.rust_mod_file/" .. cand
-			if index:byId(to) then
+			local to = testTarget.testsTarget(index, cand)
+			if to then
 				edges[#edges + 1] = { kind = "tests", to = to }
 				break
 			end

@@ -2,12 +2,13 @@
 --- Library module: no top-level id/apply/parse.
 
 local names = require("./names")
+local adapters = require("./host_command_adapters")
 
-local MOD_RS = "rust/crates/host/src/protocol/mod.rs"
+local COMMAND_RS = adapters.COMMAND_RS
 local DISPATCH_RS = "rust/crates/host/src/protocol/dispatch/mod.rs"
-local TYPES_TS = "vscode_extension/src/shared/types.ts"
 local MCP_RS = "rust/crates/host/src/bin/codemod_mcp.rs"
 local INVENTORY_RS = "rust/crates/host/src/protocol/mcp_inventory.rs"
+local ADAPTERS_LUAU = ".codemod/lib/host_command_adapters.luau"
 local PACKAGE_JSON = "vscode_extension/package.json"
 local CONSTANTS_TS = "vscode_extension/src/extension/constants.ts"
 local EXTENSION_TS = "vscode_extension/src/extension/extension.ts"
@@ -72,11 +73,19 @@ end
 local function writeFile(c, path, content)
 	-- Whole-file replace: delete+create is rejected when the path was already
 	-- touched earlier in the same WorkingTree session (multi-layer fan-out).
+	local ok = pcall(function()
+		c:writeFile({ path = path, text = content })
+	end)
+	if ok then
+		return
+	end
 	local lang, root = "rust", "source_file"
 	if path:match("%.ts$") then
 		lang, root = "typescript", "program"
 	elseif path:match("%.json$") then
 		lang, root = "json", "document"
+	elseif path:match("%.luau$") then
+		lang, root = "luau", "chunk"
 	end
 	c:replace({
 		path = path,
@@ -87,7 +96,7 @@ local function writeFile(c, path, content)
 	})
 end
 
---- Host layer: enum variant + dispatch stub + TS union member.
+--- Host layer: enum variant + dispatch stub, then regenerate .g adapters.
 function M.applyHost(c, args, graph)
 	local forms = commandForms(args.name)
 	if skipOrError(
@@ -99,7 +108,7 @@ function M.applyHost(c, args, graph)
 	end
 
 	c:insert({
-		path = MOD_RS,
+		path = COMMAND_RS,
 		language = "rust",
 		query = "repo_rust.host_command_enum_body",
 		capture = "body",
@@ -124,47 +133,10 @@ function M.applyHost(c, args, graph)
 			.. " not implemented\"\n            })\n        }",
 	})
 
-	local decls = c:query({
-		path = TYPES_TS,
-		language = "typescript",
-		query = "repo_typescript.host_command_alias_decl",
-		capture = "aliasDecl",
-	})
-	local decl = decls[1]
-	if not decl then
-		error("HostCommand type alias not found in " .. TYPES_TS)
-	end
-	local members = {}
-	for _, hit in ipairs(c:query({
-		path = TYPES_TS,
-		language = "typescript",
-		query = "repo_typescript.host_command_union_members",
-		capture = "tsCommand",
-	})) do
-		if hit.span.from >= decl.span.from and hit.span.to <= decl.span.to then
-			members[#members + 1] = hit
-		end
-	end
-	table.sort(members, function(a, b)
-		return a.span.from < b.span.from
-	end)
-	if #members == 0 then
-		error("no HostCommand union members in " .. TYPES_TS)
-	end
-	local lastCmd = members[#members].text
-	-- Replace the trailing `;` of the alias with ` | { new };` via whole-alias rewrite.
-	local source = c:read(TYPES_TS)
-	local aliasText = source:sub(decl.span.from + 1, decl.span.to)
-	local trimmed = aliasText:gsub("%s*;%s*$", "")
-	local nextAlias = trimmed
-		.. "\n  | { command: '"
-		.. forms.rename
-		.. "'; path?: string };"
-	local next = source:sub(1, decl.span.from) .. nextAlias .. source:sub(decl.span.to + 1)
-	writeFile(c, TYPES_TS, next)
+	adapters.writeExpected(c, COMMAND_RS)
 end
 
---- MCP layer: inventory entry + tools/call arm.
+--- MCP layer: MCP_TOOL_SPECS row + input_schema stub + tools/call arm + sync .g inventory.
 function M.applyMcp(c, args, graph)
 	local forms = commandForms(args.name)
 	if skipOrError(
@@ -175,25 +147,31 @@ function M.applyMcp(c, args, graph)
 		return
 	end
 
-	local inv = c:read(INVENTORY_RS)
-	local metaEntry = [[
-        McpToolMeta {
-            name: "]] .. forms.mcpTool .. [[",
-            description: "Auto-scaffolded tool for HostCommand::]] .. forms.variant .. [[.",
-            host_command: Some("]] .. forms.variant .. [["),
-        },
-]]
-	local metaAnchor = 'name: "run_tests"'
-	local metaPos = inv:find(metaAnchor, 1, true)
-	if not metaPos then
-		error("inventory anchor run_tests not found in " .. INVENTORY_RS)
-	end
-	local objStart = metaPos
-	while objStart > 1 and inv:sub(objStart, objStart + #"McpToolMeta" - 1) ~= "McpToolMeta" do
-		objStart -= 1
-	end
-	inv = inv:sub(1, objStart - 1) .. metaEntry .. inv:sub(objStart)
+	local newSpec = {
+		name = forms.mcpTool,
+		description = "Auto-scaffolded tool for HostCommand::" .. forms.variant .. ".",
+		hostCommand = forms.variant,
+	}
+	-- In-memory first so writeExpected / renderMcpInventoryRs include the new row.
+	adapters.addMcpToolSpec(newSpec)
 
+	local specs = c:read(ADAPTERS_LUAU)
+	local specEntry = '\t{ name = "'
+		.. forms.mcpTool
+		.. '", description = "Auto-scaffolded tool for HostCommand::'
+		.. forms.variant
+		.. '.", hostCommand = "'
+		.. forms.variant
+		.. '" },\n'
+	local specAnchor = '{ name = "run_tests"'
+	local specPos = specs:find(specAnchor, 1, true)
+	if not specPos then
+		error("MCP_TOOL_SPECS anchor run_tests not found in " .. ADAPTERS_LUAU)
+	end
+	specs = specs:sub(1, specPos - 1) .. specEntry .. specs:sub(specPos)
+	writeFile(c, ADAPTERS_LUAU, specs)
+
+	local inv = c:read(INVENTORY_RS)
 	local schemaArm = '        "'
 		.. forms.mcpTool
 		.. '" => json!({ "type": "object", "properties": { "path": { "type": "string" } } }),\n'
@@ -204,6 +182,8 @@ function M.applyMcp(c, args, graph)
 	end
 	inv = inv:sub(1, schemaPos - 1) .. schemaArm .. inv:sub(schemaPos)
 	writeFile(c, INVENTORY_RS, inv)
+
+	adapters.writeExpected(c, COMMAND_RS)
 
 	local src = c:read(MCP_RS)
 	local callArm = '                "'
