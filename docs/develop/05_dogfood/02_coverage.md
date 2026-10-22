@@ -219,4 +219,5 @@ vscode_language_context / vscode_ext_bootstrap (extension domain grain)
 | 2026-10-21 | Facet Phase 2 + Sweep 3 D-031 | RecipeSession/QueryIntel handler migration; hostCommand.ts; registry schema/fs_walk; template legacy/env |
 | 2026-10-21 | MCP HostCommand parity D-032 | MCP tools: reload_recipes, diff_recipe, derive_args, filter_explorer_recipes, query_captures |
 | 2026-10-21 | Dogfood cleanliness D-033 | HostCommand→command.rs; rust_owned_paths; test path-share; tests→domain owners; pipeline summary + bootstrap index; host_module nest/leaf ownership; use/macro/comment deepen; product span **~96.2%** / arch **100%** / findings **0** |
-| 2026-10-22 | HostCommand adapter sync D-034 | `syncAdapters` codegen: `hostCommand.g.ts` + `mcp_inventory.g.rs`; drop `docs.surface`; keep `support_crate_surface`; crate extract deferred (sibling plan) |
+| 2026-10-22 | HostCommand adapter sync D-034 | `syncAdapters` codegen: `hostCommand.g.ts` + `mcp_inventory.g.rs`; drop `docs.surface`; keep `support_crate_surface` |
+| 2026-10-22 | Host facade extract D-025 F | `codemod_recipe_components` crate (`ComponentHost` + Fake + relations/types); host entry keeps Luau/`SharedHost`; DAG updated |

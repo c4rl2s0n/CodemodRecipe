@@ -98,6 +98,7 @@ pub(super) fn debug_query(
     ))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn generate_query(
     registry: &mut RecipeRegistry,
     path: Option<String>,
@@ -138,6 +139,7 @@ pub(super) fn query_captures(
     ))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn derive_args(
     registry: &RecipeRegistry,
     recipe: String,

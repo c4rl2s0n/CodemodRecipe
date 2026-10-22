@@ -7,15 +7,18 @@ end
 
 --- Expected path-dep edges (crate dir → set of allowed dependency dirs).
 --- See docs/develop/05_dogfood/05_target_architecture.md.
-local ALLOWED_PATH_DEPS = {
+	local ALLOWED_PATH_DEPS = {
 	lua_macros = {},
 	core = {},
 	-- D-016: shared QuerySpec/IfExists shapes live in core; lua FromLua adapters depend on core.
 	lua = { lua_macros = true, core = true },
 	engine = { core = true },
 	query_tools = { engine = true },
+	-- D-025 F: component domain + ComponentHost facade (no SharedHost).
+	components = { core = true, lua = true },
 	host = {
 		core = true,
+		components = true,
 		engine = true,
 		lua = true,
 		lua_macros = true,

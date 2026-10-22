@@ -3,7 +3,7 @@
 use codemod_recipe_host::protocol::dispatch;
 use codemod_recipe_host::protocol::HostCommand;
 use codemod_recipe_host::recipe::registry::RecipeRegistry;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 static N: AtomicUsize = AtomicUsize::new(0);
@@ -20,7 +20,7 @@ fn temp_workspace(name: &str) -> PathBuf {
     root
 }
 
-fn write(root: &PathBuf, rel: &str, content: &str) {
+fn write(root: &Path, rel: &str, content: &str) {
     let path = root.join(rel);
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).unwrap();
@@ -28,8 +28,8 @@ fn write(root: &PathBuf, rel: &str, content: &str) {
     std::fs::write(path, content).unwrap();
 }
 
-fn registry_for(root: &PathBuf) -> RecipeRegistry {
-    let mut registry = RecipeRegistry::new(root.clone(), root.join(".codemod"));
+fn registry_for(root: &Path) -> RecipeRegistry {
+    let mut registry = RecipeRegistry::new(root.to_path_buf(), root.join(".codemod"));
     registry.reload();
     registry
 }

@@ -6,6 +6,7 @@ members = [
   "crates/lua_macros",
   "crates/engine",
   "crates/query_tools",
+  "crates/components",
   "crates/host",
 ]
 

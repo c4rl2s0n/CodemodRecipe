@@ -3,13 +3,10 @@
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-use codemod_recipe_lua::json_lua::{json_to_lua, lua_to_json};
 use codemod_recipe_lua::new_sandbox_with_require;
-use mlua::{Function, Lua, Table, Value};
 
-use crate::component::relations::{build_graph_facade, build_index_facade, flatten_instances};
 use crate::component::runtime::context::{
-    facade_node, invoke_component_hook, invoke_component_hook_with_facade, make_host,
+    invoke_component_hook, invoke_component_hook_with_facade, make_host,
     try_invoke_component_hook, ComponentInvokeRequest, ComponentRunContext,
     ComponentScaffoldRequest,
 };
@@ -17,8 +14,7 @@ use crate::component::runtime::finalize::{finalize_host, hook_to_json, take_tran
 use crate::component::runtime::operations::invoke_operation;
 use crate::component::runtime::scaffold::invoke_scaffold;
 use crate::component::scan::component_scan;
-use crate::component::types::{ComponentFinding, ComponentInstance, ComponentInvokeResponse};
-use crate::host_api::context::SharedHost;
+use crate::component::types::ComponentInvokeResponse;
 use crate::lua_runtime::RunKind;
 use crate::recipe::registry::RecipeRegistry;
 
@@ -216,7 +212,7 @@ fn invoke_read_hook(
                     return ComponentInvokeResponse::fail(e).with_transcript(take_transcript(&host));
                 }
             };
-            let (applied, files, transcript) = match finalize_host(&host, request.kind) {
+            let parts = match finalize_host(&host, request.kind) {
                 Ok(parts) => parts,
                 Err(e) => {
                     let mut resp = ComponentInvokeResponse::fail(e)
@@ -231,13 +227,13 @@ fn invoke_read_hook(
                 result: Some(result_json),
                 instance: None,
                 findings: None,
-                files,
+                files: parts.files,
                 transcript: None,
                 logs: None,
-                applied,
+                applied: parts.applied,
                 preview_token: None,
             }
-            .with_transcript(Some(transcript))
+            .with_transcript(Some(parts.transcript))
         }
         Err(message) => {
             ComponentInvokeResponse::fail(message).with_transcript(take_transcript(&host))

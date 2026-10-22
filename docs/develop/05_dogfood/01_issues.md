@@ -49,7 +49,7 @@ Status: `open` / `in-progress` / `fixed` / `wontfix(decision documented)`.
 | ID | Severity | Area | Issue | Status |
 |----|----------|------|-------|--------|
 | D-016 | gap | architecture | Dual domain types: `QuerySpec` / `IfExists`. **Resolved (D-025 C):** `QuerySpec` owned in `core`; engine re-exports; lua keeps FromLua adapters + `From` into core; `IfExists`/`IfMissing` convert via `From`. `repo.domain_type` tracks owner vs `lua_adapter` (no dual_ownership warnings). | fixed (D-025 C) |
-| D-017 | gap | architecture | Host crate concentration. Mega-file splits done (`component/*`, `dispatch/`, `load/`, `handlers/`, `edit_session`). Domain zones + modules in place; **crate extraction deferred** (SharedHost coupling — [D-025 F](03_decisions.md#crate-extraction-deferred-d-025-f)). Remains open until a thin facade enables extraction. | open (partial — modules done, extract deferred) |
+| D-017 | gap | architecture | Host crate concentration. Mega-file splits done; **D-025 F:** `codemod_recipe_components` extracted (facade + relations/types). Luau scan/runtime entry still in host. | open (partial — components crate landed; RecipeSession extract deferred) |
 | D-018 | gap | architecture | Stub fan-out. **Policy:** generate once into `vscode_extension/stubs/` (SSOT); `scripts/sync-luau-stubs.sh` copies to export + `.codemod`. Copies are deploy artifacts, not alternate sources. | fixed (sync SSOT — D-025 E) |
 | D-019 | note | host / scan | Machine snapshot path is `{codemod_root}/.cache/scan-snapshot.json` (not docs/). Docs JSON dump removed; mermaid remains under `05_dogfood/`. | fixed (Phase 3) |
 | D-020 | decision | architecture | Placement policy: no inventory catch-all. Module composers live in architecture zones (`rust.runtime`, `vscode.*` by path, `command.adapters`); structural barrels keep `ignoreRelations`; coverage leaves nest under parents. Snapshot keys ordered `meta` → `coverage` → `relations` → rest. Full instance graph retained for completeness. | fixed (Phase F) |
@@ -58,7 +58,7 @@ Status: `open` / `in-progress` / `fixed` / `wontfix(decision documented)`.
 
 | ID | Severity | Area | Issue | Status |
 |----|----------|------|-------|--------|
-| D-025 | decision | architecture | Module-first domain restructure: vocabulary, `edit_session` rename, `domain.*` zones, mega-file splits, D-016/D-018, VS Code grain. Extraction deferred. See [03_decisions.md](03_decisions.md#domain-restructure-d-025). | fixed |
+| D-025 | decision | architecture | Module-first domain restructure + **F:** `ComponentHost` facade + `codemod_recipe_components` crate. See [03_decisions.md](03_decisions.md#domain-restructure-d-025) / [D-025 F](03_decisions.md#host-facade-then-crate-extract-d-025-f). | fixed |
 
 ## 2026-10-20 — Architecture review + framework C1
 
@@ -66,7 +66,7 @@ Status: `open` / `in-progress` / `fixed` / `wontfix(decision documented)`.
 |----|----------|------|-------|--------|
 | D-026 | bug | protocol | `generateAstPath` HostCommand was a dispatch stub (“not supported v1”) with no B/M surface — zombie graph node. **Retired** from Rust enum, dispatch, TS union, INTERNAL allowlist. | fixed |
 | D-027 | gap | host / scan | Empty `identify()` on stack roots was silent (0 instances, 0 findings) — e.g. dead `host_api_method` after handlers grain split. Emit `composer.identify_empty` (always; empty locators need investigation). Compact `component_scan.summary` for agents. | fixed |
-| D-028 | note | architecture | HostInner facet sketch documented; Phase 1 `ComponentSession`; Phase 2 Recipe/Query migration logged as D-031. Crate extraction still deferred. | fixed (Phase 1+2 views; extract deferred) |
+| D-028 | note | architecture | HostInner facet sketch; Phase 1 `ComponentSession`; Phase 2 Recipe/Query (D-031); **crate extract** for components via D-025 F. | fixed |
 | D-029 | gap | host / scan | Framework Track C2: `composer.identify_path_conflict`; `summary.productSpanRatio`; `codemod_mcp --scan-summary`; leaf-wipe audit. Tried auto-merging `codebase` `!` into `listFiles` — **reverted** (`listFiles` stays caller-only; `codebase` is coverage-only). | fixed |
 
 ## 2026-10-21 — Pre-extension cleanup sweep
@@ -97,7 +97,7 @@ Status: `open` / `in-progress` / `fixed` / `wontfix(decision documented)`.
 
 | ID | Severity | Area | Issue | Status |
 |----|----------|------|-------|--------|
-| D-034 | gap | protocol / adapters | Hand-maintained `hostCommand.ts` + `mcp_inventory` tool metas drifted from `command.rs`. **Fixed:** shared `.codemod/lib/host_command_adapters.luau` (`parseVariants` / `render*` / `expectedFiles`); generated `hostCommand.g.ts` + `mcp_inventory.g.rs` with hand wrappers; `repo.host_protocol` op `syncAdapters` + verify `adapter.generated_drift`; `createCommand` edits SSOT/dispatch (+ MCP_TOOL_SPECS) then sync — no hand mirror patches. Dropped empty `docs.surface` zone. Kept `support_crate_surface`. Crate extract / HostInner facade: sibling plan (still deferred). | fixed |
+| D-034 | gap | protocol / adapters | Hand-maintained `hostCommand.ts` + `mcp_inventory` tool metas drifted from `command.rs`. **Fixed:** shared adapters lib + generated `.g.ts` / `.g.rs`; `syncAdapters`; drop `docs.surface`. Crate extract: D-025 F. | fixed |
 
 ## Template for new entries
 

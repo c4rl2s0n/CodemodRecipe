@@ -1,11 +1,9 @@
 //! Persist deterministic component scan snapshots under the codemod root.
 
 use std::collections::BTreeSet;
-use std::path::{Path, PathBuf};
 
 mod io;
 use io::{resolve_codemod_relative, should_write_json, unix_timestamp_secs, write_text_if_changed};
-use std::time::{SystemTime, UNIX_EPOCH};
 
 use serde::Serialize;
 
@@ -14,7 +12,6 @@ use crate::component::relation_metrics::{ignore_coverage_instance_ids, relation_
 use crate::component::relations::flatten_instances;
 use crate::component::types::ComponentScanResponse;
 use crate::recipe::registry::RecipeRegistry;
-use crate::sandbox::path_sandbox::PathSandbox;
 
 /// On-disk snapshot JSON with stable field order (serde struct, not BTreeMap).
 #[derive(Serialize)]

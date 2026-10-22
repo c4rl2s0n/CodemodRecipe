@@ -2,15 +2,11 @@ use mlua::{Table, Value};
 use std::collections::BTreeMap;
 
 use crate::input_kind::InputKind;
-use crate::model::{
-    Arg, ArgFrom, ArgFromSpec, ExplorerMenuEntry, ExplorerMenuKind, OperationDef, TypeDef,
-};
+use crate::model::{Arg, TypeDef};
 
 use super::error::LoadError;
 use super::ops::parse_arg;
-use super::table_util::{
-    optional_bool, optional_string, optional_string_list, optional_string_map_field, required_string,
-};
+use super::table_util::{optional_string, required_string};
 
 pub(crate) fn type_from_table(table: &Table, id_override: Option<String>) -> Result<TypeDef, LoadError> {
     let id = match id_override {

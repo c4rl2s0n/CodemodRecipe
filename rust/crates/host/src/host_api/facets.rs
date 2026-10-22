@@ -9,74 +9,12 @@ use std::path::{Path, PathBuf};
 
 use codemod_recipe_core::apply::file_change::{IfExists, IfMissing};
 use codemod_recipe_engine::LanguageRegistry;
-use codemod_recipe_lua::model::{ComponentDef, TranscriptEvent};
+use codemod_recipe_lua::model::TranscriptEvent;
 
 use super::context::{bump_ops, HostInner, RunKind, SharedHost};
 use crate::edit_session::working_tree::WorkingTree;
 use crate::query::ast_cache::CachedTree;
 use crate::sandbox::path_sandbox::PathSandbox;
-
-/// Component scan / hooks / ops / delegate facet.
-pub(crate) struct ComponentSession<'a> {
-    inner: &'a mut HostInner,
-}
-
-impl<'a> ComponentSession<'a> {
-    pub(crate) fn from_inner(inner: &'a mut HostInner) -> Self {
-        Self { inner }
-    }
-
-    pub(crate) fn with_host<R>(
-        host: &SharedHost,
-        f: impl FnOnce(ComponentSession<'_>) -> Result<R, String>,
-    ) -> Result<R, String> {
-        let mut inner = host.lock().map_err(|e| e.to_string())?;
-        f(ComponentSession::from_inner(&mut inner))
-    }
-
-    pub(crate) fn components(&self) -> &BTreeMap<String, ComponentDef> {
-        &self.inner.components
-    }
-
-    pub(crate) fn codemod_root(&self) -> &Path {
-        &self.inner.codemod_root
-    }
-
-    pub(crate) fn component_stack(&self) -> &[String] {
-        &self.inner.component_stack
-    }
-
-    pub(crate) fn push_component(&mut self, id: &str) -> Result<(), String> {
-        if self.inner.component_stack.iter().any(|c| c == id) {
-            return Err(format!("component cycle detected: {id}"));
-        }
-        self.inner.component_stack.push(id.to_string());
-        Ok(())
-    }
-
-    pub(crate) fn pop_component(&mut self, id: &str) {
-        if self.inner.component_stack.last().map(|s| s.as_str()) == Some(id) {
-            self.inner.component_stack.pop();
-        }
-    }
-
-    pub(crate) fn graph_flat_json(&self) -> Option<&serde_json::Value> {
-        self.inner.graph_flat_json.as_ref()
-    }
-
-    pub(crate) fn graph_edges_json(&self) -> Option<&serde_json::Value> {
-        self.inner.graph_edges_json.as_ref()
-    }
-
-    pub(crate) fn set_graph_json(
-        &mut self,
-        flat: serde_json::Value,
-        edges: serde_json::Value,
-    ) {
-        self.inner.graph_flat_json = Some(flat);
-        self.inner.graph_edges_json = Some(edges);
-    }
-}
 
 /// Recipe preview/apply / host_api handlers facet.
 pub(crate) struct RecipeSession<'a> {

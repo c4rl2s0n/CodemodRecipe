@@ -1,15 +1,9 @@
 use mlua::{Table, Value};
-use std::collections::BTreeMap;
 
-use crate::input_kind::InputKind;
-use crate::model::{
-    Arg, ArgFrom, ArgFromSpec, ExplorerMenuEntry, ExplorerMenuKind, OperationDef, TypeDef,
-};
+use crate::model::{ArgFrom, ArgFromSpec, ExplorerMenuEntry, ExplorerMenuKind};
 
 use super::error::LoadError;
-use super::table_util::{
-    optional_bool, optional_string, optional_string_list, optional_string_map_field, required_string,
-};
+use super::table_util::{optional_string, optional_string_map_field, required_string};
 
 pub(crate) fn parse_arg_from(row: &Table) -> Result<Option<ArgFrom>, LoadError> {
     let Ok(value) = row.get::<Value>("from") else {

@@ -311,20 +311,8 @@ pub struct DescribeResponse {
     pub recipe: Option<RecipeSchema>,
 }
 
-#[derive(Debug, Serialize, Clone)]
-#[serde(rename_all = "camelCase")]
-pub struct FilePreview {
-    pub path: String,
-    pub kind: &'static str,
-    pub is_new: bool,
-    pub skipped: bool,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub original: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub modified: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub snippet: Option<String>,
-}
+/// File preview DTO — owned by `codemod_recipe_components` (D-025 F extract).
+pub use codemod_recipe_components::FilePreview;
 
 /// Extract `c:log` detail strings from a transcript for MCP-facing `logs` fields.
 pub fn logs_from_transcript(

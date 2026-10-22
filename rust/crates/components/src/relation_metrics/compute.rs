@@ -4,11 +4,11 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use codemod_recipe_lua::{RelationKindDef, ZoneDef, ZoneRole};
 
-use crate::component::membership::{
+use crate::membership::{
     member_kinds, validate_membership_forest, MembershipForest,
 };
-use crate::component::relations::{flatten_instances, ComponentEdge, FlatInstance};
-use crate::component::types::ComponentInstance;
+use crate::relations::{flatten_instances, ComponentEdge, FlatInstance};
+use crate::types::ComponentInstance;
 
 use super::types::{RelationAggregate, RelationByComponent, RelationMetrics, RelationRatios};
 
@@ -235,10 +235,7 @@ fn flags_for_member(
     let mut cur = instance_id;
     let mut found_role: Option<&str> = None;
     // Walk toward root; keep updating when we see a zone so outermost wins.
-    loop {
-        let Some(parent) = forest.parent.get(cur) else {
-            break;
-        };
+    while let Some(parent) = forest.parent.get(cur) {
         if let Some(role) = zone_inst.get(parent) {
             found_role = Some(role.as_str());
         }
@@ -256,7 +253,7 @@ fn flags_for_member(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::component::types::ComponentInstance;
+    use crate::types::ComponentInstance;
 
     fn inst(id: &str, component_id: &str) -> ComponentInstance {
         ComponentInstance {

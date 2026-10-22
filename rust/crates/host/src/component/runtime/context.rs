@@ -2,21 +2,18 @@
 
 use std::collections::BTreeMap;
 use std::path::PathBuf;
-use std::rc::Rc;
-use std::sync::Mutex;
 
-use codemod_recipe_engine::{LanguageRegistry, RegistryConfig};
+use codemod_recipe_engine::RegistryConfig;
 use codemod_recipe_lua::json_lua::json_to_lua;
 use codemod_recipe_lua::model::ComponentDef;
 use codemod_recipe_lua::{eval_return_table, require_chunk_name};
 use mlua::{Function, Lua, Table, Value};
 
+use crate::component::entry::{self, HostBuildParams};
 use crate::component::types::ComponentInstance;
-use crate::edit_session::working_tree::WorkingTree;
-use crate::host_api::context::{HostInner, RunKind, SharedHost};
+use crate::host_api::context::{RunKind, SharedHost};
 use crate::lua_runtime::build_ctx;
 use crate::recipe::registry::RecipeRegistry;
-use crate::sandbox::path_sandbox::PathSandbox;
 
 pub struct ComponentRunContext {
     pub kind: RunKind,
@@ -175,27 +172,18 @@ pub(crate) fn make_host(
     ctx: &ComponentRunContext,
     args: BTreeMap<String, serde_json::Value>,
 ) -> Result<SharedHost, String> {
-    Ok(Rc::new(Mutex::new(HostInner {
+    entry::make_shared_host(HostBuildParams {
         kind: ctx.kind,
-        tree: WorkingTree::new(),
-        sandbox: PathSandbox::new(ctx.workspace_root.clone()),
-        language_registry: LanguageRegistry::with_config(ctx.language_config.clone()),
         args,
         maps: ctx.maps.clone(),
         vars: ctx.vars.clone(),
         queries: ctx.queries.clone(),
         recipes: ctx.recipes.clone(),
         components: ctx.components.clone(),
-        component_stack: Vec::new(),
-        recipe_path: None,
+        workspace_root: ctx.workspace_root.clone(),
         codemod_root: ctx.codemod_root.clone(),
-        transcript: Vec::new(),
-        saw_post_exec: false,
-        op_count: 0,
-        ast_cache: crate::query::ast_cache::AstParseCache::default(),
-        graph_flat_json: None,
-        graph_edges_json: None,
-    })))
+        language_config: ctx.language_config.clone(),
+    })
 }
 
 pub(crate) fn set_host_graph_snapshot(
@@ -203,15 +191,6 @@ pub(crate) fn set_host_graph_snapshot(
     instances: &[ComponentInstance],
     edges: &[crate::component::relations::ComponentEdge],
 ) -> Result<(), String> {
-    let flat = crate::component::relations::flatten_instances(instances);
-    let flat_json: Vec<serde_json::Value> = flat.iter().map(|f| f.to_json()).collect();
-    let edges_json = serde_json::to_value(edges).map_err(|e| e.to_string())?;
-    crate::host_api::facets::ComponentSession::with_host(host, |mut session| {
-        session.set_graph_json(
-            serde_json::Value::Array(flat_json),
-            edges_json,
-        );
-        Ok(())
-    })
+    entry::set_graph_snapshot(host, instances, edges)
 }
 

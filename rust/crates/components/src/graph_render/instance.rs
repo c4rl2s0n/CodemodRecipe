@@ -6,8 +6,8 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::component::membership::{validate_membership_forest, MembershipForest};
-use crate::component::relations::{ComponentEdge, FlatInstance, KindEdge};
+use crate::membership::{validate_membership_forest, MembershipForest};
+use crate::relations::{ComponentEdge, FlatInstance};
 
 /// Mermaid-safe node id: every non-alphanumeric becomes `_`.
 use super::style::{mermaid_id, mermaid_label};
@@ -181,9 +181,9 @@ fn render_instance_graph_mermaid_with_forest(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::component::graph_render::kind::render_kind_graph_mermaid;
-    use crate::component::relations::{flatten_instances, kind_graph, resolve_edges, RawEdge};
-    use crate::component::types::ComponentInstance;
+    use crate::graph_render::kind::render_kind_graph_mermaid;
+    use crate::relations::{flatten_instances, kind_graph, resolve_edges, RawEdge};
+    use crate::types::ComponentInstance;
 
     fn instance(id: &str, component_id: &str, ast: serde_json::Value) -> ComponentInstance {
         ComponentInstance {

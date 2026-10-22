@@ -1,38 +1,41 @@
 //! Finalize host WorkingTree and optional post-op rescan.
 
-use std::rc::Rc;
-
+use crate::component::entry;
+use crate::component::ComponentHost;
 use crate::component::scan::{component_incremental_scan, ComponentIncrementalScanRequest};
 use crate::component::types::{ComponentFinding, ComponentInstance};
-use crate::edit_session::working_tree::WorkingTree;
 use crate::host_api::context::{RunKind, SharedHost};
 use crate::preview::diff::build_file_preview_from_change;
 use crate::recipe::registry::RecipeRegistry;
+use codemod_recipe_core::apply::file_change::FileChange;
 use codemod_recipe_lua::json_lua::lua_to_json;
 use mlua::Value;
 
 pub(crate) fn take_transcript(host: &SharedHost) -> Option<Vec<codemod_recipe_lua::TranscriptEvent>> {
-    host.lock()
+    entry::with_component_host(host, |h| Ok(h.take_transcript()))
         .ok()
-        .map(|mut inner| std::mem::take(&mut inner.transcript))
         .filter(|t| !t.is_empty())
 }
 
-type FinalizeParts = (
-    Option<Vec<String>>,
-    Option<Vec<crate::protocol::FilePreview>>,
-    Vec<codemod_recipe_lua::TranscriptEvent>,
-);
+pub(crate) struct FinalizeParts {
+    pub applied: Option<Vec<String>>,
+    pub changes: Vec<FileChange>,
+    pub files: Option<Vec<crate::component::FilePreview>>,
+    pub transcript: Vec<codemod_recipe_lua::TranscriptEvent>,
+}
 
-pub(crate) fn finalize_host(host: &SharedHost, kind: RunKind) -> Result<FinalizeParts, String> {
-    let mut inner = host.lock().map_err(|e| e.to_string())?;
+/// Finalize via [`ComponentHost`] (flush on Apply, drain tree + transcript).
+pub(crate) fn finalize_via_facade(
+    host: &mut dyn ComponentHost,
+    kind: RunKind,
+) -> Result<FinalizeParts, String> {
     let applied = if kind == RunKind::Apply {
-        Some(inner.flush_to_disk()?)
+        Some(host.flush_to_disk()?)
     } else {
         None
     };
-    let changes = std::mem::replace(&mut inner.tree, WorkingTree::new()).finalize();
-    let transcript = std::mem::take(&mut inner.transcript);
+    let changes = host.finalize_tree();
+    let transcript = host.take_transcript();
     let files = if changes.is_empty() {
         None
     } else {
@@ -43,7 +46,16 @@ pub(crate) fn finalize_host(host: &SharedHost, kind: RunKind) -> Result<Finalize
                 .collect(),
         )
     };
-    Ok((applied, files, transcript))
+    Ok(FinalizeParts {
+        applied,
+        changes,
+        files,
+        transcript,
+    })
+}
+
+pub(crate) fn finalize_host(host: &SharedHost, kind: RunKind) -> Result<FinalizeParts, String> {
+    entry::with_component_host(host, |h| finalize_via_facade(h, kind))
 }
 
 pub(crate) struct RescanResult {
@@ -54,7 +66,7 @@ pub(crate) struct RescanResult {
 pub(crate) fn component_scan_after_operation(
     registry: &mut RecipeRegistry,
     instance_id: &str,
-    changes: &[codemod_recipe_core::apply::file_change::FileChange],
+    changes: &[FileChange],
 ) -> Result<RescanResult, String> {
     let dirty_paths: Vec<String> = changes.iter().map(|c| c.path().to_string()).collect();
     let scan = if dirty_paths.is_empty() {

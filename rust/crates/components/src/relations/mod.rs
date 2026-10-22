@@ -15,7 +15,7 @@ mod tests {
     use std::collections::BTreeMap;
 
     use super::*;
-    use crate::component::types::ComponentInstance;
+    use crate::types::ComponentInstance;
 
     fn instance(id: &str, component_id: &str, ast: serde_json::Value) -> ComponentInstance {
         ComponentInstance {

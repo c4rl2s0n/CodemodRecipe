@@ -7,7 +7,7 @@ use crate::component::relations::{ComponentEdge, KindEdge};
 use crate::component::types::{context_path, ComponentFinding, ComponentInstance};
 use crate::recipe::registry::RecipeRegistry;
 
-use super::types::{DetectResult, FileFingerprint, NewRoot, RootEntry, RootKey};
+use super::types::{DetectResult, FileFingerprint, RootEntry, RootKey};
 
 #[derive(Debug, Clone)]
 pub struct ComponentScanCache {

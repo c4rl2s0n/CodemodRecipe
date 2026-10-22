@@ -2,8 +2,8 @@
 
 use std::collections::BTreeMap;
 
-use crate::component::relations::types::{child_instance_id, child_locator, ComponentEdge};
-use crate::component::types::ComponentInstance;
+use crate::relations::types::{child_instance_id, child_locator, ComponentEdge};
+use crate::types::ComponentInstance;
 
 /// Attach outgoing edges onto instance nodes as `node.relations` (grouped by kind),
 /// replacing any previously attached relations.

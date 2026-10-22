@@ -198,6 +198,7 @@ pub(super) fn scaffold(
     ))
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(super) fn invoke_hook_cmd(
     registry: &mut RecipeRegistry,
     component_id: String,

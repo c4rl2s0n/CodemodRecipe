@@ -3,23 +3,19 @@
 use std::collections::BTreeMap;
 use std::rc::Rc;
 
-use codemod_recipe_lua::json_lua::{json_to_lua, lua_to_json};
 use codemod_recipe_lua::{eval_return_table, new_sandbox_with_require, require_chunk_name};
-use mlua::{Function, Lua, Table, Value};
+use mlua::{Function, Table};
 
-use crate::component::relations::{build_graph_facade, flatten_instances};
+use crate::component::entry;
 use crate::component::runtime::context::{
-    component_chunk_name, facade_node, make_host, set_host_graph_snapshot, ComponentRunContext,
+    make_host, set_host_graph_snapshot, ComponentRunContext,
 };
-use crate::component::runtime::finalize::{component_scan_after_operation, finalize_host};
+use crate::component::runtime::finalize::finalize_via_facade;
 use crate::component::scan::{
     component_incremental_scan, component_scan, ComponentIncrementalScanRequest,
 };
-use crate::component::types::{ComponentFinding, ComponentInstance, ComponentInvokeResponse};
-use crate::edit_session::working_tree::WorkingTree;
-use crate::host_api::context::SharedHost;
+use crate::component::types::ComponentInvokeResponse;
 use crate::lua_runtime::{args_table_from_map, build_ctx, RunKind};
-use crate::preview::diff::build_file_preview_from_change;
 use crate::recipe::registry::RecipeRegistry;
 
 pub struct StackInvokeRequest {
@@ -94,20 +90,12 @@ pub fn invoke_stack_operation(
             .call::<()>((ctx_table, args_tbl, graph))
             .map_err(|e| format!("stack operation apply failed: {e}"))?;
 
-        let mut inner = host.lock().map_err(|e| e.to_string())?;
-        let applied = if request.kind == RunKind::Apply {
-            Some(inner.flush_to_disk()?)
-        } else {
-            None
-        };
-        let changes = std::mem::replace(&mut inner.tree, WorkingTree::new()).finalize();
-        let transcript = std::mem::take(&mut inner.transcript);
-        drop(inner);
-
+        let parts =
+            entry::with_component_host(&host, |h| finalize_via_facade(h, request.kind))?;
         let scan = component_incremental_scan(
             registry,
             ComponentIncrementalScanRequest {
-                dirty_paths: changes.iter().map(|c| c.path().to_string()).collect(),
+                dirty_paths: parts.changes.iter().map(|c| c.path().to_string()).collect(),
                 detect_changes: true,
                 ..Default::default()
             },
@@ -115,37 +103,25 @@ pub fn invoke_stack_operation(
         if !scan.ok {
             return Err(scan.error.unwrap_or_else(|| "rescan failed".to_string()));
         }
-        let files = if changes.is_empty() {
-            None
-        } else {
-            Some(
-                changes
-                    .iter()
-                    .filter_map(|c| build_file_preview_from_change(c, false, None).ok())
-                    .collect(),
-            )
-        };
         Ok(ComponentInvokeResponse {
             ok: true,
             error: None,
             result: None,
             instance: None,
             findings: scan.findings,
-            files,
+            files: parts.files,
             transcript: None,
             logs: None,
-            applied,
+            applied: parts.applied,
             preview_token: None,
         }
-        .with_transcript(Some(transcript)))
+        .with_transcript(Some(parts.transcript)))
     })();
     match result {
         Ok(resp) => resp,
         Err(message) => {
-            let transcript = host
-                .lock()
+            let transcript = entry::with_component_host(&host, |h| Ok(h.take_transcript()))
                 .ok()
-                .map(|mut inner| std::mem::take(&mut inner.transcript))
                 .filter(|t| !t.is_empty());
             ComponentInvokeResponse::fail(message).with_transcript(transcript)
         }

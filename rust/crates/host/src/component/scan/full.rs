@@ -31,13 +31,38 @@ pub fn component_scan_inner(registry: &mut RecipeRegistry) -> ComponentScanRespo
     }
 }
 
+fn map_diagnostics(
+    diags: &[crate::protocol::RecipeDiagnostic],
+) -> Option<Vec<crate::component::RecipeDiagnostic>> {
+    if diags.is_empty() {
+        return None;
+    }
+    Some(
+        diags
+            .iter()
+            .map(|d| crate::component::RecipeDiagnostic {
+                severity: d.severity,
+                code: d.code,
+                message: d.message.clone(),
+                sources: d
+                    .sources
+                    .iter()
+                    .map(|s| crate::component::DiagnosticSource {
+                        file: s.file.clone(),
+                        line: s.line,
+                        column: s.column,
+                    })
+                    .collect(),
+                hint: d.hint.clone(),
+                related_recipe: d.related_recipe.clone(),
+            })
+            .collect(),
+    )
+}
+
 pub(super) fn scan_error_with_diagnostics(registry: &RecipeRegistry, message: &str) -> ComponentScanResponse {
     ComponentScanResponse {
-        diagnostics: if registry.diagnostics().is_empty() {
-            None
-        } else {
-            Some(registry.diagnostics().to_vec())
-        },
+        diagnostics: map_diagnostics(registry.diagnostics()),
         ..scan_error(message)
     }
 }
@@ -52,11 +77,7 @@ pub(super) fn scan_response(registry: &RecipeRegistry, data: &ScanData) -> Compo
         findings: Some(data.all_findings()),
         edges: Some(data.edges.clone()),
         kind_graph: Some(data.kind_graph.clone()),
-        diagnostics: if registry.diagnostics().is_empty() {
-            None
-        } else {
-            Some(registry.diagnostics().to_vec())
-        },
+        diagnostics: map_diagnostics(registry.diagnostics()),
     }
 }
 

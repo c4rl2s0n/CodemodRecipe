@@ -175,26 +175,33 @@ Generate once into `vscode_extension/stubs/codemod-context.d.luau` (SSOT).
 `scripts/sync-luau-stubs.sh` copies into `export/.codemod/stubs/` and `.codemod/stubs/`
 for bootstrap/IDE. Copies are deploy artifacts — never hand-edit.
 
-### Crate extraction deferred (D-025 F)
+### Host facade then crate extract (D-025 F)
 
-`host/src/component/` (~5.5k LOC) meets size, but **fails** independent testability
-without `SharedHost` / `WorkingTree` / protocol. Keep as `domain.components` modules
-inside host until a thin facade API exists. Revisit when criterion 2 holds.
+**Criterion 2 held** for the component facade: unit tests use
+[`FakeComponentHost`](../../../rust/crates/components/src/host_facade.rs) only
+(push/pop cycle, finalize empty/non-empty, graph JSON) — no RecipeRegistry /
+MCP / VS Code.
 
-### HostInner facet sketch (toward D-025 F criterion 2)
+| Phase | Result |
+|-------|--------|
+| A | `ComponentHost` trait + `FakeComponentHost` in `codemod_recipe_components` |
+| B | Runtime finalize / delegate stack / graph snapshot via facade; `HostInner` impl in host; Luau `SharedHost` only at host `component/entry` + scan/runtime adapters |
+| C | Fake unit tests in the components crate (24 lib tests incl. relations) |
+| D | New crate `codemod_recipe_components` (`core`+`lua`); host depends on it; `repo.rust_crate` DAG + target-architecture table updated |
 
-`SharedHost = Rc<Mutex<HostInner>>` ([`host_api/context.rs`](../../../rust/crates/host/src/host_api/context.rs))
-is the remaining concentration smell. **Do not extract a crate yet.** Facet
-**views** live in [`host_api/facets.rs`](../../../rust/crates/host/src/host_api/facets.rs)
-(same mutex; narrower call-site access):
+**Still in host (Luau/registry-coupled):** `component/{entry,runtime,delegate,scan,cache,snapshot,coverage}` — create `SharedHost` for `c:*`, call into the facade for stack/graph/finalize. Full scan/runtime move waits on a `ComponentWorkspace` / Luau-session trait (not this change).
+
+### HostInner facets (still valid)
+
+`SharedHost = Rc<Mutex<HostInner>>` remains the Luau session mutex. Facet
+**views** in [`host_api/facets.rs`](../../../rust/crates/host/src/host_api/facets.rs);
+`ComponentSession` delegates stack/graph to `ComponentHost`.
 
 | Facet | Owns (from HostInner) | Status |
 |-------|------------------------|--------|
-| `RecipeSession` | `kind`, `tree`, `sandbox`, args/maps/vars/queries, transcript, … | **Phase 2:** edits/files/log/helpers/template handlers via `with_host` |
-| `ComponentSession` | `components`, `component_stack`, graph JSON, `codemod_root` | **Phase 1:** delegate stack + graph snapshot paths use it |
-| `QueryIntel` | `language_registry`, `ast_cache` (+ `cached_tree`) | **Phase 2:** queries.rs + `query_count` via `with_host` |
-
-Extraction ADR only after a facet is testable without MCP/VS Code. Still one mutex on `SharedHost`; facets are views.
+| `RecipeSession` | `kind`, `tree`, `sandbox`, args/maps/vars/queries, transcript, … | Phase 2 handlers via `with_host` |
+| `ComponentSession` | thin view → `ComponentHost` | Phase 1 + D-025 F facade |
+| `QueryIntel` | `language_registry`, `ast_cache` (+ `cached_tree`) | Phase 2 |
 
 ### Framework dogfood backlog (Track C2)
 
@@ -246,7 +253,7 @@ Dedicated scaffold/operation MCP tools remain omitted (covered by hook tools).
 - **Verify ≡ sync:** `adapter.generated_drift` diffs disk against the same renderers as `syncAdapters`.
 - **MCP policy:** opt-in rows in `MCP_TOOL_SPECS` (not 1:1 every HostCommand).
 - **Zones:** drop empty `docs.surface`; keep `support_crate_surface` (span painter).
-- **Out of scope:** HostInner facade / crate extract (sibling plan); generating dispatch or tools/call arms.
+- **Out of scope:** generating dispatch or tools/call arms. Host facade / crate extract: D-025 F.
 
 ### Path-module graph + product tests (K–M)
 

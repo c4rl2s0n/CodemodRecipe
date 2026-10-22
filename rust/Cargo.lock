@@ -117,6 +117,18 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9330f8b2ff13f34540b44e946ef35111825727b38d33286ef986142615121801"
 
 [[package]]
+name = "codemod_recipe_components"
+version = "0.1.0"
+dependencies = [
+ "codemod_recipe_core",
+ "codemod_recipe_lua",
+ "mlua",
+ "pretty_assertions",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
 name = "codemod_recipe_core"
 version = "0.1.0"
 dependencies = [
@@ -142,6 +154,7 @@ name = "codemod_recipe_host"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "codemod_recipe_components",
  "codemod_recipe_core",
  "codemod_recipe_engine",
  "codemod_recipe_lua",

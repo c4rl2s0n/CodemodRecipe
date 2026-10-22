@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::component::relations::types::{ComponentEdge, FlatInstance, KindEdge};
+use crate::relations::types::{ComponentEdge, FlatInstance, KindEdge};
 
 /// Aggregate resolved edges into the kind-level architecture graph.
 pub fn kind_graph(edges: &[ComponentEdge], flat: &[FlatInstance]) -> Vec<KindEdge> {

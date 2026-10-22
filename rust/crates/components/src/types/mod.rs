@@ -4,7 +4,30 @@ mod parse;
 
 use serde::Serialize;
 
-use crate::protocol::RecipeDiagnostic;
+/// Load/scan diagnostic (host protocol mirrors this for MCP responses).
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RecipeDiagnostic {
+    pub severity: &'static str,
+    pub code: &'static str,
+    pub message: String,
+    pub sources: Vec<DiagnosticSource>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub hint: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub related_recipe: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DiagnosticSource {
+    pub file: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub line: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub column: Option<u32>,
+}
+
 
 pub use parse::{
     context_path, expand_parse_results, instance_id, normalize_findings, normalize_parse_context,
@@ -83,12 +106,44 @@ pub struct ComponentScanResponse {
     pub findings: Option<Vec<ComponentFinding>>,
     /// Resolved relation edges over the scanned forest (relate phase).
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub edges: Option<Vec<crate::component::relations::ComponentEdge>>,
+    pub edges: Option<Vec<crate::relations::ComponentEdge>>,
     /// Kind-level aggregation of edges: `(fromComponentId, kind, toComponentId)` + count.
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub kind_graph: Option<Vec<crate::component::relations::KindEdge>>,
+    pub kind_graph: Option<Vec<crate::relations::KindEdge>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub diagnostics: Option<Vec<RecipeDiagnostic>>,
+}
+
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct FilePreview {
+    pub path: String,
+    pub kind: &'static str,
+    pub is_new: bool,
+    pub skipped: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub original: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub modified: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub snippet: Option<String>,
+}
+
+fn logs_from_transcript(
+    transcript: Option<&[codemod_recipe_lua::TranscriptEvent]>,
+) -> Option<Vec<String>> {
+    let events = transcript?;
+    let logs: Vec<String> = events
+        .iter()
+        .filter(|e| e.kind == "log")
+        .map(|e| e.detail.clone())
+        .collect();
+    if logs.is_empty() {
+        None
+    } else {
+        Some(logs)
+    }
 }
 
 #[derive(Debug, Clone, Serialize)]
@@ -105,7 +160,7 @@ pub struct ComponentInvokeResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub findings: Option<Vec<ComponentFinding>>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub files: Option<Vec<crate::protocol::FilePreview>>,
+    pub files: Option<Vec<FilePreview>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub transcript: Option<Vec<codemod_recipe_lua::TranscriptEvent>>,
     /// `c:log` details — top-level for MCP agents (also in transcript as kind=log).
@@ -140,7 +195,7 @@ impl ComponentInvokeResponse {
         mut self,
         transcript: Option<Vec<codemod_recipe_lua::TranscriptEvent>>,
     ) -> Self {
-        self.logs = crate::protocol::logs_from_transcript(transcript.as_deref());
+        self.logs = logs_from_transcript(transcript.as_deref());
         self.transcript = transcript;
         self
     }

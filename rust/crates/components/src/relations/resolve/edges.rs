@@ -2,8 +2,8 @@
 
 use std::collections::{BTreeMap, BTreeSet};
 
-use crate::component::relations::types::{ComponentEdge, FlatInstance};
-use crate::component::types::ComponentFinding;
+use crate::relations::types::{ComponentEdge, FlatInstance};
+use crate::types::ComponentFinding;
 
 use super::findings::{relation_finding, relation_info_finding};
 use super::normalize::RawEdge;

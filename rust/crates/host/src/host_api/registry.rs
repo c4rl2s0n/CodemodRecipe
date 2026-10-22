@@ -207,9 +207,15 @@ mod tests {
         for method in HOST_API_SURFACE.iter() {
             if let HostMethodSignature::Spec(info) = method.signature {
                 let schema = (info.schema)();
+                let is_object = schema.schema.object.is_some();
+                let is_union = schema
+                    .schema
+                    .subschemas
+                    .as_ref()
+                    .is_some_and(|s| s.any_of.is_some() || s.one_of.is_some());
                 assert!(
-                    schema.schema.object.is_some(),
-                    "{} schema must describe an object",
+                    is_object || is_union,
+                    "{} schema must describe an object or a union",
                     method.name
                 );
             }

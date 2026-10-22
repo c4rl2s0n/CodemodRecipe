@@ -11,7 +11,7 @@ pub fn instance_id(
         return format!("{component_id}/{id}");
     }
     if let Some(path) = context_path(locator) {
-        if let Some(stem) = crate::sandbox::path_template::stem_from_path(path) {
+        if let Some(stem) = crate::util::stem_from_path(path) {
             return format!("{component_id}/{stem}");
         }
     }

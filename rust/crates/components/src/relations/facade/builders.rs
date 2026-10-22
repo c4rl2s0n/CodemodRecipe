@@ -5,7 +5,7 @@ use mlua::{Function, Lua, Table};
 use codemod_recipe_lua::eval_return_table;
 use codemod_recipe_lua::json_lua::json_to_lua;
 
-use crate::component::relations::types::{ComponentEdge, FlatInstance};
+use crate::relations::types::{ComponentEdge, FlatInstance};
 
 const GRAPH_FACADE_LUA: &str = include_str!("graph_facade.luau");
 

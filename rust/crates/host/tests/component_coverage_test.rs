@@ -205,11 +205,11 @@ return {
         .filter_map(|f| f["path"].as_str())
         .collect();
     assert!(
-        paths.iter().any(|p| *p == "src/bin/tool.rs"),
+        paths.contains(&"src/bin/tool.rs"),
         "src/bin is product code: {paths:?}"
     );
     assert!(
-        paths.iter().any(|p| *p == "src/lib.rs"),
+        paths.contains(&"src/lib.rs"),
         "expected src/lib.rs: {paths:?}"
     );
     assert!(

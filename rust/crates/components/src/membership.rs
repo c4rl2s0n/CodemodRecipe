@@ -8,8 +8,8 @@ use std::collections::{BTreeMap, BTreeSet};
 
 use codemod_recipe_lua::RelationKindDef;
 
-use crate::component::relations::ComponentEdge;
-use crate::component::types::ComponentFinding;
+use crate::relations::ComponentEdge;
+use crate::types::ComponentFinding;
 
 /// Child instance id → chosen parent subgraph key.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]

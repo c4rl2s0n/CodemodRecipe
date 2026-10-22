@@ -2,7 +2,7 @@
 
 use std::collections::BTreeMap;
 
-use crate::component::types::ComponentFinding;
+use crate::types::ComponentFinding;
 
 use super::findings::relation_finding;
 

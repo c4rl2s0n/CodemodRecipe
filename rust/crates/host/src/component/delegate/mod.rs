@@ -48,17 +48,12 @@ pub(crate) fn register_component_delegate(
 }
 
 fn component_delegate(host: &SharedHost, lua: &Lua, id: String) -> Result<Value, String> {
-    {
-        let inner = host.lock().map_err(|e| e.to_string())?;
-        if !inner.components.contains_key(&id) {
-            return Err(format!("unknown component '{id}'"));
-        }
-    }
-
-    let component = {
-        let inner = host.lock().map_err(|e| e.to_string())?;
-        inner.components.get(&id).cloned().unwrap()
-    };
+    let component = crate::component::entry::with_component_host(host, |h| {
+        h.components()
+            .get(&id)
+            .cloned()
+            .ok_or_else(|| format!("unknown component '{id}'"))
+    })?;
 
     let delegate = lua.create_table().map_err(|e| e.to_string())?;
     let host_parse = Rc::clone(host);

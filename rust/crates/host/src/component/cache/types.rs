@@ -1,9 +1,7 @@
 //! Scan-cache data shapes.
 
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::BTreeSet;
 
-use crate::component::relations::{ComponentEdge, KindEdge};
-use crate::component::types::{ComponentFinding, ComponentInstance};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileFingerprint {

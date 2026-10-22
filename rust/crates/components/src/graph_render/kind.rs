@@ -1,6 +1,6 @@
 //! Kind-graph Mermaid rendering.
 
-use crate::component::relations::KindEdge;
+use crate::relations::KindEdge;
 
 use super::style::{mermaid_id, mermaid_label};
 

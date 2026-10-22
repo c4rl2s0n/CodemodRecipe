@@ -3,7 +3,6 @@ use mlua::{FromLua, Lua, Value};
 use schemars::schema::RootSchema;
 use schemars::schema_for;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 use super::query::QuerySpec;
 use super::traits::HostType;

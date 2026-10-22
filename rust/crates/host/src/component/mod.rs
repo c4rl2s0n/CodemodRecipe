@@ -1,20 +1,23 @@
+//! Component subsystem — Luau scan/runtime entry in host; domain types/facade in
+//! [`codemod_recipe_components`] (D-025 F).
+
 pub mod cache;
 pub mod coverage;
 pub mod delegate;
-pub mod graph_render;
-pub mod membership;
-pub mod relation_metrics;
-pub mod relations;
+pub mod entry;
+pub mod host_facade;
 pub mod runtime;
 pub mod scan;
 pub mod snapshot;
-pub mod types;
 
 pub use cache::ComponentScanCache;
+pub use codemod_recipe_components::{
+    graph_render, membership, relation_metrics, relations, types, ComponentEdge, ComponentHost,
+    FakeComponentHost, KindEdge,
+};
 pub use coverage::{component_coverage, ComponentCoverageResponse};
 pub use graph_render::{render_instance_graph_mermaid, render_kind_graph_mermaid};
 pub use membership::{member_kinds, validate_membership_forest, MembershipForest};
-pub use relations::{ComponentEdge, KindEdge};
 pub use runtime::{
     invoke_hook, invoke_operation, invoke_scaffold, invoke_stack_operation, ComponentHookRequest,
     ComponentInvokeRequest, ComponentScaffoldRequest, StackInvokeRequest,

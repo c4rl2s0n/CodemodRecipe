@@ -1,6 +1,6 @@
 //! Relation findings helpers (severity + code + message).
 
-use crate::component::types::ComponentFinding;
+use crate::types::ComponentFinding;
 
 pub(super) fn relation_finding(
     code: &str,

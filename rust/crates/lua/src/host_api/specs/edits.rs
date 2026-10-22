@@ -1,6 +1,5 @@
 use codemod_recipe_lua_macros::LuaSpec;
 use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 
 use super::common::Anchor;
 use super::query::QuerySpec;

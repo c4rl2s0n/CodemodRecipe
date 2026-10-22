@@ -23,11 +23,8 @@ pub(super) fn load_module(
 }
 
 pub(super) fn host_graph_facade(host: &SharedHost, lua: &Lua) -> Result<Table, String> {
-    let (flat, edges) = crate::host_api::facets::ComponentSession::with_host(host, |session| {
-        Ok((
-            session.graph_flat_json().cloned(),
-            session.graph_edges_json().cloned(),
-        ))
+    let (flat, edges) = crate::component::entry::with_component_host(host, |h| {
+        Ok((h.graph_flat_json().cloned(), h.graph_edges_json().cloned()))
     })?;
     let flat = flat.ok_or_else(|| {
         "graph snapshot unavailable — call operation/scaffold only from a stack or component operation session".to_string()

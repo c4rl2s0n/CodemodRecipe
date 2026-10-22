@@ -4,7 +4,7 @@ use std::collections::BTreeMap;
 
 use serde::Serialize;
 
-use crate::component::types::{context_path, ComponentInstance};
+use crate::types::{context_path, ComponentInstance};
 
 /// A resolved relation between two flat instances (or an external symbol).
 /// Duplicates by `(from, kind, target)` merge into one canonical edge that always
@@ -75,7 +75,7 @@ pub(super) fn child_instance_id(
         return format!("{component_id}/{name}");
     }
     if let Some(path) = context_path(locator) {
-        if let Some(stem) = crate::sandbox::path_template::stem_from_path(path) {
+        if let Some(stem) = crate::util::stem_from_path(path) {
             return format!("{component_id}/{stem}");
         }
     }

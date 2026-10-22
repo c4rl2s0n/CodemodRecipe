@@ -114,7 +114,7 @@ pub(super) fn build_scan_summary(
                 if product_total > 0 {
                     product_span_ratio = Some(product_covered as f64 / product_total as f64);
                 }
-                gaps.sort_by(|a, b| b.gap_nonblank.cmp(&a.gap_nonblank));
+                gaps.sort_by_key(|g| std::cmp::Reverse(g.gap_nonblank));
                 gaps.truncate(TOP_GAPS);
                 top_product_gaps = gaps;
             }

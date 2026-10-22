@@ -24,12 +24,16 @@ flowchart BT
   lua["lua load model specs"]
   engine["engine tree-sitter edits"]
   query_tools["query_tools AST debug"]
+  components["components facade relations"]
   host["host integrator bins"]
   lua --> lua_macros
   lua --> core
   engine --> core
   query_tools --> engine
+  components --> core
+  components --> lua
   host --> core
+  host --> components
   host --> engine
   host --> lua
   host --> lua_macros
@@ -43,7 +47,8 @@ flowchart BT
 | `codemod_recipe_lua` | Load/validate Luau assets + Luau-facing specs — may depend on `core` (D-016 shared shapes); **must not** depend on `engine` |
 | `codemod_recipe_engine` | Grammars, queries, edit ops — **must not** know recipes/registry |
 | `codemod_recipe_query_tools` | AST dump / debug / generate — recipe-free; depends on `engine` only |
-| `codemod_recipe_host` | Sole integrator: protocol, registry, sandbox runtime, components/stacks, WorkingTree, bootstrap, bins |
+| `codemod_recipe_components` | `ComponentHost` facade, relations/types/graph (D-025 F); **must not** import `SharedHost` |
+| `codemod_recipe_host` | Integrator: protocol, registry, Luau scan/runtime entry, WorkingTree, bootstrap, bins |
 
 **Forbidden** (expected findings if violated): `lua → engine`, `engine → lua`,
 `engine → host`, `query_tools → host` / recipe coupling, new crates that bypass
@@ -53,16 +58,14 @@ Enforced by: `repo.rust_crate` path-dep DAG check (Phase 3).
 
 ## Host domain modules (intended)
 
-Module-first grain inside `codemod_recipe_host` ([D-025](03_decisions.md)).
-Packaging stays one crate until extraction criteria are met
-([deferred](03_decisions.md#crate-extraction-deferred-d-025-f): `component/` still needs SharedHost).
+Module-first grain; `components` extracted ([D-025 F](03_decisions.md#host-facade-then-crate-extract-d-025-f)).
 
 | Domain id | Path (target) | Owns | Does not own |
 |-----------|---------------|------|--------------|
 | `recipe` | `host/src/recipe/` | Registry, args, validate, derive | Asset parse (lua), disk apply |
 | `edit_session` | `host/src/edit_session/` (was `engine/`) | WorkingTree, preview/apply orchestration, postExec | tree-sitter Engine, FileChange impl |
 | `host_api` | `host/src/host_api/` | `c:*` methods, SharedHost, registry | Spec types in core/lua (D-016) |
-| `components` | `host/src/component/` | Scan, relations, coverage, snapshot, hooks, ops | Protocol adapters |
+| `components` | `crates/components` + host `component/{entry,runtime,scan,…}` | Facade, relations, types (crate); Luau scan/ops entry (host) | Protocol adapters |
 | `query_intel` | `host/src/query/` | Host wrappers over query_tools + AST cache | Grammar / compile (engine) |
 | `protocol` | `host/src/protocol/` | HostCommand schemas, dispatch, mcp_inventory | Handler business logic beyond routing |
 | `sandbox` | `host/src/sandbox/` | PathSandbox, globs, path templates | |
