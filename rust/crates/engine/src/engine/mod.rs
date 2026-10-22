@@ -6,7 +6,7 @@ use crate::query::query_chain::match_root_node;
 use codemod_recipe_core::apply::patch::{apply_patches, SourcePatch};
 use thiserror::Error;
 use tree_sitter::StreamingIterator;
-use tree_sitter::{Node, Parser, Query, QueryCursor, Tree};
+use tree_sitter::{Node, Parser, QueryCursor, Tree};
 
 /// Paths used to resolve `query:` file references in recipes.
 #[derive(Debug, Clone, Copy)]
@@ -50,11 +50,12 @@ pub struct Engine {
     adapter: Box<dyn LanguageAdapter>,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct CaptureSpan {
     pub start: usize,
     pub end: usize,
     pub is_block: bool,
+    pub kind: String,
 }
 
 impl Engine {
@@ -263,8 +264,8 @@ impl Engine {
         query_text: &str,
         scope_spans: &[(usize, usize)],
     ) -> Result<Vec<(usize, usize)>, EngineError> {
-        let query =
-            Query::new(language, query_text).map_err(|e| EngineError::Query(e.to_string()))?;
+        let query = crate::query::compile_query(language, query_text)
+            .map_err(EngineError::Query)?;
         let mut cursor = QueryCursor::new();
         let mut roots = Vec::new();
         for &(start, end) in scope_spans {
@@ -293,8 +294,8 @@ impl Engine {
         scope_spans: &[(usize, usize)],
         fail_on_multiple: bool,
     ) -> Result<Option<CaptureSpan>, EngineError> {
-        let query =
-            Query::new(language, query_text).map_err(|e| EngineError::Query(e.to_string()))?;
+        let query = crate::query::compile_query(language, query_text)
+            .map_err(EngineError::Query)?;
         let capture_index = query
             .capture_names()
             .iter()
@@ -316,6 +317,7 @@ impl Engine {
                             start: node.start_byte(),
                             end: node.end_byte(),
                             is_block: node.kind() == "block",
+                            kind: node.kind().to_string(),
                         };
                         if !spans
                             .iter()
@@ -330,7 +332,7 @@ impl Engine {
 
         match spans.len() {
             0 => Ok(None),
-            1 => Ok(Some(spans[0])),
+            1 => Ok(Some(spans[0].clone())),
             n if fail_on_multiple => Err(EngineError::MultipleMatches {
                 capture: capture_name.to_string(),
                 count: n,

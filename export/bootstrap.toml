@@ -1,0 +1,32 @@
+# Bootstrap embed sources (paths relative to repository root).
+# Pack selection for rulesets/companions still uses path prefixes at install time
+# (see rust/crates/host/src/config/bootstrap.rs).
+
+[[source]]
+root = ".agents/skills/codemod-recipe"
+dest = ".agents/skills/codemod-recipe"
+exclude = ["docs"]
+
+[[source]]
+root = "docs/usage"
+dest = ".agents/skills/codemod-recipe/docs"
+# Local mdBook output / Mermaid install artifacts — never embed into consumers.
+exclude = ["book"]
+exclude_extensions = ["js"]
+
+# Keep rulesets/ and companions/ prefixes so edit_policy / companions filtering works.
+[[source]]
+root = "export/rulesets"
+dest = "rulesets"
+
+[[source]]
+root = "export/companions"
+dest = "companions"
+
+[[source]]
+root = "export/.codemod"
+dest = ".codemod"
+
+[[source]]
+root = "export/.vscode"
+dest = ".vscode"

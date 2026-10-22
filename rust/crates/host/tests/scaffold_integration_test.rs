@@ -210,7 +210,7 @@ fn scaffold_project_delete_if_missing_skip_is_idempotent() {
         r#"
 return {
   id = "delete_only",
-  apply = function(c)
+  apply = function(c, args)
     c:delete({ path = "lib/legacy/stale.dart", ifMissing = "skip" })
   end,
 }

@@ -112,8 +112,15 @@ pub fn debug_query(
         (query_text.to_string(), None)
     };
 
-    let query =
-        Query::new(language, &run_query).map_err(|e| QueryToolsError::Query(e.to_string()))?;
+    if let Some(msg) = crate::query_error::unbalanced_parens_message(&run_query) {
+        return Err(QueryToolsError::Query(msg));
+    }
+    let query = Query::new(language, &run_query).map_err(|e| {
+        QueryToolsError::Query(crate::query_error::format_query_compile_error(
+            &run_query,
+            &e.to_string(),
+        ))
+    })?;
 
     let mut cursor = QueryCursor::new();
     let mut matches_out = Vec::new();

@@ -1,0 +1,31 @@
+return {
+	id = "add_counter_field",
+	name = "add_counter_field",
+	description = "Adds a field to a class",
+	args = {
+		{ name = "file", required = true, inputKind = "file" },
+		{ name = "className", required = true, inputKind = "symbol" },
+		{ name = "field", required = true, inputKind = "symbol" },
+	},
+	postExecution = {},
+	apply = function(c, args)
+		local query = c:template({ inline = [[
+(class_definition
+  name: (identifier) @className
+  body: (class_body
+    (method_signature
+      (function_signature
+        name: (identifier) @methodName)) @member)
+  (#eq? @className "{{className}}")
+  (#eq? @methodName "update"))
+]] })
+		c:insert({
+			path = args.file,
+			language = "dart",
+			query = query,
+			capture = "member",
+			anchor = "start",
+			text = c:template({ inline = "  final int {{ field | camel_case }};\n\n" }),
+		})
+	end,
+}

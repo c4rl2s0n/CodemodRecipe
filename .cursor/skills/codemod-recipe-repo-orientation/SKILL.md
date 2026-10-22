@@ -38,7 +38,8 @@ Use this skill when you are:
 
 ## Primary READMEs
 
-- Human onboarding: `docs/getting-started.md` (map: `docs/README.md`)
+- Human onboarding: `docs/usage/01_getting_started/00_index.md` (map: `docs/README.md`)
+- Doc system: `docs/develop/01_documentation_system/00_index.md`
 - Package overview: `README.md`
 - Extension usage + dev workflow: `vscode_extension/README.md`
 - Architecture: `ARCHITECTURE.md`
@@ -63,4 +64,4 @@ Use this skill when you are:
 
 ## Maintenance rule (docs/skills/rules)
 
-When you change protocol, schema, or UI contracts, update READMEs and the skills listed in `.cursor/skills/codemod-recipe-change-checklist/SKILL.md`. When day-1 product concepts change, also update `docs/getting-started.md` using `.cursor/skills/codemod-recipe-human-docs/`.
+When you change protocol, schema, or UI contracts, update READMEs and the skills listed in `.cursor/skills/codemod-recipe-change-checklist/SKILL.md`. When day-1 product concepts change, update `docs/usage/` using `docs/develop/01_documentation_system/00_index.md`.

@@ -12,7 +12,7 @@ The recipe runner UI is a Vue 3 app bundled into `vscode_extension/media/` and l
 | Inbound router | `src/webview/src/extensionInbound.ts` | Subscribe by `EXTENSION_TO_WEBVIEW` message type |
 | Host state | `src/webview/src/composables/useHostState.ts` | Catalog, bootstrap, selected recipe, session snapshot from `state` messages |
 | Runner session | `src/webview/src/composables/useRunnerController.ts` | Form draft, preview debounce/queue, review UI |
-| Extension dispatch | `src/extension/views/recipeRunnerHandlers.ts` | One handler per webview → extension message |
+| Extension dispatch | `src/extension/views/recipeRunner/index.ts` | One handler per webview → extension message |
 
 Vue components call **`useExtensionClient()`** (provided from `App.vue`). Do not import `vsCodeApi` from components.
 
@@ -46,7 +46,7 @@ Host `session.phase`: `idle` → `pickingPath` | `previewing` → `reviewing` �
 ## Adding a feature
 
 1. Extend `src/shared/messages.ts` (constants, unions, guards) — include `requestId` for any request/response op.
-2. Add handler in `recipeRunnerHandlers.ts` that **always** posts a terminal reply.
+2. Add handler in `recipeRunner/index.ts` that **always** posts a terminal reply.
 3. Add method on `ExtensionClient` (prefer `request()` for Promise APIs).
 4. Subscribe in `useHostState` or `useRunnerController` via `extensionInbound`.
 5. Wire UI through `useExtensionClient()`.

@@ -45,7 +45,7 @@ fn create_skip_then_create_skip_then_edit_is_single_create() {
         r#"
 return {
   id = "ensure_barrel_twice",
-  apply = function(c)
+  apply = function(c, args)
     c:create({ path = "lib/barrel.dart", content = "// barrel\n", ifExists = "skip" })
     c:create({ path = "lib/barrel.dart", content = "// unused ensure\n", ifExists = "skip" })
     c:insert({
@@ -86,7 +86,7 @@ fn create_then_edit_missing_file_is_single_create() {
         r#"
 return {
   id = "ensure_barrel",
-  apply = function(c)
+  apply = function(c, args)
     c:create({ path = "lib/barrel.dart", content = "// barrel\n", ifExists = "skip" })
     c:insert({
       path = "lib/barrel.dart",
@@ -127,7 +127,7 @@ fn create_skip_then_edit_existing_is_patch() {
         r#"
 return {
   id = "ensure_barrel",
-  apply = function(c)
+  apply = function(c, args)
     c:create({ path = "lib/barrel.dart", content = "// unused\n", ifExists = "skip" })
     c:insert({
       path = "lib/barrel.dart",
@@ -165,7 +165,7 @@ fn edit_then_edit_dependent_class_and_constructor() {
         r#"
 return {
   id = "class_then_ctor",
-  apply = function(c)
+  apply = function(c, args)
     c:insert({
       path = "lib/foo.dart",
       query = "(class_definition name: (identifier) @n body: (class_body) @body (#eq? @n \"Foo\"))",
@@ -222,7 +222,7 @@ fn create_fail_when_exists() {
         r#"
 return {
   id = "fail_create",
-  apply = function(c)
+  apply = function(c, args)
     c:create({ path = "lib/a.dart", content = "y\n", ifExists = "fail" })
   end,
 }
@@ -254,7 +254,7 @@ fn edit_then_create_same_path_errors() {
         r#"
 return {
   id = "bad_order",
-  apply = function(c)
+  apply = function(c, args)
     c:insert({
       path = "lib/a.dart",
       query = "(class_definition name: (identifier) @n body: (class_body) @body (#eq? @n \"A\"))",
@@ -293,7 +293,7 @@ fn create_and_edit_different_paths() {
         r#"
 return {
   id = "multi",
-  apply = function(c)
+  apply = function(c, args)
     c:create({ path = "lib/new.dart", content = "class N {}\n", ifExists = "fail" })
     c:insert({
       path = "lib/existing.dart",

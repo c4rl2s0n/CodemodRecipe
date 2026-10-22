@@ -39,6 +39,35 @@ export function useHostState(inbound: ExtensionInbound) {
   const bootstrapError = computed(() => hostState.value.bootstrapError);
   const contextMatches = computed(() => hostState.value.contextMatches ?? []);
   const slotsByRecipe = computed(() => hostState.value.slotsByRecipe ?? {});
+  const components = computed(() => hostState.value.components ?? []);
+  const stack = computed(() => hostState.value.stack);
+  const componentInstances = computed(
+    () => hostState.value.componentInstances ?? []
+  );
+  const componentFindings = computed(
+    () => hostState.value.componentFindings ?? []
+  );
+  const selectedComponentId = computed(
+    () => hostState.value.selectedComponentId
+  );
+  const selectedInstanceId = computed(() => hostState.value.selectedInstanceId);
+  const componentDetail = computed(() => hostState.value.componentDetail);
+  const componentAction = computed(() => hostState.value.componentAction);
+  const componentArgs = computed(() => hostState.value.componentArgs ?? {});
+  const componentFiles = computed(() => hostState.value.componentFiles ?? []);
+  const componentTranscript = computed(
+    () => hostState.value.componentTranscript ?? []
+  );
+  const componentScanError = computed(() => hostState.value.componentScanError);
+  const componentOpError = computed(() => hostState.value.componentOpError);
+  const componentDryRunResult = computed(
+    () => hostState.value.componentDryRunResult
+  );
+  const componentDryRunHook = computed(
+    () => hostState.value.componentDryRunHook
+  );
+  const componentCoverage = computed(() => hostState.value.componentCoverage);
+  const stackAction = computed(() => hostState.value.stackAction);
 
   const showBootstrapOverlay = computed(
     () => bootstrapInFlight.value || bootstrapPhase.value === BOOTSTRAP_PHASES.error
@@ -87,6 +116,23 @@ export function useHostState(inbound: ExtensionInbound) {
     bootstrapError,
     contextMatches,
     slotsByRecipe,
+    components,
+    stack,
+    componentInstances,
+    componentFindings,
+    selectedComponentId,
+    selectedInstanceId,
+    componentDetail,
+    componentAction,
+    componentArgs,
+    componentFiles,
+    componentTranscript,
+    componentScanError,
+    componentOpError,
+    componentDryRunResult,
+    componentDryRunHook,
+    componentCoverage,
+    stackAction,
     showBootstrapOverlay,
     showReloadOverlay,
     showBlockingOverlay,

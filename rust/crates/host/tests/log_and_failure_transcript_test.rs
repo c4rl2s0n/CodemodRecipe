@@ -36,7 +36,7 @@ fn log_events_and_partial_transcript_on_failure() {
         r#"
 return {
   id = "log_then_fail",
-  apply = function(c)
+  apply = function(c, args)
     c:log("before", { n = 1, path = "x" })
     c:insert({
       path = "missing.dart",
@@ -65,7 +65,10 @@ return {
         "detail={detail}"
     );
     assert_eq!(log["expandable"], true, "{log}");
-    assert!(log["payload"]["json"].is_object() || log["payload"].is_object(), "{log}");
+    assert!(
+        log["payload"]["json"].is_object() || log["payload"].is_object(),
+        "{log}"
+    );
 
     let _ = std::fs::remove_dir_all(workspace);
 }
@@ -83,7 +86,7 @@ fn insert_transcript_includes_stats_and_payload() {
         r#"
 return {
   id = "insert_stats",
-  apply = function(c)
+  apply = function(c, args)
     c:insert({
       path = "lib/a.dart",
       query = "(class_definition) @cls",
@@ -134,7 +137,7 @@ fn template_inline_and_path() {
 return {
   id = "template_api",
   args = { { name = "name", required = true } },
-  apply = function(c)
+  apply = function(c, args)
     c:create({
       path = "lib/a.dart",
       content = c:template({ path = "templates/hi.dart.template" }),

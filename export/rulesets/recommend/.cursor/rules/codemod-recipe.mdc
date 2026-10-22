@@ -1,5 +1,5 @@
 ---
-description: Codemod Recipe MCP orientation and recommended companion tooling
+description: Codemod Recipe — Architect vs Builder orientation
 alwaysApply: true
 ---
 
@@ -7,60 +7,23 @@ alwaysApply: true
 
 # Codemod Recipe
 
-This workspace uses **codemod-recipe** for deterministic AST edits via **sandboxed Luau recipes** (`.codemod/recipes/*.luau`) and the Rust MCP server (`codemod-mcp`). Supports Dart, Rust, Java, Kotlin, SQL/SQLite, and 300+ languages via lazy-loaded tree-sitter grammars. MiniJinja remains for `c:template`.
+This workspace uses **codemod-recipe** for deterministic AST edits via sandboxed Luau recipes and the Rust MCP server (`codemod-mcp`).
 
-Prefer recipes for structural, multi-file, and AST-boundary edits. Always `preview_recipe` before `apply_recipe` (pass `previewToken`). Dart is the default language; set `language` on edit ops for non-Dart files.
+## Modes
 
-Layout: `.codemod/{recipes,maps,types,variables,queries,templates}`.
+| Mode | When | Skill |
+|------|------|-------|
+| **Architect** | Create/modify recipes, components, queries, templates | `.agents/skills/codemod-recipe/architect/` |
+| **Builder** | Understand the workspace or apply registered recipes/components | `.agents/skills/codemod-recipe/builder/` |
 
-## MCP tools
+Usage docs (SSOT) live under `.agents/skills/codemod-recipe/docs/` after bootstrap (same content as `docs/usage/` in the framework repo). Skills are thin indexes into those docs — do not maintain a parallel API manual.
 
-- `bootstrap_project` — install skills/rules and `.codemod/` scaffolding (run once per project)
-- `list_recipes` / `describe_recipe` / `validate_recipes`
-- `preview_recipe` → `apply_recipe` (always preview first; pass `previewToken`)
-- `inlineRecipe` is a Luau source string that `return`s a recipe table with `apply`
+## MCP
 
-## Agent skills
+- Always `preview_recipe` before `apply_recipe` (pass `previewToken`)
+- Components: `component_dry_run_hook` before `component_apply_hook`
+- Start: skill `codemod-recipe` → Architect or Builder
 
-Project skills live under `.agents/skills/codemod-recipe/`:
+## Companion
 
-- `codemod-recipe` — top-level router; start here and pick the relevant nested sub-skill
-- `codemod-recipe/codemod-overview` — orientation and layout
-- `codemod-recipe/codemod-luau-recipes` — recipe module shape and host API (see `reference.md`)
-- `codemod-recipe/codemod-recipe-design-patterns` — create vs modify taxonomy (see `reference.md`)
-- `codemod-recipe/codemod-mcp-playbook` — MCP tool reference
-- `codemod-recipe/codemod-languages` — multi-language support, `language` on ops, SQL dialects (see `reference.md`)
-- `codemod-recipe/codemod-tree-sitter-queries` — tree-sitter query language, captures, predicates (see `reference.md`)
-- `codemod-recipe/codemod-recipe-authoring` — Dart recipe patterns and testing workflow
-- `codemod-recipe/recipe-generation` — generate Luau recipes from `@` code refs (`/recipe-generation`)
-
-Skills use SKILL.md routers; read `reference.md` in a sub-skill directory when you need full detail.
-
-## Recipe runtime
-
-- Recipes are Luau modules that `return { id, args, apply, ... }`. Mutations happen only in `apply(c)`.
-- Host API: `c:insert` / `c:replace` / `c:remove` / `c:query` / `c:read` / `c:create` / `c:delete` / `c:run` / `c:postExec` / `c:template` / `c:map` / `c:var` / `c:queryLib`.
-- Preview and apply both execute `apply()`. Preview keeps file ops in a WorkingTree and skips postExec (transcript only). Apply re-runs Lua and flushes before postExec.
-- Tree-sitter queries stay `.scm` or inline strings. Query libraries are Luau under `.codemod/queries/`.
-
-## Centralized path/resource resolution
-
-When changing how recipe-backed files are resolved, use the shared resolver in:
-
-- `rust/crates/core/src/resource_path.rs`
-
-Current policy:
-
-- Workspace file targets resolve exactly under the workspace root.
-- Recipe resources (`.scm`, template files, postExecution scripts) resolve recipe-local first, then `.codemod/`.
-- Bare query names additionally try `queries/` under each root.
-
-## Recommended companion: codebase-memory-mcp
-
-Codemod workflows work best with **codebase-memory-mcp** for locate → impact → edit:
-
-1. Find target symbols/files with codebase-memory
-2. Craft or select a recipe (tree-sitter `query` + `capture`; see `codemod-tree-sitter-queries`; set `language` for non-Dart files — see `codemod-languages`)
-3. `preview_recipe` then `apply_recipe`
-
-If `codebase-memory-mcp` is not configured, suggest the user install it. Do not attempt to install it automatically from codemod-recipe.
+Prefer **codebase-memory-mcp** for symbol locate before crafting edits. If missing, suggest installing it; do not auto-install.

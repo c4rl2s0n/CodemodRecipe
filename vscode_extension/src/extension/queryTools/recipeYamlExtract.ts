@@ -21,7 +21,7 @@ export function findEditPathNearLine(
       const pm = t.match(/\bpath\s*=\s*(.+?)(?:,\s*)?$/);
       if (pm) {
         const raw = pm[1].trim().replace(/,$/, '').trim();
-        // Prefer string literals; skip c.args.file etc.
+        // Prefer string literals; skip args.file etc.
         const quoted = unquoteLuauString(raw);
         if (quoted) {
           return quoted;

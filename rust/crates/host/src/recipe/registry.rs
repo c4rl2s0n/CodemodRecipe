@@ -1,14 +1,17 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use codemod_recipe_lua::load::{load_asset, Asset, LoadError};
-use codemod_recipe_lua::model::{Arg, ArgFrom, ExplorerMenuEntry, Recipe, TypeDef};
-use codemod_recipe_lua::InputKind;
+use codemod_recipe_lua::load::{load_asset_with_root, Asset, LoadError, LoadResult};
+use codemod_recipe_lua::model::{ComponentDef, Recipe, StackDef, TestSuiteDef, TypeDef};
+use codemod_recipe_lua::require_chunk_name;
 
 use crate::diagnostics::diag_source::source_file_only;
 use crate::protocol::{
-    ExplorerMenuEntrySchema, RecipeArg, RecipeDiagnostic, RecipeSchema, TypeSchema,
+    ComponentDetailSchema, ComponentOperationSchema, ComponentSchema, RecipeDiagnostic,
+    RecipeSchema, StackSchema, TestSuiteSchema, TypeSchema,
 };
+use crate::recipe::fs_walk::{collect_lua_files, relative_path};
+use crate::recipe::schema::{arg_schema, explorer_schema, type_schema};
 
 pub struct RecipeRegistry {
     pub workspace_root: PathBuf,
@@ -20,7 +23,14 @@ pub struct RecipeRegistry {
     queries_by_id: BTreeMap<String, String>,
     types_by_id: BTreeMap<String, TypeDef>,
     recipes: BTreeMap<String, Recipe>,
+    stack: Option<StackDef>,
+    components: BTreeMap<String, ComponentDef>,
+    test_suites: BTreeMap<String, TestSuiteDef>,
+    component_scan_cache: Option<crate::component::cache::ComponentScanCache>,
     diagnostics: Vec<RecipeDiagnostic>,
+    /// When false, [`component_scan`](crate::component::component_scan) skips writing
+    /// `{codemod_root}/.cache/` (fixture Luau tests share the session codemod root).
+    persist_scan_snapshots: bool,
 }
 
 impl RecipeRegistry {
@@ -35,8 +45,23 @@ impl RecipeRegistry {
             queries_by_id: BTreeMap::new(),
             types_by_id: BTreeMap::new(),
             recipes: BTreeMap::new(),
+            stack: None,
+            components: BTreeMap::new(),
+            test_suites: BTreeMap::new(),
+            component_scan_cache: None,
             diagnostics: Vec::new(),
+            persist_scan_snapshots: true,
         }
+    }
+
+    /// Disable writing scan snapshots / mermaid under the shared session codemod root
+    /// (used by Luau `t:workspace` fixtures).
+    pub fn disable_scan_snapshot_persist(&mut self) {
+        self.persist_scan_snapshots = false;
+    }
+
+    pub fn persist_scan_snapshots(&self) -> bool {
+        self.persist_scan_snapshots
     }
 
     pub fn codemod_root(&self) -> &Path {
@@ -90,6 +115,136 @@ impl RecipeRegistry {
         &self.recipes
     }
 
+    pub fn stack(&self) -> Option<&StackDef> {
+        self.stack.as_ref()
+    }
+
+    pub fn components(&self) -> &BTreeMap<String, ComponentDef> {
+        &self.components
+    }
+
+    pub fn get_component(&self, id: &str) -> Option<&ComponentDef> {
+        self.components.get(id)
+    }
+
+    pub fn test_suites(&self) -> &BTreeMap<String, TestSuiteDef> {
+        &self.test_suites
+    }
+
+    pub fn get_test_suite(&self, id: &str) -> Option<&TestSuiteDef> {
+        self.test_suites.get(id)
+    }
+
+    pub fn component_schemas(&self) -> Vec<ComponentSchema> {
+        let root_ids: std::collections::BTreeSet<&str> = self
+            .stack
+            .as_ref()
+            .map(|s| s.components.iter().map(String::as_str).collect())
+            .unwrap_or_default();
+        self.components
+            .values()
+            .map(|c| self.component_schema(c, root_ids.contains(c.id.as_str())))
+            .collect()
+    }
+
+    pub fn stack_schema(&self) -> Option<StackSchema> {
+        self.stack.as_ref().map(|s| StackSchema {
+            id: s.id.clone(),
+            description: s.description.clone(),
+            components: s.components.clone(),
+            codebase: s.codebase.clone(),
+            operations: s
+                .operations
+                .iter()
+                .map(|op| ComponentOperationSchema {
+                    name: op.name.clone(),
+                    description: op.description.clone(),
+                    args: op
+                        .args
+                        .iter()
+                        .map(|a| arg_schema(a, &self.maps_by_id, &self.types_by_id))
+                        .collect(),
+                })
+                .collect(),
+            relations: s
+                .relations
+                .iter()
+                .map(|(kind, def)| {
+                    (
+                        kind.clone(),
+                        crate::protocol::RelationKindSchema {
+                            layout: def.layout.clone(),
+                        },
+                    )
+                })
+                .collect(),
+            zones: s
+                .zones
+                .iter()
+                .map(|z| crate::protocol::ZoneSchema {
+                    id: z.id.clone(),
+                    role: z.role.clone(),
+                    title: z.title.clone(),
+                    parent_id: z.parent_id.clone(),
+                })
+                .collect(),
+            zone_roles: s
+                .zone_roles
+                .iter()
+                .map(|(name, role)| {
+                    (
+                        name.clone(),
+                        crate::protocol::ZoneRoleSchema {
+                            ignore_relations: role.ignore_relations,
+                            ignore_coverage: role.ignore_coverage,
+                        },
+                    )
+                })
+                .collect(),
+        })
+    }
+
+    /// Catalog view of registered test suites (discovery for test UIs).
+    pub fn test_suite_schemas(&self) -> Vec<TestSuiteSchema> {
+        self.test_suites
+            .values()
+            .map(|suite| TestSuiteSchema {
+                id: suite.id.clone(),
+                description: suite.description.clone(),
+                target: suite.target.clone(),
+                path: suite
+                    .path
+                    .as_ref()
+                    .map(|p| relative_path(&self.workspace_root, p)),
+                test_names: suite.test_names.clone(),
+            })
+            .collect()
+    }
+
+    pub fn describe_component(&self, id: &str) -> Option<ComponentDetailSchema> {
+        let c = self.components.get(id)?;
+        let is_root = self
+            .stack
+            .as_ref()
+            .map(|s| s.components.iter().any(|cid| cid == id))
+            .unwrap_or(false);
+        Some(self.component_detail(c, is_root))
+    }
+
+    pub fn workspace_root(&self) -> &Path {
+        &self.workspace_root
+    }
+
+    pub fn component_scan_cache(&self) -> Option<&crate::component::cache::ComponentScanCache> {
+        self.component_scan_cache.as_ref()
+    }
+
+    pub fn component_scan_cache_mut(
+        &mut self,
+    ) -> &mut Option<crate::component::cache::ComponentScanCache> {
+        &mut self.component_scan_cache
+    }
+
     pub fn language_registry(&mut self) -> &mut codemod_recipe_engine::LanguageRegistry {
         &mut self.language_registry
     }
@@ -100,6 +255,10 @@ impl RecipeRegistry {
         self.queries_by_id.clear();
         self.types_by_id.clear();
         self.recipes.clear();
+        self.stack = None;
+        self.components.clear();
+        self.test_suites.clear();
+        self.component_scan_cache = None;
         self.diagnostics.clear();
         self.ast_cache.clear();
 
@@ -109,10 +268,45 @@ impl RecipeRegistry {
                 continue;
             };
             let relative = relative_path(&self.workspace_root, &path);
-            let name = path.to_string_lossy();
-            match load_asset(&text, &name) {
-                Ok(asset) => self.register_asset(asset, &path, &relative),
+            let name = require_chunk_name(&path);
+            match load_asset_with_root(&text, &name, Some(&self.codemod_root)) {
+                Ok(LoadResult::Asset(asset)) => self.register_asset(*asset, &path, &relative),
+                Ok(LoadResult::Library) => {}
                 Err(err) => self.push_load_error(&relative, err),
+            }
+        }
+        self.validate_stack();
+    }
+
+    fn validate_stack(&mut self) {
+        if self.components.is_empty() {
+            return;
+        }
+        let Some(stack) = self.stack.as_ref() else {
+            self.diagnostics.push(RecipeDiagnostic::simple(
+                "error",
+                "E_STACK_MISSING",
+                "Missing stack manifest at .codemod/stack.luau".to_string(),
+                vec![source_file_only(".codemod/stack.luau")],
+            ));
+            return;
+        };
+        for component_id in &stack.components {
+            if !self.components.contains_key(component_id) {
+                let stack_file = stack
+                    .path
+                    .as_ref()
+                    .map(|p| relative_path(&self.workspace_root, p))
+                    .unwrap_or_else(|| ".codemod/stack.luau".to_string());
+                self.diagnostics.push(RecipeDiagnostic::simple(
+                    "error",
+                    "E_STACK_COMPONENT",
+                    format!(
+                        "stack {} references unknown component {}",
+                        stack.id, component_id
+                    ),
+                    vec![source_file_only(&stack_file)],
+                ));
             }
         }
     }
@@ -160,6 +354,45 @@ impl RecipeRegistry {
                 } else {
                     let id = asset.id.clone();
                     self.types_by_id.insert(id, asset);
+                }
+            }
+            Asset::Stack(mut stack) => {
+                if self.stack.is_some() {
+                    self.diagnostics.push(RecipeDiagnostic::simple(
+                        "error",
+                        "E_DUP_STACK",
+                        "Only one stack manifest is allowed (.codemod/stack.luau)".to_string(),
+                        vec![source_file_only(relative)],
+                    ));
+                } else {
+                    stack.path = Some(path.to_path_buf());
+                    self.stack = Some(stack);
+                }
+            }
+            Asset::Component(mut component) => {
+                if self.components.contains_key(&component.id) {
+                    self.diagnostics.push(RecipeDiagnostic::simple(
+                        "error",
+                        "E_DUP_ID",
+                        format!("Duplicate component id {}", component.id),
+                        vec![source_file_only(relative)],
+                    ));
+                } else {
+                    component.path = Some(path.to_path_buf());
+                    self.components.insert(component.id.clone(), component);
+                }
+            }
+            Asset::TestSuite(mut suite) => {
+                if self.test_suites.contains_key(&suite.id) {
+                    self.diagnostics.push(RecipeDiagnostic::simple(
+                        "error",
+                        "E_DUP_ID",
+                        format!("Duplicate test suite id {}", suite.id),
+                        vec![source_file_only(relative)],
+                    ));
+                } else {
+                    suite.path = Some(path.to_path_buf());
+                    self.test_suites.insert(suite.id.clone(), suite);
                 }
             }
         }
@@ -237,106 +470,59 @@ impl RecipeRegistry {
             },
         }
     }
-}
 
-fn arg_schema(
-    arg: &Arg,
-    maps: &BTreeMap<String, BTreeMap<String, String>>,
-    types: &BTreeMap<String, TypeDef>,
-) -> RecipeArg {
-    let options = crate::recipe::args::choice_options(arg, maps);
-    let allow_custom = !matches!(arg.input_kind, InputKind::Choice);
-    let fields = arg.input_kind.type_id().and_then(|id| {
-        types.get(id).map(|def| {
-            def.fields
+    fn component_schema(&self, component: &ComponentDef, is_root: bool) -> ComponentSchema {
+        let relative = component
+            .path
+            .as_ref()
+            .map(|p| relative_path(&self.workspace_root, p));
+        ComponentSchema {
+            id: component.id.clone(),
+            description: component.description.clone(),
+            operations: component
+                .operations
                 .iter()
-                .map(|f| arg_schema(f, maps, types))
-                .collect()
-        })
-    });
-    RecipeArg {
-        name: arg.name.clone(),
-        abbr: arg.abbr.clone(),
-        help: arg.help.clone(),
-        required: arg.required,
-        defaults_to: arg.defaults_to.clone(),
-        input_kind: arg.input_kind.to_json(),
-        options,
-        options_from_map: arg.options_from_map.clone(),
-        allow_custom_value: arg.allow_custom_value.unwrap_or(allow_custom),
-        context_key: None,
-        from: arg.from.as_ref().map(|f| match f {
-            ArgFrom::Builtin(s) => serde_json::Value::String(s.clone()),
-            ArgFrom::Spec(spec) => serde_json::json!({
-                "template": spec.template,
-                "query": spec.query,
-                "capture": spec.capture,
-            }),
-        }),
-        from_recipes: vec![],
-        fields,
-    }
-}
-
-fn type_schema(
-    def: &TypeDef,
-    maps: &BTreeMap<String, BTreeMap<String, String>>,
-    types: &BTreeMap<String, TypeDef>,
-) -> TypeSchema {
-    TypeSchema {
-        id: def.id.clone(),
-        description: def.description.clone(),
-        fields: def
-            .fields
-            .iter()
-            .map(|f| arg_schema(f, maps, types))
-            .collect(),
-    }
-}
-
-fn explorer_schema(entry: &ExplorerMenuEntry) -> ExplorerMenuEntrySchema {
-    ExplorerMenuEntrySchema {
-        kind: entry.kind.as_str().to_string(),
-        if_expr: entry.if_expr.clone(),
-        args: entry.args.clone(),
-    }
-}
-
-fn collect_lua_files(root: &Path) -> Vec<PathBuf> {
-    let mut out = Vec::new();
-    visit(root, &mut out);
-    out.sort();
-    out
-}
-
-fn visit(dir: &Path, out: &mut Vec<PathBuf>) {
-    let Ok(entries) = std::fs::read_dir(dir) else {
-        return;
-    };
-    for entry in entries.flatten() {
-        let path = entry.path();
-        if path.is_dir() {
-            visit(&path, out);
-        } else if matches!(
-            path.extension().and_then(|s| s.to_str()),
-            Some("luau") | Some("lua")
-        ) && !is_declaration_file(&path)
-        {
-            out.push(path);
+                .map(|o| o.name.clone())
+                .collect(),
+            has_scaffold: component.has_scaffold,
+            is_root,
+            source_file: relative,
         }
     }
-}
 
-fn is_declaration_file(path: &Path) -> bool {
-    let Some(name) = path.file_name().and_then(|s| s.to_str()) else {
-        return false;
-    };
-    name.ends_with(".d.luau") || name.ends_with(".d.lua")
-}
-
-fn relative_path(root: &Path, path: &Path) -> String {
-    path.strip_prefix(root)
-        .unwrap_or(path)
-        .to_string_lossy()
-        .replace('\\', "/")
+    fn component_detail(&self, component: &ComponentDef, is_root: bool) -> ComponentDetailSchema {
+        let relative = component
+            .path
+            .as_ref()
+            .map(|p| relative_path(&self.workspace_root, p));
+        ComponentDetailSchema {
+            id: component.id.clone(),
+            description: component.description.clone(),
+            has_identify: component.has_identify,
+            has_verify: component.has_verify,
+            has_relate: component.has_relate,
+            has_to_summary: component.has_to_summary,
+            has_scaffold: component.has_scaffold,
+            is_root,
+            source_file: relative,
+            scaffold_args: component
+                .scaffold_args
+                .iter()
+                .map(|a| arg_schema(a, &self.maps_by_id, &self.types_by_id))
+                .collect(),
+            operations: component
+                .operations
+                .iter()
+                .map(|op| ComponentOperationSchema {
+                    name: op.name.clone(),
+                    description: op.description.clone(),
+                    args: op
+                        .args
+                        .iter()
+                        .map(|a| arg_schema(a, &self.maps_by_id, &self.types_by_id))
+                        .collect(),
+                })
+                .collect(),
+        }
+    }
 }

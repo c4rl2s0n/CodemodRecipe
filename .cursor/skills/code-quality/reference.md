@@ -14,7 +14,10 @@ practices review.
 
 Workspace lints ([`rust/Cargo.toml`](../../../rust/Cargo.toml)):
 
-- `unsafe_code = forbid`
+- `unsafe_code = deny` (not `forbid`) so linkme `#[distributed_slice]` sites can
+  scope `#[allow(unsafe_code)]` — the macro expands to `unsafe` / `#[unsafe(link_section)]`
+  in this crate even though linkme’s public API is safe. See
+  `host_api/registry.rs` (`HOST_API_SURFACE`) for the canonical SAFETY note.
 - Clippy `all = warn`; `pedantic = allow` (do not enable pedantic globally unless asked)
 - CI: `cargo clippy --all-targets -- -D warnings`
 
@@ -23,7 +26,7 @@ Workspace lints ([`rust/Cargo.toml`](../../../rust/Cargo.toml)):
 Prefer centralized owners:
 
 - `rust/crates/lua/src/load.rs` — parse recipe/map/variable/query-lib tables
-- `rust/crates/host/src/lua_runtime.rs` — sandboxed `apply(c)` host API
+- `rust/crates/host/src/host_api/lua_runtime.rs` — sandboxed `apply(c, args)` host API
 - `rust/crates/host/src/protocol_keys.rs` — host transport keys only
 
 YAML DSL codegen (`scripts/generate-dsl-artifacts.sh`) is **deprecated**.

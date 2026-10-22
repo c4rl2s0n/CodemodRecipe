@@ -1,21 +1,7 @@
-import * as fs from 'fs';
-import * as os from 'os';
-import * as path from 'path';
-import { ChildProcessWithoutNullStreams, spawn } from 'child_process';
-import * as vscode from 'vscode';
-import { ExtensionConfig } from '../config/extensionConfig';
-import {
-  buildHostBinaryArgs,
-  hostSpawnConfigFromExtension,
-  hostSpawnConfigSignature,
-  type HostSpawnConfig,
-} from './hostSpawnArgs';
-import {
+import type {
   ApplyResponse,
   DescribeResponse,
   DiffResponse,
-  extractHostResultFrame,
-  HostCommand,
   PreviewResponse,
   RecipeCatalogResponse,
   ValidateResponse,
@@ -24,108 +10,28 @@ import {
   GenerateQueryResponse,
   ResolveStaticPathResponse,
   QueryCapturesResponse,
-  parseHostResponse,
 } from './hostProtocol';
-import type { ArgValues, RecipeSchema, SelectionPayload, BootstrapResponse, DeriveArgsRequest, DeriveArgsResponse, FilterExplorerRecipesResponse } from '../../shared';
+import type {
+  ArgValues,
+  RecipeSchema,
+  SelectionPayload,
+  BootstrapResponse,
+  DeriveArgsRequest,
+  DeriveArgsResponse,
+  FilterExplorerRecipesResponse,
+  ComponentScanResponse,
+  ComponentCoverageResponse,
+  ComponentInvokeResponse,
+  DescribeComponentResponse,
+  ComponentDetailSchema,
+  TestRunReport,
+} from '../../shared';
 import type { RecipeLoadResult } from '../recipes/recipeRepository';
-import { shouldRetryOneShotAfterPersistentFailure } from './hostBridgeRetryPolicy';
+import { HostBridgeCore } from './hostBridgeCore';
 
 export { shouldRetryOneShotAfterPersistentFailure } from './hostBridgeRetryPolicy';
 
-type PendingRequest = {
-  command: HostCommand['command'];
-  startedAt: bigint;
-  inputBytes: number;
-  timeout: NodeJS.Timeout;
-  resolve: (value: unknown) => void;
-  reject: (error: Error) => void;
-};
-
-const HOST_BUILD_HINT =
-  'Build the host with `vscode_extension/build.sh` (or `cargo build -p codemod_recipe_host --bin codemod_host` from `rust/`).';
-
-export class HostBridge {
-  private static readonly perfPrefix = '[codemod-recipe/perf]';
-  private static readonly requestTimeoutMs = 30000;
-
-  private child: ChildProcessWithoutNullStreams | undefined;
-  private hostConfigSignature: string | undefined;
-  private pending: PendingRequest[] = [];
-  private stdoutBuffer = '';
-  private stderrBuffer = '';
-  private queue = Promise.resolve();
-
-  constructor(
-    private readonly config: ExtensionConfig,
-    private readonly extensionUri: vscode.Uri
-  ) {}
-
-  private get workspaceRoot(): string {
-    return this.config.workspaceRoot;
-  }
-
-  /**
-   * Returns the path to the bundled codemod_host binary for the current platform.
-   */
-  private getBinaryPath(): string {
-    const platform = os.platform();
-    const binDir = path.join(this.extensionUri.fsPath, 'bin');
-
-    switch (platform) {
-      case 'win32':
-        return path.join(binDir, 'codemod_host.exe');
-      case 'darwin':
-      case 'linux':
-      default:
-        return path.join(binDir, 'codemod_host');
-    }
-  }
-
-  private hasBundledBinary(): boolean {
-    try {
-      return fs.existsSync(this.getBinaryPath());
-    } catch {
-      return false;
-    }
-  }
-
-  /**
-   * Returns the command and arguments to spawn the Rust host process.
-   * Prefer the bundled binary; fall back to `cargo run` only when developing
-   * inside a checkout that contains `rust/Cargo.toml`.
-   */
-  private getSpawnCommand(): { command: string; args: string[] } {
-    if (this.hasBundledBinary()) {
-      return {
-        command: this.getBinaryPath(),
-        args: buildHostBinaryArgs(this.currentHostSpawnConfig()),
-      };
-    }
-
-    const hostConfig = this.currentHostSpawnConfig();
-    const manifestPath = path.join(this.workspaceRoot, 'rust', 'Cargo.toml');
-    if (!fs.existsSync(manifestPath)) {
-      throw new Error(
-        `Bundled codemod_host not found at ${this.getBinaryPath()}, and no ${manifestPath} for cargo fallback. ${HOST_BUILD_HINT}`
-      );
-    }
-    return {
-      command: 'cargo',
-      args: [
-        'run',
-        '-q',
-        '--manifest-path',
-        manifestPath,
-        '-p',
-        'codemod_recipe_host',
-        '--bin',
-        'codemod_host',
-        '--',
-        ...buildHostBinaryArgs(hostConfig),
-      ],
-    };
-  }
-
+export class HostBridge extends HostBridgeCore {
   async listRecipes(): Promise<RecipeLoadResult> {
     const response = await this.send<RecipeCatalogResponse>({ command: 'list' });
     return this.parseRecipeLoadResponse(response, 'list');
@@ -306,295 +212,113 @@ export class HostBridge {
     });
   }
 
-  dispose(): void {
-    this.stopPersistentHost();
+  async componentScan(): Promise<ComponentScanResponse> {
+    return this.send<ComponentScanResponse>({ command: 'componentScan' });
   }
 
   /**
-   * Abort any in-flight persistent request by killing the host process.
-   * Does not fall through to one-shot retry. Next send() respawns a fresh host.
+   * Run `*.test.luau` suites. `filter` matches a suite id, suite target,
+   * `suiteId/testName`, or a bare test name (substring); omitted runs all.
    */
-  cancelInFlight(reason = 'Request cancelled'): void {
-    this.rejectPending(new Error(reason));
-    this.stopPersistentHost();
-    this.queue = Promise.resolve();
-  }
-
-  private parseRecipeLoadResponse(
-    response: RecipeCatalogResponse,
-    command: 'list' | 'reload'
-  ): RecipeLoadResult {
-    if (!response.ok) {
-      throw new Error(response.error ?? `Failed to ${command} recipes`);
-    }
-    return {
-      recipes: response.recipes ?? [],
-      diagnostics: response.diagnostics ?? [],
-      mapIds: response.mapIds ?? [],
-      varIds: response.varIds ?? [],
-      languageIds: response.languageIds ?? [],
-      typeIds: response.typeIds ?? [],
-      types: response.types ?? [],
-      queryIds: response.queryIds ?? [],
-      queries: response.queries ?? {},
-    };
-  }
-
-  private currentHostSpawnConfig(): HostSpawnConfig {
-    return hostSpawnConfigFromExtension(this.config);
-  }
-
-  private ensureHostConfigCurrent(): void {
-    const signature = hostSpawnConfigSignature(this.currentHostSpawnConfig());
-    if (this.hostConfigSignature !== undefined && this.hostConfigSignature !== signature) {
-      this.stopPersistentHost();
-    }
-    this.hostConfigSignature = signature;
-  }
-
-  private async send<T>(command: HostCommand): Promise<T> {
-    try {
-      return await this.sendPersistent<T>(command);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.stopPersistentHost();
-      if (!shouldRetryOneShotAfterPersistentFailure(command.command, message)) {
-        throw error instanceof Error ? error : new Error(message);
-      }
-      this.logPerfWarning(
-        `Persistent host failed for ${command.command}; retrying one-shot (${message})`
-      );
-      return this.sendOneShot<T>(command);
-    }
-  }
-
-  private sendPersistent<T>(command: HostCommand): Promise<T> {
-    return new Promise<T>((resolve, reject) => {
-      this.queue = this.queue
-        .then(async () => {
-          const child = await this.ensurePersistentHost();
-          this.stderrBuffer = '';
-          const payload = `${JSON.stringify(command)}\n`;
-          const inputBytes = Buffer.byteLength(payload, 'utf8');
-          const timeout = setTimeout(() => {
-            const index = this.pending.findIndex((request) => request.resolve === wrappedResolve);
-            if (index >= 0) {
-              const [request] = this.pending.splice(index, 1);
-              request.reject(
-                new Error(
-                  `Timed out waiting for ${command.command} response (${HostBridge.requestTimeoutMs}ms)`
-                )
-              );
-              this.stopPersistentHost();
-            }
-          }, HostBridge.requestTimeoutMs);
-          const wrappedResolve = (value: unknown) => resolve(value as T);
-          const wrappedReject = (err: Error) => reject(err);
-          this.pending.push({
-            command: command.command,
-            startedAt: process.hrtime.bigint(),
-            inputBytes,
-            timeout,
-            resolve: wrappedResolve,
-            reject: wrappedReject,
-          });
-          child.stdin.write(payload);
-        })
-        .catch((err) => reject(err instanceof Error ? err : new Error(String(err))));
+  async runTests(filter?: string): Promise<TestRunReport> {
+    return this.send<TestRunReport>({
+      command: 'runTests',
+      ...(filter ? { filter } : {}),
     });
   }
 
-  private async ensurePersistentHost(): Promise<ChildProcessWithoutNullStreams> {
-    this.ensureHostConfigCurrent();
-    if (this.child && !this.child.killed) {
-      return this.child;
-    }
-    this.stdoutBuffer = '';
-    this.stderrBuffer = '';
+  async componentCoverage(): Promise<ComponentCoverageResponse> {
+    return this.send<ComponentCoverageResponse>({ command: 'componentCoverage' });
+  }
 
-    const { command, args } = this.getSpawnCommand();
-    const usingCargo = command === 'cargo';
-    return new Promise<ChildProcessWithoutNullStreams>((resolve, reject) => {
-      const child = spawn(command, args, {
-        cwd: this.workspaceRoot,
-      });
-
-      let startupResolved = false;
-      const failStartup = (err: Error) => {
-        if (!startupResolved) {
-          startupResolved = true;
-          reject(err);
-        }
-      };
-
-      child.stdout.on('data', (chunk) => {
-        this.stdoutBuffer += chunk.toString();
-        this.flushFrames();
-        if (!startupResolved) {
-          startupResolved = true;
-          resolve(child);
-        }
-      });
-      child.stderr.on('data', (chunk) => {
-        this.stderrBuffer += chunk.toString();
-      });
-      child.on('error', (err) => {
-        const hint = usingCargo
-          ? ` Failed to spawn cargo (${err.message}). Ensure Rust/cargo is on PATH, or ${HOST_BUILD_HINT}`
-          : ` Failed to spawn host binary (${err.message}). ${HOST_BUILD_HINT}`;
-        failStartup(new Error(hint.trim()));
-        this.rejectPending(
-          new Error(`Persistent host process error: ${err.message}`)
-        );
-        this.child = undefined;
-      });
-      child.on('close', (code) => {
-        const stderr = this.stderrBuffer.trim();
-        const hint =
-          usingCargo || code !== 0
-            ? `\n${HOST_BUILD_HINT}`
-            : '';
-        const error = new Error(
-          `Persistent host exited with code ${code}${stderr ? `\n${stderr}` : ''}${hint}`
-        );
-        failStartup(error);
-        this.rejectPending(error);
-        this.child = undefined;
-      });
-
-      const startupTimer = setTimeout(() => {
-        if (!startupResolved) {
-          failStartup(
-            new Error(
-              `Persistent host failed to start within ${HostBridge.requestTimeoutMs}ms.\n${HOST_BUILD_HINT}`
-            )
-          );
-          this.stopPersistentHost();
-        }
-      }, HostBridge.requestTimeoutMs);
-
-      child.once('spawn', () => {
-        this.child = child;
-        if (!startupResolved) {
-          startupResolved = true;
-          clearTimeout(startupTimer);
-          resolve(child);
-        }
-      });
-
-      child.once('error', () => {
-        clearTimeout(startupTimer);
-      });
-      child.once('close', () => {
-        clearTimeout(startupTimer);
-      });
+  async componentIncrementalScan(opts: {
+    dirtyPaths?: string[];
+    detectChanges?: boolean;
+    force?: boolean;
+  } = {}): Promise<ComponentScanResponse> {
+    return this.send<ComponentScanResponse>({
+      command: 'componentIncrementalScan',
+      dirtyPaths: opts.dirtyPaths ?? [],
+      detectChanges: opts.detectChanges ?? false,
+      force: opts.force ?? false,
     });
   }
 
-  private flushFrames(): void {
-    while (true) {
-      const frame = extractHostResultFrame(this.stdoutBuffer);
-      if (!frame) {
-        return;
-      }
-      this.stdoutBuffer = frame.rest;
-      const request = this.pending.shift();
-      if (!request) {
-        continue;
-      }
-      clearTimeout(request.timeout);
-      try {
-        const response = JSON.parse(frame.payload);
-        const elapsedMs = Number(process.hrtime.bigint() - request.startedAt) / 1e6;
-        this.logPerf({
-          command: request.command,
-          elapsedMs,
-          inputBytes: request.inputBytes,
-          outputBytes: Buffer.byteLength(frame.payload, 'utf8'),
-        });
-        request.resolve(response);
-      } catch (err) {
-        request.reject(new Error(`Failed to parse host response: ${err}`));
-      }
+  async describeComponent(componentId: string): Promise<ComponentDetailSchema> {
+    const response = await this.send<DescribeComponentResponse>({
+      command: 'describeComponent',
+      componentId,
+    });
+    if (!response.ok || !response.component) {
+      throw new Error(response.error ?? `Failed to describe component ${componentId}`);
     }
+    return response.component;
   }
 
-  private sendOneShot<T>(command: HostCommand): Promise<T> {
-    const { command: cmd, args: spawnArgs } = this.getSpawnCommand();
-    const payload = JSON.stringify(command);
-    const inputBytes = Buffer.byteLength(payload, 'utf8');
-    const start = process.hrtime.bigint();
-
-    return new Promise<T>((resolve, reject) => {
-      const child = spawn(cmd, spawnArgs, {
-        cwd: this.workspaceRoot,
-      });
-      let stdout = '';
-      let stderr = '';
-
-      child.stdout.on('data', (chunk) => (stdout += chunk.toString()));
-      child.stderr.on('data', (chunk) => (stderr += chunk.toString()));
-      child.on('error', (err) => reject(err));
-      child.on('close', (code) => {
-        const elapsedMs = Number(process.hrtime.bigint() - start) / 1e6;
-        const outputBytes = Buffer.byteLength(stdout, 'utf8');
-        try {
-          const response = parseHostResponse<T>(stdout);
-          if (response === undefined) {
-            reject(
-              new Error(`Host produced no result (exit ${code}).\n${stderr || stdout}`)
-            );
-            return;
-          }
-          this.logPerf({ command: command.command, elapsedMs, inputBytes, outputBytes });
-          resolve(response);
-        } catch (err) {
-          reject(new Error(`Failed to parse host response: ${err}`));
-        }
-      });
-
-      child.stdin.write(`${payload}\n`);
-      child.stdin.end();
+  async componentScaffold(opts: {
+    componentId: string;
+    args?: ArgValues;
+    preview?: boolean;
+  }): Promise<ComponentInvokeResponse> {
+    return this.send<ComponentInvokeResponse>({
+      command: 'componentScaffold',
+      componentId: opts.componentId,
+      args: opts.args ?? {},
+      preview: opts.preview ?? true,
     });
   }
 
-  private stopPersistentHost(): void {
-    if (this.child && !this.child.killed) {
-      this.child.kill();
-    }
-    this.child = undefined;
-    this.hostConfigSignature = undefined;
+  async componentInvokeOperation(opts: {
+    instanceId: string;
+    operation: string;
+    args?: ArgValues;
+    preview?: boolean;
+  }): Promise<ComponentInvokeResponse> {
+    return this.send<ComponentInvokeResponse>({
+      command: 'componentInvokeOperation',
+      instanceId: opts.instanceId,
+      operation: opts.operation,
+      args: opts.args ?? {},
+      preview: opts.preview ?? true,
+    });
   }
 
-  private rejectPending(error: Error): void {
-    const pending = this.pending;
-    this.pending = [];
-    for (const finalRequest of pending) {
-      clearTimeout(finalRequest.timeout);
-      finalRequest.reject(error);
-    }
+  async componentInvokeHook(opts: {
+    componentId: string;
+    hook: string;
+    preview?: boolean;
+    locator?: unknown;
+    instance?: unknown;
+    operation?: string;
+    args?: ArgValues;
+    previewToken?: string;
+  }): Promise<ComponentInvokeResponse> {
+    return this.send<ComponentInvokeResponse>({
+      command: 'componentInvokeHook',
+      componentId: opts.componentId,
+      hook: opts.hook,
+      preview: opts.preview ?? true,
+      locator: opts.locator,
+      instance: opts.instance,
+      operation: opts.operation,
+      args: opts.args ?? {},
+      previewToken: opts.previewToken,
+    });
   }
 
-  private logPerf(metrics: {
-    command: HostCommand['command'];
-    elapsedMs: number;
-    inputBytes: number;
-    outputBytes: number;
-  }): void {
-    if (!this.config.performanceLogging) {
-      return;
-    }
-    console.info(
-      `${HostBridge.perfPrefix} command=${metrics.command} elapsedMs=${metrics.elapsedMs.toFixed(
-        1
-      )} inputBytes=${metrics.inputBytes} outputBytes=${metrics.outputBytes}`
-    );
+  async stackInvokeOperation(opts: {
+    operation: string;
+    args?: ArgValues;
+    preview?: boolean;
+    previewToken?: string;
+  }): Promise<ComponentInvokeResponse> {
+    return this.send<ComponentInvokeResponse>({
+      command: 'stackInvokeOperation',
+      operation: opts.operation,
+      args: opts.args ?? {},
+      preview: opts.preview ?? true,
+      previewToken: opts.previewToken,
+    });
   }
 
-  private logPerfWarning(message: string): void {
-    if (!this.config.performanceLogging) {
-      return;
-    }
-    console.warn(`${HostBridge.perfPrefix} ${message}`);
-  }
 }

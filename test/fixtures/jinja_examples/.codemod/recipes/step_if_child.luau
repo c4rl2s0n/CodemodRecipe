@@ -5,7 +5,7 @@ return {
 	args = {
 		{ name = "className", required = true },
 	},
-	apply = function(c)
+	apply = function(c, args)
 		c:create({
 			path = c:template({ inline = "lib/generated/{{ className | snake_case }}_extra.dart" }),
 			content = c:template({ inline = "class {{ className | pascal_case }}Extra {}\n" }),

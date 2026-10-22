@@ -8,7 +8,7 @@ return {
 		{ name = "field", required = true, inputKind = "symbol" },
 	},
 	postExecution = {},
-	apply = function(c)
+	apply = function(c, args)
 		local query = c:template({ inline = [[
 (class_definition
   name: (identifier) @className
@@ -20,7 +20,7 @@ return {
   (#eq? @methodName "update"))
 ]] })
 		c:insert({
-			path = c.args.file,
+			path = args.file,
 			language = "dart",
 			query = query,
 			capture = "member",

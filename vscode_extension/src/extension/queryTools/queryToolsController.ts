@@ -74,7 +74,7 @@ export class QueryToolsController implements vscode.Disposable {
         void this.copy(kind);
       }),
       vscode.commands.registerCommand(
-        'codemodRecipe.queryTools.selectAstNode',
+        COMMANDS.queryToolsSelectAstNode,
         (item: AstTreeItem) => {
           void this.onSelectAstNode(item);
         }

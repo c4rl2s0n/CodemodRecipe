@@ -8,7 +8,7 @@ preview/apply with selective patches.
 
 ### VS Code (recommended)
 
-1. Full product build (host API surface + Rust `codemod_host` + VSIX):
+1. Full product build (host API surface + Rust `codemod_host` + `codemod_mcp` + VSIX):
 
    ```bash
    ./build.sh
@@ -33,13 +33,13 @@ cargo run -q --manifest-path rust/Cargo.toml -p codemod_recipe_host --bin codemo
   --workspace-root . --codemod-root .codemod
 ```
 
-See [docs/codemod-mcp.md](docs/codemod-mcp.md) for Cursor MCP setup.
+See [docs/usage/06_mcp_and_clients/01_codemod_mcp.md](docs/usage/06_mcp_and_clients/01_codemod_mcp.md) for Cursor MCP setup.
 
 ## Project layout
 
 | Path | Purpose |
 |------|---------|
-| `build.sh` | Full product build: host API surface + release `codemod_host` + VSIX |
+| `build.sh` | Full product build: host API surface + release `codemod_host` + `codemod_mcp` + VSIX |
 | `rust/` | Rust workspace: tree-sitter engine, Luau runtime, stdio host, MCP |
 | `.codemod/*.luau` / `.codemod/*.lua` | Luau modules under `.codemod/` identified by their returned table shape (see below) |
 | `vscode_extension/` | VS Code / Codium extension (`build.sh` packages VSIX; needs prebuilt `bin/codemod_host`) |
@@ -49,7 +49,7 @@ Conventional `.codemod/` subdirectories (the registry classifies assets by conte
 
 | Location | Identified by | Return shape |
 |----------|---------------|--------------|
-| `.codemod/recipes/` | `apply` function | `{ id, apply = function(c) ... }` |
+| `.codemod/recipes/` | `apply` function | `{ id, apply = function(c, args) ... }` |
 | `.codemod/maps/` | `map` table | `{ id, map = { ... } }` |
 | `.codemod/variables/` | `values` table | `{ id, values = { ... } }` |
 | `.codemod/queries/` | `queries` table | `{ id, queries = { ... } }` |
@@ -57,7 +57,7 @@ Conventional `.codemod/` subdirectories (the registry classifies assets by conte
 
 ## Luau recipe format
 
-Recipes are Luau modules that `return` a table. **`apply(c)`** is the only mutation entrypoint:
+Recipes are Luau modules that `return` a table. **`apply(c, args)`** is the only mutation entrypoint:
 
 ```lua
 return {
@@ -68,9 +68,9 @@ return {
     { name = "methodName", required = true, inputKind = "symbol" },
   },
   postExecution = { "dart format ." },
-  apply = function(c)
+  apply = function(c, args)
     c:insert({
-      path = c.args.file,
+      path = args.file,
       query = [[
         (class_definition
           name: (identifier) @className
@@ -80,8 +80,8 @@ return {
                 name: (identifier) @methodName))
             (function_body
               (block) @body))
-          (#eq? @className "]] .. c.args.className .. [[")
-          (#eq? @methodName "]] .. c.args.methodName .. [["))
+          (#eq? @className "]] .. args.className .. [[")
+          (#eq? @methodName "]] .. args.methodName .. [["))
       ]],
       capture = "body",
       anchor = "end",
@@ -93,14 +93,14 @@ return {
 
 `capture` selects which `@name` from the query to edit; `anchor` (`start` \| `end`)
 places an insert before or after that span. Full walkthrough:
-[docs/writing-recipes.md](docs/writing-recipes.md). Day-1 guide:
-[docs/getting-started.md](docs/getting-started.md).
+[docs/usage/02_writing_recipes/01_workflow.md](docs/usage/02_writing_recipes/01_workflow.md). Day-1 guide:
+[docs/usage/01_getting_started/00_index.md](docs/usage/01_getting_started/00_index.md).
 
 ### Host API
 
 | Method | Role |
 |--------|------|
-| `c.args` | Recipe argument map |
+| `args` | Recipe argument map |
 | `c:insert` / `c:replace` / `c:remove` | AST edits |
 | `c:query` / `c:read` | Read-only inspection |
 | `c:create` / `c:delete` | File create/delete |
@@ -115,7 +115,7 @@ Set `language = "dart"` (etc.) on edit specs for non-Dart or ambiguous paths.
 ### Template syntax (MiniJinja)
 
 Templates are rendered via `c:template({ inline = ... })` or `c:template({ path = ... })` — not YAML steps.
-See [docs/recipe-templates.md](docs/recipe-templates.md).
+See [docs/usage/04_templates_and_patterns/01_recipe_templates.md](docs/usage/04_templates_and_patterns/01_recipe_templates.md).
 
 ### Preview vs apply
 
@@ -126,9 +126,9 @@ See [docs/recipe-templates.md](docs/recipe-templates.md).
 ### Composition
 
 ```lua
-apply = function(c)
+apply = function(c, args)
   c:run("dart.settings.add_counter_field")
-  c:run("dart.logging.add_log_line", { file = c.args.file })
+  c:run("dart.logging.add_log_line", { file = args.file })
 end
 ```
 
@@ -166,15 +166,15 @@ cd rust && cargo test --all && cargo clippy --all-targets -- -D warnings
 
 ## Documentation
 
-- [docs/getting-started.md](docs/getting-started.md) — **start here** (human walkthrough)
+- [docs/usage/01_getting_started/00_index.md](docs/usage/01_getting_started/00_index.md) — **start here** (human walkthrough)
 - [docs/README.md](docs/README.md) — documentation map / index
 - [ARCHITECTURE.md](ARCHITECTURE.md) — design overview
-- [docs/writing-recipes.md](docs/writing-recipes.md) — Luau recipe authoring
-- [docs/new-project-rust-mcp.md](docs/new-project-rust-mcp.md) — Rust MCP quickstart
-- [docs/tree-sitter-queries.md](docs/tree-sitter-queries.md) — tree-sitter queries
-- [docs/language-support.md](docs/language-support.md) — multi-language support
-- [docs/recipe-templates.md](docs/recipe-templates.md) — MiniJinja templates
-- [docs/codemod-mcp.md](docs/codemod-mcp.md) — MCP tools and agent workflow
+- [docs/usage/02_writing_recipes/01_workflow.md](docs/usage/02_writing_recipes/01_workflow.md) — Luau recipe authoring
+- [docs/usage/06_mcp_and_clients/02_new_project_rust_mcp.md](docs/usage/06_mcp_and_clients/02_new_project_rust_mcp.md) — Rust MCP quickstart
+- [docs/usage/03_queries_and_languages/01_tree_sitter_queries.md](docs/usage/03_queries_and_languages/01_tree_sitter_queries.md) — tree-sitter queries
+- [docs/usage/03_queries_and_languages/02_language_support.md](docs/usage/03_queries_and_languages/02_language_support.md) — multi-language support
+- [docs/usage/04_templates_and_patterns/01_recipe_templates.md](docs/usage/04_templates_and_patterns/01_recipe_templates.md) — MiniJinja templates
+- [docs/usage/06_mcp_and_clients/01_codemod_mcp.md](docs/usage/06_mcp_and_clients/01_codemod_mcp.md) — MCP tools and agent workflow
 
 ## License
 

@@ -1,12 +1,15 @@
 # Codemod Recipe — VS Code Extension
 
-New here? Start with [Getting Started](../docs/getting-started.md) for the full product walkthrough.
+New here? Start with [Getting Started](../docs/usage/01_getting_started/00_index.md) for the full product walkthrough.
 
 A GUI for the [`codemod_recipe`](../README.md) toolkit. Browse recipes, fill in
 placeholder values through a form, preview changes as a native diff, and choose
 exactly which edits to keep before applying. **Query Tools** (same sidebar)
 lets you browse the AST, generate starter tree-sitter queries, and highlight
-query matches before writing recipes.
+query matches before writing recipes. `*.test.luau` suites show up in the
+native **Testing** view — grouped by suite id, runnable per test/suite/group,
+with failures jumping to the failing line (see
+[docs/testing](../docs/usage/07_testing/00_index.md)).
 
 Supports **multi-language** recipes (Dart, Rust, Java, Kotlin, SQL, TypeScript,
 JavaScript, Python, and 300+ tree-sitter grammars via the Rust host).
@@ -38,7 +41,7 @@ repo-root `./build.sh`). **Dev fallback:** `cargo run -p codemod_recipe_host
 1. Create a `.codemod/` directory in your workspace root — or run
    **Codemod Recipe: Scaffold Project** (also offered when `.codemod` is missing).
 2. Add Luau recipe modules (`.luau` or `.lua`) anywhere under `.codemod/`.
-   Each recipe must `return { id, apply = function(c) ... end }`. The `.codemod/recipes/`
+   Each recipe must `return { id, apply = function(c, args) ... end }`. The `.codemod/recipes/`
    directory is a convention; the registry identifies recipes by the `apply` function.
    Use dotted ids like `rust.data.add_log_line` to organize the Recipes tab tree.
 3. Optionally add maps, variables, query libraries, and types as Luau modules anywhere under
@@ -89,7 +92,7 @@ settings or use **Codemod Recipe: Set Codemod Root Directory**.
 
 Bind recipes to chords via **slots** (`codemodRecipe.slots`) or
 `codemodRecipe.invoke`. Args can auto-fill from the editor with recipe `from:` /
-`contextKey`. Full guide: [docs/recipe-shortcuts.md](../docs/recipe-shortcuts.md).
+`contextKey`. Full guide: [docs/recipe-shortcuts.md](../docs/usage/04_templates_and_patterns/03_recipe_shortcuts.md).
 
 Explorer: right-click a file/folder → **Codemod Recipe ▸ Run Recipe Here…**
 (auto-apply when args complete) or **Open in Recipe Runner…** for recipes that
@@ -112,7 +115,7 @@ Default chords: `Ctrl+Shift+I` then `1` (run/auto), `Ctrl+Shift+T` then `1` (ope
 
 Under `codemodRecipe.codemodRoot` (default `.codemod`) Luau/Lua recipe files get:
 
-- **Completions** for `c:` methods, edit-spec keys, recipe ids (`id =` / `c:run`), map/var/query ids (`c:map` / `c:var` / `c:queryLib`), `language`, captures, `c.args.*` (from the open recipe’s `args` table), and nested `c:run` args
+- **Completions** for `c:` methods, edit-spec keys, recipe ids (`id =` / `c:run`), map/var/query ids (`c:map` / `c:var` / `c:queryLib`), `language`, captures, `args.*` (from the open recipe’s `args` table), and nested `c:run` args
 - **Go to Definition** on `c:run("recipe.id")`
 - **Hover** on host methods and recipe refs
 - **CodeLens** on top-level `id = "..."` (runner / keybinding / slot)
@@ -120,7 +123,7 @@ Under `codemodRecipe.codemodRoot` (default `.codemod`) Luau/Lua recipe files get
 
 Install **[Luau Language Server](https://marketplace.visualstudio.com/items?itemName=JohnnyMorganz.luau-lsp)** for typed `CodemodContext` via `.codemod/stubs/codemod-context.d.luau` (generated from annotated Rust handlers via `scripts/generate-host-api-surface.sh`, installed by Scaffold / bootstrap). The Codemod completion provider does **not** depend on that stub; luau-lsp does. Soft **Scaffold Project** skips existing files — use **Codemod Recipe: Update Project Scaffold** (confirm → bootstrap with `force: true`) after upgrading so the stub and other scaffold assets refresh. **Refresh Recipes** reloads the recipe catalog only.
 
-Recipe authoring reference: [docs/writing-recipes.md](../docs/writing-recipes.md) and skill `codemod-luau-recipes`.
+Recipe authoring reference: [docs/writing-recipes.md](../docs/usage/02_writing_recipes/01_workflow.md) and [host-api.md](../docs/usage/02_writing_recipes/02_host_api.md).
 
 You can also run **Codemod Recipe: Run From Cursor Context** (`Cmd+Alt+R` on
 macOS, `Ctrl+Alt+R` elsewhere). Context keys include `file`, `selection`, `word`,
@@ -161,7 +164,13 @@ Commands accepted by the host (one JSON object per line on stdin):
 { "command": "generateQuery", "path": "lib/foo.dart", "start": 10, "end": 20 }
 
 { "command": "resolveStaticPath", "pathTemplate": "lib/{{ file }}.dart" }
+
+{ "command": "runTests", "filter": "flutter.model.tests/parses_fields" }
 ```
+
+`list`/`reload` responses include `testSuites` (`id`, `target`, `path`,
+`testNames`) for test discovery; `runTests` returns the per-test report
+(`filter` is optional — omit to run everything).
 
 Omitting a file from `selection.files` keeps it. Setting `include: false` drops the file.
 
@@ -174,7 +183,7 @@ npm run compile          # build Vue webview + type-check extension to dist/
 npm run watch            # rebuild extension host on change
 npm run watch:webview    # rebuild webview UI (media/recipeView.js) on change
 npm run test:webview     # unit tests for webview arg/selection helpers
-../build.sh              # full product: surface gen + host + VSIX
+../build.sh              # full product: surface gen + host + MCP + VSIX
 ./build.sh               # package VSIX only (requires bin/codemod_host)
 ```
 

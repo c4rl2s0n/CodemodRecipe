@@ -6,8 +6,8 @@ return {
 		{ name = "label", required = true, inputKind = "symbol" },
 		{ name = "verbose", required = true, defaultsTo = "false", inputKind = "text" },
 	},
-	apply = function(c)
-		local verbose = c.args.verbose or "false"
+	apply = function(c, args)
+		local verbose = args.verbose or "false"
 		c:create({
 			path = c:template({ inline = "lib/generated/{{ label | snake_case }}_defaults.dart" }),
 			content = c:template({

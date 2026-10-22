@@ -1,0 +1,21 @@
+[book]
+title = "Codemod Recipe"
+description = "Usage + develop documentation (this repository)"
+authors = ["codemod-recipe"]
+language = "en"
+src = "."
+
+[build]
+build-dir = "book"
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+
+# Run `mdbook-mermaid install .` before serve (writes local mermaid*.js, gitignored).
+# Consumers use docs/usage/book.toml (usage only); this root book includes develop/.
+[output.html]
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
+
+[output.html.fold]
+enable = true
+level = 0

@@ -1,0 +1,438 @@
+{
+  "meta": {
+    "version": 1,
+    "timestamp": 1792484587,
+    "stack": "flutter-poc-stack"
+  },
+  "relations": {
+    "aggregate": {
+      "architectureConnected": 4,
+      "architectureEligible": 9,
+      "architectureIsolated": 5,
+      "edgeCount": 2,
+      "instanceCount": 9,
+      "isolated": 5,
+      "membershipConnected": 0,
+      "ratios": {
+        "architectureConnected": 0.4444444444444444,
+        "connected": 0.4444444444444444
+      },
+      "relationIgnored": 0
+    },
+    "byComponent": [
+      {
+        "architectureConnected": 0,
+        "architectureEligible": 1,
+        "architectureIsolated": 1,
+        "componentId": "flutter.method",
+        "instanceCount": 1,
+        "membershipOnly": 0,
+        "relationIgnored": 0
+      },
+      {
+        "architectureConnected": 2,
+        "architectureEligible": 2,
+        "architectureIsolated": 0,
+        "componentId": "flutter.model",
+        "instanceCount": 2,
+        "membershipOnly": 0,
+        "relationIgnored": 0
+      },
+      {
+        "architectureConnected": 0,
+        "architectureEligible": 4,
+        "architectureIsolated": 4,
+        "componentId": "flutter.property",
+        "instanceCount": 4,
+        "membershipOnly": 0,
+        "relationIgnored": 0
+      },
+      {
+        "architectureConnected": 2,
+        "architectureEligible": 2,
+        "architectureIsolated": 0,
+        "componentId": "flutter.state",
+        "instanceCount": 2,
+        "membershipOnly": 0,
+        "relationIgnored": 0
+      }
+    ],
+    "byKind": {
+      "stores": 2
+    }
+  },
+  "instances": [
+    {
+      "ast": {
+        "children": [
+          {
+            "componentId": "flutter.property",
+            "name": "title",
+            "parseContext": {
+              "hints": {
+                "name": "title"
+              },
+              "parent": {
+                "componentId": "flutter.model",
+                "id": "recipe",
+                "name": "Recipe",
+                "path": "lib/models/recipe.dart"
+              },
+              "role": "field",
+              "source": {
+                "path": "lib/models/recipe.dart",
+                "span": {
+                  "from": 30,
+                  "to": 35
+                }
+              }
+            },
+            "role": "field",
+            "source": {
+              "path": "lib/models/recipe.dart",
+              "span": {
+                "from": 30,
+                "to": 35
+              }
+            },
+            "type": "unknown"
+          },
+          {
+            "componentId": "flutter.property",
+            "name": "subtitle",
+            "parseContext": {
+              "hints": {
+                "name": "subtitle"
+              },
+              "parent": {
+                "componentId": "flutter.model",
+                "id": "recipe",
+                "name": "Recipe",
+                "path": "lib/models/recipe.dart"
+              },
+              "role": "field",
+              "source": {
+                "path": "lib/models/recipe.dart",
+                "span": {
+                  "from": 52,
+                  "to": 60
+                }
+              }
+            },
+            "role": "field",
+            "source": {
+              "path": "lib/models/recipe.dart",
+              "span": {
+                "from": 52,
+                "to": 60
+              }
+            },
+            "type": "unknown"
+          },
+          {
+            "componentId": "flutter.method",
+            "name": "copy",
+            "parseContext": {
+              "hints": {
+                "name": "copy"
+              },
+              "parent": {
+                "componentId": "flutter.model",
+                "id": "recipe",
+                "name": "Recipe",
+                "path": "lib/models/recipe.dart"
+              },
+              "role": "method",
+              "source": {
+                "path": "lib/models/recipe.dart",
+                "span": {
+                  "from": 72,
+                  "to": 76
+                }
+              }
+            },
+            "role": "method",
+            "source": {
+              "path": "lib/models/recipe.dart",
+              "span": {
+                "from": 72,
+                "to": 76
+              }
+            }
+          }
+        ],
+        "componentId": "flutter.model",
+        "id": "recipe",
+        "name": "Recipe",
+        "source": {
+          "path": "lib/models/recipe.dart"
+        }
+      },
+      "componentId": "flutter.model",
+      "id": "flutter.model/recipe",
+      "locator": {
+        "name": "recipe",
+        "path": "lib/models/recipe.dart",
+        "source": {
+          "path": "lib/models/recipe.dart"
+        }
+      },
+      "summary": {
+        "facts": [
+          "2 properties",
+          "1 methods"
+        ],
+        "fields": [
+          "title",
+          "subtitle"
+        ],
+        "id": "recipe",
+        "kind": "model",
+        "path": "lib/models/recipe.dart",
+        "title": "Recipe"
+      }
+    },
+    {
+      "ast": {
+        "children": [
+          {
+            "componentId": "flutter.property",
+            "name": "name",
+            "parseContext": {
+              "hints": {
+                "name": "name"
+              },
+              "parent": {
+                "componentId": "flutter.model",
+                "id": "user",
+                "name": "User",
+                "path": "lib/models/user.dart"
+              },
+              "role": "field",
+              "source": {
+                "path": "lib/models/user.dart",
+                "span": {
+                  "from": 28,
+                  "to": 32
+                }
+              }
+            },
+            "role": "field",
+            "source": {
+              "path": "lib/models/user.dart",
+              "span": {
+                "from": 28,
+                "to": 32
+              }
+            },
+            "type": "unknown"
+          },
+          {
+            "componentId": "flutter.property",
+            "name": "email",
+            "parseContext": {
+              "hints": {
+                "name": "email"
+              },
+              "parent": {
+                "componentId": "flutter.model",
+                "id": "user",
+                "name": "User",
+                "path": "lib/models/user.dart"
+              },
+              "role": "field",
+              "source": {
+                "path": "lib/models/user.dart",
+                "span": {
+                  "from": 49,
+                  "to": 54
+                }
+              }
+            },
+            "role": "field",
+            "source": {
+              "path": "lib/models/user.dart",
+              "span": {
+                "from": 49,
+                "to": 54
+              }
+            },
+            "type": "unknown"
+          }
+        ],
+        "componentId": "flutter.model",
+        "id": "user",
+        "name": "User",
+        "source": {
+          "path": "lib/models/user.dart"
+        }
+      },
+      "componentId": "flutter.model",
+      "id": "flutter.model/user",
+      "locator": {
+        "name": "user",
+        "path": "lib/models/user.dart",
+        "source": {
+          "path": "lib/models/user.dart"
+        }
+      },
+      "summary": {
+        "facts": [
+          "2 properties",
+          "0 methods"
+        ],
+        "fields": [
+          "name",
+          "email"
+        ],
+        "id": "user",
+        "kind": "model",
+        "path": "lib/models/user.dart",
+        "title": "User"
+      }
+    },
+    {
+      "ast": {
+        "componentId": "flutter.state",
+        "fields": [
+          {
+            "name": "title",
+            "source": {
+              "path": "lib/stores/recipe_store.dart",
+              "span": {
+                "from": 29,
+                "to": 34
+              }
+            }
+          }
+        ],
+        "id": "recipe",
+        "modelId": "recipe",
+        "name": "RecipeStore",
+        "relations": {
+          "stores": [
+            {
+              "sources": [
+                {
+                  "path": "lib/stores/recipe_store.dart"
+                }
+              ],
+              "to": "flutter.model/recipe"
+            }
+          ]
+        },
+        "source": {
+          "path": "lib/stores/recipe_store.dart"
+        }
+      },
+      "componentId": "flutter.state",
+      "id": "flutter.state/recipe",
+      "locator": {
+        "id": "recipe",
+        "path": "lib/stores/recipe_store.dart",
+        "source": {
+          "path": "lib/stores/recipe_store.dart"
+        }
+      }
+    },
+    {
+      "ast": {
+        "componentId": "flutter.state",
+        "fields": [
+          {
+            "name": "name",
+            "source": {
+              "path": "lib/stores/user_store.dart",
+              "span": {
+                "from": 27,
+                "to": 31
+              }
+            }
+          },
+          {
+            "name": "email",
+            "source": {
+              "path": "lib/stores/user_store.dart",
+              "span": {
+                "from": 47,
+                "to": 52
+              }
+            }
+          }
+        ],
+        "id": "user",
+        "modelId": "user",
+        "name": "UserStore",
+        "relations": {
+          "stores": [
+            {
+              "sources": [
+                {
+                  "path": "lib/stores/user_store.dart"
+                }
+              ],
+              "to": "flutter.model/user"
+            }
+          ]
+        },
+        "source": {
+          "path": "lib/stores/user_store.dart"
+        }
+      },
+      "componentId": "flutter.state",
+      "id": "flutter.state/user",
+      "locator": {
+        "id": "user",
+        "path": "lib/stores/user_store.dart",
+        "source": {
+          "path": "lib/stores/user_store.dart"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "flutter.state/recipe",
+      "kind": "stores",
+      "sources": [
+        {
+          "path": "lib/stores/recipe_store.dart"
+        }
+      ],
+      "to": "flutter.model/recipe"
+    },
+    {
+      "from": "flutter.state/user",
+      "kind": "stores",
+      "sources": [
+        {
+          "path": "lib/stores/user_store.dart"
+        }
+      ],
+      "to": "flutter.model/user"
+    }
+  ],
+  "kindGraph": [
+    {
+      "count": 2,
+      "from": "flutter.state",
+      "kind": "stores",
+      "to": "flutter.model"
+    }
+  ],
+  "findings": [
+    {
+      "code": "model.field_missing_in_store",
+      "instanceId": "flutter.model/recipe",
+      "locator": {
+        "name": "recipe",
+        "path": "lib/models/recipe.dart",
+        "source": {
+          "path": "lib/models/recipe.dart"
+        }
+      },
+      "message": "field subtitle is not present in store lib/stores/recipe_store.dart",
+      "severity": "warning"
+    }
+  ]
+}

@@ -35,6 +35,22 @@ export interface ExtensionClient {
     args?: ArgValues
   ): void;
   createShortcut(recipeId: string, args?: ArgValues): void;
+  selectComponent(componentId: string): void;
+  selectComponentInstance(instanceId: string): void;
+  selectComponentAction(action: string): void;
+  componentScan(): void;
+  componentCoverage(): void;
+  openCoverageGaps(
+    path: string,
+    gaps: Array<{ from: number; to: number }>
+  ): void;
+  clearCoverageGaps(): void;
+  componentPreview(args: ArgValues, requestId: number): void;
+  componentApply(args: ArgValues, requestId: number): void;
+  componentDryRun(hook: string, requestId: number): void;
+  selectStackOperation(operation: string): void;
+  stackPreview(args: ArgValues, requestId: number): void;
+  stackApply(args: ArgValues, requestId: number): void;
   /** Allocate a monotonic request id for fire-and-forget correlated ops (preview). */
   nextRequestId(): number;
 }
@@ -243,6 +259,45 @@ export function createExtensionClient(deps: ExtensionClientDeps): ExtensionClien
         recipeId,
         ...(args ? { args } : {}),
       });
+    },
+    selectComponent(componentId: string) {
+      post({ type: WEBVIEW_TO_EXTENSION.selectComponent, componentId });
+    },
+    selectComponentInstance(instanceId: string) {
+      post({ type: WEBVIEW_TO_EXTENSION.selectComponentInstance, instanceId });
+    },
+    selectComponentAction(action: string) {
+      post({ type: WEBVIEW_TO_EXTENSION.selectComponentAction, action });
+    },
+    componentScan() {
+      post({ type: WEBVIEW_TO_EXTENSION.componentScan });
+    },
+    componentCoverage() {
+      post({ type: WEBVIEW_TO_EXTENSION.componentCoverage });
+    },
+    openCoverageGaps(path: string, gaps: Array<{ from: number; to: number }>) {
+      post({ type: WEBVIEW_TO_EXTENSION.openCoverageGaps, path, gaps });
+    },
+    clearCoverageGaps() {
+      post({ type: WEBVIEW_TO_EXTENSION.clearCoverageGaps });
+    },
+    componentPreview(args: ArgValues, requestId: number) {
+      post({ type: WEBVIEW_TO_EXTENSION.componentPreview, args, requestId });
+    },
+    componentApply(args: ArgValues, requestId: number) {
+      post({ type: WEBVIEW_TO_EXTENSION.componentApply, args, requestId });
+    },
+    componentDryRun(hook: string, requestId: number) {
+      post({ type: WEBVIEW_TO_EXTENSION.componentDryRun, hook, requestId });
+    },
+    selectStackOperation(operation: string) {
+      post({ type: WEBVIEW_TO_EXTENSION.selectStackOperation, operation });
+    },
+    stackPreview(args: ArgValues, requestId: number) {
+      post({ type: WEBVIEW_TO_EXTENSION.stackPreview, args, requestId });
+    },
+    stackApply(args: ArgValues, requestId: number) {
+      post({ type: WEBVIEW_TO_EXTENSION.stackApply, args, requestId });
     },
   };
 }

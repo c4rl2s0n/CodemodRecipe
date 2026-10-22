@@ -22,6 +22,7 @@ path = "src/bin/generate_host_api_surface.rs"
 
 [dependencies]
 codemod_recipe_core = { path = "../core" }
+codemod_recipe_components = { path = "../components" }
 codemod_recipe_engine = { path = "../engine" }
 codemod_recipe_lua = { path = "../lua" }
 codemod_recipe_lua_macros = { path = "../lua_macros" }
@@ -44,3 +45,7 @@ tree-sitter-language-pack = "1"
 
 [lints]
 workspace = true
+
+[build-dependencies]
+serde = { version = "1", features = ["derive"] }
+toml = "0.8"

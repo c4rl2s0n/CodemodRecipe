@@ -49,7 +49,7 @@ describe('isLikelyScmPath / library', () => {
 describe('sibling query resolution (Luau)', () => {
   const insertLines = [
     '		c:insert({',
-    '			path = c.args.file,',
+    '			path = args.file,',
     '			query = [[',
     '(block) @body',
     '(identifier) @name',

@@ -1,11 +1,11 @@
 {
     "schema_version": 1,
-    "commit": "e26998d21c08f990e2d39778314e3458b1b045d9",
-    "indexed_at": "2026-08-06T07:32:43Z",
+    "commit": "a4a1decfd0bdd8b89f7a0fb5a1c97abc407d2d95",
+    "indexed_at": "2026-09-04T15:23:04Z",
     "project": "home-ikusa-workspace-Android-codemod_recipe",
-    "nodes": 4551,
-    "edges": 16016,
-    "original_size": 10747904,
-    "compressed_size": 2178083,
-    "compression_level": 9
+    "nodes": 5275,
+    "edges": 15600,
+    "original_size": 17498112,
+    "compressed_size": 2925676,
+    "compression_level": 3
 }

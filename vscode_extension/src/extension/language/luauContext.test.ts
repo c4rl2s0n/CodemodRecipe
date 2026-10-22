@@ -62,8 +62,8 @@ describe('matchIdReference / matchHostMethod / matchTemplatePath', () => {
 });
 
 describe('argsFieldCompletionContext', () => {
-  it('detects c.args. prefix', () => {
-    expect(argsFieldCompletionContext('  local x = c.args.fi')).toEqual({
+  it('detects args. prefix', () => {
+    expect(argsFieldCompletionContext('  local x = args.fi')).toEqual({
       typed: 'fi',
       start: expect.any(Number),
     });
@@ -75,7 +75,7 @@ describe('document id / query lines', () => {
     'return {',
     '	id = "demo.recipe",',
     '	args = {},',
-    '	apply = function(c)',
+    '	apply = function(c, args)',
     '		c:insert({',
     '			query = [[(block) @body]],',
     '			capture = "body",',
@@ -110,7 +110,7 @@ describe('methodSpecContext value enums', () => {
   it('detects anchor value completion', () => {
     const lines = [
       '		c:insert({',
-      '			path = c.args.file,',
+      '			path = args.file,',
       '			anchor = "st',
     ];
     const d = doc(lines);
@@ -123,7 +123,7 @@ describe('methodSpecContext value enums', () => {
 
 describe('parseRecipeArgNames', () => {
   it('returns empty when no args table', () => {
-    expect(parseRecipeArgNames('return { id = "x", apply = function(c) end }')).toEqual(
+    expect(parseRecipeArgNames('return { id = "x", apply = function(c, args) end }')).toEqual(
       []
     );
   });

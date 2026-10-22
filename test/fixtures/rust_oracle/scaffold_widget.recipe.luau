@@ -4,7 +4,7 @@ return {
 		{ name = "featurePath", required = true },
 		{ name = "name", required = true },
 	},
-	apply = function(c)
+	apply = function(c, args)
 		c:create({
 			path = c:template({ inline = "{{featurePath}}/{{ name | snake_case }}.dart" }),
 			content = c:template({ inline = "class {{ name | pascal_case }} {}\n" }),

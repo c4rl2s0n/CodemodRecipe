@@ -17,7 +17,6 @@ export type ArgValues = Record<string, ArgValue>;
 /** Builtin kind name, registered type id, or a one-element list (`["ClassProperty"]`). */
 export type ArgInputKindSpec = string | string[];
 
-
 /** How to derive an arg from editor context (string builtin or structured spec). */
 export type ArgFrom =
   | string
@@ -148,6 +147,168 @@ export interface RecipeCatalogResponse {
   queryIds?: string[];
   /** Registered query id → source string. */
   queries?: Record<string, string>;
+  components?: ComponentSchema[];
+  stack?: StackSchema;
+  testSuites?: TestSuiteSchema[];
+}
+
+export interface ComponentSchema {
+  id: string;
+  description?: string;
+  operations: string[];
+  hasScaffold: boolean;
+  isRoot: boolean;
+  sourceFile?: string;
+}
+
+/** Catalog view of a `*.test.luau` suite (discovery for the Testing view). */
+export interface TestSuiteSchema {
+  id: string;
+  description?: string;
+  target?: string;
+  /** Workspace-relative path to the suite module. */
+  path?: string;
+  /** Sorted test function names. */
+  testNames: string[];
+}
+
+export interface TestCaseResult {
+  name: string;
+  ok: boolean;
+  error?: string;
+  /** 1-based line in the suite file (failures only). */
+  line?: number;
+}
+
+export interface TestSuiteResult {
+  id: string;
+  path?: string;
+  tests: TestCaseResult[];
+}
+
+export interface TestRunReport {
+  ok: boolean;
+  error?: string;
+  suites: TestSuiteResult[];
+  totals: { passed: number; failed: number };
+}
+
+export interface StackSchema {
+  id: string;
+  description?: string;
+  components: string[];
+  codebase?: string[];
+  operations?: ComponentOperationSchema[];
+  relations?: Record<string, RelationKindSchema>;
+}
+
+export interface RelationKindSchema {
+  layout: string;
+}
+
+export interface ComponentOperationSchema {
+  name: string;
+  description?: string;
+  args: RecipeArg[];
+}
+
+export interface ComponentDetailSchema {
+  id: string;
+  description?: string;
+  hasIdentify: boolean;
+  hasVerify?: boolean;
+  hasRelate?: boolean;
+  hasToSummary: boolean;
+  hasScaffold: boolean;
+  isRoot: boolean;
+  sourceFile?: string;
+  scaffoldArgs: RecipeArg[];
+  operations: ComponentOperationSchema[];
+}
+
+export interface DescribeComponentResponse {
+  ok: boolean;
+  error?: string;
+  component?: ComponentDetailSchema;
+}
+
+export interface ComponentInstance {
+  id: string;
+  componentId: string;
+  locator: unknown;
+  /** Parse-hook payload (AST projection). */
+  ast: unknown;
+  summary?: unknown;
+}
+
+export interface ComponentFinding {
+  severity: string;
+  code: string;
+  message: string;
+  instanceId?: string;
+  locator?: unknown;
+}
+
+/** A resolved relation between two flat instances (or an external symbol).
+ * Duplicates by (from, kind, target) merge into one canonical edge; `sources`
+ * lists every distinct derivation (multiplicity = sources.length). */
+export interface ComponentEdge {
+  from: string;
+  kind: string;
+  to?: string;
+  symbol?: string;
+  sources: unknown[];
+  /** Extra component-provided fields pass through (e.g. cardinality). */
+  [extra: string]: unknown;
+}
+
+/** Kind-level aggregation entry: (fromComponentId, kind, toComponentId) + count. */
+export interface KindEdge {
+  from: string;
+  kind: string;
+  to: string;
+  count: number;
+  external?: boolean;
+}
+
+export interface ComponentScanResponse {
+  ok: boolean;
+  error?: string;
+  instances?: ComponentInstance[];
+  findings?: ComponentFinding[];
+  /** Resolved relation edges over the scanned forest (relate phase). */
+  edges?: ComponentEdge[];
+  /** Kind-level aggregation of edges with counts. */
+  kindGraph?: KindEdge[];
+  diagnostics?: RecipeDiagnostic[];
+}
+
+export interface CoverageGap {
+  from: number;
+  to: number;
+}
+
+export interface CoverageTotals {
+  ratio: number;
+  coveredNonblank: number;
+  gapNonblank: number;
+}
+
+export interface FileCoverage {
+  path: string;
+  ratio: number;
+  coveredNonblank: number;
+  gapNonblank: number;
+  gaps?: CoverageGap[];
+}
+
+export interface ComponentCoverageResponse {
+  ok: boolean;
+  error?: string;
+  skipped?: boolean;
+  warning?: string;
+  aggregate?: CoverageTotals;
+  files?: FileCoverage[];
 }
 
 export interface BootstrapResponse {
@@ -186,6 +347,8 @@ export interface PreviewResponse {
   previewToken?: string;
   files?: FilePreview[];
   transcript?: TranscriptEvent[];
+  /** c:log details — top-level for MCP agents. */
+  logs?: string[];
   applyMayDiverge?: boolean;
   diagnostics?: RecipeDiagnostic[];
 }
@@ -196,12 +359,30 @@ export interface DescribeResponse {
   recipe?: RecipeSchema;
 }
 
+export interface ComponentInvokeResponse {
+  ok: boolean;
+  error?: string;
+  /** JSON return value from read hooks (identify/parse/verify/toSummary). */
+  result?: unknown;
+  instance?: ComponentInstance;
+  findings?: ComponentFinding[];
+  files?: FilePreview[];
+  transcript?: TranscriptEvent[];
+  /** c:log details — top-level for MCP agents (scan has no logs). */
+  logs?: string[];
+  applied?: string[];
+  /** Present on successful dry-run; required for apply. */
+  previewToken?: string;
+}
+
 export interface ApplyResponse {
   ok: boolean;
   error?: string;
   recipe?: string;
   applied?: string[];
   transcript?: TranscriptEvent[];
+  /** c:log details — top-level for MCP agents. */
+  logs?: string[];
   diagnostics?: RecipeDiagnostic[];
 }
 
@@ -217,168 +398,6 @@ export interface ValidateResponse {
   error?: string;
   diagnostics?: RecipeDiagnostic[];
 }
-
-export type HostCommand =
-  | { command: 'list' }
-  | { command: 'reload' }
-  | { command: 'validate'; recipe?: string }
-  | { command: 'describe'; recipe: string }
-  | { command: 'diff'; recipe: string; args: ArgValues; path: string }
-  | {
-      command: 'preview';
-      recipe: string;
-      args: ArgValues;
-      snippetLines?: number;
-    }
-  | {
-      command: 'apply';
-      recipe: string;
-      args: ArgValues;
-      previewToken: string;
-      selection: SelectionPayload;
-    }
-  | {
-      command: 'deriveArgs';
-      recipe: string;
-      source: string;
-      language?: string;
-      path?: string;
-      cursorOffset: number;
-      selectionStart: number;
-      selectionEnd: number;
-      context: Record<string, string>;
-    }
-  | {
-      command: 'filterExplorerRecipes';
-      path: string;
-      kind: 'file' | 'folder';
-    }
-  | {
-      command: 'bootstrap';
-      force?: boolean;
-      editPolicy?: string;
-      companions?: string[];
-    }
-  | {
-      command: 'dumpAst';
-      path?: string;
-      source?: string;
-      language?: string;
-      namedOnly?: boolean;
-    }
-  | {
-      command: 'debugQuery';
-      path?: string;
-      source?: string;
-      language?: string;
-      query: string;
-      instrument?: boolean;
-      includeSexp?: boolean;
-    }
-  | {
-      command: 'generateQuery';
-      path?: string;
-      source?: string;
-      language?: string;
-      start: number;
-      end?: number;
-      includeTextPredicates?: boolean;
-      captureLeaf?: string;
-      maxDepth?: number;
-    }
-  | {
-      command: 'resolveStaticPath';
-      template: string;
-    }
-  | {
-      command: 'queryCaptures';
-      query?: string;
-      queryId?: string;
-    };
-
-export interface QueryCapturesResponse {
-  ok: boolean;
-  error?: string;
-  captures?: string[];
-}
-
-export interface AstNodeDto {
-  kind: string;
-  named: boolean;
-  field?: string;
-  start: { byte: number; line: number; column: number };
-  end: { byte: number; line: number; column: number };
-  isError: boolean;
-  isMissing: boolean;
-  text?: string;
-  children: AstNodeDto[];
-}
-
-export interface DumpAstResponse {
-  ok: boolean;
-  error?: string;
-  hasError?: boolean;
-  root?: AstNodeDto;
-}
-
-export interface CaptureInfoDto {
-  name: string;
-  kind: string;
-  start: number;
-  end: number;
-  startLine: number;
-  startColumn: number;
-  endLine: number;
-  endColumn: number;
-  text?: string;
-  depth: number;
-  isLayer: boolean;
-  queryStart?: number;
-  queryEnd?: number;
-}
-
-export interface DebugMatchDto {
-  root: {
-    kind: string;
-    start: number;
-    end: number;
-    startLine: number;
-    startColumn: number;
-    endLine: number;
-    endColumn: number;
-    text?: string;
-  };
-  captures: CaptureInfoDto[];
-}
-
-export interface DebugQueryResultDto {
-  hasError: boolean;
-  matchCount: number;
-  matches: DebugMatchDto[];
-  instrumentedQuery?: string;
-  rootSexp?: string;
-}
-
-export interface DebugQueryResponse {
-  ok: boolean;
-  error?: string;
-  result?: DebugQueryResultDto;
-}
-
-export interface GenerateQueryResponse {
-  ok: boolean;
-  error?: string;
-  query?: string;
-  captureSuggestion?: string;
-}
-
-export interface ResolveStaticPathResponse {
-  ok: boolean;
-  error?: string;
-  path?: string;
-  staticResolvable: boolean;
-}
-
 
 export interface FileSelection {
   include: boolean;
@@ -423,6 +442,27 @@ export interface RecipeViewState {
   slotsByRecipe?: Record<string, string[]>;
   /** Host session machine; authoritative for preview/apply/pick in-flight. */
   session: RunnerSessionSnapshot;
+  /** Component kinds from host catalog. */
+  components?: readonly ComponentSchema[];
+  stack?: StackSchema;
+  componentInstances?: readonly ComponentInstance[];
+  componentFindings?: readonly ComponentFinding[];
+  selectedComponentId?: string;
+  selectedInstanceId?: string;
+  componentDetail?: ComponentDetailSchema;
+  componentAction?: string;
+  componentArgs?: ArgValues;
+  componentFiles?: readonly FilePreview[];
+  componentTranscript?: readonly TranscriptEvent[];
+  componentScanError?: string;
+  componentOpError?: string;
+  /** JSON result from the last component hook dry-run. */
+  componentDryRunResult?: unknown;
+  componentDryRunHook?: string;
+  /** Latest componentCoverage result (undefined until first fetch). */
+  componentCoverage?: ComponentCoverageResponse;
+  /** Selected stack-level operation (mutually exclusive with componentAction). */
+  stackAction?: string;
 }
 
 export interface PersistedWebviewState {

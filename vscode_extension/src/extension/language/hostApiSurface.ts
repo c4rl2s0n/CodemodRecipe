@@ -13,12 +13,18 @@ export type HostMethodSpec = {
   enums?: Record<string, string[]>;
 };
 
-export const HOST_CONTEXT_FIELD = 'args';
+/** Recipe apply args are the 2nd parameter: `apply(c, args)`. Not a field on `c`. */
+export const HOST_CONTEXT_FIELD: string | null = null;
 
 export const HOST_METHODS: readonly HostMethodSpec[] = [
   {
     name: 'assert',
     description: 'Runtime assertion (`cond`, optional message).',
+    keys: [],
+  },
+  {
+    name: 'component',
+    description: 'Get a component delegate (`parse` / `verify` / `readSource` / `operation` / `scaffold`) by id.',
     keys: [],
   },
   {
@@ -48,12 +54,22 @@ export const HOST_METHODS: readonly HostMethodSpec[] = [
     keys: ['capture', 'language', 'path', 'query'],
   },
   {
+    name: 'filename',
+    description: 'Basename without extension from a workspace-relative path.',
+    keys: [],
+  },
+  {
     name: 'insert',
     description: 'Insert text at a tree-sitter capture (`path`, `query`, `capture`, `text`).',
     keys: ['anchor', 'capture', 'language', 'path', 'query', 'text'],
     enums: {
       anchor: ['start', 'end'],
     },
+  },
+  {
+    name: 'listFiles',
+    description: 'List workspace-relative paths matching globs (`*` / `**`). Pass a string or an array; patterns starting with `!` exclude (union-then-subtract).',
+    keys: [],
   },
   {
     name: 'log',
@@ -66,13 +82,18 @@ export const HOST_METHODS: readonly HostMethodSpec[] = [
     keys: [],
   },
   {
+    name: 'matchFiles',
+    description: 'Match `{placeholder}` path patterns; returns rows with `path` + captures.',
+    keys: [],
+  },
+  {
     name: 'postExec',
     description: 'Shell command after apply (Jinja-rendered); preview records only.',
     keys: ['command', 'path'],
   },
   {
     name: 'query',
-    description: 'Run a tree-sitter query; returns `{ start, ["end"], text }` spans.',
+    description: 'Run a tree-sitter query; returns hits `{ span = { from, to }, text, kind }`.',
     keys: ['capture', 'language', 'path', 'query'],
   },
   {
@@ -91,6 +112,11 @@ export const HOST_METHODS: readonly HostMethodSpec[] = [
     keys: [],
   },
   {
+    name: 'queryMatches',
+    description: 'Per-match rows keyed by @capture name; multi → array, single → hit.',
+    keys: ['capture', 'language', 'path', 'query'],
+  },
+  {
     name: 'read',
     description: 'Read file contents (string path or `{ path }`).',
     keys: ['path'],
@@ -106,9 +132,19 @@ export const HOST_METHODS: readonly HostMethodSpec[] = [
     keys: ['capture', 'includeLeadingTrivia', 'language', 'path', 'query', 'text'],
   },
   {
+    name: 'resolve',
+    description: 'Fill `{key}` placeholders in a path template (no MiniJinja / no FS).',
+    keys: [],
+  },
+  {
     name: 'run',
     description: 'Run a nested recipe by id with optional arg overrides.',
     keys: [],
+  },
+  {
+    name: 'spanText',
+    description: 'Extract text for a 0-based byte span `{ path, span = { from, to } }`. Prefer hit.text from c:query when available.',
+    keys: ['path', 'span'],
   },
   {
     name: 'template',
@@ -140,7 +176,7 @@ export const RECIPE_MODULE_DOCS: Record<string, string> = {
   name: 'Display name in the recipe runner.',
   description: 'Short description shown in the runner and hover.',
   args: 'List of arg definition tables (`name`, `inputKind`, …).',
-  apply: '`function(c)` — only mutation entrypoint.',
+  apply: '`function(c, args)` — only mutation entrypoint.',
   maps: 'Recipe-local maps `{ mapId = { key = "value" } }`.',
   types: 'Recipe-local named types `{ TypeId = { fields = { … } } }`.',
   queries: 'Inline query strings `{ queryId = "(…) @cap" }`.',
@@ -162,7 +198,7 @@ export const ARG_DEFINITION_KEYS: readonly string[] = [
 ];
 
 export const ARG_DEFINITION_DOCS: Record<string, string> = {
-  name: 'Argument name (available as `c.args.<name>`).',
+  name: 'Argument name (available as `args.<name>` in apply).',
   required: 'Whether the runner requires a value.',
   inputKind: '`text` | `bool` | `choice` | `file` | `directory` | TypeId | `{ TypeId }` list.',
   defaultsTo: 'Default when the arg is omitted.',

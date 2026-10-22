@@ -4,9 +4,9 @@ use std::rc::Rc;
 use std::sync::Mutex;
 
 use codemod_recipe_engine::{LanguageRegistry, RegistryConfig};
-use codemod_recipe_lua::model::{Recipe, TranscriptEvent};
+use codemod_recipe_lua::model::{ComponentDef, Recipe, TranscriptEvent};
 
-use crate::engine::working_tree::WorkingTree;
+use crate::edit_session::working_tree::WorkingTree;
 use crate::sandbox::path_sandbox::PathSandbox;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -43,9 +43,10 @@ pub struct RecipeRunRequest {
     pub vars: BTreeMap<String, BTreeMap<String, String>>,
     pub queries: BTreeMap<String, String>,
     pub recipes: BTreeMap<String, Recipe>,
+    pub components: BTreeMap<String, ComponentDef>,
     pub workspace_root: PathBuf,
-    pub language_config: RegistryConfig,
     pub codemod_root: PathBuf,
+    pub language_config: RegistryConfig,
 }
 
 pub(crate) const MAX_OPS: usize = 50_000;
@@ -62,11 +63,19 @@ pub(crate) struct HostInner {
     pub(crate) vars: BTreeMap<String, BTreeMap<String, String>>,
     pub(crate) queries: BTreeMap<String, String>,
     pub(crate) recipes: BTreeMap<String, Recipe>,
+    pub(crate) components: BTreeMap<String, ComponentDef>,
+    pub(crate) component_stack: Vec<String>,
     pub(crate) recipe_path: Option<PathBuf>,
     pub(crate) codemod_root: PathBuf,
     pub(crate) transcript: Vec<TranscriptEvent>,
     pub(crate) saw_post_exec: bool,
     pub(crate) op_count: usize,
+    pub(crate) ast_cache: crate::query::ast_cache::AstParseCache,
+    /// Pre-operation graph snapshot (flat instance JSON array + edges JSON array).
+    /// Set by stack/component operation/scaffold invoke so `c:component():operation`
+    /// fan-out can rebuild the graph facade in the shared sandbox.
+    pub(crate) graph_flat_json: Option<serde_json::Value>,
+    pub(crate) graph_edges_json: Option<serde_json::Value>,
 }
 
 impl HostInner {
@@ -78,6 +87,7 @@ impl HostInner {
     where
         F: FnOnce(&str) -> Result<String, String>,
     {
+        self.ast_cache.invalidate(path);
         self.tree.apply_edit(&self.sandbox, path, transform)
     }
 
@@ -87,6 +97,7 @@ impl HostInner {
         content: String,
         if_exists: codemod_recipe_core::apply::file_change::IfExists,
     ) -> Result<(), String> {
+        self.ast_cache.invalidate(path);
         self.tree.create(&self.sandbox, path, content, if_exists)
     }
 
@@ -95,6 +106,7 @@ impl HostInner {
         path: &str,
         if_missing: codemod_recipe_core::apply::file_change::IfMissing,
     ) -> Result<(), String> {
+        self.ast_cache.invalidate(path);
         self.tree.delete(&self.sandbox, path, if_missing)
     }
 

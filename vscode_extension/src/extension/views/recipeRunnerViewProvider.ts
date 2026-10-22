@@ -16,8 +16,9 @@ import { RecipeRunnerState } from './recipeRunnerState';
 import {
   handleWebviewMessage,
   type RecipeRunnerHandlerHost,
-} from './recipeRunnerHandlers';
+} from './recipeRunner';
 import type { RecipeRepository } from '../recipes/recipeRepository';
+import { CoverageDecorations } from '../coverage/coverageDecorations';
 
 export class RecipeRunnerViewProvider
   implements vscode.WebviewViewProvider, RecipeRunnerHandlerHost
@@ -31,6 +32,7 @@ export class RecipeRunnerViewProvider
   /** Serialize webview messages so preview/pick cannot overlap silently. */
   private messageChain: Promise<void> = Promise.resolve();
   readonly state = new RecipeRunnerState();
+  private readonly coverageDecorations = new CoverageDecorations();
   private _scaffoldHandler: (() => Promise<void>) | undefined;
   private _recipeRepository: RecipeRepository | undefined;
   private _runtimeDiagnostics: ((diagnostics: readonly RecipeDiagnostic[]) => void) | undefined;
@@ -160,6 +162,105 @@ export class RecipeRunnerViewProvider
     }
     this.diffProvider.clear();
     this.postState();
+  }
+
+  setComponentCatalog(
+    components: readonly import('../../shared').ComponentSchema[],
+    stack?: import('../../shared').StackSchema
+  ): void {
+    this.state.setComponentCatalog(components, stack);
+    this.postState();
+  }
+
+  clearComponentScan(): void {
+    this.state.setComponentScan([], [], undefined);
+    this.state.setComponentCoverage(undefined);
+    this.coverageDecorations.clear();
+    this.postState();
+  }
+
+  async scanComponents(): Promise<void> {
+    try {
+      const response = await this.bridge.componentScan();
+      if (!response.ok) {
+        this.state.setComponentScan(
+          [],
+          [],
+          response.error ?? 'component scan failed'
+        );
+        this.state.setComponentCoverage(undefined);
+      } else {
+        this.state.setComponentScan(
+          response.instances ?? [],
+          response.findings ?? []
+        );
+        await this.refreshComponentCoverage();
+        return;
+      }
+    } catch (err) {
+      this.state.setComponentScan(
+        [],
+        [],
+        err instanceof Error ? err.message : String(err)
+      );
+      this.state.setComponentCoverage(undefined);
+    }
+    this.postState();
+  }
+
+  async incrementalComponentScan(dirtyPaths: string[]): Promise<void> {
+    try {
+      const response = await this.bridge.componentIncrementalScan({
+        dirtyPaths,
+        detectChanges: false,
+      });
+      if (!response.ok) {
+        this.state.setComponentScan(
+          this.state.componentInstances,
+          this.state.componentFindings,
+          response.error ?? 'incremental scan failed'
+        );
+      } else {
+        this.state.setComponentScan(
+          response.instances ?? [],
+          response.findings ?? []
+        );
+        await this.refreshComponentCoverage();
+        return;
+      }
+    } catch (err) {
+      this.state.componentScanError =
+        err instanceof Error ? err.message : String(err);
+    }
+    this.postState();
+  }
+
+  async refreshComponentCoverage(): Promise<void> {
+    try {
+      const coverage = await this.bridge.componentCoverage();
+      this.state.setComponentCoverage(coverage);
+    } catch (err) {
+      this.state.setComponentCoverage({
+        ok: false,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+    this.postState();
+  }
+
+  async openCoverageGaps(
+    relativePath: string,
+    gaps: ReadonlyArray<{ from: number; to: number }>
+  ): Promise<void> {
+    await this.coverageDecorations.openWithGaps(
+      this.workspaceRoot,
+      relativePath,
+      gaps
+    );
+  }
+
+  clearCoverageGaps(): void {
+    this.coverageDecorations.clear();
   }
 
   setRecipesRefreshing(inFlight: boolean): void {

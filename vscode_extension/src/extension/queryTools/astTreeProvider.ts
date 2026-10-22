@@ -1,5 +1,6 @@
 import * as vscode from 'vscode';
 import type { AstNodeDto } from '../../shared';
+import { COMMANDS } from '../constants';
 
 export type AstDisplayMode = 'kind' | 'content' | 'kindPreview';
 
@@ -82,7 +83,7 @@ export class AstTreeItem extends vscode.TreeItem {
     this.tooltip = formatted.tooltip;
     this.contextValue = 'astNode';
     this.command = {
-      command: 'codemodRecipe.queryTools.selectAstNode',
+      command: COMMANDS.queryToolsSelectAstNode,
       title: 'Select AST node',
       arguments: [this],
     };

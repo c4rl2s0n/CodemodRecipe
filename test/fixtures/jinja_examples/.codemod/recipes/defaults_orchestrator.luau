@@ -5,7 +5,7 @@ return {
 	args = {
 		{ name = "label", required = true, inputKind = "symbol" },
 	},
-	apply = function(c)
+	apply = function(c, args)
 		c:run("jinja.defaults.child")
 	end,
 }

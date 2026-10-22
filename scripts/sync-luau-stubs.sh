@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Sync vscode_extension/stubs/codemod-context.d.luau into export + local .codemod.
+# D-018: Single generated surface — regenerate into vscode_extension/stubs/ (SSOT),
+# then copy to export/ + .codemod/ for bootstrap/IDE. Do not edit the copies by hand.
 # Run scripts/generate-host-api-surface.sh to regenerate the stub from Rust first.
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"

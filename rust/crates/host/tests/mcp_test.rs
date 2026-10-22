@@ -11,7 +11,7 @@ fn setup_workspace() -> std::path::PathBuf {
     let recipes_dir = workspace.join(".codemod/recipes");
     std::fs::create_dir_all(&recipes_dir).unwrap();
     std::fs::copy(
-        repo_root().join(".codemod/recipes/insert_log_line.luau"),
+        repo_root().join("test/fixtures/dart_demo/.codemod/recipes/insert_log_line.luau"),
         recipes_dir.join("insert_log_line.luau"),
     )
     .unwrap();
@@ -234,6 +234,12 @@ fn stdio_subprocess_bootstraps_project() {
     assert_eq!(bootstrap_json["companions"], serde_json::json!([]));
     assert!(workspace
         .join(".agents/skills/codemod-recipe/codemod-overview/SKILL.md")
+        .is_file());
+    assert!(workspace
+        .join(".agents/skills/codemod-recipe/docs/01_getting_started/00_index.md")
+        .is_file());
+    assert!(workspace
+        .join(".agents/skills/codemod-recipe/architect/SKILL.md")
         .is_file());
     assert!(workspace.join(".cursor/rules/codemod-recipe.mdc").is_file());
     assert!(!workspace.join(".cursor/rules/codebase-memory.mdc").exists());

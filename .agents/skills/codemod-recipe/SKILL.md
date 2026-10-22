@@ -1,10 +1,9 @@
 ---
 name: codemod-recipe
 description: >-
-  Top-level skill for codemod-recipe: deterministic, AST-safe code edits via
-  sandboxed Luau recipes and the Rust MCP host. Use this skill when you are
-  authoring, reviewing, or running codemod recipes, then read the relevant
-  nested sub-skill for the specific topic.
+  Top-level skill for codemod-recipe: deterministic AST-safe edits via sandboxed
+  Luau recipes and the Rust MCP host. Start here, then open Architect (create
+  or modify .codemod assets) or Builder (understand a workspace / apply changes).
 ---
 
 # Codemod Recipe
@@ -12,46 +11,37 @@ description: >-
 ## What it is
 
 codemod-recipe applies deterministic, AST-safe edits using **sandboxed Luau recipes**
-(any `.luau` or `.lua` module under `.codemod/` that returns `{ id, apply = function(c) ... }`).
-The `.codemod/recipes/` directory is a convention, not a requirement. The Rust MCP server exposes
-preview/apply tools for agents. Dart is the default language; set `language` on edit ops for non-Dart files.
+and **components**. The Rust MCP server exposes validate / preview / apply tools.
+Usage docs (product SSOT) ship beside these skills under [`docs/`](docs/).
 
-## When to use
+## Pick a mode
 
-- Structural edits, multi-file scaffolds, or AST-boundary changes.
-- Non-Dart files when you set `language` on the edit op.
-- Validating, previewing, and applying Luau recipes.
-- Creating or improving reusable recipes and templates.
+| Mode | When | Open |
+|------|------|------|
+| **Architect** | Create or modify recipes, components, queries, templates, maps | [architect/SKILL.md](architect/SKILL.md) |
+| **Builder** | Understand a workspace or apply registered recipes/components | [builder/SKILL.md](builder/SKILL.md) |
 
-## When not to use
+## Core apply workflow (Builder)
 
-- General codebase exploration → use **codebase-memory** first.
-- Trivial text-only edits where a recipe would not help → edit directly.
+1. Locate target (Builder intel / codebase-memory if available)
+2. `describe_recipe` / `describe_component` for args
+3. `preview_recipe` or `component_dry_run_hook` — save token / inspect `files` + `transcript`
+4. `apply_recipe` / `component_apply_hook` with the same args
+5. Re-preview / incremental scan for idempotency
 
-## Core workflow
+## Usage docs (read these for depth)
 
-1. `validate_recipes` after editing Luau.
-2. `list_recipes` / `describe_recipe` to learn recipe args.
-3. `preview_recipe` (save the `previewToken`).
-4. `apply_recipe` with the same args and token.
-5. Re-preview to verify idempotency (`files: []`).
+| Doc | Contents |
+|-----|----------|
+| [docs/01_getting_started/00_index.md](docs/01_getting_started/00_index.md) | Day-1 overview |
+| [docs/02_writing_recipes/02_host_api/00_index.md](docs/02_writing_recipes/02_host_api/00_index.md) | Host API (`c:insert`, maps, templates) |
+| [docs/02_writing_recipes/01_workflow/00_index.md](docs/02_writing_recipes/01_workflow/00_index.md) | Authoring workflow |
+| [docs/06_mcp_and_clients/01_codemod_mcp/00_index.md](docs/06_mcp_and_clients/01_codemod_mcp/00_index.md) | MCP tool encyclopedia |
+| [docs/05_components_and_stacks/01_components/00_index.md](docs/05_components_and_stacks/01_components/00_index.md) | Components and hooks |
 
-## Nested skills
+## Related workflow skills
 
-Read the relevant sub-skill for details:
-
-| Skill | Use for | Read |
-|-------|---------|------|
-| `codemod-overview` | Orientation and project layout | [SKILL.md](codemod-overview/SKILL.md) |
-| `codemod-luau-recipes` | Recipe module shape and host API | [SKILL.md](codemod-luau-recipes/SKILL.md), [reference.md](codemod-luau-recipes/reference.md) |
-| `codemod-mcp-playbook` | MCP tool workflow | [SKILL.md](codemod-mcp-playbook/SKILL.md) |
-| `codemod-languages` | Language IDs, SQL dialects, grammar notes | [SKILL.md](codemod-languages/SKILL.md), [reference.md](codemod-languages/reference.md) |
-| `codemod-tree-sitter-queries` | Query syntax, captures, predicates | [SKILL.md](codemod-tree-sitter-queries/SKILL.md), [reference.md](codemod-tree-sitter-queries/reference.md) |
-| `codemod-recipe-design-patterns` | Create vs modify taxonomy and scaffolds | [SKILL.md](codemod-recipe-design-patterns/SKILL.md), [reference.md](codemod-recipe-design-patterns/reference.md) |
-| `codemod-recipe-authoring` | Dart patterns, idempotency, testing | [SKILL.md](codemod-recipe-authoring/SKILL.md) |
-| `recipe-generation` | Generate recipes from `@` references | [SKILL.md](recipe-generation/SKILL.md), [reference.md](recipe-generation/reference.md) |
-
-## Human docs
-
-- [docs/getting-started.md](../../../../docs/getting-started.md) — day-1 overview
-- [docs/writing-recipes.md](../../../../docs/writing-recipes.md) — recipe authoring
+| Skill | Use for |
+|-------|---------|
+| [recipe-generation](recipe-generation/SKILL.md) | Generate a recipe from `@` code refs |
+| [codemod-mcp-playbook](codemod-mcp-playbook/SKILL.md) | Short MCP tool checklist (links to docs) |

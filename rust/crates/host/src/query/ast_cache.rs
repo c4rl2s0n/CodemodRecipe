@@ -2,7 +2,7 @@
 
 use tree_sitter::{Language, Tree};
 
-const MAX_ENTRIES: usize = 8;
+const MAX_ENTRIES: usize = 64;
 
 #[derive(Clone)]
 struct CachedParse {
@@ -33,6 +33,11 @@ impl AstParseCache {
 
     pub fn clear(&mut self) {
         self.entries.clear();
+    }
+
+    /// Drop a cached entry for `path_key` (e.g. after an in-memory edit).
+    pub fn invalidate(&mut self, path_key: &str) {
+        self.entries.retain(|(p, _)| p != path_key);
     }
 
     pub fn get_or_parse(
@@ -118,23 +123,17 @@ mod tests {
     }
 
     #[test]
-    fn lru_evicts_oldest() {
+    fn invalidate_drops_entry() {
         let lang = dart();
         let mut cache = AstParseCache::default();
-        for i in 0..=MAX_ENTRIES {
-            cache
-                .get_or_parse(
-                    &format!("lib/f{i}.dart"),
-                    &format!("void f{i}() {{}}"),
-                    &lang,
-                )
-                .unwrap();
-        }
-        assert_eq!(cache.parse_count(), MAX_ENTRIES as u64 + 1);
-        // Oldest key evicted — re-parsing it counts as a new parse.
         cache
-            .get_or_parse("lib/f0.dart", "void f0() {}", &lang)
+            .get_or_parse("lib/a.dart", "void main() {}", &lang)
             .unwrap();
-        assert_eq!(cache.parse_count(), MAX_ENTRIES as u64 + 2);
+        cache.invalidate("lib/a.dart");
+        let again = cache
+            .get_or_parse("lib/a.dart", "void main() {}", &lang)
+            .unwrap();
+        assert!(!again.cache_hit);
+        assert_eq!(cache.parse_count(), 2);
     }
 }

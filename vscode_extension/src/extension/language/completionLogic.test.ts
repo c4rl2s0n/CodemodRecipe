@@ -71,17 +71,17 @@ describe('collectCompletionSuggestions', () => {
       catalog,
     });
     expect(items?.map((i) => i.label)).toContain('insert');
-    // Full "args" field only when typed prefix matches "args"
-    const argsLine = ['		c:a'];
-    const argsItems = collectCompletionSuggestions({
-      line: argsLine[0],
-      before: argsLine[0],
+    // args is the apply() parameter, not a field on `c` (HOST_CONTEXT_FIELD is null).
+    const assertLine = ['		c:as'];
+    const assertItems = collectCompletionSuggestions({
+      line: assertLine[0],
+      before: assertLine[0],
       lineNumber: 0,
-      character: argsLine[0].length,
-      document: doc(argsLine),
+      character: assertLine[0].length,
+      document: doc(assertLine),
       catalog,
     });
-    expect(argsItems?.some((i) => i.label === 'args')).toBe(true);
+    expect(assertItems?.some((i) => i.label === 'assert')).toBe(true);
   });
 
   it('suggests hierarchical recipe ids for c:run', () => {
@@ -113,7 +113,7 @@ describe('collectCompletionSuggestions', () => {
   it('suggests remaining insert spec keys', () => {
     const lines = [
       '		c:insert({',
-      '			path = c.args.file,',
+      '			path = args.file,',
       '			que',
     ];
     const items = collectCompletionSuggestions({
@@ -131,7 +131,7 @@ describe('collectCompletionSuggestions', () => {
   it('suggests anchor enum values', () => {
     const lines = [
       '		c:insert({',
-      '			path = c.args.file,',
+      '			path = args.file,',
       '			anchor = "s',
     ];
     const items = collectCompletionSuggestions({
@@ -198,13 +198,13 @@ describe('collectCompletionSuggestions', () => {
     expect(items?.map((i) => i.label)).toEqual(['body']);
   });
 
-  it('suggests c.args fields from recipe source', () => {
+  it('suggests args fields from recipe source', () => {
     const lines = [
       'return {',
       '	id = "x",',
       '	args = { { name = "file" }, { name = "className" } },',
-      '	apply = function(c)',
-      '		local p = c.args.cl',
+      '	apply = function(c, args)',
+      '		local p = args.cl',
       '	end,',
       '}',
     ];
@@ -265,7 +265,7 @@ describe('collectCompletionSuggestions', () => {
     const lines = [
       'return {',
       '	args = { { name = "file" } },',
-      '	apply = function(c)',
+      '	apply = function(c, args)',
       '		c:postExec({ command = "{{ fi',
     ];
     const items = collectCompletionSuggestions({

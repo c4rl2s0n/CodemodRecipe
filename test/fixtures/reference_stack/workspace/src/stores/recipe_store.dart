@@ -1,0 +1,3 @@
+class RecipeStore {
+  void load() {}
+}

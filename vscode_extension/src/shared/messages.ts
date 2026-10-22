@@ -21,6 +21,19 @@ export const WEBVIEW_TO_EXTENSION = {
   apply: 'apply',
   invokeRecipe: 'invokeRecipe',
   createShortcut: 'createShortcut',
+  selectComponent: 'selectComponent',
+  selectComponentInstance: 'selectComponentInstance',
+  selectComponentAction: 'selectComponentAction',
+  componentScan: 'componentScan',
+  componentCoverage: 'componentCoverage',
+  openCoverageGaps: 'openCoverageGaps',
+  clearCoverageGaps: 'clearCoverageGaps',
+  componentPreview: 'componentPreview',
+  componentApply: 'componentApply',
+  componentDryRun: 'componentDryRun',
+  selectStackOperation: 'selectStackOperation',
+  stackPreview: 'stackPreview',
+  stackApply: 'stackApply',
 } as const;
 
 export const EXTENSION_TO_WEBVIEW = {
@@ -67,6 +80,55 @@ export type WebviewToExtensionMessage =
       type: typeof WEBVIEW_TO_EXTENSION.createShortcut;
       recipeId: string;
       args?: ArgValues;
+    }
+  | {
+      type: typeof WEBVIEW_TO_EXTENSION.selectComponent;
+      componentId: string;
+    }
+  | {
+      type: typeof WEBVIEW_TO_EXTENSION.selectComponentInstance;
+      instanceId: string;
+    }
+  | {
+      type: typeof WEBVIEW_TO_EXTENSION.selectComponentAction;
+      action: string;
+    }
+  | { type: typeof WEBVIEW_TO_EXTENSION.componentScan }
+  | { type: typeof WEBVIEW_TO_EXTENSION.componentCoverage }
+  | {
+      type: typeof WEBVIEW_TO_EXTENSION.openCoverageGaps;
+      path: string;
+      gaps: Array<{ from: number; to: number }>;
+    }
+  | { type: typeof WEBVIEW_TO_EXTENSION.clearCoverageGaps }
+  | {
+      type: typeof WEBVIEW_TO_EXTENSION.componentPreview;
+      args: ArgValues;
+      requestId: number;
+    }
+  | {
+      type: typeof WEBVIEW_TO_EXTENSION.componentApply;
+      args: ArgValues;
+      requestId: number;
+    }
+  | {
+      type: typeof WEBVIEW_TO_EXTENSION.componentDryRun;
+      hook: string;
+      requestId: number;
+    }
+  | {
+      type: typeof WEBVIEW_TO_EXTENSION.selectStackOperation;
+      operation: string;
+    }
+  | {
+      type: typeof WEBVIEW_TO_EXTENSION.stackPreview;
+      args: ArgValues;
+      requestId: number;
+    }
+  | {
+      type: typeof WEBVIEW_TO_EXTENSION.stackApply;
+      args: ArgValues;
+      requestId: number;
     };
 
 export type ExtensionToWebviewMessage =
@@ -187,6 +249,39 @@ export function isWebviewToExtensionMessage(
         typeof value.recipeId === 'string' &&
         (value.args === undefined || isArgRecord(value.args))
       );
+    case WEBVIEW_TO_EXTENSION.selectComponent:
+      return typeof value.componentId === 'string';
+    case WEBVIEW_TO_EXTENSION.selectComponentInstance:
+      return typeof value.instanceId === 'string';
+    case WEBVIEW_TO_EXTENSION.selectComponentAction:
+      return typeof value.action === 'string';
+    case WEBVIEW_TO_EXTENSION.componentScan:
+    case WEBVIEW_TO_EXTENSION.componentCoverage:
+    case WEBVIEW_TO_EXTENSION.clearCoverageGaps:
+      return true;
+    case WEBVIEW_TO_EXTENSION.openCoverageGaps:
+      return (
+        typeof value.path === 'string' &&
+        Array.isArray(value.gaps) &&
+        value.gaps.every(
+          (g) =>
+            isRecord(g) &&
+            typeof g.from === 'number' &&
+            typeof g.to === 'number'
+        )
+      );
+    case WEBVIEW_TO_EXTENSION.componentPreview:
+    case WEBVIEW_TO_EXTENSION.componentApply:
+      return isArgRecord(value.args) && typeof value.requestId === 'number';
+    case WEBVIEW_TO_EXTENSION.componentDryRun:
+      return (
+        typeof value.hook === 'string' && typeof value.requestId === 'number'
+      );
+    case WEBVIEW_TO_EXTENSION.selectStackOperation:
+      return typeof value.operation === 'string';
+    case WEBVIEW_TO_EXTENSION.stackPreview:
+    case WEBVIEW_TO_EXTENSION.stackApply:
+      return isArgRecord(value.args) && typeof value.requestId === 'number';
     default:
       return false;
   }

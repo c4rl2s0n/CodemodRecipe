@@ -1,6 +1,7 @@
 export const RUNNER_TABS = {
   recipes: 'recipes',
   runner: 'runner',
+  components: 'components',
 } as const;
 
 export type RunnerTab = (typeof RUNNER_TABS)[keyof typeof RUNNER_TABS];

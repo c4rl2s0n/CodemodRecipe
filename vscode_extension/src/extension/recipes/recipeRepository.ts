@@ -1,5 +1,13 @@
 import { HostBridge } from '../host/hostBridge';
-import type { RecipeDiagnostic, RecipeSchema, TypeSchema } from '../../shared';
+import type {
+  ComponentDetailSchema,
+  ComponentSchema,
+  RecipeDiagnostic,
+  RecipeSchema,
+  StackSchema,
+  TestSuiteSchema,
+  TypeSchema,
+} from '../../shared';
 
 export type RecipeLoadResult = {
   recipes: RecipeSchema[];
@@ -12,6 +20,9 @@ export type RecipeLoadResult = {
   queryIds?: string[];
   /** Registered query id → source string. */
   queries?: Record<string, string>;
+  components?: ComponentSchema[];
+  stack?: StackSchema;
+  testSuites?: TestSuiteSchema[];
 };
 
 export class RecipeRepository {
@@ -24,7 +35,11 @@ export class RecipeRepository {
   private types: TypeSchema[] = [];
   private queryIds: string[] = [];
   private queries: Record<string, string> = {};
+  private components: ComponentSchema[] = [];
+  private stack: StackSchema | undefined;
+  private testSuites: TestSuiteSchema[] = [];
   private describeCache = new Map<string, RecipeSchema>();
+  private componentDescribeCache = new Map<string, ComponentDetailSchema>();
   private lastError: string | undefined;
 
   constructor(private readonly bridge: HostBridge) {}
@@ -65,6 +80,18 @@ export class RecipeRepository {
     return this.queries[id];
   }
 
+  getComponents(): readonly ComponentSchema[] {
+    return this.components;
+  }
+
+  getStack(): StackSchema | undefined {
+    return this.stack;
+  }
+
+  getTestSuites(): readonly TestSuiteSchema[] {
+    return this.testSuites;
+  }
+
   findType(id: string): TypeSchema | undefined {
     return this.types.find((t) => t.id === id);
   }
@@ -75,6 +102,10 @@ export class RecipeRepository {
 
   findById(id: string): RecipeSchema | undefined {
     return this.recipes.find((recipe) => recipe.id === id);
+  }
+
+  findComponentById(id: string): ComponentSchema | undefined {
+    return this.components.find((c) => c.id === id);
   }
 
   async describeCached(recipeId: string): Promise<RecipeSchema | undefined> {
@@ -89,6 +120,18 @@ export class RecipeRepository {
     } catch {
       return this.findById(recipeId);
     }
+  }
+
+  async describeComponentCached(
+    componentId: string
+  ): Promise<ComponentDetailSchema | undefined> {
+    const cached = this.componentDescribeCache.get(componentId);
+    if (cached) {
+      return cached;
+    }
+    const described = await this.bridge.describeComponent(componentId);
+    this.componentDescribeCache.set(componentId, described);
+    return described;
   }
 
   async refresh(): Promise<void> {
@@ -108,8 +151,8 @@ export class RecipeRepository {
       this.applyLoadResult(result);
       this.lastError = undefined;
     } catch (err) {
-      // Keep last-good catalog/diagnostics on transient host failure.
       this.lastError = err instanceof Error ? err.message : String(err);
+      throw err;
     }
   }
 
@@ -123,6 +166,10 @@ export class RecipeRepository {
     this.types = result.types ?? [];
     this.queryIds = result.queryIds ?? [];
     this.queries = result.queries ?? {};
+    this.components = result.components ?? [];
+    this.stack = result.stack;
+    this.testSuites = result.testSuites ?? [];
     this.describeCache.clear();
+    this.componentDescribeCache.clear();
   }
 }

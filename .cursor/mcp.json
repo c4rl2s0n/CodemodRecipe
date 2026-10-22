@@ -1,0 +1,22 @@
+{
+  "mcpServers": {
+    "codemod-mcp": {
+      "command": "cargo",
+      "args": [
+        "run",
+        "-q",
+        "--manifest-path",
+        "${workspaceFolder}/rust/Cargo.toml",
+        "-p",
+        "codemod_recipe_host",
+        "--bin",
+        "codemod_mcp",
+        "--",
+        "--workspace-root",
+        "${workspaceFolder}",
+        "--codemod-root",
+        "${workspaceFolder}/.codemod"
+      ]
+    }
+  }
+}

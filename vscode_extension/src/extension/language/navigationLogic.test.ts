@@ -127,7 +127,7 @@ describe('resolveHoverContent', () => {
 
   it('documents module keywords', () => {
     const hover = resolveHoverContent(
-      '	apply = function(c)',
+      '	apply = function(c, args)',
       1,
       'apply',
       () => undefined,
@@ -145,7 +145,7 @@ describe('collectCodeLensDescriptors', () => {
     const lines = [
       'return {',
       '	id = "demo.recipe",',
-      '	apply = function(c)',
+      '	apply = function(c, args)',
       '		c:insert({',
       '			query = [[(block) @b]],',
       '		})',

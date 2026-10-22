@@ -119,6 +119,11 @@
         "icon": "$(check-all)"
       },
       {
+        "command": "codemodRecipe.runTests",
+        "title": "Codemod Recipe: Run Tests",
+        "icon": "$(beaker)"
+      },
+      {
         "command": "codemodRecipe.openInRecipeRunner",
         "title": "Codemod Recipe: Open in Recipe Runner"
       },

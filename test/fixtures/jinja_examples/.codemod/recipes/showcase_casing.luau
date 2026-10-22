@@ -12,7 +12,7 @@ return {
 			label = "String",
 		},
 	},
-	apply = function(c)
+	apply = function(c, args)
 		c:create({
 			path = c:template({ inline = "lib/generated/{{ name | snake_case }}_casing.dart" }),
 			content = c:template({ inline = [[

@@ -2,7 +2,7 @@ agent_paths = [
     ".vibe/agents",
 ]
 enabled_agents = [
-    "default",
+    "ask",
     "plan",
     "codestral-coder",
     "code-reviewer",
@@ -19,7 +19,7 @@ enabled_skills = [
     "codebase-memory",
     "codemod-mcp",
 ]
-default_agent = "default"
+default_agent = "ask"
 active_model = "devstral-small"
 
 [tools.write_file]
@@ -80,6 +80,6 @@ temperature = 0.2
 input_price = 0.1
 output_price = 0.3
 cached_input_price = 0.01
-thinking = "medium"
+thinking = "off"
 supports_images = false
 auto_compact_threshold = 200000

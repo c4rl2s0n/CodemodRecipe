@@ -1,0 +1,119 @@
+{
+  "meta": {
+    "version": 1,
+    "timestamp": 1792583118,
+    "stack": "reference-stack"
+  },
+  "relations": {
+    "aggregate": {
+      "architectureConnected": 2,
+      "architectureEligible": 2,
+      "architectureIsolated": 0,
+      "edgeCount": 1,
+      "instanceCount": 2,
+      "isolated": 0,
+      "membershipConnected": 0,
+      "ratios": {
+        "architectureConnected": 1.0,
+        "connected": 1.0
+      },
+      "relationIgnored": 0
+    },
+    "byComponent": [
+      {
+        "architectureConnected": 1,
+        "architectureEligible": 1,
+        "architectureIsolated": 0,
+        "componentId": "example.entity",
+        "instanceCount": 1,
+        "membershipOnly": 0,
+        "relationIgnored": 0
+      },
+      {
+        "architectureConnected": 1,
+        "architectureEligible": 1,
+        "architectureIsolated": 0,
+        "componentId": "example.store",
+        "instanceCount": 1,
+        "membershipOnly": 0,
+        "relationIgnored": 0
+      }
+    ],
+    "byKind": {
+      "stores": 1
+    }
+  },
+  "instances": [
+    {
+      "ast": {
+        "fields": [
+          {
+            "name": "title",
+            "type": "String"
+          }
+        ],
+        "id": "recipe",
+        "name": "recipe",
+        "path": "src/entities/recipe.dart"
+      },
+      "componentId": "example.entity",
+      "id": "example.entity/recipe",
+      "locator": {
+        "name": "recipe",
+        "path": "src/entities/recipe.dart",
+        "source": {
+          "path": "src/entities/recipe.dart"
+        }
+      }
+    },
+    {
+      "ast": {
+        "id": "recipe",
+        "name": "recipe_store",
+        "path": "src/stores/recipe_store.dart",
+        "relations": {
+          "stores": [
+            {
+              "sources": [
+                {
+                  "path": "src/stores/recipe_store.dart"
+                }
+              ],
+              "to": "example.entity/recipe"
+            }
+          ]
+        }
+      },
+      "componentId": "example.store",
+      "id": "example.store/recipe",
+      "locator": {
+        "id": "recipe",
+        "path": "src/stores/recipe_store.dart",
+        "source": {
+          "path": "src/stores/recipe_store.dart"
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "from": "example.store/recipe",
+      "kind": "stores",
+      "sources": [
+        {
+          "path": "src/stores/recipe_store.dart"
+        }
+      ],
+      "to": "example.entity/recipe"
+    }
+  ],
+  "kindGraph": [
+    {
+      "count": 1,
+      "from": "example.store",
+      "kind": "stores",
+      "to": "example.entity"
+    }
+  ],
+  "findings": []
+}

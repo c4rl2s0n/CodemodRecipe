@@ -40,6 +40,17 @@ fn main() -> anyhow::Result<()> {
         codemod_recipe_engine::LanguageRegistry::with_config(config.language_registry_config());
     registry.reload();
 
+    // One-shot CLI: print component_scan.summary JSON and exit (D-029).
+    if std::env::args().any(|a| a == "--scan-summary") {
+        let scan = handle_command(&mut registry, HostCommand::ComponentScan);
+        let summary = scan
+            .get("summary")
+            .cloned()
+            .unwrap_or_else(|| json!({ "ok": scan.get("ok"), "error": scan.get("error") }));
+        println!("{}", serde_json::to_string_pretty(&summary)?);
+        return Ok(());
+    }
+
     let stdin = io::stdin();
     let mut stdout = io::stdout();
 
@@ -89,144 +100,7 @@ fn handle_request(
             jsonrpc: "2.0",
             id,
             result: Some(json!({
-              "tools": [
-                {
-                  "name": "list_recipes",
-                  "description": "List registered recipes with schemas and diagnostics",
-                  "inputSchema": { "type": "object" }
-                },
-                {
-                  "name": "describe_recipe",
-                  "description": "Describe one registered recipe",
-                  "inputSchema": {
-                    "type": "object",
-                    "properties": { "recipe": { "type": "string" } },
-                    "required": ["recipe"]
-                  }
-                },
-                {
-                  "name": "validate_recipes",
-                  "description": "Reload and validate all recipes and maps (optionally one recipe by id)",
-                  "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                      "recipe": {
-                        "type": "string",
-                        "description": "Optional recipe id to validate without reloading others"
-                      }
-                    }
-                  }
-                },
-                {
-                  "name": "preview_recipe",
-                  "description": "Preview a registered or inline recipe",
-                  "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                      "recipe": { "type": "string" },
-                      "inlineRecipe": { "type": "object" },
-                      "args": { "type": "object" },
-                      "snippetLines": { "type": "number" }
-                    }
-                  }
-                },
-                {
-                  "name": "apply_recipe",
-                  "description": "Apply a previewed recipe atomically",
-                  "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                      "recipe": { "type": "string" },
-                      "inlineRecipe": { "type": "object" },
-                      "args": { "type": "object" },
-                      "previewToken": { "type": "string" },
-                      "selection": { "type": "object" }
-                    },
-                    "required": ["previewToken"]
-                  }
-                },
-                {
-                  "name": "bootstrap_project",
-                  "description": "Install codemod-recipe agent skills (.agents/skills/), rules (.cursor/rules/), and .codemod/ scaffolding into the workspace. Soft edit_policy recommend by default; opt into strict and/or companions.",
-                  "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                      "force": {
-                        "type": "boolean",
-                        "description": "Overwrite existing files (default false)"
-                      },
-                      "edit_policy": {
-                        "type": "string",
-                        "enum": ["recommend", "strict"],
-                        "description": "Rule pack: recommend (default, soft prefer+preview) or strict (recipe-first edit policy)"
-                      },
-                      "companions": {
-                        "type": "array",
-                        "items": { "type": "string", "enum": ["codebase-memory"] },
-                        "description": "Optional companion rule packs (default []). Use [\"codebase-memory\"] when that MCP is configured."
-                      }
-                    }
-                  }
-                },
-                {
-                  "name": "dump_ast",
-                  "description": "Dump the tree-sitter AST for a workspace file or inline source (Query Tools).",
-                  "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                      "path": { "type": "string" },
-                      "source": { "type": "string" },
-                      "language": { "type": "string" },
-                      "namedOnly": { "type": "boolean" }
-                    }
-                  }
-                },
-                {
-                  "name": "debug_query",
-                  "description": "Run a tree-sitter query and return match roots and captures (Query Tools).",
-                  "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                      "path": { "type": "string" },
-                      "source": { "type": "string" },
-                      "language": { "type": "string" },
-                      "query": { "type": "string" },
-                      "instrument": { "type": "boolean" },
-                      "includeSexp": { "type": "boolean" }
-                    },
-                    "required": ["query"]
-                  }
-                },
-                {
-                  "name": "generate_query",
-                  "description": "Generate a starter tree-sitter query from a byte range in a file (Query Tools).",
-                  "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                      "path": { "type": "string" },
-                      "source": { "type": "string" },
-                      "language": { "type": "string" },
-                      "start": { "type": "number" },
-                      "end": { "type": "number" },
-                      "includeTextPredicates": { "type": "boolean" },
-                      "captureLeaf": { "type": "string" },
-                      "maxDepth": { "type": "number" }
-                    },
-                    "required": ["start"]
-                  }
-                },
-                {
-                  "name": "resolve_static_path",
-                  "description": "Try to Jinja-render a path template with empty args; succeeds only when no parameters are required.",
-                  "inputSchema": {
-                    "type": "object",
-                    "properties": {
-                      "template": { "type": "string" }
-                    },
-                    "required": ["template"]
-                  }
-                }
-              ]
+              "tools": codemod_recipe_host::protocol::mcp_inventory::tools_array(),
             })),
             error: None,
         },
@@ -263,8 +137,113 @@ fn handle_request(
                         .map(String::from);
                     handle_command(registry, HostCommand::Validate { recipe })
                 }
+                "reload_recipes" => handle_command(registry, HostCommand::Reload),
                 "preview_recipe" => mcp_preview_or_apply(registry, &arguments, false),
+                "diff_recipe" => {
+                    let path = arguments
+                        .get("path")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    if path.is_empty() {
+                        error_json("Missing path")
+                    } else {
+                        let recipe = arguments
+                            .get(protocol_keys::RECIPE)
+                            .and_then(|v| v.as_str())
+                            .map(String::from);
+                        let inline_recipe = arguments.get(protocol_keys::INLINE_RECIPE).cloned();
+                        if recipe.is_none() && inline_recipe.is_none() {
+                            error_json("Missing recipe or inlineRecipe")
+                        } else {
+                            handle_command(
+                                registry,
+                                HostCommand::Diff {
+                                    recipe,
+                                    inline_recipe,
+                                    args: json_args_to_btreemap(&arguments),
+                                    path,
+                                },
+                            )
+                        }
+                    }
+                }
                 "apply_recipe" => mcp_preview_or_apply(registry, &arguments, true),
+                "derive_args" => {
+                    let recipe = arguments
+                        .get("recipe")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let source = arguments
+                        .get("source")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    if recipe.is_empty() || source.is_empty() {
+                        error_json("Missing recipe or source")
+                    } else {
+                        let context = arguments
+                            .get("context")
+                            .and_then(|v| v.as_object())
+                            .map(|obj| {
+                                obj.iter()
+                                    .filter_map(|(k, v)| {
+                                        v.as_str().map(|s| (k.clone(), s.to_string()))
+                                    })
+                                    .collect::<BTreeMap<_, _>>()
+                            })
+                            .unwrap_or_default();
+                        handle_command(
+                            registry,
+                            HostCommand::DeriveArgs {
+                                recipe,
+                                source,
+                                language: arguments
+                                    .get("language")
+                                    .and_then(|v| v.as_str())
+                                    .map(String::from),
+                                path: arguments
+                                    .get("path")
+                                    .and_then(|v| v.as_str())
+                                    .map(String::from),
+                                cursor_offset: arguments
+                                    .get("cursorOffset")
+                                    .and_then(|v| v.as_u64())
+                                    .unwrap_or(0),
+                                selection_start: arguments
+                                    .get("selectionStart")
+                                    .and_then(|v| v.as_u64())
+                                    .unwrap_or(0),
+                                selection_end: arguments
+                                    .get("selectionEnd")
+                                    .and_then(|v| v.as_u64())
+                                    .unwrap_or(0),
+                                context,
+                            },
+                        )
+                    }
+                }
+                "filter_explorer_recipes" => {
+                    let path = arguments
+                        .get("path")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    let kind = arguments
+                        .get("kind")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    if path.is_empty() || kind.is_empty() {
+                        error_json("Missing path or kind")
+                    } else {
+                        handle_command(
+                            registry,
+                            HostCommand::FilterExplorerRecipes { path, kind },
+                        )
+                    }
+                }
                 "bootstrap_project" => {
                     let force = arguments
                         .get("force")
@@ -377,6 +356,19 @@ fn handle_request(
                         max_depth: arguments.get("maxDepth").and_then(|v| v.as_u64()),
                     },
                 ),
+                "query_captures" => handle_command(
+                    registry,
+                    HostCommand::QueryCaptures {
+                        query: arguments
+                            .get("query")
+                            .and_then(|v| v.as_str())
+                            .map(String::from),
+                        query_id: arguments
+                            .get("queryId")
+                            .and_then(|v| v.as_str())
+                            .map(String::from),
+                    },
+                ),
                 "resolve_static_path" => handle_command(
                     registry,
                     HostCommand::ResolveStaticPath {
@@ -385,6 +377,78 @@ fn handle_request(
                             .and_then(|v| v.as_str())
                             .unwrap_or("")
                             .to_string(),
+                    },
+                ),
+                "component_scan" => handle_command(registry, HostCommand::ComponentScan),
+                "component_incremental_scan" => {
+                    let dirty_paths = arguments
+                        .get("dirtyPaths")
+                        .and_then(|v| v.as_array())
+                        .map(|arr| {
+                            arr.iter()
+                                .filter_map(|v| v.as_str().map(String::from))
+                                .collect()
+                        })
+                        .unwrap_or_default();
+                    let detect_changes = arguments
+                        .get("detectChanges")
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false);
+                    let force = arguments
+                        .get("force")
+                        .and_then(|v| v.as_bool())
+                        .unwrap_or(false);
+                    handle_command(
+                        registry,
+                        HostCommand::ComponentIncrementalScan {
+                            dirty_paths,
+                            detect_changes,
+                            force,
+                        },
+                    )
+                }
+                "list_component_instances" => {
+                    handle_command(registry, HostCommand::ComponentListInstances)
+                }
+                "component_coverage" => handle_command(registry, HostCommand::ComponentCoverage),
+                "component_graph" => {
+                    let level = arguments
+                        .get("level")
+                        .and_then(|v| v.as_str())
+                        .map(String::from);
+                    let out = arguments
+                        .get("out")
+                        .and_then(|v| v.as_str())
+                        .map(String::from);
+                    handle_command(registry, HostCommand::ComponentGraph { level, out })
+                }
+                "component_snapshot" => {
+                    let path = arguments
+                        .get("path")
+                        .and_then(|v| v.as_str())
+                        .filter(|s| !s.is_empty())
+                        .map(String::from);
+                    handle_command(registry, HostCommand::ComponentSnapshot { path })
+                }
+                "describe_component" => {
+                    let component_id = arguments
+                        .get("componentId")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("")
+                        .to_string();
+                    handle_command(registry, HostCommand::DescribeComponent { component_id })
+                }
+                "component_dry_run_hook" => mcp_component_invoke_hook(registry, &arguments, true),
+                "component_apply_hook" => mcp_component_invoke_hook(registry, &arguments, false),
+                "stack_dry_run_operation" => mcp_stack_invoke_operation(registry, &arguments, true),
+                "stack_apply_operation" => mcp_stack_invoke_operation(registry, &arguments, false),
+                "run_tests" => handle_command(
+                    registry,
+                    HostCommand::RunTests {
+                        filter: arguments
+                            .get("filter")
+                            .and_then(|v| v.as_str())
+                            .map(str::to_string),
                     },
                 ),
                 _ => error_json(format!("Unknown tool: {tool}")),
@@ -409,6 +473,93 @@ fn handle_request(
             }),
         },
     }
+}
+
+fn mcp_component_invoke_hook(
+    registry: &mut RecipeRegistry,
+    arguments: &serde_json::Value,
+    preview: bool,
+) -> serde_json::Value {
+    let component_id = arguments
+        .get("componentId")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    if component_id.is_empty() {
+        return error_json("Missing componentId");
+    }
+    let hook = arguments
+        .get("hook")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    if hook.is_empty() {
+        return error_json("Missing hook");
+    }
+    let args = arguments
+        .get("args")
+        .and_then(|v| v.as_object())
+        .map(|m| {
+            m.iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect::<BTreeMap<_, _>>()
+        })
+        .unwrap_or_default();
+    handle_command(
+        registry,
+        HostCommand::ComponentInvokeHook {
+            component_id,
+            hook,
+            preview,
+            locator: arguments.get("locator").cloned(),
+            instance: arguments.get("instance").cloned(),
+            operation: arguments
+                .get("operation")
+                .and_then(|v| v.as_str())
+                .map(String::from),
+            args,
+            preview_token: arguments
+                .get(protocol_keys::PREVIEW_TOKEN)
+                .and_then(|v| v.as_str())
+                .map(String::from),
+        },
+    )
+}
+
+fn mcp_stack_invoke_operation(
+    registry: &mut RecipeRegistry,
+    arguments: &serde_json::Value,
+    preview: bool,
+) -> serde_json::Value {
+    let operation = arguments
+        .get("operation")
+        .and_then(|v| v.as_str())
+        .unwrap_or("")
+        .to_string();
+    if operation.is_empty() {
+        return error_json("Missing operation");
+    }
+    let args = arguments
+        .get("args")
+        .and_then(|v| v.as_object())
+        .map(|m| {
+            m.iter()
+                .map(|(k, v)| (k.clone(), v.clone()))
+                .collect::<BTreeMap<_, _>>()
+        })
+        .unwrap_or_default();
+    handle_command(
+        registry,
+        HostCommand::StackInvokeOperation {
+            operation,
+            preview,
+            args,
+            preview_token: arguments
+                .get(protocol_keys::PREVIEW_TOKEN)
+                .and_then(|v| v.as_str())
+                .map(String::from),
+        },
+    )
 }
 
 fn mcp_preview_or_apply(

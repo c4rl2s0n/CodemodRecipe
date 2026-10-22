@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
+codemod_recipe_core = { path = "../core" }
 codemod_recipe_lua_macros = { path = "../lua_macros" }
 mlua = { version = "0.11", features = ["luau"] }
 schemars = { version = "0.8", features = ["derive", "preserve_order"] }

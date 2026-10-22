@@ -85,7 +85,7 @@ fn instrument_slice(
 
                 // Capture may be inside `(node @c)` or after `(node) @c`
                 let (ext_cap_end, has_ext) = peek_external_capture(bytes, close_end, end);
-                let has_inner = trailing_capture_body(&body);
+                let has_inner = trailing_capture_body(&body) || leading_capture_body(&body);
                 // Do not inject @__layer_* into patterns that use tree-sitter `.`
                 // anchors — placing a capture after `.` is invalid syntax.
                 let has_dot_anchor = body_has_dot_anchor(&body);
@@ -100,6 +100,8 @@ fn instrument_slice(
                         i = close_end;
                     }
                 } else {
+                    // Inject as `(type @__layer_N …body…)` — never after trailing
+                    // predicates (`(#…)`), which is invalid tree-sitter syntax (D-009).
                     let name = format!("__layer_{layer_idx}");
                     layers.push(LayerRange {
                         name: name.clone(),
@@ -108,10 +110,12 @@ fn instrument_slice(
                         query_end: close_end,
                     });
                     *layer_idx += 1;
-                    out.push_str(&rebuilt);
+                    out.push('(');
+                    out.push_str(&source[after..kind_end]);
                     out.push(' ');
                     out.push('@');
                     out.push_str(&name);
+                    out.push_str(&body);
                     out.push(')');
                     i = close_end;
                 }
@@ -151,6 +155,19 @@ fn trailing_capture_body(body: &str) -> bool {
         j -= 1;
     }
     j > 0 && bytes[j - 1] == b'@' && end > j
+}
+
+/// True when body starts with `@ident` — the `(node @cap …)` form.
+fn leading_capture_body(body: &str) -> bool {
+    let bytes = body.as_bytes();
+    let mut i = 0;
+    while i < bytes.len() && bytes[i].is_ascii_whitespace() {
+        i += 1;
+    }
+    if i >= bytes.len() || bytes[i] != b'@' {
+        return false;
+    }
+    i + 1 < bytes.len() && is_ident_start(bytes[i + 1])
 }
 
 /// True if `body` contains a tree-sitter `.` anchor (not part of an identifier).
@@ -243,8 +260,7 @@ mod tests {
         assert!(inst.query.contains("@n"), "{}", inst.query);
         assert!(inst.query.contains("@__layer_"), "{}", inst.query);
         assert!(
-            inst.query.contains("(arguments) @__layer_")
-                || inst.query.contains("(arguments @__layer_"),
+            inst.query.contains("(arguments @__layer_"),
             "{}",
             inst.query
         );
@@ -292,5 +308,47 @@ mod tests {
         let q = "(class_definition (annotation (arguments)))";
         let inst = instrument_query(q).unwrap();
         assert!(inst.query.contains("@__layer_"), "{}", inst.query);
+    }
+
+    #[test]
+    fn layer_before_trailing_predicates() {
+        // D-009: injecting `@__layer_*` after `(#…)` is Invalid syntax.
+        let q = r#"(enum_item
+  name: (type_identifier) @enum
+  body: (enum_variant_list (enum_variant name: (identifier) @variant))
+  (#eq? @enum "HostCommand"))"#;
+        let inst = instrument_query(q).unwrap();
+        assert!(
+            inst.query.contains("@__layer_"),
+            "should still layer uncaptured patterns: {}",
+            inst.query
+        );
+        // Layer must not be placed after a closed predicate/group.
+        assert!(
+            !inst.query.contains(") @__layer_"),
+            "layer must not follow a closed predicate/group: {}",
+            inst.query
+        );
+        // Preferred form: `(type @__layer_N …)` including before predicates.
+        assert!(
+            inst.query.contains("(enum_item @__layer_")
+                || inst.query.contains("(enum_variant_list @__layer_"),
+            "expected layer immediately after a node type: {}",
+            inst.query
+        );
+        // Predicate still present and intact.
+        assert!(
+            inst.query.contains(r#"(#eq? @enum "HostCommand")"#),
+            "{}",
+            inst.query
+        );
+    }
+
+    #[test]
+    fn detects_leading_inner_capture() {
+        let q = "(identifier @n)";
+        let inst = instrument_query(q).unwrap();
+        assert_eq!(inst.query.trim(), "(identifier @n)");
+        assert!(inst.layer_ranges.is_empty());
     }
 }

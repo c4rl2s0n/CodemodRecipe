@@ -47,33 +47,31 @@ fn collect_specs_and_definitions() -> (BTreeMap<String, RootSchema>, schemars::M
 {
     let mut spec_types: BTreeMap<String, RootSchema> = BTreeMap::new();
     let mut all_definitions: schemars::Map<String, Schema> = schemars::Map::new();
+
+    let mut ingest = |info: &codemod_recipe_host::host_api::registry::HostSpecInfo| {
+        let schema = (info.schema)();
+        for (k, v) in schema.definitions.iter() {
+            all_definitions
+                .entry(k.clone())
+                .or_insert_with(|| v.clone());
+        }
+        spec_types.insert(info.name.to_string(), schema);
+    };
+
     for method in HOST_API_SURFACE.iter() {
         if let HostMethodSignature::Spec(info) = method.signature {
-            let schema = (info.schema)();
-            for (k, v) in schema.definitions.iter() {
-                all_definitions
-                    .entry(k.clone())
-                    .or_insert_with(|| v.clone());
-            }
-            spec_types.insert(info.name.to_string(), schema);
+            ingest(&info);
+        }
+        match method.return_type {
+            HostReturnType::Named(info) | HostReturnType::NamedArray(info) => ingest(&info),
+            _ => {}
         }
     }
     (spec_types, all_definitions)
 }
 
 fn collect_definitions() -> schemars::Map<String, Schema> {
-    let mut all_definitions: schemars::Map<String, Schema> = schemars::Map::new();
-    for method in HOST_API_SURFACE.iter() {
-        if let HostMethodSignature::Spec(info) = method.signature {
-            let schema = (info.schema)();
-            for (k, v) in schema.definitions.iter() {
-                all_definitions
-                    .entry(k.clone())
-                    .or_insert_with(|| v.clone());
-            }
-        }
-    }
-    all_definitions
+    collect_specs_and_definitions().1
 }
 
 // --- Luau generation ---
@@ -114,15 +112,67 @@ fn generate_dluau() -> String {
         out.push_str(&format!("export type {name} = {body}\n\n"));
     }
 
-    // QuerySpan is not derived from a Rust spec; it is the runtime return shape.
-    out.push_str("export type QuerySpan = {\n");
-    out.push_str("\tstart: number,\n");
-    out.push_str("\t[\"end\"]: number,\n");
-    out.push_str("\ttext: string,\n");
+    out.push_str("export type ComponentDelegate = {\n");
+    out.push_str("\tparse: (self: ComponentDelegate, locator: any) -> any,\n");
+    out.push_str("\tverify: (self: ComponentDelegate, instance: any) -> any,\n");
+    out.push_str("\treadSource: (self: ComponentDelegate, locator: any) -> any,\n");
+    out.push_str("\toperation: (self: ComponentDelegate, name: string, args: any?) -> any,\n");
+    out.push_str("\tscaffold: (self: ComponentDelegate, args: any?) -> any,\n");
+    out.push_str("}\n\n");
+
+    // Test layer (`*.test.luau` suites, `run_tests` MCP tool). Hand-written:
+    // these types describe the test runner's `t`/`ws` contexts, not host API
+    // methods on `c`.
+    out.push_str("export type TestWorkspaceSpec = {\n");
+    out.push_str("\tbase: string?,\n");
+    out.push_str("\tfiles: { [string]: string }?,\n");
+    out.push_str("}\n\n");
+
+    out.push_str("export type TestApplyRecipeResult = {\n");
+    out.push_str("\tfiles: { any },\n");
+    out.push_str("\tapplied: { string },\n");
+    out.push_str("\ttranscript: { any },\n");
+    out.push_str("\tsawPostExec: boolean,\n");
+    out.push_str("}\n\n");
+
+    out.push_str("export type TestWorkspace = {\n");
+    out.push_str("\tscan: (self: TestWorkspace) -> any,\n");
+    out.push_str("\tidentify: (self: TestWorkspace, componentId: string) -> any,\n");
+    out.push_str("\tparse: (self: TestWorkspace, componentId: string, locator: any) -> any,\n");
+    out.push_str("\tverify: (self: TestWorkspace, componentId: string, instance: any) -> any,\n");
+    out.push_str("\trelate: (self: TestWorkspace, componentId: string, instance: any) -> any,\n");
+    out.push_str(
+        "\tapply: (self: TestWorkspace, componentId: string, operation: string, args: { [string]: any }, instanceId: string) -> any,\n",
+    );
+    out.push_str(
+        "\tscaffold: (self: TestWorkspace, componentId: string, args: { [string]: any }) -> any,\n",
+    );
+    out.push_str(
+        "\tstackOperation: (self: TestWorkspace, operation: string, args: { [string]: any }) -> any,\n",
+    );
+    out.push_str(
+        "\tapplyRecipe: (self: TestWorkspace, recipeId: string, args: { [string]: any }) -> TestApplyRecipeResult,\n",
+    );
+    out.push_str("\treadFile: (self: TestWorkspace, path: string) -> string?,\n");
+    out.push_str("}\n\n");
+
+    out.push_str("export type TestContext = {\n");
+    out.push_str(
+        "\tworkspace: (self: TestContext, spec: string | TestWorkspaceSpec) -> TestWorkspace,\n",
+    );
+    out.push_str("\tassert: (self: TestContext, v: any, msg: string?) -> any,\n");
+    out.push_str("\tassertEq: (self: TestContext, got: any, want: any, msg: string?) -> any,\n");
+    out.push_str("\tfail: (self: TestContext, msg: string?) -> never,\n");
+    out.push_str("}\n\n");
+
+    out.push_str("export type TestSuiteModule = {\n");
+    out.push_str("\tid: string,\n");
+    out.push_str("\tdescription: string?,\n");
+    out.push_str("\ttarget: string?,\n");
+    out.push_str("\ttests: { [string]: (t: TestContext) -> () },\n");
     out.push_str("}\n\n");
 
     out.push_str("export type CodemodContext = {\n");
-    out.push_str("\targs: { [string]: any },\n");
 
     for method in sorted_methods() {
         let sig = method_signature_luau(method);
@@ -261,13 +311,21 @@ fn object_schema_to_luau(
         let prop = props.get(&key).expect("present");
         let optional = !required.contains(&key);
         let value = schema_to_luau(prop, definitions, indent + 1);
-        let suffix = if optional { "?" } else { "" };
+        let typed = if optional {
+            if value.ends_with('?') {
+                value
+            } else {
+                format!("{value}?")
+            }
+        } else {
+            value
+        };
         let key_str = if is_valid_luau_identifier(&key) {
             key.clone()
         } else {
             format!("[\"{key}\"]")
         };
-        lines.push(format!("\t{}{suffix}: {value},", key_str));
+        lines.push(format!("\t{key_str}: {typed},"));
     }
 
     if lines.is_empty() {
@@ -322,12 +380,23 @@ fn method_signature_luau(method: &HostMethodSurface) -> String {
                     "(self: CodemodContext, path: string | {{ path: string }}) -> {ret}"
                 );
             }
+            if info.name == "ListFilesSpec" {
+                return format!(
+                    "(self: CodemodContext, patterns: string | {{ string }}) -> {ret}"
+                );
+            }
             let type_name = info.name;
             format!("(self: CodemodContext, spec: {type_name}) -> {ret}")
         }
         HostMethodSignature::StringId => match method.return_type {
             HostReturnType::String => format!("(self: CodemodContext, id: string) -> {ret}"),
-            _ => "(self: CodemodContext, id: string) -> { [string]: string }".to_string(),
+            HostReturnType::StringList
+            | HostReturnType::StringMap
+            | HostReturnType::Named(_)
+            | HostReturnType::NamedArray(_) => {
+                format!("(self: CodemodContext, id: string) -> {ret}")
+            }
+            _ => format!("(self: CodemodContext, id: string) -> {ret}"),
         },
         HostMethodSignature::Assert => {
             "(self: CodemodContext, cond: boolean, msg: string?) -> ()".to_string()
@@ -335,20 +404,28 @@ fn method_signature_luau(method: &HostMethodSurface) -> String {
         HostMethodSignature::Run => {
             "(self: CodemodContext, id: string, args: { [string]: any }?) -> ()".to_string()
         }
-        HostMethodSignature::Variadic => {
-            "(self: CodemodContext, ...any) -> ()".to_string()
+        HostMethodSignature::Variadic => "(self: CodemodContext, ...any) -> ()".to_string(),
+        HostMethodSignature::Resolve => {
+            "(self: CodemodContext, template: string, vars: { [string]: string }?) -> string"
+                .to_string()
+        }
+        HostMethodSignature::Component => {
+            "(self: CodemodContext, id: string) -> ComponentDelegate".to_string()
         }
     }
 }
 
-fn return_type_luau(ret: HostReturnType) -> &'static str {
+fn return_type_luau(ret: HostReturnType) -> String {
     match ret {
-        HostReturnType::Nil => "()",
-        HostReturnType::String => "string",
-        HostReturnType::Boolean => "boolean",
-        HostReturnType::Integer => "number",
-        HostReturnType::Table => "{ [string]: string }",
-        HostReturnType::QuerySpans => "{ QuerySpan }",
+        HostReturnType::Nil => "()".to_string(),
+        HostReturnType::String => "string".to_string(),
+        HostReturnType::Boolean => "boolean".to_string(),
+        HostReturnType::Integer => "number".to_string(),
+        HostReturnType::StringMap => "{ [string]: string }".to_string(),
+        HostReturnType::StringList => "{ string }".to_string(),
+        HostReturnType::Named(info) => info.name.to_string(),
+        HostReturnType::NamedArray(info) => format!("{{ {} }}", info.name),
+        HostReturnType::ComponentDelegate => "ComponentDelegate".to_string(),
     }
 }
 
@@ -373,7 +450,10 @@ fn generate_ts() -> String {
     out.push_str("  enums?: Record<string, string[]>;\n");
     out.push_str("};\n\n");
 
-    out.push_str("export const HOST_CONTEXT_FIELD = 'args';\n\n");
+    out.push_str(
+        "/** Recipe apply args are the 2nd parameter: `apply(c, args)`. Not a field on `c`. */\n",
+    );
+    out.push_str("export const HOST_CONTEXT_FIELD: string | null = null;\n\n");
 
     let all_definitions = collect_definitions();
     let methods = sorted_methods();
@@ -505,7 +585,9 @@ fn method_keys_and_enums(
         HostMethodSignature::StringId
         | HostMethodSignature::Assert
         | HostMethodSignature::Run
-        | HostMethodSignature::Variadic => (Vec::new(), None),
+        | HostMethodSignature::Variadic
+        | HostMethodSignature::Resolve
+        | HostMethodSignature::Component => (Vec::new(), None),
     }
 }
 
@@ -604,7 +686,7 @@ fn recipe_module_docs() -> Vec<(&'static str, &'static str)> {
             "args",
             "List of arg definition tables (`name`, `inputKind`, …).",
         ),
-        ("apply", "`function(c)` — only mutation entrypoint."),
+        ("apply", "`function(c, args)` — only mutation entrypoint."),
         (
             "maps",
             "Recipe-local maps `{ mapId = { key = \"value\" } }`.",
@@ -627,7 +709,10 @@ fn recipe_module_docs() -> Vec<(&'static str, &'static str)> {
 
 fn arg_definition_docs() -> Vec<(&'static str, &'static str)> {
     vec![
-        ("name", "Argument name (available as `c.args.<name>`)."),
+        (
+            "name",
+            "Argument name (available as `args.<name>` in apply).",
+        ),
         ("required", "Whether the runner requires a value."),
         (
             "inputKind",

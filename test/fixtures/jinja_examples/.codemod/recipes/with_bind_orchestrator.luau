@@ -5,9 +5,9 @@ return {
 	args = {
 		{ name = "featureName", required = true, inputKind = "symbol" },
 	},
-	apply = function(c)
+	apply = function(c, args)
 		c:run("jinja.bind.child", {
-			className = c.args.featureName,
+			className = args.featureName,
 			suffix = "Widget",
 		})
 	end,
